@@ -1,5 +1,7 @@
 package ace.org.epms_backend.model;
 import java.time.Instant;
+
+import ace.org.epms_backend.enums.KpiGoalStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

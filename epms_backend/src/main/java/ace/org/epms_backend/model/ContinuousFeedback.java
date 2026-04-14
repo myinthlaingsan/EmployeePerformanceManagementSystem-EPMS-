@@ -1,7 +1,9 @@
 package ace.org.epms_backend.model;
 
+import ace.org.epms_backend.enums.FeedbackType;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "continuous_feedback")
@@ -9,6 +11,8 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
 public class ContinuousFeedback extends BaseEntity {
 
     @Id

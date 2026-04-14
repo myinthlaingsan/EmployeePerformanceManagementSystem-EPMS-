@@ -11,7 +11,6 @@ import java.io.Serializable;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-
 public class EmployeeRole {
 
     @Id

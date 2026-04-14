@@ -1,6 +1,8 @@
 package ace.org.epms_backend.model;
+import ace.org.epms_backend.enums.CycleStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 
@@ -10,6 +12,8 @@ import java.time.LocalDate;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
 public class AppraisalCycle extends BaseEntity {
 
     @Id

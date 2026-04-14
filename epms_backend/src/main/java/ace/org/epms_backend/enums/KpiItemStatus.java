@@ -1,4 +1,4 @@
-package ace.org.epms_backend.model;
+package ace.org.epms_backend.enums;
 
 public enum KpiItemStatus {
     NOT_STARTED,
