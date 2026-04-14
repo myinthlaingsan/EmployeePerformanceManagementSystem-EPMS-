@@ -2,6 +2,7 @@ package ace.org.epms_backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -12,6 +13,8 @@ import java.time.Instant;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
 public class PipProgressLog extends BaseEntity {
 
     @Id
@@ -28,6 +31,4 @@ public class PipProgressLog extends BaseEntity {
     private BigDecimal progressPercent;
 
     private Long updatedBy;
-
-    private Instant updatedAt;
 }

@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import ace.org.epms_backend.enums.Gender;
 import ace.org.epms_backend.enums.MaritalStatus;
 import ace.org.epms_backend.enums.EmployeeStatus;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "employee")
@@ -16,6 +17,8 @@ import ace.org.epms_backend.enums.EmployeeStatus;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
 public class Employee extends BaseEntity {
 
     @Id

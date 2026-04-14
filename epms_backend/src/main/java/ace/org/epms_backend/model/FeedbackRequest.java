@@ -1,6 +1,9 @@
 package ace.org.epms_backend.model;
+import ace.org.epms_backend.enums.FeedbackRelationship;
+import ace.org.epms_backend.enums.FeedbackStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(
@@ -13,6 +16,8 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
 public class FeedbackRequest extends BaseEntity {
 
     @Id

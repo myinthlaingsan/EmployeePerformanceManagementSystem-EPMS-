@@ -1,6 +1,7 @@
 package ace.org.epms_backend.model;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "kpi_history_log")
@@ -8,6 +9,8 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
 public class KpiHistoryLog extends BaseEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
