@@ -1,4 +1,7 @@
 package ace.org.epms_backend.exception;
 
-public class UserNotFoundException {
+public class UserNotFoundException extends RuntimeException{
+    public UserNotFoundException(String message){
+        super(message);
+    }
 }

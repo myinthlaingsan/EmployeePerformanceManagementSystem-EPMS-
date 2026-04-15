@@ -24,7 +24,6 @@ public class Employee extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     @Column(unique = true)
     private String employeeCode;
 
@@ -49,7 +48,7 @@ public class Employee extends BaseEntity {
 
     private String phoneNo;
     private String email;
-
+    private String password;
     @Enumerated(EnumType.STRING)
     private MaritalStatus maritalStatus;
 
