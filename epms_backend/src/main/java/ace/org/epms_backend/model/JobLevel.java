@@ -23,4 +23,7 @@ public class JobLevel extends BaseEntity {
     private String levelCode;
 
     private String levelName;
+
+    @Column(unique = true, nullable = false)
+    private Integer levelRank;  // 1 = highest
 }
