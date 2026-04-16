@@ -2,6 +2,7 @@ package ace.org.epms_backend.model;
 
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
