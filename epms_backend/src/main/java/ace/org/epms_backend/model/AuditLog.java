@@ -2,6 +2,7 @@ package ace.org.epms_backend.model;
 
 import ace.org.epms_backend.enums.AuditAction;
 import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
