@@ -39,4 +39,3 @@ public class AppraisalHistory extends BaseEntity {
 
     private Boolean isFinal = true;
 }
-
