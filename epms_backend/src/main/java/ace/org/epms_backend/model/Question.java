@@ -1,6 +1,8 @@
 package ace.org.epms_backend.model;
+import ace.org.epms_backend.enums.QuestionType;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "question")
@@ -8,6 +10,8 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
 public class Question extends BaseEntity {
 
     @Id

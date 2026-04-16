@@ -1,32 +1,31 @@
 package ace.org.epms_backend.model;
+
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "manager_evaluation_answer")
+@Table(name = "feedback_reply")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class ManagerEvaluationAnswer extends BaseEntity {
+public class FeedbackReply extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long replyId;
 
     @ManyToOne
-    @JoinColumn(name = "evaluation_id")
-    private ManagerEvaluation evaluation;
+    @JoinColumn(name = "feedback_id", nullable = false)
+    private ContinuousFeedback feedback;
 
     @ManyToOne
-    @JoinColumn(name = "question_id")
-    private Question question;
-
-    private Integer ratingValue;
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
 
     @Column(columnDefinition = "TEXT")
-    private String comment;
+    private String replyText;
 }

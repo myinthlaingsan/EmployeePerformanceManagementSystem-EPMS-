@@ -1,28 +1,26 @@
 package ace.org.epms_backend.model;
-
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.time.Instant;
-
 @Entity
-@Table(name = "manager_evaluation")
+@Table(name = "department")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class ManagerEvaluation extends BaseEntity {
+public class Department extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long evaluationId;
+    private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "appraisal_id")
-    private Appraisal appraisal;
+    @Column(unique = true)
+    private String departmentCode;
 
-    private Instant submittedAt;
+    private String departmentName;
+
+    private Boolean isActive = true;
 }

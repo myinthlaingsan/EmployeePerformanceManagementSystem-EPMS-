@@ -4,29 +4,27 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "manager_evaluation_answer")
+@Table(name = "kpi_history_log")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class ManagerEvaluationAnswer extends BaseEntity {
-
+public class KpiHistoryLog extends BaseEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "evaluation_id")
-    private ManagerEvaluation evaluation;
+    private Long employeeId;
 
-    @ManyToOne
-    @JoinColumn(name = "question_id")
-    private Question question;
+    private Long oldVersionId;
+    private Long newVersionId;
 
-    private Integer ratingValue;
+    private String action;
 
     @Column(columnDefinition = "TEXT")
-    private String comment;
+    private String changeReason;
+
+    private Long changedBy;
 }

@@ -1,7 +1,9 @@
 package ace.org.epms_backend.model;
 
+import ace.org.epms_backend.enums.AppraisalStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 
@@ -11,6 +13,8 @@ import java.math.BigDecimal;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
 public class Appraisal extends BaseEntity {
 
     @Id

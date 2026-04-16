@@ -4,25 +4,30 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
+
 @Entity
-@Table(name = "form_category")
+@Table(name = "kpi_library_details")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class FormCategory extends BaseEntity {
-
+public class KpiLibraryDetails extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long categoryId;
+    private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "form_id")
-    private AppraisalForm form;
+    @JoinColumn(name = "library_id")
+    private KpiLibrary library;
 
-    private String categoryName;
+    private String goalTitle;
+
+    private BigDecimal targetValue;
+
+    private BigDecimal weightPercent;
 
     private Boolean isActive = true;
 }

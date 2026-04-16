@@ -1,24 +1,27 @@
 package ace.org.epms_backend.model;
 
+import ace.org.epms_backend.enums.CommentType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.math.BigDecimal;
-
 @Entity
-@Table(name = "appraisal_history")
+@Table(name = "meeting_comments")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class AppraisalHistory extends BaseEntity {
+public class MeetingComment extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long historyId;
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "meeting_id", nullable = false)
+    private OneOnOneMeeting meeting;
 
     @ManyToOne
     @JoinColumn(name = "employee_id")
@@ -28,17 +31,9 @@ public class AppraisalHistory extends BaseEntity {
     @JoinColumn(name = "manager_id")
     private Employee manager;
 
-    @ManyToOne
-    @JoinColumn(name = "appraisal_id")
-    private Appraisal appraisal;
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String comment;
 
-    @ManyToOne
-    @JoinColumn(name = "cycle_id")
-    private AppraisalCycle cycle;
-
-    private BigDecimal score;
-
-    private String grade;
-
-    private Boolean isFinal = true;
+    @Enumerated(EnumType.STRING)
+    private CommentType commentType;
 }

@@ -3,30 +3,31 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
+
 @Entity
-@Table(name = "manager_evaluation_answer")
+@Table(name = "kpi_progress")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class ManagerEvaluationAnswer extends BaseEntity {
-
+public class KpiProgress extends BaseEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "evaluation_id")
-    private ManagerEvaluation evaluation;
+    @JoinColumn(name = "goal_item_id")
+    private KpiGoalItem goalItem;
 
-    @ManyToOne
-    @JoinColumn(name = "question_id")
-    private Question question;
+    private BigDecimal actualValue;
 
-    private Integer ratingValue;
+    private BigDecimal progressPercent;
 
     @Column(columnDefinition = "TEXT")
-    private String comment;
+    private String evidenceNote;
+
+    private Long updatedBy;
 }

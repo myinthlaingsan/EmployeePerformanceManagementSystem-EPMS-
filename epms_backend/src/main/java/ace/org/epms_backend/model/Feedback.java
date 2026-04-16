@@ -7,22 +7,25 @@ import lombok.experimental.SuperBuilder;
 import java.time.Instant;
 
 @Entity
-@Table(name = "manager_evaluation")
+@Table(name = "feedback")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class ManagerEvaluation extends BaseEntity {
+public class Feedback extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long evaluationId;
+    private Long id;
 
     @OneToOne
-    @JoinColumn(name = "appraisal_id")
-    private Appraisal appraisal;
+    @JoinColumn(name = "request_id", nullable = false)
+    private FeedbackRequest request;
+
+    @Column(columnDefinition = "TEXT")
+    private String overallComment;
 
     private Instant submittedAt;
 }
