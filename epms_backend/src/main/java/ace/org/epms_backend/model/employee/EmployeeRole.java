@@ -9,6 +9,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@IdClass(EmployeeRoleId.class)
 public class EmployeeRole {
 
     @Id
