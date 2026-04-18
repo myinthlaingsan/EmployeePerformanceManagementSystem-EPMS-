@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface EmployeeDepartmentRepository extends JpaRepository<EmployeeDepartment, Long> {
     Optional<EmployeeDepartment> findByEmployeeIdAndIsCurrentTrue(Long employeeId);
     boolean existsByCurrentDepartmentIdAndIsCurrentTrue(Long departmentId);
+    java.util.List<EmployeeDepartment> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
 }
