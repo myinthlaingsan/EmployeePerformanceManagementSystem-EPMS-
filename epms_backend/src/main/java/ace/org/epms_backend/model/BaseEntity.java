@@ -14,19 +14,19 @@ import java.time.Instant;
 public class BaseEntity {
 
     @Column(updatable = false)
-    private Instant created_at;
+    private Instant createdAt;
 
-    private Instant updated_at;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate(){
         Instant now = Instant.now();
-        this.created_at = now;
-        this.updated_at = now;
+        this.createdAt = now;
+        this.updatedAt = now;
     }
 
     @PreUpdate
     protected void onUpdate(){
-        this.updated_at = Instant.now();
+        this.updatedAt = Instant.now();
     }
 }
