@@ -7,6 +7,8 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import ace.org.epms_backend.enums.Gender;
 import ace.org.epms_backend.enums.MaritalStatus;
 import ace.org.epms_backend.enums.EmployeeStatus;
@@ -81,4 +83,10 @@ public class Employee extends BaseEntity {
     private EmployeeStatus status;
 
     private Boolean isActive = true;
+
+    @Column(name = "failed_attempts", columnDefinition = "INT DEFAULT 0")
+    private int failedLoginAttempts = 0;
+    @Column(name = "account_locked", columnDefinition = "BOOLEAN DEFAULT false")
+    private boolean accountLocked = false;
+    private LocalDateTime lockTime;
 }
