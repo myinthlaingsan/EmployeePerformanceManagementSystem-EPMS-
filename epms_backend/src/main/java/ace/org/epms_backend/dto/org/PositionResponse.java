@@ -1,4 +1,4 @@
-package ace.org.epms_backend.dto.employee;
+package ace.org.epms_backend.dto.org;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,12 +9,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EmployeeResponse {
-    private Long id;
-    private String employeeCode;
-    private String staffName;
-    private String email;
-    private String phoneNo;
+public class PositionResponse {
+    private Long positionId;
+    private String positionCode;
     private String positionName;
+    private Long levelId;
     private String levelName;
 }

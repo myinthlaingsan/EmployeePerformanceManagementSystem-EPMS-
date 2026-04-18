@@ -6,7 +6,7 @@ import ace.org.epms_backend.model.employee.Employee;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", builder = @org.mapstruct.Builder(disableBuilder = true))
 public interface EmployeeMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "employeeCode", ignore = true)
@@ -14,9 +14,11 @@ public interface EmployeeMapper {
     @Mapping(target = "level", ignore = true)
     @Mapping(target = "status", constant = "PENDING")
     @Mapping(target = "isActive", constant = "true")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     Employee toEntity(CreateEmployeeRequest request);
 
-    @Mapping(source = "position.name", target = "positionName")
-    @Mapping(source = "level.name", target = "levelName")
+    @Mapping(source = "position.positionName", target = "positionName")
+    @Mapping(source = "level.levelName", target = "levelName")
     EmployeeResponse toResponse(Employee employee);
 }
