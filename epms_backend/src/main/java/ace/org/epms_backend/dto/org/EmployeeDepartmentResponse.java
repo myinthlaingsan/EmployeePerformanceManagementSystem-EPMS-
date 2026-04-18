@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -19,5 +19,5 @@ public class EmployeeDepartmentResponse {
     private Long parentDepartmentId;
     private String parentDepartmentName;
     private Boolean isCurrent;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }
