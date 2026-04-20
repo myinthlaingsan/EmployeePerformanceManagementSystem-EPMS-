@@ -8,6 +8,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import ace.org.epms_backend.enums.Gender;
 import ace.org.epms_backend.enums.MaritalStatus;
@@ -89,4 +90,14 @@ public class Employee extends BaseEntity {
     @Column(name = "account_locked", columnDefinition = "BOOLEAN DEFAULT false")
     private boolean accountLocked = false;
     private LocalDateTime lockTime;
+
+    //add by tms for 360feedback
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "direct_manager_id") // Database မှာ direct_manager_id လို့ ပေါ်လာမှာပါ
+    private Employee directManager;
+
+    @OneToMany(mappedBy = "directManager")
+    private List<Employee> subordinates;
+
+
 }
