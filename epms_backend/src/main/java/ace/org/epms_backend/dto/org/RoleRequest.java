@@ -1,6 +1,6 @@
 package ace.org.epms_backend.dto.org;
 
-import ace.org.epms_backend.enums.RoleType;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RoleResponse {
-    private Long roleId;
+public class RoleRequest {
+    @NotNull(message = "Role name is required")
     private String roleName;
 }

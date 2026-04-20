@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface EmployeeDepartmentService {
     EmployeeDepartmentResponse assignDepartment(Long employeeId, AssignDepartmentRequest request);
+
     List<EmployeeDepartmentResponse> getEmployeeDepartmentHistory(Long employeeId);
 }

@@ -85,7 +85,7 @@ public class EmployeeRoleServiceImpl implements EmployeeRoleService {
     private RoleResponse mapToRoleResponse(Role role) {
         return RoleResponse.builder()
                 .roleId(role.getRoleId())
-                .roleName(role.getRoleName())
+                .roleName(role.getRoleName().name())
                 .build();
     }
 
@@ -98,5 +98,11 @@ public class EmployeeRoleServiceImpl implements EmployeeRoleService {
                 .phoneNo(employee.getPhoneNo())
                 .positionName(employee.getPosition() != null ? employee.getPosition().getPositionName() : null)
                 .build();
+    }
+
+    @Override
+    public boolean existsByRole(Role role) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'existsByRole'");
     }
 }
