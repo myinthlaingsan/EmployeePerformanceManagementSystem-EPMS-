@@ -2,6 +2,9 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.org.JobLevelRequest;
 import ace.org.epms_backend.dto.org.JobLevelResponse;
+import ace.org.epms_backend.exception.CannotDeleteException;
+import ace.org.epms_backend.exception.CodeAlreadyExistsException;
+import ace.org.epms_backend.exception.LevelAlreadyExists;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.JobLevelMapper;
 import ace.org.epms_backend.model.employee.JobLevel;
@@ -25,10 +28,10 @@ public class JobLevelServiceImpl implements JobLevelService {
     @Override
     public JobLevelResponse createJobLevel(JobLevelRequest request) {
         if (jobLevelRepository.existsByLevelCode(request.getLevelCode())) {
-            throw new RuntimeException("Job level code already exists");
+            throw new CodeAlreadyExistsException("Job level code already exists");
         }
         if (jobLevelRepository.existsByLevelRank(request.getLevelRank())) {
-            throw new RuntimeException("Job level rank already exists");
+            throw new LevelAlreadyExists("Job level rank already exists");
         }
         JobLevel jobLevel = jobLevelMapper.toEntity(request);
         jobLevel = jobLevelRepository.save(jobLevel);
@@ -56,11 +59,11 @@ public class JobLevelServiceImpl implements JobLevelService {
 
         if (!jobLevel.getLevelCode().equals(request.getLevelCode()) &&
             jobLevelRepository.existsByLevelCode(request.getLevelCode())) {
-            throw new RuntimeException("Job level code already exists");
+            throw new CodeAlreadyExistsException("Job level code already exists");
         }
         if (!jobLevel.getLevelRank().equals(request.getLevelRank()) &&
             jobLevelRepository.existsByLevelRank(request.getLevelRank())) {
-            throw new RuntimeException("Job level rank already exists");
+            throw new LevelAlreadyExists("Job level rank already exists");
         }
 
         jobLevelMapper.updateEntity(request, jobLevel);
@@ -74,7 +77,7 @@ public class JobLevelServiceImpl implements JobLevelService {
                 .orElseThrow(() -> new NotFoundException("Job level not found"));
 
         if (employeeRepository.existsByLevel(jobLevel)) {
-            throw new RuntimeException("Cannot delete job level as it is assigned to one or more employees");
+            throw new CannotDeleteException("Cannot delete job level as it is assigned to one or more employees");
         }
 
         jobLevelRepository.delete(jobLevel);

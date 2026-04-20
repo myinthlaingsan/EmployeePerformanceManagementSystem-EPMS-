@@ -2,6 +2,8 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.org.AssignDepartmentRequest;
 import ace.org.epms_backend.dto.org.EmployeeDepartmentResponse;
+import ace.org.epms_backend.exception.AlreadyActiveException;
+import ace.org.epms_backend.exception.CannotAssignException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.EmployeeDepartmentMapper;
 import ace.org.epms_backend.model.employee.Department;
@@ -36,7 +38,7 @@ public class EmployeeDepartmentServiceImpl implements EmployeeDepartmentService 
                 .orElseThrow(() -> new NotFoundException("Current department not found"));
                 
         if (!currentDepartment.getIsActive()) {
-            throw new RuntimeException("Cannot assign an inactive department");
+            throw new CannotAssignException("Cannot assign an inactive department");
         }
 
         Department parentDepartment = null;
@@ -45,7 +47,7 @@ public class EmployeeDepartmentServiceImpl implements EmployeeDepartmentService 
                 .orElseThrow(() -> new NotFoundException("Parent department not found"));
                 
             if (!parentDepartment.getIsActive()) {
-                throw new RuntimeException("Cannot assign an inactive parent department");
+                throw new CannotAssignException("Cannot assign an inactive parent department");
             }
         }
 
@@ -53,7 +55,7 @@ public class EmployeeDepartmentServiceImpl implements EmployeeDepartmentService 
         if (currentAssignment.isPresent()) {
             EmployeeDepartment previous = currentAssignment.get();
             if (previous.getCurrentDepartment().getId().equals(currentDepartment.getId())) {
-                throw new RuntimeException("Employee is already active in this department");
+                throw new AlreadyActiveException("Employee is already active in this department");
             }
             previous.setIsCurrent(false);
             employeeDepartmentRepository.save(previous);
