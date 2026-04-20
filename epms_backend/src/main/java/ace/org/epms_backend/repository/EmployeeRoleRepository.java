@@ -14,5 +14,10 @@ public interface EmployeeRoleRepository extends JpaRepository<EmployeeRole, Empl
     @Query("SELECT er.role FROM EmployeeRole er WHERE er.employee.id = :empId")
     List<Role> findRolesByEmployeeId(Long empId);
 
+    @Query("SELECT er.employee FROM EmployeeRole er WHERE er.role.roleId = :roleId")
+    List<ace.org.epms_backend.model.employee.Employee> findEmployeesByRoleId(Long roleId);
+
     boolean existsByEmployee_IdAndRole_RoleId(Long employeeId, Long roleId);
+
+    void deleteByEmployee_IdAndRole_RoleId(Long employeeId, Long roleId);
 }
