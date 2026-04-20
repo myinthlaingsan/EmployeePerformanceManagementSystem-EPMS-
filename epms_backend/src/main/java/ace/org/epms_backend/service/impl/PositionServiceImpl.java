@@ -2,6 +2,7 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.org.PositionRequest;
 import ace.org.epms_backend.dto.org.PositionResponse;
+import ace.org.epms_backend.exception.CodeAlreadyExistsException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.PositionMapper;
 import ace.org.epms_backend.model.employee.JobLevel;
@@ -28,7 +29,7 @@ public class PositionServiceImpl implements PositionService {
     @Override
     public PositionResponse createPosition(PositionRequest request) {
         if (positionRepository.existsByPositionCode(request.getPositionCode())) {
-            throw new RuntimeException("Position code already exists");
+            throw new CodeAlreadyExistsException("Position code already exists");
         }
         
         JobLevel level = jobLevelRepository.findById(request.getLevelId())
@@ -69,7 +70,7 @@ public class PositionServiceImpl implements PositionService {
 
         if (!position.getPositionCode().equals(request.getPositionCode()) &&
             positionRepository.existsByPositionCode(request.getPositionCode())) {
-            throw new RuntimeException("Position code already exists");
+            throw new CodeAlreadyExistsException("Position code already exists");
         }
 
         JobLevel level = jobLevelRepository.findById(request.getLevelId())

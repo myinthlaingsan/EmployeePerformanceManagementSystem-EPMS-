@@ -4,9 +4,12 @@ import ace.org.epms_backend.dto.employee.CreateEmployeeRequest;
 import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.enums.EmployeeStatus;
 import ace.org.epms_backend.exception.EmailExistException;
+import ace.org.epms_backend.exception.InvalidTokenException;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.exception.TokenExpiredException;
 import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.employee.Employee;
+import ace.org.epms_backend.model.employee.EmployeeRole;
 import ace.org.epms_backend.model.employee.ResetToken;
 import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.*;
@@ -31,7 +34,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final PositionRepository positionRepository;
     private final JobLevelRepository levelRepository;
     private final EmployeeMapper employeeMapper;
-
+    private final EmployeeRoleRepository employeeRoleRepository;
     @Override
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
         if (employeeRepository.existsByEmail(request.getEmail())) {
@@ -47,12 +50,17 @@ public class EmployeeServiceImpl implements EmployeeService {
         );
         employee.setLevel(
                 levelRepository.findById(request.getLevelId())
-                        .orElseThrow(() -> new RuntimeException("Level not found"))
+                        .orElseThrow(() -> new NotFoundException("Level not found"))
         );
         employee.setStatus(EmployeeStatus.INACTIVE);
         employee.setPassword(null); // user will set later
         employee.setEmployeeCode(generateEmployeeCode());
-        employeeRepository.save(employee);
+        Employee savedEmployee = employeeRepository.save(employee);
+
+        EmployeeRole employeeRole = new EmployeeRole();
+        employeeRole.setEmployee(savedEmployee);
+        employeeRole.setRole(role);
+        employeeRoleRepository.save(employeeRole);
         // Generate token
         String token = UUID.randomUUID().toString();
         ResetToken resetToken = new ResetToken();
@@ -76,10 +84,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public void setPassword(String token, String newPassword) {
         ResetToken resetToken = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid token"));
+                .orElseThrow(() -> new InvalidTokenException("Invalid token"));
 
         if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Token expired");
+            throw new TokenExpiredException("Token expired");
         }
 
         Employee emp = resetToken.getEmployee();
