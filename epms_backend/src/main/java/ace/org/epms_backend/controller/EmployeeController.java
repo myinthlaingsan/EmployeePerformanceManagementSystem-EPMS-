@@ -18,7 +18,6 @@ public class EmployeeController {
             @RequestBody SetPasswordRequest request
     ){
         employeeService.setPassword(token,request.getPassword());
-
         return ResponseEntity
                 .ok(ApiResponse.success());
     }
