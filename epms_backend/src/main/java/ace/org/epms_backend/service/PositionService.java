@@ -7,9 +7,14 @@ import java.util.List;
 
 public interface PositionService {
     PositionResponse createPosition(PositionRequest request);
+
     List<PositionResponse> getAllPositions();
+
     List<PositionResponse> getPositionsByLevelId(Long levelId);
+
     PositionResponse getPositionById(Long id);
+
     PositionResponse updatePosition(Long id, PositionRequest request);
+
     void deletePosition(Long id);
 }
