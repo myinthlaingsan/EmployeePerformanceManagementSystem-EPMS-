@@ -53,7 +53,7 @@ public class EmployeeRoleServiceImpl implements EmployeeRoleService {
         }
 
         List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employeeId);
-        
+
         return roles.stream()
                 .map(this::mapToRoleResponse)
                 .collect(Collectors.toList());
@@ -96,7 +96,6 @@ public class EmployeeRoleServiceImpl implements EmployeeRoleService {
                 .email(employee.getEmail())
                 .phoneNo(employee.getPhoneNo())
                 .positionName(employee.getPosition() != null ? employee.getPosition().getPositionName() : null)
-                .levelName(employee.getJobLevel() != null ? employee.getJobLevel().getLevelName() : null)
                 .build();
     }
 }
