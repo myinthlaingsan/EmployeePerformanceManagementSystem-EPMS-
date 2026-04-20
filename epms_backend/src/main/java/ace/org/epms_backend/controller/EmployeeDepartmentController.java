@@ -1,5 +1,6 @@
 package ace.org.epms_backend.controller;
 
+import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.org.AssignDepartmentRequest;
 import ace.org.epms_backend.dto.org.EmployeeDepartmentResponse;
 import ace.org.epms_backend.service.EmployeeDepartmentService;
@@ -19,14 +20,14 @@ public class EmployeeDepartmentController {
     private final EmployeeDepartmentService employeeDepartmentService;
 
     @PostMapping
-    public ResponseEntity<EmployeeDepartmentResponse> assignDepartment(
+    public ResponseEntity<ApiResponse<EmployeeDepartmentResponse>> assignDepartment(
             @PathVariable Long id, @Valid @RequestBody AssignDepartmentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(employeeDepartmentService.assignDepartment(id, request));
+                .body(ApiResponse.success(employeeDepartmentService.assignDepartment(id, request)));
     }
 
     @GetMapping
-    public ResponseEntity<List<EmployeeDepartmentResponse>> getDepartmentHistory(@PathVariable Long id) {
-        return ResponseEntity.ok(employeeDepartmentService.getEmployeeDepartmentHistory(id));
+    public ResponseEntity<ApiResponse<List<EmployeeDepartmentResponse>>> getDepartmentHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(employeeDepartmentService.getEmployeeDepartmentHistory(id)));
     }
 }
