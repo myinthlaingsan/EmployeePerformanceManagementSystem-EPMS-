@@ -4,7 +4,9 @@ import ace.org.epms_backend.dto.employee.CreateEmployeeRequest;
 import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.enums.EmployeeStatus;
 import ace.org.epms_backend.exception.EmailExistException;
+import ace.org.epms_backend.exception.InvalidTokenException;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.exception.TokenExpiredException;
 import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.employee.ResetToken;
@@ -76,10 +78,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public void setPassword(String token, String newPassword) {
         ResetToken resetToken = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid token"));
+                .orElseThrow(() -> new InvalidTokenException("Invalid token"));
 
         if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Token expired");
+            throw new TokenExpiredException("Token expired");
         }
 
         Employee emp = resetToken.getEmployee();

@@ -2,6 +2,7 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.org.AssignRoleRequest;
 import ace.org.epms_backend.dto.org.RoleResponse;
+import ace.org.epms_backend.exception.AlreadyAssignException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.employee.EmployeeRole;
@@ -33,7 +34,7 @@ public class EmployeeRoleServiceImpl implements EmployeeRoleService {
                 .orElseThrow(() -> new NotFoundException("Role not found"));
 
         if (employeeRoleRepository.existsByEmployee_IdAndRole_RoleId(employeeId, request.getRoleId())) {
-            throw new RuntimeException("Role is already assigned to this employee");
+            throw new AlreadyAssignException("Role is already assigned to this employee");
         }
 
         EmployeeRole employeeRole = new EmployeeRole();

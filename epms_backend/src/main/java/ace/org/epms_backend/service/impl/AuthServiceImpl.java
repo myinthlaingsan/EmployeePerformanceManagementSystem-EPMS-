@@ -3,6 +3,7 @@ package ace.org.epms_backend.service.impl;
 import ace.org.epms_backend.dto.auth.AuthRequest;
 import ace.org.epms_backend.dto.auth.AuthResponse;
 import ace.org.epms_backend.dto.auth.RefreshTokenRequest;
+import ace.org.epms_backend.exception.InvalidTokenException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.model.UserPrincipal;
 import ace.org.epms_backend.model.employee.Employee;
@@ -15,7 +16,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -92,7 +92,7 @@ public class AuthServiceImpl implements AuthService {
                 (UserPrincipal) userDetailsService.loadUserByUsername(username);
         //Now validate the refresh token with the user details
         if(!jwtService.isTokenValid(refreshToken,userPrincipal)){
-            throw new RuntimeException("Invalid Refresh Token");
+            throw new InvalidTokenException("Invalid Refresh Token");
         }
         String newAccessToken = jwtService.generateAccessToken(userPrincipal);
         return new AuthResponse(newAccessToken, refreshToken, "new token success");
