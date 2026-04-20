@@ -19,7 +19,8 @@ public class DepartmentController {
     private final DepartmentService departmentService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<DepartmentResponse>> createDepartment(@Valid @RequestBody DepartmentRequest request) {
+    public ResponseEntity<ApiResponse<DepartmentResponse>> createDepartment(
+            @Valid @RequestBody DepartmentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(departmentService.createDepartment(request)));
     }
