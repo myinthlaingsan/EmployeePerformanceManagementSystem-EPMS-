@@ -3,8 +3,10 @@ package ace.org.epms_backend.service.impl;
 import ace.org.epms_backend.dto.auth.AuthRequest;
 import ace.org.epms_backend.dto.auth.AuthResponse;
 import ace.org.epms_backend.dto.auth.RefreshTokenRequest;
+import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.exception.InvalidTokenException;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.UserPrincipal;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.repository.EmployeeRepository;
@@ -16,6 +18,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -31,7 +34,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmployeeRepository employeeRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-
+    private final EmployeeMapper employeeMapper;
     @Override
     public AuthResponse login(AuthRequest authDto) {
         Employee employee = employeeRepository.findByEmail(authDto.getEmail())
@@ -106,6 +109,31 @@ public class AuthServiceImpl implements AuthService {
         employee.setFailedLoginAttempts(0);
         employee.setLockTime(null);
         return employeeRepository.save(employee);
+    }
+
+    @Override
+    public Employee getCurrentUser() {
+
+        Authentication authentication = SecurityContextHolder
+                .getContext()
+                .getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("No user Logged in");
+        }
+
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof UserPrincipal userPrincipal) {
+            return userPrincipal.getEmployee();
+        }
+
+        throw new RuntimeException("Invalid authentication principal");
+    }
+
+    @Override
+    public EmployeeResponse getCurrentUserProfile() {
+        return employeeMapper.toResponse(getCurrentUser());
     }
 
     public boolean unlockIfTimeExpired(Employee emp){
