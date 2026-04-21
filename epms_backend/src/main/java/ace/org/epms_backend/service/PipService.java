@@ -1,0 +1,17 @@
+package ace.org.epms_backend.service;
+
+import ace.org.epms_backend.dto.pip.PipCreateRequest;
+import ace.org.epms_backend.dto.pip.PipResponse;
+
+import java.util.List;
+
+public interface PipService {
+
+    PipResponse createPip(PipCreateRequest request);
+
+    PipResponse getPipById(Long id);
+
+    List<PipResponse> getAllPips();
+
+    List<PipResponse> getPipsByEmployee(Long employeeId);
+}
