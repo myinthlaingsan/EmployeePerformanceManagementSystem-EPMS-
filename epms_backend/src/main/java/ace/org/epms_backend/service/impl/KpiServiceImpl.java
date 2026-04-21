@@ -24,7 +24,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class KpiServiceImpl implements KpiService {
 
-    private final KpiRepository kpiRepository;
+    private final KpiLibraryRepository libraryRepository;
+    private final KpiLibraryDetailsRepository libraryDetailsRepository;
+    private final KpiGoalsRepository goalsRepository;
+    private final KpiGoalItemRepository goalItemRepository;
+    private final KpiProgressRepository progressRepository;
+    private final KpiHistoryLogRepository historyLogRepository;
+    private final KpiFinalScoreRepository finalScoreRepository;
     private final EmployeeRepository employeeRepository;
     private final PositionRepository positionRepository;
     private final KpiMapper kpiMapper;
@@ -45,7 +51,7 @@ public class KpiServiceImpl implements KpiService {
         library.setPosition(positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position not found")));
         
-        KpiLibrary savedLibrary = kpiRepository.save(library);
+        KpiLibrary savedLibrary = libraryRepository.save(library);
 
         List<KpiLibraryDetails> details = request.getDetails().stream().map(d -> {
             KpiLibraryDetails detail = kpiMapper.toLibraryDetailEntity(d);
@@ -53,7 +59,7 @@ public class KpiServiceImpl implements KpiService {
             return detail;
         }).collect(Collectors.toList());
 
-        details.forEach(kpiRepository::save);
+        libraryDetailsRepository.saveAll(details);
         savedLibrary.setDetails(details);
 
         return kpiMapper.toLibraryResponse(savedLibrary);
@@ -61,7 +67,7 @@ public class KpiServiceImpl implements KpiService {
 
     @Override
     public List<KpiLibraryResponse> getAllActiveLibraries() {
-        return kpiRepository.findAllActiveLibraries().stream()
+        return libraryRepository.findByIsActiveTrue().stream()
                 .map(kpiMapper::toLibraryResponse)
                 .collect(Collectors.toList());
     }
@@ -69,10 +75,10 @@ public class KpiServiceImpl implements KpiService {
     @Override
     @Transactional
     public void toggleLibraryStatus(Long id, boolean status) {
-        KpiLibrary library = kpiRepository.findLibraryById(id)
+        KpiLibrary library = libraryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Library not found"));
         library.setIsActive(status);
-        kpiRepository.merge(library);
+        libraryRepository.save(library);
     }
 
     @Override
@@ -81,7 +87,7 @@ public class KpiServiceImpl implements KpiService {
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
         
-        KpiLibrary library = kpiRepository.findLibraryById(request.getLibraryId())
+        KpiLibrary library = libraryRepository.findById(request.getLibraryId())
                 .orElseThrow(() -> new NotFoundException("Library not found"));
 
         Employee currentManager = getCurrentEmployee();
@@ -95,7 +101,7 @@ public class KpiServiceImpl implements KpiService {
                 .isCurrent(true)
                 .build();
 
-        KpiGoals savedGoalSet = kpiRepository.save(goalSet);
+        KpiGoals savedGoalSet = goalsRepository.save(goalSet);
 
         // Copy library details to goal items
         List<KpiGoalItem> goalItems = library.getDetails().stream().map(libDetail -> {
@@ -109,7 +115,7 @@ public class KpiServiceImpl implements KpiService {
                     .build();
         }).collect(Collectors.toList());
 
-        goalItems.forEach(kpiRepository::save);
+        goalItemRepository.saveAll(goalItems);
 
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
@@ -117,19 +123,19 @@ public class KpiServiceImpl implements KpiService {
     @Override
     @Transactional
     public void approveGoalSet(Long goalSetId) {
-        KpiGoals goalSet = kpiRepository.findGoalsById(goalSetId)
+        KpiGoals goalSet = goalsRepository.findById(goalSetId)
                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
         
         goalSet.setStatus(KpiGoalStatus.APPROVED);
         goalSet.setApprovedAt(Instant.now());
         goalSet.setApprovedBy(getCurrentEmployee().getId());
-        kpiRepository.merge(goalSet);
+        goalsRepository.save(goalSet);
     }
 
     @Override
     @Transactional
     public void updateProgress(ProgressRequest request) {
-        KpiGoalItem item = kpiRepository.findGoalItemById(request.getGoalItemId())
+        KpiGoalItem item = goalItemRepository.findById(request.getGoalItemId())
                 .orElseThrow(() -> new NotFoundException("Goal item not found"));
 
         if (!item.getGoalSet().getStatus().equals(KpiGoalStatus.APPROVED)) {
@@ -144,7 +150,7 @@ public class KpiServiceImpl implements KpiService {
         KpiProgress progress = kpiMapper.toProgressEntity(request);
         progress.setGoalItem(item);
         progress.setUpdatedBy(currentUser.getId());
-        kpiRepository.save(progress);
+        progressRepository.save(progress);
 
         // Update item status
         if (request.getProgressPercent().compareTo(new BigDecimal("100")) >= 0) {
@@ -152,13 +158,13 @@ public class KpiServiceImpl implements KpiService {
         } else {
             item.setStatus(KpiItemStatus.IN_PROGRESS);
         }
-        kpiRepository.merge(item);
+        goalItemRepository.save(item);
     }
 
     @Override
     @Transactional
     public void reviseKpi(Long goalItemId, KpiRevisionRequest request) {
-        KpiGoalItem item = kpiRepository.findGoalItemById(goalItemId)
+        KpiGoalItem item = goalItemRepository.findById(goalItemId)
                 .orElseThrow(() -> new NotFoundException("Goal item not found"));
 
         Employee currentUser = getCurrentEmployee();
@@ -170,28 +176,28 @@ public class KpiServiceImpl implements KpiService {
                 .changeReason(request.getChangeReason())
                 .changedBy(currentUser.getId())
                 .build();
-        kpiRepository.save(log);
+        historyLogRepository.save(log);
 
         // Update item
         item.setTitle(request.getUpdatedDetails().getGoalTitle());
         item.setTargetValue(request.getUpdatedDetails().getTargetValue());
         item.setWeightPercent(request.getUpdatedDetails().getWeightPercent());
         
-        kpiRepository.merge(item);
+        goalItemRepository.save(item);
     }
 
     @Override
     @Transactional
     public void calculateFinalScore(Long employeeId, Long cycleId) {
-        KpiGoals goalSet = kpiRepository.findCurrentGoals(employeeId, cycleId)
+        KpiGoals goalSet = goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
                 .orElseThrow(() -> new NotFoundException("Current goal set not found"));
 
-        List<KpiGoalItem> items = kpiRepository.findActiveItemsByGoalSet(goalSet.getId());
+        List<KpiGoalItem> items = goalItemRepository.findByGoalSetIdAndIsActiveTrue(goalSet.getId());
         
         BigDecimal totalWeightedScore = BigDecimal.ZERO;
 
         for (KpiGoalItem item : items) {
-            List<KpiProgress> progressList = kpiRepository.findProgressByItemDesc(item.getId());
+            List<KpiProgress> progressList = progressRepository.findByGoalItemIdOrderByIdDesc(item.getId());
             BigDecimal latestActual = progressList.isEmpty() ? BigDecimal.ZERO : progressList.get(0).getActualValue();
             
             // Score = (Actual / Target) * 100
@@ -204,7 +210,7 @@ public class KpiServiceImpl implements KpiService {
             totalWeightedScore = totalWeightedScore.add(weightedScore);
         }
 
-        KpiFinalScore finalScore = kpiRepository.findFinalScore(employeeId, cycleId)
+        KpiFinalScore finalScore = finalScoreRepository.findByEmployeeIdAndCycleId(employeeId, cycleId)
                 .orElse(new KpiFinalScore());
         
         finalScore.setEmployee(goalSet.getEmployee());
@@ -214,11 +220,7 @@ public class KpiServiceImpl implements KpiService {
         finalScore.setCalculatedAt(Instant.now());
         finalScore.setFinalizedBy(getCurrentEmployee().getId());
 
-        if (finalScore.getId() == null) {
-            kpiRepository.save(finalScore);
-        } else {
-            kpiRepository.merge(finalScore);
-        }
+        finalScoreRepository.save(finalScore);
     }
 
     private Employee getCurrentEmployee() {
