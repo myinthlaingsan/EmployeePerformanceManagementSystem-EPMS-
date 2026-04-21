@@ -1,7 +1,9 @@
 package ace.org.epms_backend.model.kpi;
+import ace.org.epms_backend.model.BaseEntity;
 import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -12,7 +14,9 @@ import java.time.Instant;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class KpiFinalScore {
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class KpiFinalScore extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -88,4 +88,22 @@ public class GlobalExceptionHandlerAdvice {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
     }
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiResponse<?>> handleNotFound(NotFoundException ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiResponse<>(404, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalArgument(IllegalArgumentException ex){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse<>(400, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalState(IllegalStateException ex){
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
+    }
 }
