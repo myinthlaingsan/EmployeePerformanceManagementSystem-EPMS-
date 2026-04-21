@@ -1,5 +1,6 @@
 package ace.org.epms_backend.service.impl;
 
+import ace.org.epms_backend.config.EmailTemplateBuilder;
 import ace.org.epms_backend.dto.employee.CreateEmployeeRequest;
 import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.enums.EmployeeStatus;
@@ -71,12 +72,20 @@ public class EmployeeServiceImpl implements EmployeeService {
         tokenRepository.save(resetToken);
 
         // Send email
-        String link = "http://localhost:5173/api/auth/set-password?token=" + token;
-
-        emailService.sendEmail(
+        String link = "http://localhost:5173/set-password?token=" + token;
+        String htmlContent = EmailTemplateBuilder.buildSetPasswordEmail(
+                employee.getStaffName(),
+                link
+        );
+//        emailService.sendEmail(
+//                employee.getEmail(),
+//                "Set Your Password",
+//                "Click here: " + link
+//        );
+        emailService.sendHtmlEmail(
                 employee.getEmail(),
                 "Set Your Password",
-                "Click here: " + link
+                htmlContent
         );
         return employeeMapper.toResponse(employee);
     }
