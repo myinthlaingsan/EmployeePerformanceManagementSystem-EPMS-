@@ -6,31 +6,35 @@ import org.mapstruct.*;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", builder = @Builder(disableBuilder = true))
+@Mapper(componentModel = "spring")
 public interface KpiMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "position", ignore = true)
-    @Mapping(target = "isActive", constant = "true")
+    @Mapping(target = "isActive", expression = "java(true)")
     KpiLibrary toLibraryEntity(KpiLibraryRequest request);
 
     @Mapping(target = "positionName", source = "position.positionName")
+    @Mapping(target = "details", source = "details")
     KpiLibraryResponse toLibraryResponse(KpiLibrary library);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "library", ignore = true)
-    @Mapping(target = "isActive", constant = "true")
+    @Mapping(target = "isActive", expression = "java(true)")
     KpiLibraryDetails toLibraryDetailEntity(KpiLibraryDetailRequest request);
 
     KpiLibraryDetailResponse toLibraryDetailResponse(KpiLibraryDetails details);
 
     List<KpiLibraryDetailResponse> toLibraryDetailResponseList(List<KpiLibraryDetails> details);
 
+    @Mapping(target = "employeeId", source = "employee.id")
+    @Mapping(target = "managerId", source = "manager.id")
     @Mapping(target = "employeeName", source = "employee.staffName")
     @Mapping(target = "managerName", source = "manager.staffName")
+    @Mapping(target = "items", source = "items")
     GoalSetResponse toGoalSetResponse(KpiGoals goalSet);
 
-    @Mapping(target = "currentProgress", ignore = true) // Will be calculated in service
+    @Mapping(target = "currentProgress", ignore = true)
     GoalItemResponse toGoalItemResponse(KpiGoalItem item);
 
     List<GoalItemResponse> toGoalItemResponseList(List<KpiGoalItem> items);
