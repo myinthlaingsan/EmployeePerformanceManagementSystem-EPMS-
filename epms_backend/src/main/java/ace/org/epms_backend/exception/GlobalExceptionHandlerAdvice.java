@@ -82,4 +82,10 @@ public class GlobalExceptionHandlerAdvice {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
     }
+
+    @ExceptionHandler(PasswordIncorrectException.class)
+    public ResponseEntity<ApiResponse<?>> handlePasswordIncorrect(PasswordIncorrectException ex){
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
+    }
 }
