@@ -1,12 +1,9 @@
 package ace.org.epms_backend.service.impl;
 
-import ace.org.epms_backend.dto.employee.CreateEmployeeRequest;
-import ace.org.epms_backend.dto.employee.EmployeeResponse;
+import ace.org.epms_backend.config.EmailTemplateBuilder;
+import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.enums.EmployeeStatus;
-import ace.org.epms_backend.exception.EmailExistException;
-import ace.org.epms_backend.exception.InvalidTokenException;
-import ace.org.epms_backend.exception.NotFoundException;
-import ace.org.epms_backend.exception.TokenExpiredException;
+import ace.org.epms_backend.exception.*;
 import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.employee.EmployeeRole;
@@ -15,12 +12,14 @@ import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.EmployeeService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -35,7 +34,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final JobLevelRepository levelRepository;
     private final EmployeeMapper employeeMapper;
     private final EmployeeRoleRepository employeeRoleRepository;
+
     @Override
+
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
         if (employeeRepository.existsByEmail(request.getEmail())) {
             throw new EmailExistException("Email already exists");
@@ -71,12 +72,20 @@ public class EmployeeServiceImpl implements EmployeeService {
         tokenRepository.save(resetToken);
 
         // Send email
-        String link = "http://localhost:5173/api/auth/set-password?token=" + token;
-
-        emailService.sendEmail(
+        String link = "http://localhost:5173/set-password?token=" + token;
+        String htmlContent = EmailTemplateBuilder.buildSetPasswordEmail(
+                employee.getStaffName(),
+                link
+        );
+//        emailService.sendEmail(
+//                employee.getEmail(),
+//                "Set Your Password",
+//                "Click here: " + link
+//        );
+        emailService.sendHtmlEmail(
                 employee.getEmail(),
                 "Set Your Password",
-                "Click here: " + link
+                htmlContent
         );
         return employeeMapper.toResponse(employee);
     }
@@ -99,10 +108,99 @@ public class EmployeeServiceImpl implements EmployeeService {
         tokenRepository.delete(resetToken);
     }
 
+    @Override
+    public EmployeeResponse getById(Long id) {
+        Employee emp = employeeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+        return employeeMapper.toResponse(emp);
+    }
+
+    @Override
+    public List<EmployeeResponse> getAll() {
+        return employeeRepository.findAll()
+                .stream()
+                .map(employeeMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public EmployeeResponse updateEmployee(Long id, UpdateEmployeeRequest request) {
+        Employee emp = employeeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+        employeeMapper.updateEmployeeFromDto(request, emp);
+
+        emp.setPosition(positionRepository.findById(request.getPositionId()).orElseThrow());
+        emp.setLevel(levelRepository.findById(request.getLevelId()).orElseThrow());
+
+        return employeeMapper.toResponse(emp);
+    }
+
+    @Override
+    public void deleteEmployee(Long id) {
+        Employee emp = employeeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+        emp.setIsActive(false);
+        employeeRepository.save(emp);
+    }
+
+    @Override
+    public void activateEmployee(Long id) {
+        Employee emp = employeeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+        emp.setStatus(EmployeeStatus.ACTIVE);
+    }
+
+    @Override
+    public void deactivateEmployee(Long id) {
+        Employee emp = employeeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+        emp.setStatus(EmployeeStatus.INACTIVE);
+    }
+
+    @Override
+    public Employee findByEmail(String email) {
+        return employeeRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("Employee not found with email: " + email));
+    }
+
+    @Override
+    @Transactional
+    public EmployeeResponse updateProfile(Long id, UpdateProfileRequest request) {
+        Employee emp = employeeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+        // Optional: prevent duplicate email
+        if (request.getEmail() != null &&
+                !request.getEmail().equals(emp.getEmail()) &&
+                employeeRepository.existsByEmail(request.getEmail())) {
+
+            throw new EmailExistException("Email already exists");
+        }
+        //useMapstruct
+        employeeMapper.updateProfileFromDto(request, emp);
+
+        Employee updated = employeeRepository.save(emp);
+
+        return employeeMapper.toResponse(updated);
+    }
+
+    @Override
+    public void changePassword(Long id, ChangePasswordRequest request) {
+        Employee emp = employeeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), emp.getPassword())) {
+            throw new PasswordIncorrectException("Old password incorrect");
+        }
+
+        emp.setPassword(passwordEncoder.encode(request.getNewPassword()));
+    }
+
     private String generateEmployeeCode() {
         long count = employeeRepository.count() + 1;
         return String.format("EMP%05d", count);
     }
-
-
 }
