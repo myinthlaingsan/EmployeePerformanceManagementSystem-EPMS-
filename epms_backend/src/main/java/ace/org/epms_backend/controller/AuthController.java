@@ -4,6 +4,7 @@ import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.auth.AuthRequest;
 import ace.org.epms_backend.dto.auth.AuthResponse;
 import ace.org.epms_backend.dto.auth.RefreshTokenRequest;
+import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,13 @@ public class AuthController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(ApiResponse.success(employee));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<EmployeeResponse>> getCurrentUser() {
+        return ResponseEntity.ok(
+                ApiResponse.success(authService.getCurrentUserProfile())
+        );
     }
 
 }
