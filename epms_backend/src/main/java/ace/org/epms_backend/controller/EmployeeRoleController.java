@@ -1,5 +1,7 @@
 package ace.org.epms_backend.controller;
 
+import ace.org.epms_backend.dto.ApiResponse;
+import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.dto.org.AssignRoleRequest;
 import ace.org.epms_backend.dto.org.RoleResponse;
 import ace.org.epms_backend.service.EmployeeRoleService;
@@ -12,21 +14,33 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/employees/{id}/roles")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class EmployeeRoleController {
 
     private final EmployeeRoleService employeeRoleService;
 
-    @PostMapping
-    public ResponseEntity<Void> assignRole(
+    @PostMapping("/employees/{id}/roles")
+    public ResponseEntity<ApiResponse<Void>> assignRole(
             @PathVariable Long id, @Valid @RequestBody AssignRoleRequest request) {
         employeeRoleService.assignRoleToEmployee(id, request);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success());
     }
 
-    @GetMapping
-    public ResponseEntity<List<RoleResponse>> getRolesByEmployeeId(@PathVariable Long id) {
-        return ResponseEntity.ok(employeeRoleService.getRolesByEmployeeId(id));
+    @GetMapping("/employees/{id}/roles")
+    public ResponseEntity<ApiResponse<List<RoleResponse>>> getRolesByEmployeeId(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(employeeRoleService.getRolesByEmployeeId(id)));
+    }
+
+    @DeleteMapping("/employees/{id}/roles/{roleId}")
+    public ResponseEntity<ApiResponse<Void>> removeRole(
+            @PathVariable Long id, @PathVariable Long roleId) {
+        employeeRoleService.removeRoleFromEmployee(id, roleId);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @GetMapping("/roles/{roleId}/employees")
+    public ResponseEntity<ApiResponse<List<EmployeeResponse>>> getEmployeesByRole(@PathVariable Long roleId) {
+        return ResponseEntity.ok(ApiResponse.success(employeeRoleService.getEmployeesByRoleId(roleId)));
     }
 }

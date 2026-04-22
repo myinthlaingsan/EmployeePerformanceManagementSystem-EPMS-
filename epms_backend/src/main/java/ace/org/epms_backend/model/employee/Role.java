@@ -1,5 +1,6 @@
 package ace.org.epms_backend.model.employee;
 
+import ace.org.epms_backend.enums.RoleType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,6 +16,6 @@ public class Role {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long roleId;
 
-    @Column(unique = true)
-    private String roleName;
+    @Enumerated(EnumType.STRING)
+    private RoleType roleName;
 }
