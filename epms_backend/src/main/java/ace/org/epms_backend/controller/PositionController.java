@@ -13,7 +13,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/v1//positions")
+@RequestMapping("/api/v1/positions")
 @RequiredArgsConstructor
 public class PositionController {
 
