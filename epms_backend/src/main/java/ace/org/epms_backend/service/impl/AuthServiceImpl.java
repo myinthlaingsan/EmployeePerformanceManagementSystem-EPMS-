@@ -63,7 +63,7 @@ public class AuthServiceImpl implements AuthService {
                 UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
                 String token = jwtService.generateAccessToken(userPrincipal);
                 String refreshToken = jwtService.generateRefreshToken(userPrincipal);
-                return new AuthResponse(token,refreshToken, "Login successful");
+                return new AuthResponse(token,refreshToken);
             }
         }catch (BadCredentialsException ex){
             int newAttempts = employee.getFailedLoginAttempts() + 1;
@@ -81,7 +81,7 @@ public class AuthServiceImpl implements AuthService {
             employeeRepository.save(employee);
             throw new LockedException(msg);
         }
-        return new AuthResponse("fail","fail","Login Failed");
+        return new AuthResponse("fail","fail");
     }
 
     @Override
@@ -98,7 +98,7 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidTokenException("Invalid Refresh Token");
         }
         String newAccessToken = jwtService.generateAccessToken(userPrincipal);
-        return new AuthResponse(newAccessToken, refreshToken, "new token success");
+        return new AuthResponse(newAccessToken, refreshToken);
     }
 
     @Override
