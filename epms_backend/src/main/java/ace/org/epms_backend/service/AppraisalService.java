@@ -3,13 +3,21 @@ package ace.org.epms_backend.service;
 import ace.org.epms_backend.dto.appraisal.*;
 import ace.org.epms_backend.model.appraisal.Appraisal;
 
+import java.util.List;
+
 public interface AppraisalService {
 
-    void createAppraisal(AppraisalCreateRequest request);
+    AppraisalResponse createAppraisal(AppraisalCreateRequest request);
 
-    void assignAppraisal(AppraisalAssignRequest request);
+    List<AppraisalResponse> getAll();
 
-    Appraisal getAppraisal(Long id);
+    AppraisalResponse getById(Long id);
 
-    void finalizeAppraisal(Long appraisalId);
+    AppraisalResponse assignAppraisal(AppraisalAssignRequest request);
+
+    AppraisalResponse calculate(Long id);
+
+    AppraisalResponse lock(Long id);
+
+    AppraisalResponse finalizeAppraisal(Long id);
 }

@@ -1,12 +1,11 @@
 package ace.org.epms_backend.service.impl;
 
-import ace.org.epms_backend.dto.appraisal.AppraisalAssignRequest;
-import ace.org.epms_backend.dto.appraisal.AppraisalCreateRequest;
+import ace.org.epms_backend.dto.appraisal.*;
 import ace.org.epms_backend.enums.AppraisalStatus;
+import ace.org.epms_backend.mapper.AppraisalMapper;
 import ace.org.epms_backend.model.appraisal.Appraisal;
-import ace.org.epms_backend.repository.AppraisalCycleRepository;
-import ace.org.epms_backend.repository.AppraisalRepository;
-import ace.org.epms_backend.repository.EmployeeRepository;
+import ace.org.epms_backend.repository.*;
+import ace.org.epms_backend.service.AppraisalCalculationService;
 import ace.org.epms_backend.service.AppraisalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,10 +17,11 @@ public class AppraisalServiceImpl implements AppraisalService {
     private final AppraisalRepository appraisalRepo;
     private final EmployeeRepository employeeRepo;
     private final AppraisalCycleRepository cycleRepo;
+    private final AppraisalMapper appraisalMapper;
+    private final AppraisalCalculationService calculationService;
 
-    // ✅ CREATE
     @Override
-    public void createAppraisal(AppraisalCreateRequest request) {
+    public AppraisalResponse createAppraisal(AppraisalCreateRequest request) {
 
         Appraisal appraisal = new Appraisal();
 
@@ -39,11 +39,12 @@ public class AppraisalServiceImpl implements AppraisalService {
         appraisal.setIsLocked(false);
 
         appraisalRepo.save(appraisal);
+
+        return appraisalMapper.toResponse(appraisal);
     }
 
-    // ✅ ASSIGN MANAGER
     @Override
-    public void assignAppraisal(AppraisalAssignRequest request) {
+    public AppraisalResponse assignAppraisal(AppraisalAssignRequest request) {
 
         Appraisal appraisal = appraisalRepo.findById(request.getAppraisalId())
                 .orElseThrow(() -> new RuntimeException("Appraisal not found"));
@@ -54,25 +55,65 @@ public class AppraisalServiceImpl implements AppraisalService {
         );
 
         appraisalRepo.save(appraisal);
+
+        return appraisalMapper.toResponse(appraisal);
     }
 
-    // ✅ GET (for testing / frontend)
     @Override
-    public Appraisal getAppraisal(Long id) {
-        return appraisalRepo.findById(id)
+    public AppraisalResponse getById(Long id) {
+
+        Appraisal appraisal = appraisalRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Appraisal not found"));
+
+        return appraisalMapper.toResponse(appraisal);
     }
 
-    // ✅ FINALIZE (your existing logic)
+    // ✅ ADD THIS
     @Override
-    public void finalizeAppraisal(Long appraisalId) {
+    public List<AppraisalResponse> getAll() {
+        return appraisalRepo.findAll()
+                .stream()
+                .map(appraisalMapper::toResponse)
+                .toList();
+    }
 
-        Appraisal appraisal = appraisalRepo.findById(appraisalId)
+    @Override
+    public AppraisalResponse calculate(Long id) {
+
+        calculationService.calculateScore(id);
+
+        Appraisal appraisal = appraisalRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Appraisal not found"));
+
+        return appraisalMapper.toResponse(appraisal);
+    }
+
+    // ✅ ADD THIS
+    @Override
+    public AppraisalResponse lock(Long id) {
+
+        Appraisal appraisal = appraisalRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Appraisal not found"));
+
+        appraisal.setIsLocked(true);
+
+        appraisalRepo.save(appraisal);
+
+        return appraisalMapper.toResponse(appraisal);
+    }
+
+    // ✅ FIXED (now matches interface)
+    @Override
+    public AppraisalResponse finalizeAppraisal(Long id) {
+
+        Appraisal appraisal = appraisalRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Appraisal not found"));
 
         appraisal.setStatus(AppraisalStatus.ARCHIVED);
         appraisal.setIsLocked(true);
 
         appraisalRepo.save(appraisal);
+
+        return appraisalMapper.toResponse(appraisal);
     }
 }
