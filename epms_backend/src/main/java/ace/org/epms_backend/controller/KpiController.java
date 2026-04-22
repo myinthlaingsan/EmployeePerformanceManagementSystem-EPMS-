@@ -21,7 +21,8 @@ public class KpiController {
     // 1. KPI Library Management (HR/Admin)
     @PostMapping("/library")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
-    public ResponseEntity<ApiResponse<KpiLibraryResponse>> createLibrary(@Valid @RequestBody KpiLibraryRequest request) {
+    public ResponseEntity<ApiResponse<KpiLibraryResponse>> createLibrary(
+            @Valid @RequestBody KpiLibraryRequest request) {
         return ResponseEntity.ok(ApiResponse.success(kpiService.createLibrary(request)));
     }
 
@@ -63,7 +64,8 @@ public class KpiController {
     // 5. KPI Revision (Manager)
     @PutMapping("/revise/{itemId}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ResponseEntity<ApiResponse<Void>> reviseKpi(@PathVariable Long itemId, @Valid @RequestBody KpiRevisionRequest request) {
+    public ResponseEntity<ApiResponse<Void>> reviseKpi(@PathVariable Long itemId,
+            @Valid @RequestBody KpiRevisionRequest request) {
         kpiService.reviseKpi(itemId, request);
         return ResponseEntity.ok(ApiResponse.success());
     }

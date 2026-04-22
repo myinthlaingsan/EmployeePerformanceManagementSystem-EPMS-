@@ -128,6 +128,10 @@ public class KpiServiceImpl implements KpiService {
         KpiGoals goalSet = goalsRepository.findById(goalSetId)
                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
 
+        if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
+            throw new IllegalStateException("Only DRAFT goals can be approved");
+        }
+
         goalSet.setStatus(KpiGoalStatus.APPROVED);
         goalSet.setApprovedAt(Instant.now());
         goalSet.setApprovedBy(getCurrentEmployee().getId());
