@@ -14,4 +14,6 @@ public interface PipService {
     List<PipResponse> getAllPips();
 
     List<PipResponse> getPipsByEmployee(Long employeeId);
+
+    void activatePip(Long id);
 }

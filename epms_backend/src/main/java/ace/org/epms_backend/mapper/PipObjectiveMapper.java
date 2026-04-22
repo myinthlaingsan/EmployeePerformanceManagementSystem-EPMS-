@@ -14,14 +14,10 @@ public interface PipObjectiveMapper {
     @Mapping(target = "objectiveId", ignore = true)
     @Mapping(target = "pip", ignore = true)
     @Mapping(target = "status", ignore = true)
-    @Mapping(target = "isAchieved", constant = "false")
-    @Mapping(target = "isActive", constant = "true")
+    @Mapping(target = "isAchieved", expression = "java(false)")
+    @Mapping(target = "isActive", expression = "java(true)")
     PipObjective toEntity(PipObjectiveRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(target = "objectiveId", ignore = true)
-    @Mapping(target = "pip", ignore = true)
-    @Mapping(target = "status", ignore = true)
-    @Mapping(target = "isAchieved", ignore = true)
     void updateEntity(PipObjectiveRequest request, @MappingTarget PipObjective entity);
 }

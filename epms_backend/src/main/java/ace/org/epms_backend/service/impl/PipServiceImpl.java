@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,11 +38,14 @@ public class PipServiceImpl implements PipService {
         pip.setManager(manager);
         pip.setStatus(PipStatus.DRAFT);
 
-        return pipMapper.toResponse(pipRecordRepository.save(pip));
+        pip = pipRecordRepository.save(pip);
+
+        return pipMapper.toResponse(pip);
     }
 
     @Override
     public PipResponse getPipById(Long id) {
+
         PipRecord pip = pipRecordRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("PIP not found"));
 
@@ -52,6 +54,7 @@ public class PipServiceImpl implements PipService {
 
     @Override
     public List<PipResponse> getAllPips() {
+
         return pipRecordRepository.findAll()
                 .stream()
                 .map(pipMapper::toResponse)
@@ -60,9 +63,23 @@ public class PipServiceImpl implements PipService {
 
     @Override
     public List<PipResponse> getPipsByEmployee(Long employeeId) {
+
         return pipRecordRepository.findByEmployeeId(employeeId)
                 .stream()
                 .map(pipMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    public void activatePip(Long id) {
+        PipRecord pip = pipRecordRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("PIP not found"));
+
+        if (pip.getStatus() != PipStatus.DRAFT) {
+            throw new RuntimeException("Only DRAFT PIP can be activated");
+        }
+
+        pip.setStatus(PipStatus.ACTIVE);
+        pipRecordRepository.save(pip);
     }
 }

@@ -2,11 +2,16 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.pip.PipProgressRequest;
 import ace.org.epms_backend.dto.pip.PipProgressResponse;
+import ace.org.epms_backend.enums.PipStatus;
+import ace.org.epms_backend.exception.AccessDeniedException;
 import ace.org.epms_backend.mapper.PipProgressMapper;
+import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.pip.PipObjective;
 import ace.org.epms_backend.model.pip.PipProgressLog;
+import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.PipObjectiveRepository;
 import ace.org.epms_backend.repository.PipProgressRepository;
+import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.PipProgressService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,25 +24,36 @@ public class PipProgressServiceImpl implements PipProgressService {
 
     private final PipProgressRepository progressRepository;
     private final PipObjectiveRepository objectiveRepository;
+    private final EmployeeRepository employeeRepository;
     private final PipProgressMapper mapper;
-
+    private final AuthService authService;
     @Override
     public PipProgressResponse addProgress(PipProgressRequest request) {
+
+        Employee current = authService.getCurrentUser();
 
         PipObjective objective = objectiveRepository.findById(request.getObjectiveId())
                 .orElseThrow(() -> new RuntimeException("Objective not found"));
 
+        if (objective.getPip().getStatus() != PipStatus.ACTIVE) {
+            throw new RuntimeException("Can only log progress on ACTIVE PIP");
+        }
+
+        // 🔐 ONLY EMPLOYEE OWNERS CAN ADD PROGRESS
+        if (!objective.getPip().getEmployee().getId().equals(current.getId())) {
+            throw new AccessDeniedException("Not your PIP objective");
+        }
+
         PipProgressLog log = mapper.toEntity(request);
         log.setObjective(objective);
-
-        // 🔥 IMPORTANT (later connect with JWT user)
-        log.setUpdatedBy(1L); // temporary
+        log.setUpdatedBy(current.getId());
 
         return mapper.toResponse(progressRepository.save(log));
     }
 
     @Override
     public List<PipProgressResponse> getProgressByObjective(Long objectiveId) {
+
         return progressRepository.findByObjective_ObjectiveId(objectiveId)
                 .stream()
                 .map(mapper::toResponse)

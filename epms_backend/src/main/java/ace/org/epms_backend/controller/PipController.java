@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 
 @RestController
@@ -16,6 +17,7 @@ public class PipController {
 
     private final PipService pipService;
 
+    @PreAuthorize("hasRole('HR')")
     @PostMapping
     public ResponseEntity<PipResponse> createPip(@RequestBody PipCreateRequest request) {
         return ResponseEntity.ok(pipService.createPip(request));
@@ -34,5 +36,12 @@ public class PipController {
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<PipResponse>> getByEmployee(@PathVariable Long employeeId) {
         return ResponseEntity.ok(pipService.getPipsByEmployee(employeeId));
+    }
+
+    @PreAuthorize("hasRole('HR')")
+    @PutMapping("/{id}/activate")
+    public ResponseEntity<Void> activatePip(@PathVariable Long id) {
+        pipService.activatePip(id);
+        return ResponseEntity.ok().build();
     }
 }
