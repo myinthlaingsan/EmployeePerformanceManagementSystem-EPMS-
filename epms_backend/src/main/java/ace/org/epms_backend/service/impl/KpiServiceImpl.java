@@ -29,11 +29,13 @@ public class KpiServiceImpl implements KpiService {
     private final KpiGoalsRepository goalsRepository;
     private final KpiGoalItemRepository goalItemRepository;
     private final KpiProgressRepository progressRepository;
-    private final KpiHistoryLogRepository historyLogRepository;
     private final KpiFinalScoreRepository finalScoreRepository;
     private final EmployeeRepository employeeRepository;
     private final PositionRepository positionRepository;
     private final KpiMapper kpiMapper;
+    private final KpiGoalItemRepository goalItemRepo;
+    private final KpiGoalsRepository goalsRepo;
+    private final KpiHistoryLogRepository historyRepo;
 
     @Override
     @Transactional
@@ -42,7 +44,7 @@ public class KpiServiceImpl implements KpiService {
         BigDecimal totalWeight = request.getDetails().stream()
                 .map(KpiLibraryDetailRequest::getWeightPercent)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+
         if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
             throw new IllegalArgumentException("Total weight must be 100%");
         }
@@ -50,7 +52,7 @@ public class KpiServiceImpl implements KpiService {
         KpiLibrary library = kpiMapper.toLibraryEntity(request);
         library.setPosition(positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position not found")));
-        
+
         KpiLibrary savedLibrary = libraryRepository.save(library);
 
         List<KpiLibraryDetails> details = request.getDetails().stream().map(d -> {
@@ -86,7 +88,7 @@ public class KpiServiceImpl implements KpiService {
     public GoalSetResponse assignKpiToEmployee(GoalAssignmentRequest request) {
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
-        
+
         KpiLibrary library = libraryRepository.findById(request.getLibraryId())
                 .orElseThrow(() -> new NotFoundException("Library not found"));
 
@@ -125,7 +127,7 @@ public class KpiServiceImpl implements KpiService {
     public void approveGoalSet(Long goalSetId) {
         KpiGoals goalSet = goalsRepository.findById(goalSetId)
                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
-        
+
         goalSet.setStatus(KpiGoalStatus.APPROVED);
         goalSet.setApprovedAt(Instant.now());
         goalSet.setApprovedBy(getCurrentEmployee().getId());
@@ -161,29 +163,57 @@ public class KpiServiceImpl implements KpiService {
         goalItemRepository.save(item);
     }
 
-    @Override
     @Transactional
-    public void reviseKpi(Long goalItemId, KpiRevisionRequest request) {
-        KpiGoalItem item = goalItemRepository.findById(goalItemId)
-                .orElseThrow(() -> new NotFoundException("Goal item not found"));
+    @Override
+    public void reviseKpi(Long itemId, KpiRevisionRequest request) {
 
-        Employee currentUser = getCurrentEmployee();
-        // Log history before update
-        KpiHistoryLog log = KpiHistoryLog.builder()
-                .employeeId(item.getGoalSet().getEmployee().getId())
-                .oldVersionId(item.getId())
-                .action("REVISE")
-                .changeReason(request.getChangeReason())
-                .changedBy(currentUser.getId())
-                .build();
-        historyLogRepository.save(log);
+        KpiGoalItem oldItem = goalItemRepo.findById(itemId)
+                .orElseThrow();
 
-        // Update item
-        item.setTitle(request.getUpdatedDetails().getGoalTitle());
-        item.setTargetValue(request.getUpdatedDetails().getTargetValue());
-        item.setWeightPercent(request.getUpdatedDetails().getWeightPercent());
-        
-        goalItemRepository.save(item);
+        KpiGoals oldGoalSet = oldItem.getGoalSet();
+
+        // 1. lock old version
+        oldGoalSet.setIsCurrent(false);
+        oldGoalSet.setStatus(KpiGoalStatus.ARCHIVED);
+        goalsRepo.save(oldGoalSet);
+
+        // 2. create new version
+        final KpiGoals savedGoalSet = goalsRepo.save(
+                KpiGoals.builder()
+                        .employee(oldGoalSet.getEmployee())
+                        .manager(oldGoalSet.getManager())
+                        .appraisalCycleId(oldGoalSet.getAppraisalCycleId())
+                        .version(oldGoalSet.getVersion() + 1)
+                        .isCurrent(true)
+                        .status(KpiGoalStatus.DRAFT)
+                        .build());
+
+        // 3. copy items
+        List<KpiGoalItem> newItems = oldGoalSet.getItems()
+                .stream()
+                .map(i -> {
+                    KpiGoalItem item = new KpiGoalItem();
+                    item.setGoalSet(savedGoalSet);
+                    item.setTitle(i.getTitle());
+                    item.setTargetValue(i.getTargetValue());
+                    item.setWeightPercent(i.getWeightPercent());
+                    item.setStatus(KpiItemStatus.NOT_STARTED);
+                    return item;
+                })
+                .toList();
+
+        goalItemRepo.saveAll(newItems);
+
+        // 4. history log
+        historyRepo.save(
+                KpiHistoryLog.builder()
+                        .employeeId(oldGoalSet.getEmployee().getId())
+                        .oldVersionId(oldGoalSet.getId())
+                        .newVersionId(savedGoalSet.getId())
+                        .action("REVISION")
+                        .changeReason(request.getChangeReason())
+                        .changedBy(oldGoalSet.getManager().getId())
+                        .build());
     }
 
     @Override
@@ -193,26 +223,27 @@ public class KpiServiceImpl implements KpiService {
                 .orElseThrow(() -> new NotFoundException("Current goal set not found"));
 
         List<KpiGoalItem> items = goalItemRepository.findByGoalSetIdAndIsActiveTrue(goalSet.getId());
-        
+
         BigDecimal totalWeightedScore = BigDecimal.ZERO;
 
         for (KpiGoalItem item : items) {
             List<KpiProgress> progressList = progressRepository.findByGoalItemIdOrderByIdDesc(item.getId());
             BigDecimal latestActual = progressList.isEmpty() ? BigDecimal.ZERO : progressList.get(0).getActualValue();
-            
+
             // Score = (Actual / Target) * 100
             BigDecimal score = latestActual.divide(item.getTargetValue(), 4, RoundingMode.HALF_UP)
                     .multiply(new BigDecimal("100"));
-            
+
             // Weighted Score = Score * (Weight / 100)
-            BigDecimal weightedScore = score.multiply(item.getWeightPercent().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
-            
+            BigDecimal weightedScore = score
+                    .multiply(item.getWeightPercent().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+
             totalWeightedScore = totalWeightedScore.add(weightedScore);
         }
 
         KpiFinalScore finalScore = finalScoreRepository.findByEmployeeIdAndCycleId(employeeId, cycleId)
                 .orElse(new KpiFinalScore());
-        
+
         finalScore.setEmployee(goalSet.getEmployee());
         finalScore.setGoalSet(goalSet);
         finalScore.setCycleId(cycleId);
