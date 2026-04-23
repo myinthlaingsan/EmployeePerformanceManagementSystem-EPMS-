@@ -5,20 +5,20 @@ import type { PositionRequest, PositionResponse } from "./orgTypes";
 export const positionApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getPositions: builder.query<PositionResponse[], void>({
-      query: () => "/org/positions",
+      query: () => "/positions",
       transformResponse: (res: ApiResponse<PositionResponse[]>) => res.data,
       providesTags: ["Position"],
     }),
 
     getPositionById: builder.query<PositionResponse, number>({
-      query: (id) => `/org/positions/${id}`,
+      query: (id) => `/positions/${id}`,
       transformResponse: (res: ApiResponse<PositionResponse>) => res.data,
       providesTags: (_result, _error, id) => [{ type: "Position", id }],
     }),
 
     createPosition: builder.mutation<PositionResponse, PositionRequest>({
       query: (body) => ({
-        url: "/org/positions",
+        url: "/positions",
         method: "POST",
         body,
       }),
@@ -30,7 +30,7 @@ export const positionApi = api.injectEndpoints({
       { id: number; body: PositionRequest }
     >({
       query: ({ id, body }) => ({
-        url: `/org/positions/${id}`,
+        url: `/positions/${id}`,
         method: "PUT",
         body,
       }),
@@ -42,7 +42,7 @@ export const positionApi = api.injectEndpoints({
 
     deletePosition: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/org/positions/${id}`,
+        url: `/positions/${id}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Position"],
