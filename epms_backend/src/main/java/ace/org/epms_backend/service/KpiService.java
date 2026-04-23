@@ -9,20 +9,20 @@ public interface KpiService {
 
     List<KpiLibraryResponse> getAllActiveLibraries();
 
-    void toggleLibraryStatus(Long id, boolean status);
+    KpiLibraryResponse toggleLibraryStatus(Long id, boolean status);
 
     // KPI Assignment
     GoalSetResponse assignKpiToEmployee(GoalAssignmentRequest request);
 
     // Goal Management
-    void approveGoalSet(Long goalSetId);
+    GoalSetResponse approveGoalSet(Long goalSetId);
 
     // Progress
-    void updateProgress(ProgressRequest request);
+    GoalSetResponse updateProgress(ProgressRequest request);
 
     // Revision
-    void reviseKpi(Long goalItemId, KpiRevisionRequest request);
+    GoalSetResponse reviseKpi(Long goalItemId, KpiRevisionRequest request);
 
     // Scoring
-    void calculateFinalScore(Long employeeId, Long cycleId);
+    KpiScoreResponse calculateFinalScore(Long employeeId, Long cycleId);
 }

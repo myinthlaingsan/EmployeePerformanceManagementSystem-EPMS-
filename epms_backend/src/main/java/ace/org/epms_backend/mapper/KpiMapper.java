@@ -43,4 +43,8 @@ public interface KpiMapper {
     @Mapping(target = "goalItem", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
     KpiProgress toProgressEntity(ProgressRequest request);
+
+    @Mapping(target = "employeeId", source = "employee.id")
+    @Mapping(target = "employeeName", source = "employee.staffName")
+    KpiScoreResponse toScoreResponse(KpiFinalScore finalScore);
 }

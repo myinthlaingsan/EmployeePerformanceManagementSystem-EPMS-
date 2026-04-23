@@ -33,9 +33,8 @@ public class KpiController {
 
     @PatchMapping("/library/{id}/status")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> toggleLibraryStatus(@PathVariable Long id, @RequestParam boolean active) {
-        kpiService.toggleLibraryStatus(id, active);
-        return ResponseEntity.ok(ApiResponse.success());
+    public ResponseEntity<ApiResponse<KpiLibraryResponse>> toggleLibraryStatus(@PathVariable Long id, @RequestParam boolean active) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.toggleLibraryStatus(id, active)));
     }
 
     // 2. KPI Assignment (Manager)
@@ -48,33 +47,29 @@ public class KpiController {
     // 3. Goal Approval
     @PostMapping("/approve/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ResponseEntity<ApiResponse<Void>> approveGoals(@PathVariable Long id) {
-        kpiService.approveGoalSet(id);
-        return ResponseEntity.ok(ApiResponse.success());
+    public ResponseEntity<ApiResponse<GoalSetResponse>> approveGoals(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.approveGoalSet(id)));
     }
 
     // 4. KPI Progress (Employee)
     @PostMapping("/progress")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public ResponseEntity<ApiResponse<Void>> updateProgress(@Valid @RequestBody ProgressRequest request) {
-        kpiService.updateProgress(request);
-        return ResponseEntity.ok(ApiResponse.success());
+    public ResponseEntity<ApiResponse<GoalSetResponse>> updateProgress(@Valid @RequestBody ProgressRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.updateProgress(request)));
     }
 
     // 5. KPI Revision (Manager)
     @PutMapping("/revise/{itemId}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ResponseEntity<ApiResponse<Void>> reviseKpi(@PathVariable Long itemId,
+    public ResponseEntity<ApiResponse<GoalSetResponse>> reviseKpi(@PathVariable Long itemId,
             @Valid @RequestBody KpiRevisionRequest request) {
-        kpiService.reviseKpi(itemId, request);
-        return ResponseEntity.ok(ApiResponse.success());
+        return ResponseEntity.ok(ApiResponse.success(kpiService.reviseKpi(itemId, request)));
     }
 
     // 6. KPI Score Calculation (System/Manager)
     @PostMapping("/calculate-score")
     @PreAuthorize("hasAnyRole('MANAGER', 'HR')")
-    public ResponseEntity<ApiResponse<Void>> calculateScore(@RequestParam Long employeeId, @RequestParam Long cycleId) {
-        kpiService.calculateFinalScore(employeeId, cycleId);
-        return ResponseEntity.ok(ApiResponse.success());
+    public ResponseEntity<ApiResponse<KpiScoreResponse>> calculateScore(@RequestParam Long employeeId, @RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.calculateFinalScore(employeeId, cycleId)));
     }
 }

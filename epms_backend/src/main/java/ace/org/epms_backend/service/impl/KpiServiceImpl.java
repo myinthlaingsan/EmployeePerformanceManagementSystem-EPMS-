@@ -76,11 +76,12 @@ public class KpiServiceImpl implements KpiService {
 
     @Override
     @Transactional
-    public void toggleLibraryStatus(Long id, boolean status) {
+    public KpiLibraryResponse toggleLibraryStatus(Long id, boolean status) {
         KpiLibrary library = libraryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Library not found"));
         library.setIsActive(status);
-        libraryRepository.save(library);
+        KpiLibrary updatedLibrary = libraryRepository.save(library);
+        return kpiMapper.toLibraryResponse(updatedLibrary);
     }
 
     @Override
@@ -124,7 +125,7 @@ public class KpiServiceImpl implements KpiService {
 
     @Override
     @Transactional
-    public void approveGoalSet(Long goalSetId) {
+    public GoalSetResponse approveGoalSet(Long goalSetId) {
         KpiGoals goalSet = goalsRepository.findById(goalSetId)
                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
 
@@ -135,12 +136,13 @@ public class KpiServiceImpl implements KpiService {
         goalSet.setStatus(KpiGoalStatus.APPROVED);
         goalSet.setApprovedAt(Instant.now());
         goalSet.setApprovedBy(getCurrentEmployee().getId());
-        goalsRepository.save(goalSet);
+        KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+        return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
     @Override
     @Transactional
-    public void updateProgress(ProgressRequest request) {
+    public GoalSetResponse updateProgress(ProgressRequest request) {
         KpiGoalItem item = goalItemRepository.findById(request.getGoalItemId())
                 .orElseThrow(() -> new NotFoundException("Goal item not found"));
 
@@ -165,11 +167,13 @@ public class KpiServiceImpl implements KpiService {
             item.setStatus(KpiItemStatus.IN_PROGRESS);
         }
         goalItemRepository.save(item);
+
+        return kpiMapper.toGoalSetResponse(item.getGoalSet());
     }
 
     @Transactional
     @Override
-    public void reviseKpi(Long itemId, KpiRevisionRequest request) {
+    public GoalSetResponse reviseKpi(Long itemId, KpiRevisionRequest request) {
 
         KpiGoalItem oldItem = goalItemRepo.findById(itemId)
                 .orElseThrow();
@@ -218,11 +222,13 @@ public class KpiServiceImpl implements KpiService {
                         .changeReason(request.getChangeReason())
                         .changedBy(oldGoalSet.getManager().getId())
                         .build());
+
+        return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
     @Override
     @Transactional
-    public void calculateFinalScore(Long employeeId, Long cycleId) {
+    public KpiScoreResponse calculateFinalScore(Long employeeId, Long cycleId) {
         KpiGoals goalSet = goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
                 .orElseThrow(() -> new NotFoundException("Current goal set not found"));
 
@@ -255,7 +261,8 @@ public class KpiServiceImpl implements KpiService {
         finalScore.setCalculatedAt(Instant.now());
         finalScore.setFinalizedBy(getCurrentEmployee().getId());
 
-        finalScoreRepository.save(finalScore);
+        KpiFinalScore savedScore = finalScoreRepository.save(finalScore);
+        return kpiMapper.toScoreResponse(savedScore);
     }
 
     private Employee getCurrentEmployee() {
