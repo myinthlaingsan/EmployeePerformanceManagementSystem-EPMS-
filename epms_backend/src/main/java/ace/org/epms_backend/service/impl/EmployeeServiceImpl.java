@@ -32,9 +32,11 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeMapper employeeMapper;
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
+    private final EmployeeDepartmentRepository employeeDepartmentRepository;
+    private final DepartmentRepository departmentRepository;
 
     @Override
-
+    @Transactional
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
         if (employeeRepository.existsByEmail(request.getEmail())) {
             throw new EmailExistException("Email already exists");
@@ -43,18 +45,26 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .orElseThrow(() -> new NotFoundException("Role not found"));
         Employee employee = employeeMapper.toEntity(request);
 
-        employee.setPosition(
-                positionRepository.findById(request.getPositionId())
-                        .orElseThrow(() -> new NotFoundException("Position Not Found"))
-        );
-        employee.setLevel(
-                levelRepository.findById(request.getLevelId())
-                        .orElseThrow(() -> new NotFoundException("Level not found"))
-        );
+        Position position = positionRepository.findById(request.getPositionId())
+                .orElseThrow(() -> new NotFoundException("Position Not Found"));
+        
+        employee.setPosition(position);
+        employee.setLevel(position.getLevel()); // Set level from position
         employee.setStatus(EmployeeStatus.INACTIVE);
         employee.setPassword(null); // user will set later
         employee.setEmployeeCode(generateEmployeeCode());
         Employee savedEmployee = employeeRepository.save(employee);
+
+        // Assign initial department
+        if (request.getDepartmentId() != null) {
+            Department dept = departmentRepository.findById(request.getDepartmentId())
+                    .orElseThrow(() -> new NotFoundException("Department Not Found"));
+            EmployeeDepartment empDept = new EmployeeDepartment();
+            empDept.setEmployee(savedEmployee);
+            empDept.setCurrentDepartment(dept);
+            empDept.setIsCurrent(true);
+            employeeDepartmentRepository.save(empDept);
+        }
 
         EmployeeRole employeeRole = new EmployeeRole();
         employeeRole.setEmployee(savedEmployee);
@@ -64,7 +74,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         String token = UUID.randomUUID().toString();
         ResetToken resetToken = new ResetToken();
         resetToken.setToken(token);
-        resetToken.setEmployee(employee);
+        resetToken.setEmployee(savedEmployee);
         resetToken.setExpiryDate(LocalDateTime.now().plusHours(24));
 
         tokenRepository.save(resetToken);
@@ -129,8 +139,11 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         employeeMapper.updateEmployeeFromDto(request, emp);
 
-        emp.setPosition(positionRepository.findById(request.getPositionId()).orElseThrow());
-        emp.setLevel(levelRepository.findById(request.getLevelId()).orElseThrow());
+        Position position = positionRepository.findById(request.getPositionId())
+                .orElseThrow(() -> new NotFoundException("Position Not Found"));
+        
+        emp.setPosition(position);
+        emp.setLevel(position.getLevel()); // Set level from position
 
         Employee updated = employeeRepository.save(emp);
         return mapToResponse(updated);
@@ -217,6 +230,14 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .map(Permission::getPermissionName)
                 .toList();
         response.setPermissions(permissions);
+        
+        // Set Department Name
+        employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
+                .ifPresent(ed -> {
+                    if (ed.getCurrentDepartment() != null) {
+                        response.setDepartmentName(ed.getCurrentDepartment().getDepartmentName());
+                    }
+                });
 
         return response;
     }
