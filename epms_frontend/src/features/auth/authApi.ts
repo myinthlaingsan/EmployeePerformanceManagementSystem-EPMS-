@@ -1,6 +1,10 @@
 import { api } from "../../services/api";
 import type { ApiResponse } from "../../services/ApiResponse";
-import type { AuthRequest, AuthResponse, RefreshTokenRequest } from "./authTypes";
+import type {
+  AuthRequest,
+  AuthResponse,
+  RefreshTokenRequest,
+} from "./authTypes";
 import type { EmployeeResponse } from "../employee/employeeTypes";
 
 export const authApi = api.injectEndpoints({
@@ -32,6 +36,12 @@ export const authApi = api.injectEndpoints({
         method: "PUT",
       }),
     }),
+    logoutUserApi: builder.mutation<void, void>({
+      query: () => ({
+        url: "/auth/logout",
+        method: "POST",
+      }),
+    }),
   }),
 });
 
@@ -40,4 +50,5 @@ export const {
   useRefreshTokenMutation,
   useGetMeQuery,
   useUnlockEmployeeMutation,
+  useLogoutUserApiMutation,
 } = authApi;

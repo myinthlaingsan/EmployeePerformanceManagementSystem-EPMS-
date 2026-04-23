@@ -1,121 +1,84 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "./hooks/reduxHooks";
+import { useGetMeQuery } from "./features/auth/authApi";
+import { setUser } from "./features/auth/authSlice";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import MainLayout from "./components/MainLayout";
+import LoginPage from "./pages/LoginPage";
+import Dashboard from "./pages/Dashboard";
+import UnauthorizedPage from "./pages/UnauthorizedPage";
 
-function App() {
-  const [count, setCount] = useState(0)
+// Admin Pages
+import EmployeeList from "./pages/admin/EmployeeList";
+import DepartmentList from "./pages/admin/DepartmentList";
+import RoleList from "./pages/admin/RoleList";
+import JobLevelList from "./pages/admin/JobLevelList";
+import PositionList from "./pages/admin/PositionList";
+import HRDashboard from "./pages/admin/HRDashboard";
+
+// Mock Components for other specialized pages
+const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
+const ProfilePage = () => <div className="p-6"><h1 className="text-2xl font-bold">User Profile Page</h1></div>;
+
+const App = () => {
+  const dispatch = useAppDispatch();
+  const { accessToken, user } = useAppSelector((state) => state.auth);
+
+  const { data: userData, isSuccess } = useGetMeQuery(undefined, {
+    skip: !accessToken || !!user,
+  });
+
+  useEffect(() => {
+    if (isSuccess && userData) {
+      dispatch(setUser(userData));
+    }
+  }, [isSuccess, userData, dispatch]);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-      <div className="ticks"></div>
+        {/* Protected Routes Wrapper */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<MainLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<ProfilePage />} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+            {/* HR/Admin Management Routes */}
+            <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
+              <Route path="/hr" element={<HRDashboard />} />
+              <Route path="/employees" element={<EmployeeList />} />
+              <Route path="/departments" element={<DepartmentList />} />
+              <Route path="/roles" element={<RoleList />} />
+              <Route path="/job-levels" element={<JobLevelList />} />
+              <Route path="/positions" element={<PositionList />} />
+            </Route>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
-}
+            {/* Specialized Manager Routes (Level L01-L04 + Specific Permission) */}
+            <Route
+              element={
+                <ProtectedRoute
+                  allowedRoles={["MANAGER"]}
+                  maxLevel={4}
+                  requiredPermissions={["APPROVAL_CREATE"]}
+                />
+              }
+            >
+              <Route path="/approvals" element={<ApprovalPage />} />
+            </Route>
+          </Route>
+        </Route>
 
-export default App
+        {/* Default Redirects */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<div className="p-6">404 Not Found</div>} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
+export default App;
