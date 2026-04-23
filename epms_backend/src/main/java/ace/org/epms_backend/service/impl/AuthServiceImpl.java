@@ -37,61 +37,57 @@ public class AuthServiceImpl implements AuthService {
         Employee employee = employeeRepository.findByEmail(authDto.getEmail())
                 .orElseThrow(() -> new NotFoundException("Email not found"));
         unlockIfTimeExpired(employee);
-        if(employee.isAccountLocked()){
-            long minutesLeft = ChronoUnit.MINUTES.between(LocalDateTime.now(),employee.getLockTime().plusMinutes(15));
-            if(minutesLeft < 0) minutesLeft = 0;
-            throw new LockedException("Your account is Locked. Try again in "+ minutesLeft + " minutes.");
+        if (employee.isAccountLocked()) {
+            long minutesLeft = ChronoUnit.MINUTES.between(LocalDateTime.now(), employee.getLockTime().plusMinutes(15));
+            if (minutesLeft < 0)
+                minutesLeft = 0;
+            throw new LockedException("Your account is Locked. Try again in " + minutesLeft + " minutes.");
         }
-        try{
-            Authentication authentication =
-                    authenticationManager.authenticate(
-                            new UsernamePasswordAuthenticationToken(
-                                    authDto.getEmail(),
-                                    authDto.getPassword()
-                            )
-                    );
-            if(authentication.isAuthenticated()){
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            authDto.getEmail(),
+                            authDto.getPassword()));
+            if (authentication.isAuthenticated()) {
                 employee.setFailedLoginAttempts(0);
                 employee.setAccountLocked(false);
                 employee.setLockTime(null);
                 employeeRepository.save(employee);
 
-//              UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+                // UserDetails userDetails = (UserDetails) authentication.getPrincipal();
                 UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
                 String token = jwtService.generateAccessToken(userPrincipal);
                 String refreshToken = jwtService.generateRefreshToken(userPrincipal);
-                return new AuthResponse(token,refreshToken, "Login successful");
+                return new AuthResponse(token, refreshToken, "Login successful");
             }
-        }catch (BadCredentialsException ex){
+        } catch (BadCredentialsException ex) {
             int newAttempts = employee.getFailedLoginAttempts() + 1;
             employee.setFailedLoginAttempts(newAttempts);
             String msg;
-            if(newAttempts >= 3){
+            if (newAttempts >= 3) {
                 employee.setAccountLocked(true);
                 employee.setLockTime(LocalDateTime.now());
                 msg = "Invalid credentials. Your account has been locked after 3 failed attempts.";
-            }
-            else{
+            } else {
                 int remaining = 3 - newAttempts;
                 msg = "Invalid credentials. You have " + remaining + " more attempt(s) before your account is locked.";
             }
             employeeRepository.save(employee);
             throw new LockedException(msg);
         }
-        return new AuthResponse("fail","fail","Login Failed");
+        return new AuthResponse("fail", "fail", "Login Failed");
     }
 
     @Override
     public AuthResponse refreshToken(RefreshTokenRequest refreshRequest) {
         String refreshToken = refreshRequest.getRefreshToken();
 
-        //extract username first to load user details
+        // extract username first to load user details
         String username = jwtService.extractUsername(refreshToken);
-//        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-        UserPrincipal userPrincipal =
-                (UserPrincipal) userDetailsService.loadUserByUsername(username);
-        //Now validate the refresh token with the user details
-        if(!jwtService.isTokenValid(refreshToken,userPrincipal)){
+        // UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        UserPrincipal userPrincipal = (UserPrincipal) userDetailsService.loadUserByUsername(username);
+        // Now validate the refresh token with the user details
+        if (!jwtService.isTokenValid(refreshToken, userPrincipal)) {
             throw new InvalidTokenException("Invalid Refresh Token");
         }
         String newAccessToken = jwtService.generateAccessToken(userPrincipal);
@@ -101,17 +97,17 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public Employee unlockEmployee(Long employeeId) {
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(()-> new NotFoundException("User not Found"));
+                .orElseThrow(() -> new NotFoundException("User not Found"));
         employee.setAccountLocked(false);
         employee.setFailedLoginAttempts(0);
         employee.setLockTime(null);
         return employeeRepository.save(employee);
     }
 
-    public boolean unlockIfTimeExpired(Employee emp){
-        if(emp.isAccountLocked() && emp.getLockTime() !=null){
+    public boolean unlockIfTimeExpired(Employee emp) {
+        if (emp.isAccountLocked() && emp.getLockTime() != null) {
             LocalDateTime unlockTime = emp.getLockTime().plusMinutes(15);
-            if(LocalDateTime.now().isAfter(unlockTime)){
+            if (LocalDateTime.now().isAfter(unlockTime)) {
                 emp.setAccountLocked(false);
                 emp.setFailedLoginAttempts(0);
                 emp.setLockTime(null);

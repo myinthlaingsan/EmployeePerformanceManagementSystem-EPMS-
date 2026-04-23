@@ -47,12 +47,10 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         employee.setPosition(
                 positionRepository.findById(request.getPositionId())
-                        .orElseThrow(() -> new NotFoundException("Position Not Found"))
-        );
+                        .orElseThrow(() -> new NotFoundException("Position Not Found")));
         employee.setLevel(
                 levelRepository.findById(request.getLevelId())
-                        .orElseThrow(() -> new NotFoundException("Level not found"))
-        );
+                        .orElseThrow(() -> new NotFoundException("Level not found")));
         employee.setStatus(EmployeeStatus.INACTIVE);
         employee.setPassword(null); // user will set later
         employee.setEmployeeCode(generateEmployeeCode());
@@ -75,18 +73,16 @@ public class EmployeeServiceImpl implements EmployeeService {
         String link = "http://localhost:5173/set-password?token=" + token;
         String htmlContent = EmailTemplateBuilder.buildSetPasswordEmail(
                 employee.getStaffName(),
-                link
-        );
-//        emailService.sendEmail(
-//                employee.getEmail(),
-//                "Set Your Password",
-//                "Click here: " + link
-//        );
+                link);
+        // emailService.sendEmail(
+        // employee.getEmail(),
+        // "Set Your Password",
+        // "Click here: " + link
+        // );
         emailService.sendHtmlEmail(
                 employee.getEmail(),
                 "Set Your Password",
-                htmlContent
-        );
+                htmlContent);
         return employeeMapper.toResponse(employee);
     }
 
@@ -179,7 +175,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             throw new EmailExistException("Email already exists");
         }
-        //useMapstruct
+        // useMapstruct
         employeeMapper.updateProfileFromDto(request, emp);
 
         Employee updated = employeeRepository.save(emp);

@@ -52,6 +52,9 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
 
         appraisal.setTotalScore(avg);
         appraisal.setPerformanceCategory(category);
+        if (category != null) {
+            appraisal.setPerformanceGrade(category.getName());
+        }
 
         appraisalRepo.save(appraisal);
     }

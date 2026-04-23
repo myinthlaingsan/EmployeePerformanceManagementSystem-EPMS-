@@ -20,4 +20,24 @@ public interface AppraisalService {
     AppraisalResponse lock(Long id);
 
     AppraisalResponse finalizeAppraisal(Long id);
+
+    AppraisalResponse update(Long id, AppraisalUpdateRequest request);
+
+    void delete(Long id);
+
+    List<AppraisalResponse> getByEmployeeId(Long employeeId);
+
+    List<AppraisalResponse> getByManagerId(Long managerId);
+
+    List<AppraisalResponse> getByCycleId(Long cycleId);
+
+    AppraisalResponse submitSelfAssessment(Long id);
+
+    AppraisalResponse submitManagerEvaluation(Long id);
+
+    AppraisalResponse employeeSignOff(Long id);
+
+    AppraisalResponse managerSignOff(Long id);
+
+    AppraisalDetailsResponse getAppraisalDetails(Long id);
 }

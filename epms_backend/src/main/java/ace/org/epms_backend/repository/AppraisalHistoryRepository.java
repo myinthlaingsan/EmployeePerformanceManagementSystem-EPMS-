@@ -8,4 +8,6 @@ import java.util.List;
 public interface AppraisalHistoryRepository extends JpaRepository<AppraisalHistory, Long> {
 
     List<AppraisalHistory> findByEmployee_Id(Long employeeId);
+
+    List<AppraisalHistory> findByCycle_CycleId(Long cycleId);
 }
