@@ -3,6 +3,8 @@ package ace.org.epms_backend.service.impl;
 import ace.org.epms_backend.dto.pip.PipCreateRequest;
 import ace.org.epms_backend.dto.pip.PipResponse;
 import ace.org.epms_backend.enums.PipStatus;
+import ace.org.epms_backend.exception.InvalidStateException;
+import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.exception.UserNotFoundException;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.pip.PipRecord;
@@ -47,7 +49,7 @@ public class PipServiceImpl implements PipService {
     public PipResponse getPipById(Long id) {
 
         PipRecord pip = pipRecordRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("PIP not found"));
+                .orElseThrow(() -> new NotFoundException("PIP not found"));
 
         return pipMapper.toResponse(pip);
     }
@@ -73,10 +75,10 @@ public class PipServiceImpl implements PipService {
     @Override
     public void activatePip(Long id) {
         PipRecord pip = pipRecordRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("PIP not found"));
+                .orElseThrow(() -> new NotFoundException("PIP not found"));
 
         if (pip.getStatus() != PipStatus.DRAFT) {
-            throw new RuntimeException("Only DRAFT PIP can be activated");
+            throw new InvalidStateException("Only DRAFT PIP can be activated");
         }
 
         pip.setStatus(PipStatus.ACTIVE);

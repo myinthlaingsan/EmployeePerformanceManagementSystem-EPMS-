@@ -4,6 +4,9 @@ import ace.org.epms_backend.dto.pip.PipReviewRequest;
 import ace.org.epms_backend.dto.pip.PipReviewResponse;
 import ace.org.epms_backend.enums.PipOutcome;
 import ace.org.epms_backend.enums.PipStatus;
+import ace.org.epms_backend.exception.AccessDeniedException;
+import ace.org.epms_backend.exception.InvalidStateException;
+import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.exception.UserNotFoundException;
 import ace.org.epms_backend.mapper.PipReviewMapper;
 import ace.org.epms_backend.model.employee.Employee;
@@ -14,7 +17,7 @@ import ace.org.epms_backend.repository.PipRecordRepository;
 import ace.org.epms_backend.repository.PipReviewRepository;
 import ace.org.epms_backend.service.PipReviewService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
+// import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -39,10 +42,10 @@ public class PipReviewServiceImpl implements PipReviewService {
         Employee current = getCurrentUser();
 
         PipRecord pip = pipRepository.findById(request.getPipId())
-                .orElseThrow(() -> new RuntimeException("PIP not found"));
+                .orElseThrow(() -> new NotFoundException("PIP not found"));
 
         if (pip.getStatus() != PipStatus.ACTIVE) {
-            throw new RuntimeException("Reviews can only be created for ACTIVE PIP");
+            throw new InvalidStateException("Reviews can only be created for ACTIVE PIP");
         }
 
         // 🔐 ONLY HR OR ASSIGNED MANAGER CAN CREATE REVIEW
@@ -67,7 +70,7 @@ public class PipReviewServiceImpl implements PipReviewService {
         Employee current = getCurrentUser();
 
         PipRecord pip = pipRepository.findById(pipId)
-                .orElseThrow(() -> new RuntimeException("PIP not found"));
+                .orElseThrow(() -> new NotFoundException("PIP not found"));
 
         // 🔐 EMPLOYEE can only see own PIP
         if (isEmployee(current) &&
@@ -96,7 +99,7 @@ public class PipReviewServiceImpl implements PipReviewService {
         Employee current = getCurrentUser();
 
         PipRecord pip = pipRepository.findById(pipId)
-                .orElseThrow(() -> new RuntimeException("PIP not found"));
+                .orElseThrow(() -> new NotFoundException("PIP not found"));
 
         // 🔐 ONLY HR OR ASSIGNED MANAGER
         if (!isHR(current) &&

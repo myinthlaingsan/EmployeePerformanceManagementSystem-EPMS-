@@ -4,6 +4,8 @@ import ace.org.epms_backend.dto.pip.PipProgressRequest;
 import ace.org.epms_backend.dto.pip.PipProgressResponse;
 import ace.org.epms_backend.enums.PipStatus;
 import ace.org.epms_backend.exception.AccessDeniedException;
+import ace.org.epms_backend.exception.InvalidStateException;
+import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.PipProgressMapper;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.pip.PipObjective;
@@ -33,10 +35,10 @@ public class PipProgressServiceImpl implements PipProgressService {
         Employee current = authService.getCurrentUser();
 
         PipObjective objective = objectiveRepository.findById(request.getObjectiveId())
-                .orElseThrow(() -> new RuntimeException("Objective not found"));
+                .orElseThrow(() -> new NotFoundException("Objective not found"));
 
         if (objective.getPip().getStatus() != PipStatus.ACTIVE) {
-            throw new RuntimeException("Can only log progress on ACTIVE PIP");
+            throw new InvalidStateException("Can only log progress on ACTIVE PIP");
         }
 
         // 🔐 ONLY EMPLOYEE OWNERS CAN ADD PROGRESS

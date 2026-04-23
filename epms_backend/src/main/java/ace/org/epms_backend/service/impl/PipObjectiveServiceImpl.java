@@ -4,6 +4,8 @@ import ace.org.epms_backend.dto.pip.PipObjectiveRequest;
 import ace.org.epms_backend.dto.pip.PipObjectiveResponse;
 import ace.org.epms_backend.enums.ObjectiveStatus;
 import ace.org.epms_backend.enums.PipStatus;
+import ace.org.epms_backend.exception.AccessDeniedException;
+import ace.org.epms_backend.exception.InvalidStateException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.exception.UserNotFoundException;
 import ace.org.epms_backend.mapper.PipObjectiveMapper;
@@ -15,7 +17,7 @@ import ace.org.epms_backend.repository.PipRecordRepository;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.PipObjectiveService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
+// import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -41,7 +43,7 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
                 .orElseThrow(() -> new NotFoundException("PIP not found"));
 
         if (pip.getStatus() != PipStatus.DRAFT) {
-            throw new RuntimeException("Objectives can only be added to DRAFT PIP");
+            throw new InvalidStateException("Objectives can only be added to DRAFT PIP");
         }
 
         PipObjective objective = mapper.toEntity(request);
@@ -58,7 +60,7 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
     public List<PipObjectiveResponse> getByPipId(Long pipId) {
 
         PipRecord pip = pipRepository.findById(pipId)
-                .orElseThrow(() -> new RuntimeException("PIP not found"));
+                .orElseThrow(() -> new NotFoundException("PIP not found"));
 
         Employee current = authService.getCurrentUser();
 
@@ -85,7 +87,7 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
         }
 
         PipObjective objective = objectiveRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Objective not found"));
+                .orElseThrow(() -> new NotFoundException("Objective not found"));
 
         objective.setIsAchieved(achieved);
         objective.setStatus(
