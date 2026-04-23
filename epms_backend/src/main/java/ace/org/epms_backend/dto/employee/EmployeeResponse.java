@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,4 +19,7 @@ public class EmployeeResponse {
     private String phoneNo;
     private String positionName;
     private String levelName;
+    private Integer levelRank;
+    private List<String> roles;
+    private List<String> permissions;
 }

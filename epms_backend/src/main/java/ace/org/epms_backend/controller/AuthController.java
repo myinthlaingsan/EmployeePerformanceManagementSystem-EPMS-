@@ -7,6 +7,8 @@ import ace.org.epms_backend.dto.auth.RefreshTokenRequest;
 import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.service.AuthService;
+import ace.org.epms_backend.service.JwtService;
+import ace.org.epms_backend.service.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
+    private final JwtService jwtService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
@@ -55,4 +59,12 @@ public class AuthController {
         );
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<String>> logout(jakarta.servlet.http.HttpServletRequest request) {
+        String token = jwtService.extractTokenFromRequest(request);
+        if (token != null) {
+            tokenBlacklistService.blacklistToken(token);
+        }
+        return ResponseEntity.ok(ApiResponse.success("Logged out successfully"));
+    }
 }
