@@ -4,7 +4,7 @@ import ace.org.epms_backend.dto.continuous.MeetingCommentRequest;
 import ace.org.epms_backend.dto.continuous.MeetingCommentResponse;
 import ace.org.epms_backend.dto.continuous.OneOnOneMeetingRequest;
 import ace.org.epms_backend.dto.continuous.OneOnOneMeetingResponse;
-import ace.org.epms_backend.exception.ResourceNotFoundException;
+import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.continuous.MeetingCommentMapper;
 import ace.org.epms_backend.mapper.continuous.OneOnOneMeetingMapper;
 import ace.org.epms_backend.model.continuous.MeetingComment;
@@ -104,17 +104,17 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public void deleteComment(Long commentId) {
         MeetingComment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
+                .orElseThrow(() -> new NotFoundException("Comment not found with id: " + commentId));
         commentRepository.delete(comment);
     }
 
     private OneOnOneMeeting fetchMeeting(Long meetingId) {
         return meetingRepository.findById(meetingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Meeting not found with id: " + meetingId));
+                .orElseThrow(() -> new NotFoundException("Meeting not found with id: " + meetingId));
     }
 
     private Employee fetchEmployee(Long employeeId) {
         return employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+                .orElseThrow(() -> new NotFoundException("Employee not found with id: " + employeeId));
     }
 }
