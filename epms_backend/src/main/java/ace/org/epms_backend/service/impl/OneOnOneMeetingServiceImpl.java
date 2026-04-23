@@ -13,6 +13,9 @@ import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.MeetingCommentRepository;
 import ace.org.epms_backend.repository.OneOnOneMeetingRepository;
+import ace.org.epms_backend.repository.PerformanceHistoryRepository;
+import ace.org.epms_backend.enums.SourceType;
+import ace.org.epms_backend.model.continuous.PerformanceHistory;
 import ace.org.epms_backend.service.OneOnOneMeetingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     private final EmployeeRepository employeeRepository;
     private final OneOnOneMeetingMapper meetingMapper;
     private final MeetingCommentMapper commentMapper;
+    private final PerformanceHistoryRepository historyRepository;
 
     @Override
     public OneOnOneMeetingResponse scheduleMeeting(OneOnOneMeetingRequest request) {
@@ -38,6 +42,18 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         meeting.setEmployee(fetchEmployee(request.getEmployeeId()));
         meeting.setManager(fetchEmployee(request.getManagerId()));
         OneOnOneMeeting savedMeeting = meetingRepository.save(meeting);
+
+        // Update PerformanceHistory
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(savedMeeting.getEmployee())
+                .sourceType(SourceType.MEETING)
+                .sourceId(savedMeeting.getMeetingId())
+                .title("New 1-on-1 Meeting Scheduled")
+                .description("Meeting scheduled for " + savedMeeting.getMeetingDate() + " at " + savedMeeting.getMeetingTime())
+                .createdBy(savedMeeting.getManager().getId())
+                .build();
+        historyRepository.save(history);
+
         return meetingMapper.toResponse(savedMeeting);
     }
 
@@ -68,6 +84,18 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         meeting.setEmployee(fetchEmployee(request.getEmployeeId()));
         meeting.setManager(fetchEmployee(request.getManagerId()));
         OneOnOneMeeting updatedMeeting = meetingRepository.save(meeting);
+
+        // Update PerformanceHistory
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(updatedMeeting.getEmployee())
+                .sourceType(SourceType.MEETING)
+                .sourceId(updatedMeeting.getMeetingId())
+                .title("1-on-1 Meeting Updated")
+                .description("Meeting details were updated.")
+                .createdBy(updatedMeeting.getManager().getId())
+                .build();
+        historyRepository.save(history);
+
         return meetingMapper.toResponse(updatedMeeting);
     }
 
@@ -91,6 +119,18 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         }
         
         MeetingComment savedComment = commentRepository.save(comment);
+
+        // Update PerformanceHistory
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(meeting.getEmployee())
+                .sourceType(SourceType.MEETING)
+                .sourceId(meeting.getMeetingId())
+                .title("New Comment in Meeting")
+                .description((comment.getManager() != null ? "Manager " + comment.getManager().getStaffName() : "Employee " + comment.getEmployee().getStaffName()) + " added a comment.")
+                .createdBy(comment.getManager() != null ? comment.getManager().getId() : comment.getEmployee().getId())
+                .build();
+        historyRepository.save(history);
+
         return commentMapper.toResponse(savedComment);
     }
 

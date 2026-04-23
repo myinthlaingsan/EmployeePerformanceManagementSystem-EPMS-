@@ -60,6 +60,18 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         feedback.setCreatedBy(manager.getId());
 
         feedback = feedbackRepository.save(feedback);
+
+        // Update PerformanceHistory
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(employee)
+                .sourceType(SourceType.FEEDBACK)
+                .sourceId(feedback.getFeedbackId())
+                .title("New Continuous Feedback")
+                .description("Manager " + manager.getStaffName() + " created feedback: " + feedback.getDescription())
+                .createdBy(manager.getId())
+                .build();
+        historyRepository.save(history);
+
         return feedbackMapper.toResponse(feedback);
     }
 
@@ -112,6 +124,18 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
 
         feedbackMapper.updateEntityFromRequest(request, feedback);
         feedback = feedbackRepository.save(feedback);
+
+        // Update PerformanceHistory
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(feedback.getEmployee())
+                .sourceType(SourceType.FEEDBACK)
+                .sourceId(feedback.getFeedbackId())
+                .title("Updated Continuous Feedback")
+                .description("Feedback was updated. New description: " + feedback.getDescription())
+                .createdBy(feedback.getManager().getId())
+                .build();
+        historyRepository.save(history);
+
         return feedbackMapper.toResponse(feedback);
     }
 
