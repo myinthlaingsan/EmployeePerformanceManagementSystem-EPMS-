@@ -26,6 +26,7 @@ export interface CreateEmployeeRequest {
   salary?: number;
   currency?: string;
   roleId: number;
+  departmentId: number;
 }
 
 export interface SetPasswordRequest {
@@ -99,6 +100,7 @@ export interface EmployeeResponse {
   positionName: string;
   levelName: string;
   levelRank: number;
+  departmentName?: string;
   roles: string[];
   permissions: string[];
 }
