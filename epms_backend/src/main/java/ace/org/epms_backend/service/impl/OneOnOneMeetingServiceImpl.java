@@ -80,7 +80,6 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         return meetingRepository.findByEmployeeId(employeeId).stream()
                 .filter(m -> !Boolean.TRUE.equals(m.getIsPrivateNote()) ||
                         isPrivileged ||
-                        currentUser.getId().equals(m.getEmployee().getId()) ||
                         currentUser.getId().equals(m.getManager().getId()))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
@@ -94,7 +93,6 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         return meetingRepository.findByManagerId(managerId).stream()
                 .filter(m -> !Boolean.TRUE.equals(m.getIsPrivateNote()) ||
                         isPrivileged ||
-                        currentUser.getId().equals(m.getEmployee().getId()) ||
                         currentUser.getId().equals(m.getManager().getId()))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
@@ -175,8 +173,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         if (Boolean.TRUE.equals(meeting.getIsPrivateNote())) {
             Employee currentUser = authService.getCurrentUser();
 
-            if (currentUser.getId().equals(meeting.getEmployee().getId()) ||
-                    currentUser.getId().equals(meeting.getManager().getId())) {
+            if (currentUser.getId().equals(meeting.getManager().getId())) {
                 return;
             }
 

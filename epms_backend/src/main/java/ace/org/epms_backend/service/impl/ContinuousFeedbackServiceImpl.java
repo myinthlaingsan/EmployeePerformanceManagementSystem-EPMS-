@@ -101,7 +101,6 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         return feedbackRepository.findByEmployee_Id(employeeId).stream()
                 .filter(f -> !Boolean.TRUE.equals(f.getIsPrivate()) ||
                         isPrivileged ||
-                        currentUser.getId().equals(f.getEmployee().getId()) ||
                         currentUser.getId().equals(f.getManager().getId()))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
@@ -115,7 +114,6 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         return feedbackRepository.findByManager_Id(managerId).stream()
                 .filter(f -> !Boolean.TRUE.equals(f.getIsPrivate()) ||
                         isPrivileged ||
-                        currentUser.getId().equals(f.getEmployee().getId()) ||
                         currentUser.getId().equals(f.getManager().getId()))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
@@ -226,9 +224,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         if (Boolean.TRUE.equals(feedback.getIsPrivate())) {
             Employee currentUser = authService.getCurrentUser();
 
-            // Check if current user is the employee or manager of the feedback
-            if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
-                    currentUser.getId().equals(feedback.getManager().getId())) {
+            // Check if current user is the manager of the feedback
+            if (currentUser.getId().equals(feedback.getManager().getId())) {
                 return;
             }
 
