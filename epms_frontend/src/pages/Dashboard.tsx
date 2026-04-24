@@ -5,17 +5,11 @@ import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const { user, isAdmin, isHR, isManager, isSenior } = useAuth();
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   if (!user) return <div>Loading...</div>;
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate("/login");
-  }
   return (
     
     <div className="p-6">
-      <button onClick={handleLogout}>Logout</button>
       <header className="mb-8">
         <h1 className="text-3xl font-bold">Welcome back, {user.staffName}</h1>
         <p className="text-gray-600">
@@ -25,12 +19,22 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Common Section: Profile Summary */}
-        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4">My Profile</h2>
-          <div className="space-y-2">
-            <p><strong>Code:</strong> {user.employeeCode}</p>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Roles:</strong> {user.roles}</p>
+        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl font-semibold mb-4">My Profile</h2>
+            <div className="space-y-2">
+              <p><strong>Code:</strong> {user.employeeCode}</p>
+              <p><strong>Email:</strong> {user.email}</p>
+              <p><strong>Roles:</strong> {user.roles.join(', ')}</p>
+            </div>
+          </div>
+          <div className="mt-6">
+            <button 
+              onClick={() => navigate("/profile")}
+              className="w-full bg-blue-50 text-blue-700 px-4 py-2.5 rounded-lg hover:bg-blue-100 transition font-medium border border-blue-100"
+            >
+              Update Employee Information
+            </button>
           </div>
         </section>
 
