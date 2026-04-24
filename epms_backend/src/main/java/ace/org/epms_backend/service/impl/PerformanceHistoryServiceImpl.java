@@ -61,9 +61,5 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
         return historyMapper.toResponse(history);
     }
 
-    private boolean isPrivileged(Employee employee) {
-        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
-        return roles.stream()
-                .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
-    }
+
 }
