@@ -23,15 +23,17 @@ public class KpiGoalItem extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "goal_set_id")
     private KpiGoals goalSet;
-
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private KpiCategory category;
     private String title;
-
-    private BigDecimal targetValue;
-
     private String unit;
-
+    private BigDecimal targetValue;
     private BigDecimal weightPercent;
-
+    // Fields to store the math from your spreadsheet image
+    private BigDecimal actualValue;    // The "Actual" column
+    private BigDecimal scorePercent;   // The "Score (%)" column
+    private BigDecimal weightedScore;  // The "Weighted Score" column
     @Enumerated(EnumType.STRING)
     private KpiItemStatus status;
 

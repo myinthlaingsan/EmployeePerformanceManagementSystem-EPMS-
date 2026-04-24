@@ -2,6 +2,7 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.org.PositionRequest;
 import ace.org.epms_backend.dto.org.PositionResponse;
+import ace.org.epms_backend.exception.CannotDeleteException;
 import ace.org.epms_backend.exception.CodeAlreadyExistsException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.PositionMapper;
@@ -89,7 +90,7 @@ public class PositionServiceImpl implements PositionService {
                 .orElseThrow(() -> new NotFoundException("Position not found"));
 
         if (employeeRepository.existsByPosition(position)) {
-            throw new RuntimeException("Cannot delete position as it is assigned to one or more employees");
+            throw new CannotDeleteException("Cannot delete position as it is assigned to one or more employees");
         }
 
         positionRepository.delete(position);

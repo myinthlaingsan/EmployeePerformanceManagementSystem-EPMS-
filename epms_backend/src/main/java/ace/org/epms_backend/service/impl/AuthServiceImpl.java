@@ -9,7 +9,11 @@ import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.UserPrincipal;
 import ace.org.epms_backend.model.employee.Employee;
+import ace.org.epms_backend.model.employee.Permission;
+import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.EmployeeRepository;
+import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +29,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -32,69 +37,67 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final EmployeeRepository employeeRepository;
-    private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final EmployeeMapper employeeMapper;
+    private final EmployeeRoleRepository employeeRoleRepository;
+    private final RoleLevelPermissionRepository roleLevelPermissionRepository;
+
     @Override
     public AuthResponse login(AuthRequest authDto) {
         Employee employee = employeeRepository.findByEmail(authDto.getEmail())
                 .orElseThrow(() -> new NotFoundException("Email not found"));
         unlockIfTimeExpired(employee);
-        if(employee.isAccountLocked()){
-            long minutesLeft = ChronoUnit.MINUTES.between(LocalDateTime.now(),employee.getLockTime().plusMinutes(15));
-            if(minutesLeft < 0) minutesLeft = 0;
-            throw new LockedException("Your account is Locked. Try again in "+ minutesLeft + " minutes.");
+        if (employee.isAccountLocked()) {
+            long minutesLeft = ChronoUnit.MINUTES.between(LocalDateTime.now(), employee.getLockTime().plusMinutes(15));
+            if (minutesLeft < 0)
+                minutesLeft = 0;
+            throw new LockedException("Your account is Locked. Try again in " + minutesLeft + " minutes.");
         }
-        try{
-            Authentication authentication =
-                    authenticationManager.authenticate(
-                            new UsernamePasswordAuthenticationToken(
-                                    authDto.getEmail(),
-                                    authDto.getPassword()
-                            )
-                    );
-            if(authentication.isAuthenticated()){
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            authDto.getEmail(),
+                            authDto.getPassword()));
+            if (authentication.isAuthenticated()) {
                 employee.setFailedLoginAttempts(0);
                 employee.setAccountLocked(false);
                 employee.setLockTime(null);
                 employeeRepository.save(employee);
 
-//              UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+                // UserDetails userDetails = (UserDetails) authentication.getPrincipal();
                 UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
                 String token = jwtService.generateAccessToken(userPrincipal);
                 String refreshToken = jwtService.generateRefreshToken(userPrincipal);
-                return new AuthResponse(token,refreshToken);
+                return new AuthResponse(token, refreshToken);
             }
-        }catch (BadCredentialsException ex){
+        } catch (BadCredentialsException ex) {
             int newAttempts = employee.getFailedLoginAttempts() + 1;
             employee.setFailedLoginAttempts(newAttempts);
             String msg;
-            if(newAttempts >= 3){
+            if (newAttempts >= 3) {
                 employee.setAccountLocked(true);
                 employee.setLockTime(LocalDateTime.now());
                 msg = "Invalid credentials. Your account has been locked after 3 failed attempts.";
-            }
-            else{
+            } else {
                 int remaining = 3 - newAttempts;
                 msg = "Invalid credentials. You have " + remaining + " more attempt(s) before your account is locked.";
             }
             employeeRepository.save(employee);
             throw new LockedException(msg);
         }
-        return new AuthResponse("fail","fail");
+        return new AuthResponse("fail", "fail");
     }
 
     @Override
     public AuthResponse refreshToken(RefreshTokenRequest refreshRequest) {
         String refreshToken = refreshRequest.getRefreshToken();
 
-        //extract username first to load user details
+        // extract username first to load user details
         String username = jwtService.extractUsername(refreshToken);
-//        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-        UserPrincipal userPrincipal =
-                (UserPrincipal) userDetailsService.loadUserByUsername(username);
-        //Now validate the refresh token with the user details
-        if(!jwtService.isTokenValid(refreshToken,userPrincipal)){
+        // UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        UserPrincipal userPrincipal = (UserPrincipal) userDetailsService.loadUserByUsername(username);
+        // Now validate the refresh token with the user details
+        if (!jwtService.isTokenValid(refreshToken, userPrincipal)) {
             throw new InvalidTokenException("Invalid Refresh Token");
         }
         String newAccessToken = jwtService.generateAccessToken(userPrincipal);
@@ -104,7 +107,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public Employee unlockEmployee(Long employeeId) {
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(()-> new NotFoundException("User not Found"));
+                .orElseThrow(() -> new NotFoundException("User not Found"));
         employee.setAccountLocked(false);
         employee.setFailedLoginAttempts(0);
         employee.setLockTime(null);
@@ -119,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
                 .getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("No user Logged in");
+            throw new InvalidTokenException("No user Logged in");
         }
 
         Object principal = authentication.getPrincipal();
@@ -128,18 +131,36 @@ public class AuthServiceImpl implements AuthService {
             return userPrincipal.getEmployee();
         }
 
-        throw new RuntimeException("Invalid authentication principal");
+        throw new InvalidTokenException("Invalid authentication principal");
     }
 
     @Override
     public EmployeeResponse getCurrentUserProfile() {
-        return employeeMapper.toResponse(getCurrentUser());
+        return mapToResponse(getCurrentUser());
     }
 
-    public boolean unlockIfTimeExpired(Employee emp){
-        if(emp.isAccountLocked() && emp.getLockTime() !=null){
+    private EmployeeResponse mapToResponse(Employee emp) {
+        EmployeeResponse response = employeeMapper.toResponse(emp);
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(emp.getId());
+        List<String> roleNames = roles.stream()
+                .map(role -> role.getRoleName().name())
+                .toList();
+        response.setRoles(roleNames);
+
+        // Fetch permissions based on roles and level
+        List<String> permissions = roleLevelPermissionRepository.findPermissionsByRolesAndLevel(roles, emp.getLevel())
+                .stream()
+                .map(Permission::getPermissionName)
+                .toList();
+        response.setPermissions(permissions);
+
+        return response;
+    }
+
+    public boolean unlockIfTimeExpired(Employee emp) {
+        if (emp.isAccountLocked() && emp.getLockTime() != null) {
             LocalDateTime unlockTime = emp.getLockTime().plusMinutes(15);
-            if(LocalDateTime.now().isAfter(unlockTime)){
+            if (LocalDateTime.now().isAfter(unlockTime)) {
                 emp.setAccountLocked(false);
                 emp.setFailedLoginAttempts(0);
                 emp.setLockTime(null);
