@@ -75,9 +75,12 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public List<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
 
         return meetingRepository.findByEmployeeId(employeeId).stream()
-                .filter(m -> currentUser.getId().equals(m.getEmployee().getId()) ||
+                .filter(m -> !Boolean.TRUE.equals(m.getIsPrivateNote()) ||
+                        isPrivileged ||
+                        currentUser.getId().equals(m.getEmployee().getId()) ||
                         currentUser.getId().equals(m.getManager().getId()))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
@@ -86,9 +89,12 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public List<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId) {
         Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
 
         return meetingRepository.findByManagerId(managerId).stream()
-                .filter(m -> currentUser.getId().equals(m.getEmployee().getId()) ||
+                .filter(m -> !Boolean.TRUE.equals(m.getIsPrivateNote()) ||
+                        isPrivileged ||
+                        currentUser.getId().equals(m.getEmployee().getId()) ||
                         currentUser.getId().equals(m.getManager().getId()))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
@@ -167,23 +173,30 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     }
 
     private void checkMeetingAccess(OneOnOneMeeting meeting) {
-        Employee currentUser = authService.getCurrentUser();
+        if (Boolean.TRUE.equals(meeting.getIsPrivateNote())) {
+            Employee currentUser = authService.getCurrentUser();
 
-        if (currentUser.getId().equals(meeting.getEmployee().getId()) ||
-                currentUser.getId().equals(meeting.getManager().getId())) {
-            return;
+            if (currentUser.getId().equals(meeting.getEmployee().getId()) ||
+                    currentUser.getId().equals(meeting.getManager().getId())) {
+                return;
+            }
+
+            if (!isPrivileged(currentUser)) {
+                throw new NotFoundException("Meeting not found");
+            }
         }
+    }
 
-        throw new NotFoundException("Meeting not found");
+    private boolean isPrivileged(Employee employee) {
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
+        return roles.stream()
+                .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
     }
 
     @Override
     public void deleteComment(Long commentId) {
         MeetingComment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new NotFoundException("Comment not found"));
-        
-        checkMeetingAccess(comment.getMeeting());
-        
+                .orElseThrow(() -> new NotFoundException("Comment not found with id: " + commentId));
         commentRepository.delete(comment);
     }
 

@@ -96,10 +96,13 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     @Override
     public List<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
 
         return feedbackRepository.findByEmployee_Id(employeeId).stream()
-                .filter(f -> currentUser.getId().equals(f.getEmployee().getId()) ||
-                             currentUser.getId().equals(f.getManager().getId()))
+                .filter(f -> !Boolean.TRUE.equals(f.getIsPrivate()) ||
+                        isPrivileged ||
+                        currentUser.getId().equals(f.getEmployee().getId()) ||
+                        currentUser.getId().equals(f.getManager().getId()))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -107,15 +110,22 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     @Override
     public List<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId) {
         Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
 
         return feedbackRepository.findByManager_Id(managerId).stream()
-                .filter(f -> currentUser.getId().equals(f.getEmployee().getId()) ||
-                             currentUser.getId().equals(f.getManager().getId()))
+                .filter(f -> !Boolean.TRUE.equals(f.getIsPrivate()) ||
+                        isPrivileged ||
+                        currentUser.getId().equals(f.getEmployee().getId()) ||
+                        currentUser.getId().equals(f.getManager().getId()))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
-
+    private boolean isPrivileged(Employee employee) {
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
+        return roles.stream()
+                .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
+    }
 
     @Override
     @Transactional
@@ -218,25 +228,27 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     private void checkFeedbackAccess(ContinuousFeedback feedback) {
-        Employee currentUser = authService.getCurrentUser();
+        if (Boolean.TRUE.equals(feedback.getIsPrivate())) {
+            Employee currentUser = authService.getCurrentUser();
 
-        // Strictly only employee or manager of the feedback
-        if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
-                currentUser.getId().equals(feedback.getManager().getId())) {
-            return;
+            // Check if current user is the employee or manager of the feedback
+            if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
+                    currentUser.getId().equals(feedback.getManager().getId())) {
+                return;
+            }
+
+            if (!isPrivileged(currentUser)) {
+                throw new NotFoundException("Feedback not found");
+            }
         }
-
-        throw new NotFoundException("Feedback not found");
     }
 
     @Override
     @Transactional
     public void deleteReply(Long replyId) {
-        FeedbackReply reply = replyRepository.findById(replyId)
-                .orElseThrow(() -> new NotFoundException("Reply not found"));
-        
-        checkFeedbackAccess(reply.getFeedback());
-        
-        replyRepository.delete(reply);
+        if (!replyRepository.existsById(replyId)) {
+            throw new NotFoundException("Reply not found");
+        }
+        replyRepository.deleteById(replyId);
     }
 }
