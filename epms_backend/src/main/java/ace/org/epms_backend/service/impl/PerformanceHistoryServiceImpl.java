@@ -39,7 +39,7 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
                 .filter(h -> !Boolean.TRUE.equals(h.getIsPrivate()) ||
                         isPrivileged ||
                         currentUser.getId().equals(h.getEmployee().getId()))
-                .map(historyMapper::toResponse)
+                .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
     }
 
@@ -52,7 +52,7 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
                 .filter(h -> !Boolean.TRUE.equals(h.getIsPrivate()) ||
                         isPrivileged ||
                         currentUser.getId().equals(h.getEmployee().getId()))
-                .map(historyMapper::toResponse)
+                .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
     }
 
