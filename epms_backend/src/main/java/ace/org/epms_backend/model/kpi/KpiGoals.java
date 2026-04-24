@@ -1,11 +1,14 @@
 package ace.org.epms_backend.model.kpi;
-import java.time.Instant;
 
 import ace.org.epms_backend.enums.KpiGoalStatus;
+import ace.org.epms_backend.model.BaseEntity;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
+
+import java.time.Instant;
 
 @Entity
 @Table(name = "kpi_goals")
@@ -13,7 +16,9 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class KpiGoals {
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class KpiGoals extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -38,6 +43,9 @@ public class KpiGoals {
 
     @Enumerated(EnumType.STRING)
     private KpiGoalStatus status;
+
+    @OneToMany(mappedBy = "goalSet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private java.util.List<KpiGoalItem> items;
 
     private Long approvedBy;
 
