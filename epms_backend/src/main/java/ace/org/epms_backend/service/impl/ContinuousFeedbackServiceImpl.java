@@ -236,9 +236,11 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     @Override
     @Transactional
     public void deleteReply(Long replyId) {
-        if (!replyRepository.existsById(replyId)) {
-            throw new NotFoundException("Reply not found");
-        }
-        replyRepository.deleteById(replyId);
+        FeedbackReply reply = replyRepository.findById(replyId)
+                .orElseThrow(() -> new NotFoundException("Reply not found"));
+        
+        checkFeedbackAccess(reply.getFeedback());
+        
+        replyRepository.delete(reply);
     }
 }

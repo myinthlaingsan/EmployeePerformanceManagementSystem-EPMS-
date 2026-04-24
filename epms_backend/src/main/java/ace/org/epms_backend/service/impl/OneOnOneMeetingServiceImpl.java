@@ -186,7 +186,10 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public void deleteComment(Long commentId) {
         MeetingComment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new NotFoundException("Comment not found with id: " + commentId));
+                .orElseThrow(() -> new NotFoundException("Comment not found"));
+        
+        checkMeetingAccess(comment.getMeeting());
+        
         commentRepository.delete(comment);
     }
 
