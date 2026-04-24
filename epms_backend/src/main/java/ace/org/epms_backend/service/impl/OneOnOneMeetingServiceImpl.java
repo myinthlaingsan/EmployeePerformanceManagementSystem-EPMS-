@@ -129,14 +129,20 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     public MeetingCommentResponse addComment(Long meetingId, MeetingCommentRequest request) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
         checkMeetingAccess(meeting);
+
+        Employee currentUser = authService.getCurrentUser();
         MeetingComment comment = commentMapper.toEntity(request);
         comment.setMeeting(meeting);
 
-        if (request.getEmployeeId() != null) {
-            comment.setEmployee(fetchEmployee(request.getEmployeeId()));
-        }
-        if (request.getManagerId() != null) {
-            comment.setManager(fetchEmployee(request.getManagerId()));
+        // Attribute the comment to the correct role
+        if (currentUser.getId().equals(meeting.getEmployee().getId())) {
+            comment.setEmployee(currentUser);
+            comment.setManager(null);
+        } else if (currentUser.getId().equals(meeting.getManager().getId())) {
+            comment.setManager(currentUser);
+            comment.setEmployee(null);
+        } else {
+            throw new AccessDeniedException("You are not authorized to comment on this meeting.");
         }
 
         MeetingComment savedComment = commentRepository.save(comment);

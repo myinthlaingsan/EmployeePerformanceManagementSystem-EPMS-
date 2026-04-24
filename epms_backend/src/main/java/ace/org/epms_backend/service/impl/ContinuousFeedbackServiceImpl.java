@@ -185,12 +185,16 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         
         checkFeedbackAccess(feedback);
         
-        Employee employee = employeeRepository.findById(request.getEmployeeId())
-                .orElseThrow(() -> new NotFoundException("Employee not found"));
+        Employee currentUser = authService.getCurrentUser();
+        
+        // Ensure the person replying is the one who is logged in
+        if (!currentUser.getId().equals(request.getEmployeeId())) {
+            throw new AccessDeniedException("You can only reply as yourself.");
+        }
 
         FeedbackReply reply = replyMapper.toEntity(request);
         reply.setFeedback(feedback);
-        reply.setEmployee(employee);
+        reply.setEmployee(currentUser);
         
         reply = replyRepository.save(reply);
 
