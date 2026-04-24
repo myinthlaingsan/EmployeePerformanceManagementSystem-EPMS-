@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.security.access.AccessDeniedException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandlerAdvice {
@@ -24,6 +25,7 @@ public class GlobalExceptionHandlerAdvice {
 
         return ResponseEntity.badRequest().body(errors);
     }
+
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ApiResponse<?>> handleNotFound(NotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -62,6 +64,12 @@ public class GlobalExceptionHandlerAdvice {
     public ResponseEntity<ApiResponse<?>> handleUnauthorized(UnauthorizedActionException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ApiResponse<>(403, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<?>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>(403, "Access Denied: You do not have permission to perform this action", null, LocalDateTime.now()));
     }
 
     // ================= BUSINESS =================
@@ -120,8 +128,8 @@ public class GlobalExceptionHandlerAdvice {
     }
 
     @ExceptionHandler(PasswordIncorrectException.class)
-    public ResponseEntity<ApiResponse<?>> handlePasswordIncorrect(PasswordIncorrectException ex){
+    public ResponseEntity<ApiResponse<?>> handlePasswordIncorrect(PasswordIncorrectException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import ace.org.epms_backend.model.appraisal.*;
+import ace.org.epms_backend.exception.NotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,8 @@ public class AppraisalServiceImpl implements AppraisalService {
     private final ManagerEvaluationAnswerRepository evalAnswerRepo;
     private final QuestionRepository questionRepo;
     private final AppraisalHistoryRepository historyRepo;
+    private final AppraisalFormRepository formRepo;
+    private final PerformanceCategoryRepository performanceCategoryRepo;
 
     @Override
     public AppraisalResponse createAppraisal(AppraisalCreateRequest request) {
@@ -36,13 +39,25 @@ public class AppraisalServiceImpl implements AppraisalService {
 
         appraisal.setEmployee(
                 employeeRepo.findById(request.getEmployeeId())
-                        .orElseThrow(() -> new RuntimeException("Employee not found"))
-        );
+                        .orElseThrow(() -> new NotFoundException("Employee not found")));
 
         appraisal.setCycle(
                 cycleRepo.findById(request.getCycleId())
-                        .orElseThrow(() -> new RuntimeException("Cycle not found"))
-        );
+                        .orElseThrow(() -> new NotFoundException("Cycle not found")));
+
+        appraisal.setManager(
+                employeeRepo.findById(request.getManagerId())
+                        .orElseThrow(() -> new NotFoundException("Manager not found")));
+
+        appraisal.setForm(
+                formRepo.findById(request.getFormId())
+                        .orElseThrow(() -> new NotFoundException("Form not found")));
+
+        if (request.getPerformanceCategoryId() != null) {
+            appraisal.setPerformanceCategory(
+                    performanceCategoryRepo.findById(request.getPerformanceCategoryId())
+                            .orElseThrow(() -> new NotFoundException("Performance Category not found")));
+        }
 
         appraisal.setStatus(AppraisalStatus.PENDING);
         appraisal.setIsLocked(false);
@@ -64,8 +79,7 @@ public class AppraisalServiceImpl implements AppraisalService {
 
         appraisal.setManager(
                 employeeRepo.findById(request.getManagerId())
-                        .orElseThrow(() -> new RuntimeException("Manager not found"))
-        );
+                        .orElseThrow(() -> new RuntimeException("Manager not found")));
 
         appraisalRepo.save(appraisal);
 
@@ -150,17 +164,20 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = appraisalRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Appraisal not found"));
 
-        if (request.getEmployeeId() != null && !request.getEmployeeId().equals(appraisal.getEmployee() != null ? appraisal.getEmployee().getId() : null)) {
+        if (request.getEmployeeId() != null && !request.getEmployeeId()
+                .equals(appraisal.getEmployee() != null ? appraisal.getEmployee().getId() : null)) {
             appraisal.setEmployee(employeeRepo.findById(request.getEmployeeId())
                     .orElseThrow(() -> new RuntimeException("Employee not found")));
         }
 
-        if (request.getCycleId() != null && !request.getCycleId().equals(appraisal.getCycle() != null ? appraisal.getCycle().getCycleId() : null)) {
+        if (request.getCycleId() != null && !request.getCycleId()
+                .equals(appraisal.getCycle() != null ? appraisal.getCycle().getCycleId() : null)) {
             appraisal.setCycle(cycleRepo.findById(request.getCycleId())
                     .orElseThrow(() -> new RuntimeException("Cycle not found")));
         }
 
-        if (request.getManagerId() != null && !request.getManagerId().equals(appraisal.getManager() != null ? appraisal.getManager().getId() : null)) {
+        if (request.getManagerId() != null && !request.getManagerId()
+                .equals(appraisal.getManager() != null ? appraisal.getManager().getId() : null)) {
             appraisal.setManager(employeeRepo.findById(request.getManagerId())
                     .orElseThrow(() -> new RuntimeException("Manager not found")));
         }
@@ -214,11 +231,11 @@ public class AppraisalServiceImpl implements AppraisalService {
     public AppraisalResponse submitManagerEvaluation(Long id) {
         Appraisal appraisal = getAppraisalOrThrow(id);
         checkNotLocked(appraisal);
-        
+
         if (appraisal.getStatus() != AppraisalStatus.SELF_ASSESSED) {
             throw new RuntimeException("Manager evaluation can only be submitted after self-assessment is completed");
         }
-        
+
         appraisal.setStatus(AppraisalStatus.EVALUATED);
         return appraisalMapper.toResponse(appraisalRepo.save(appraisal));
     }
@@ -227,11 +244,11 @@ public class AppraisalServiceImpl implements AppraisalService {
     public AppraisalResponse employeeSignOff(Long id) {
         Appraisal appraisal = getAppraisalOrThrow(id);
         checkNotLocked(appraisal);
-        
+
         if (appraisal.getTotalScore() == null) {
             throw new RuntimeException("Cannot sign off before score calculation");
         }
-        
+
         appraisal.setEmployeeSigned(true);
         return appraisalMapper.toResponse(appraisalRepo.save(appraisal));
     }
@@ -269,7 +286,9 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .staffName(appraisal.getEmployee().getStaffName())
                 .employeeCode(appraisal.getEmployee().getEmployeeCode())
                 .department(appraisal.getEmployee().getDepartment())
-                .position(appraisal.getEmployee().getPosition() != null ? appraisal.getEmployee().getPosition().getPositionName() : null)
+                .position(appraisal.getEmployee().getPosition() != null
+                        ? appraisal.getEmployee().getPosition().getPositionName()
+                        : null)
                 .build();
 
         // Get questions for the form
@@ -280,13 +299,16 @@ public class AppraisalServiceImpl implements AppraisalService {
         Optional<ManagerEvaluation> eval = evalRepo.findByAppraisal_AppraisalId(id);
 
         List<AppraisalDetailsResponse.QuestionDetail> answers = questions.stream().map(q -> {
-            AppraisalDetailsResponse.QuestionDetail.QuestionDetailBuilder builder = AppraisalDetailsResponse.QuestionDetail.builder()
+            AppraisalDetailsResponse.QuestionDetail.QuestionDetailBuilder builder = AppraisalDetailsResponse.QuestionDetail
+                    .builder()
                     .questionId(q.getQuestionId())
                     .questionText(q.getQuestionText())
                     .categoryName(q.getCategory() != null ? q.getCategory().getCategoryName() : null);
 
             if (self.isPresent()) {
-                selfAnswerRepo.findBySelfAssessment_SelfAssessmentIdAndQuestion_QuestionId(self.get().getSelfAssessmentId(), q.getQuestionId())
+                selfAnswerRepo
+                        .findBySelfAssessment_SelfAssessmentIdAndQuestion_QuestionId(self.get().getSelfAssessmentId(),
+                                q.getQuestionId())
                         .ifPresent(sa -> {
                             builder.selfAnswer(sa.getAnswerValue());
                             builder.selfComment(sa.getComment());
@@ -294,7 +316,9 @@ public class AppraisalServiceImpl implements AppraisalService {
             }
 
             if (eval.isPresent()) {
-                evalAnswerRepo.findByEvaluation_EvaluationIdAndQuestion_QuestionId(eval.get().getEvaluationId(), q.getQuestionId())
+                evalAnswerRepo
+                        .findByEvaluation_EvaluationIdAndQuestion_QuestionId(eval.get().getEvaluationId(),
+                                q.getQuestionId())
                         .ifPresent(ea -> {
                             builder.managerRating(ea.getRatingValue());
                             builder.managerComment(ea.getComment());
