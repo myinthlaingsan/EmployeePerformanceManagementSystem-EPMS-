@@ -101,6 +101,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         return feedbackRepository.findByEmployee_Id(employeeId).stream()
                 .filter(f -> !Boolean.TRUE.equals(f.getIsPrivate()) ||
                         isPrivileged ||
+                        currentUser.getId().equals(f.getEmployee().getId()) ||
                         currentUser.getId().equals(f.getManager().getId()))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
@@ -114,6 +115,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         return feedbackRepository.findByManager_Id(managerId).stream()
                 .filter(f -> !Boolean.TRUE.equals(f.getIsPrivate()) ||
                         isPrivileged ||
+                        currentUser.getId().equals(f.getEmployee().getId()) ||
                         currentUser.getId().equals(f.getManager().getId()))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
@@ -130,6 +132,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     public ContinuousFeedbackResponse updateFeedback(Long feedbackId, ContinuousFeedbackRequest request) {
         ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
+        
+        checkFeedbackAccess(feedback);
 
         if (!feedback.getEmployee().getId().equals(request.getEmployeeId())) {
             Employee employee = employeeRepository.findById(request.getEmployeeId())
@@ -172,10 +176,11 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     @Override
     @Transactional
     public void deleteFeedback(Long feedbackId) {
-        if (!feedbackRepository.existsById(feedbackId)) {
-            throw new NotFoundException("Feedback not found");
-        }
-        feedbackRepository.deleteById(feedbackId);
+        ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new NotFoundException("Feedback not found"));
+        
+        checkFeedbackAccess(feedback);
+        feedbackRepository.delete(feedback);
     }
 
     @Override
@@ -183,6 +188,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     public FeedbackReplyResponse replyToFeedback(Long feedbackId, FeedbackReplyRequest request) {
         ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
+        
+        checkFeedbackAccess(feedback);
         
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
@@ -224,13 +231,14 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         if (Boolean.TRUE.equals(feedback.getIsPrivate())) {
             Employee currentUser = authService.getCurrentUser();
 
-            // Check if current user is the manager of the feedback
-            if (currentUser.getId().equals(feedback.getManager().getId())) {
+            // Check if current user is the employee or manager of the feedback
+            if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
+                    currentUser.getId().equals(feedback.getManager().getId())) {
                 return;
             }
 
             if (!isPrivileged(currentUser)) {
-                throw new AccessDeniedException("You do not have permission to view this private feedback.");
+                throw new NotFoundException("Feedback not found");
             }
         }
     }

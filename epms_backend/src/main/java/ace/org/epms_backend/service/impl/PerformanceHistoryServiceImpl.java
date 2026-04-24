@@ -1,20 +1,18 @@
 package ace.org.epms_backend.service.impl;
 
-import ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse;
 import ace.org.epms_backend.enums.SourceType;
-import ace.org.epms_backend.enums.RoleType;
-import ace.org.epms_backend.exception.AccessDeniedException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.continuous.PerformanceHistoryMapper;
 import ace.org.epms_backend.model.continuous.PerformanceHistory;
-import ace.org.epms_backend.model.employee.Employee;
-import ace.org.epms_backend.model.employee.Role;
-import ace.org.epms_backend.repository.EmployeeRoleRepository;
 import ace.org.epms_backend.repository.PerformanceHistoryRepository;
-import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.PerformanceHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ace.org.epms_backend.service.AuthService;
+import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.enums.RoleType;
+import ace.org.epms_backend.model.employee.Role;
+import ace.org.epms_backend.model.employee.Employee;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -31,41 +29,43 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     private final EmployeeRoleRepository employeeRoleRepository;
 
     @Override
-    public List<PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId) {
+    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
         boolean isPrivileged = isPrivileged(currentUser);
 
         return historyRepository.findByEmployee_Id(employeeId).stream()
                 .filter(h -> !Boolean.TRUE.equals(h.getIsPrivate()) ||
-                        isPrivileged)
-                .map(historyMapper::toResponse)
+                        isPrivileged ||
+                        currentUser.getId().equals(h.getEmployee().getId()))
+                .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<PerformanceHistoryResponse> getHistoryBySource(SourceType sourceType, Long sourceId) {
+    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryBySource(SourceType sourceType, Long sourceId) {
         Employee currentUser = authService.getCurrentUser();
         boolean isPrivileged = isPrivileged(currentUser);
 
         return historyRepository.findBySourceTypeAndSourceId(sourceType, sourceId).stream()
                 .filter(h -> !Boolean.TRUE.equals(h.getIsPrivate()) ||
-                        isPrivileged)
-                .map(historyMapper::toResponse)
+                        isPrivileged ||
+                        currentUser.getId().equals(h.getEmployee().getId()))
+                .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public PerformanceHistoryResponse getHistoryById(Long historyId) {
+    public ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse getHistoryById(Long historyId) {
         PerformanceHistory history = historyRepository.findById(historyId)
-                .orElseThrow(() -> new NotFoundException("Performance history not found with id: " + historyId));
-
+                .orElseThrow(() -> new NotFoundException("History not found"));
+        
         if (Boolean.TRUE.equals(history.getIsPrivate())) {
             Employee currentUser = authService.getCurrentUser();
-            if (!isPrivileged(currentUser)) {
-                throw new AccessDeniedException("You do not have permission to view this private history entry.");
+            if (!currentUser.getId().equals(history.getEmployee().getId()) && !isPrivileged(currentUser)) {
+                throw new NotFoundException("History not found");
             }
         }
-
+        
         return historyMapper.toResponse(history);
     }
 

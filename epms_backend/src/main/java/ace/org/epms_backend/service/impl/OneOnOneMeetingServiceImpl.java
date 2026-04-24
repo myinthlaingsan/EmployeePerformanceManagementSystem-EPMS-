@@ -80,6 +80,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         return meetingRepository.findByEmployeeId(employeeId).stream()
                 .filter(m -> !Boolean.TRUE.equals(m.getIsPrivateNote()) ||
                         isPrivileged ||
+                        currentUser.getId().equals(m.getEmployee().getId()) ||
                         currentUser.getId().equals(m.getManager().getId()))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
@@ -93,6 +94,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         return meetingRepository.findByManagerId(managerId).stream()
                 .filter(m -> !Boolean.TRUE.equals(m.getIsPrivateNote()) ||
                         isPrivileged ||
+                        currentUser.getId().equals(m.getEmployee().getId()) ||
                         currentUser.getId().equals(m.getManager().getId()))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
@@ -132,6 +134,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public MeetingCommentResponse addComment(Long meetingId, MeetingCommentRequest request) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
+        checkMeetingAccess(meeting);
         MeetingComment comment = commentMapper.toEntity(request);
         comment.setMeeting(meeting);
         
@@ -173,12 +176,13 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         if (Boolean.TRUE.equals(meeting.getIsPrivateNote())) {
             Employee currentUser = authService.getCurrentUser();
 
-            if (currentUser.getId().equals(meeting.getManager().getId())) {
+            if (currentUser.getId().equals(meeting.getEmployee().getId()) ||
+                    currentUser.getId().equals(meeting.getManager().getId())) {
                 return;
             }
 
             if (!isPrivileged(currentUser)) {
-                throw new AccessDeniedException("You do not have permission to view this private meeting.");
+                throw new NotFoundException("Meeting not found");
             }
         }
     }

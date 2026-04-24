@@ -45,7 +45,6 @@ public class OneOnOneMeeting extends BaseEntity {
 
     private LocalDate followUpDate;
 
-    @Builder.Default
     private Boolean isPrivateNote = false;
 
     private Long createdBy;
