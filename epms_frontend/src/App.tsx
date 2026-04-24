@@ -8,9 +8,12 @@ import MainLayout from "./components/MainLayout";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
+import ProfilePage from "./pages/ProfilePage";
+import SetPasswordPage from "./pages/SetPasswordPage";
 
 // Admin Pages
 import EmployeeList from "./pages/admin/EmployeeList";
+import EmployeeForm from "./pages/admin/EmployeeForm";
 import DepartmentList from "./pages/admin/DepartmentList";
 import RoleList from "./pages/admin/RoleList";
 import JobLevelList from "./pages/admin/JobLevelList";
@@ -19,7 +22,6 @@ import HRDashboard from "./pages/admin/HRDashboard";
 
 // Mock Components for other specialized pages
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
-const ProfilePage = () => <div className="p-6"><h1 className="text-2xl font-bold">User Profile Page</h1></div>;
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -41,6 +43,7 @@ const App = () => {
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
 
         {/* Protected Routes Wrapper */}
         <Route element={<ProtectedRoute />}>
@@ -52,6 +55,9 @@ const App = () => {
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
               <Route path="/hr" element={<HRDashboard />} />
               <Route path="/employees" element={<EmployeeList />} />
+              <Route path="/employees/new" element={<EmployeeForm />} />
+              <Route path="/employees/edit/:id" element={<EmployeeForm />} />
+              
               <Route path="/departments" element={<DepartmentList />} />
               <Route path="/roles" element={<RoleList />} />
               <Route path="/job-levels" element={<JobLevelList />} />
@@ -75,7 +81,7 @@ const App = () => {
 
         {/* Default Redirects */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<div className="p-6">404 Not Found</div>} />
+        <Route path="*" element={<div className="p-6 text-center mt-20 font-bold text-gray-400">404 | Page Not Found</div>} />
       </Routes>
     </BrowserRouter>
   );

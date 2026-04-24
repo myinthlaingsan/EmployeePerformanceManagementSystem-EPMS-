@@ -122,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
                 .getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("No user Logged in");
+            throw new InvalidTokenException("No user Logged in");
         }
 
         Object principal = authentication.getPrincipal();
@@ -131,7 +131,7 @@ public class AuthServiceImpl implements AuthService {
             return userPrincipal.getEmployee();
         }
 
-        throw new RuntimeException("Invalid authentication principal");
+        throw new InvalidTokenException("Invalid authentication principal");
     }
 
     @Override

@@ -24,8 +24,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @RequestBody AuthRequest request
-    ){
+            @RequestBody AuthRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -34,8 +33,7 @@ public class AuthController {
 
     @PostMapping("/refresh-token")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
-            @RequestBody RefreshTokenRequest request
-    ){
+            @RequestBody RefreshTokenRequest request) {
         AuthResponse response = authService.refreshToken(request);
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -44,8 +42,7 @@ public class AuthController {
 
     @PutMapping("/unlock/{employeeId}")
     public ResponseEntity<ApiResponse<Employee>> unlockEmployee(
-            @PathVariable Long employeeId
-    ){
+            @PathVariable Long employeeId) {
         Employee employee = authService.unlockEmployee(employeeId);
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -55,8 +52,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<EmployeeResponse>> getCurrentUser() {
         return ResponseEntity.ok(
-                ApiResponse.success(authService.getCurrentUserProfile())
-        );
+                ApiResponse.success(authService.getCurrentUserProfile()));
     }
 
     @PostMapping("/logout")

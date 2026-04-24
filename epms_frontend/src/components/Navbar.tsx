@@ -23,7 +23,12 @@ const Navbar = () => {
               >
                 Dashboard
               </Link>
-              
+              <Link
+                to="/profile"
+                className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition"
+              >
+                Profile
+              </Link>
               {(isAdmin || isHR) && (
                 <>
                   <Link
