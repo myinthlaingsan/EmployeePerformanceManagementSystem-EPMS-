@@ -240,9 +240,12 @@ public class KpiServiceImpl implements KpiService {
             List<KpiProgress> progressList = progressRepository.findByGoalItemIdOrderByIdDesc(item.getId());
             BigDecimal latestActual = progressList.isEmpty() ? BigDecimal.ZERO : progressList.get(0).getActualValue();
 
-            // Score = (Actual / Target) * 100
-            BigDecimal score = latestActual.divide(item.getTargetValue(), 4, RoundingMode.HALF_UP)
-                    .multiply(new BigDecimal("100"));
+            BigDecimal score = BigDecimal.ZERO;
+            if (item.getTargetValue() != null && item.getTargetValue().compareTo(BigDecimal.ZERO) != 0) {
+                // Score = (Actual / Target) * 100
+                score = latestActual.divide(item.getTargetValue(), 4, RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"));
+            }
 
             // Weighted Score = Score * (Weight / 100)
             BigDecimal weightedScore = score
