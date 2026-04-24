@@ -204,9 +204,9 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .sourceType(SourceType.FEEDBACK)
                 .sourceId(feedback.getFeedbackId())
                 .title("New Reply to Feedback")
-                .description("Employee " + employee.getStaffName() + " replied: " + reply.getReplyText())
+                .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Employee ") + currentUser.getStaffName() + " replied: " + reply.getReplyText())
                 .isPrivate(feedback.getIsPrivate())
-                .createdBy(employee.getId())
+                .createdBy(currentUser.getId())
                 .build();
         historyRepository.save(history);
 
