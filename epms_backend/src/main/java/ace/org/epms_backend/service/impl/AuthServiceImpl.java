@@ -3,17 +3,11 @@ package ace.org.epms_backend.service.impl;
 import ace.org.epms_backend.dto.auth.AuthRequest;
 import ace.org.epms_backend.dto.auth.AuthResponse;
 import ace.org.epms_backend.dto.auth.RefreshTokenRequest;
-import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.exception.InvalidTokenException;
 import ace.org.epms_backend.exception.NotFoundException;
-import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.UserPrincipal;
 import ace.org.epms_backend.model.employee.Employee;
-import ace.org.epms_backend.model.employee.Permission;
-import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.EmployeeRepository;
-import ace.org.epms_backend.repository.EmployeeRoleRepository;
-import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +19,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import ace.org.epms_backend.mapper.EmployeeMapper;
+import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -37,10 +32,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final EmployeeRepository employeeRepository;
+    private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final EmployeeMapper employeeMapper;
-    private final EmployeeRoleRepository employeeRoleRepository;
-    private final RoleLevelPermissionRepository roleLevelPermissionRepository;
 
     @Override
     public AuthResponse login(AuthRequest authDto) {
@@ -68,7 +62,7 @@ public class AuthServiceImpl implements AuthService {
                 UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
                 String token = jwtService.generateAccessToken(userPrincipal);
                 String refreshToken = jwtService.generateRefreshToken(userPrincipal);
-                return new AuthResponse(token, refreshToken);
+                return new AuthResponse(token, refreshToken, "Login successful");
             }
         } catch (BadCredentialsException ex) {
             int newAttempts = employee.getFailedLoginAttempts() + 1;
@@ -85,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
             employeeRepository.save(employee);
             throw new LockedException(msg);
         }
-        return new AuthResponse("fail", "fail");
+        return new AuthResponse("fail", "fail", "Login Failed");
     }
 
     @Override
@@ -101,7 +95,7 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidTokenException("Invalid Refresh Token");
         }
         String newAccessToken = jwtService.generateAccessToken(userPrincipal);
-        return new AuthResponse(newAccessToken, refreshToken);
+        return new AuthResponse(newAccessToken, refreshToken, "new token success");
     }
 
     @Override
@@ -116,45 +110,19 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public Employee getCurrentUser() {
-
-        Authentication authentication = SecurityContextHolder
-                .getContext()
-                .getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new InvalidTokenException("No user Logged in");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication.getPrincipal().equals("anonymousUser")) {
+            return null;
         }
-
-        Object principal = authentication.getPrincipal();
-
-        if (principal instanceof UserPrincipal userPrincipal) {
-            return userPrincipal.getEmployee();
-        }
-
-        throw new InvalidTokenException("Invalid authentication principal");
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        return userPrincipal.getEmployee();
     }
 
     @Override
     public EmployeeResponse getCurrentUserProfile() {
-        return mapToResponse(getCurrentUser());
-    }
-
-    private EmployeeResponse mapToResponse(Employee emp) {
-        EmployeeResponse response = employeeMapper.toResponse(emp);
-        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(emp.getId());
-        List<String> roleNames = roles.stream()
-                .map(role -> role.getRoleName().name())
-                .toList();
-        response.setRoles(roleNames);
-
-        // Fetch permissions based on roles and level
-        List<String> permissions = roleLevelPermissionRepository.findPermissionsByRolesAndLevel(roles, emp.getLevel())
-                .stream()
-                .map(Permission::getPermissionName)
-                .toList();
-        response.setPermissions(permissions);
-
-        return response;
+        Employee employee = getCurrentUser();
+        return employee != null ? employeeMapper.toResponse(employee) : null;
     }
 
     public boolean unlockIfTimeExpired(Employee emp) {
