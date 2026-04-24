@@ -46,8 +46,8 @@ public class KpiServiceImpl implements KpiService {
                 .map(KpiLibraryDetailRequest::getWeightPercent)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
-            throw new IllegalArgumentException("Total weight must be 100%");
+        if (totalWeight.compareTo(new BigDecimal("35")) > 0) {
+            throw new IllegalArgumentException("Total weight cannot surpass 35%");
         }
 
         KpiLibrary library = kpiMapper.toLibraryEntity(request);
@@ -217,8 +217,8 @@ public class KpiServiceImpl implements KpiService {
                 .map(KpiGoalItem::getWeightPercent)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
-            throw new IllegalArgumentException("Total weight of goal items must be exactly 100%");
+        if (totalWeight.compareTo(new BigDecimal("35")) > 0) {
+            throw new IllegalArgumentException("Total weight of goal items cannot surpass 35%");
         }
 
         goalSet.setStatus(KpiGoalStatus.APPROVED);

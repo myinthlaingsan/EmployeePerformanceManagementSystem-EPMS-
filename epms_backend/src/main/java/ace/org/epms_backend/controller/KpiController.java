@@ -42,9 +42,9 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(kpiService.getAllCategories()));
     }
 
-    // 2. KPI Assignment (Manager)
+    // 2. KPI Assignment (Manager/HR/Admin)
     @PostMapping("/assign")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<ApiResponse<GoalSetResponse>> assignKpi(@Valid @RequestBody GoalAssignmentRequest request) {
         return ResponseEntity.ok(ApiResponse.success(kpiService.assignKpiToEmployee(request)));
     }
