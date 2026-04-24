@@ -190,13 +190,18 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
         checkFeedbackAccess(feedback);
-        
-        Employee employee = employeeRepository.findById(request.getEmployeeId())
-                .orElseThrow(() -> new NotFoundException("Employee not found"));
 
+        Employee currentUser = authService.getCurrentUser();
+        // Restriction: Only assigned manager or employee can reply
+        if (!currentUser.getId().equals(feedback.getEmployee().getId()) && 
+            !currentUser.getId().equals(feedback.getManager().getId())) {
+            throw new AccessDeniedException("Only the assigned manager and employee have permission to reply to feedback.");
+        }
+
+        // Use currentUser as the replier
         FeedbackReply reply = replyMapper.toEntity(request);
         reply.setFeedback(feedback);
-        reply.setEmployee(employee);
+        reply.setEmployee(currentUser);
         
         reply = replyRepository.save(reply);
 
@@ -206,9 +211,9 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .sourceType(SourceType.FEEDBACK)
                 .sourceId(feedback.getFeedbackId())
                 .title("New Reply to Feedback")
-                .description("Employee " + employee.getStaffName() + " replied: " + reply.getReplyText())
+                .description(currentUser.getStaffName() + " replied: " + reply.getReplyText())
                 .isPrivate(feedback.getIsPrivate())
-                .createdBy(employee.getId())
+                .createdBy(currentUser.getId())
                 .build();
         historyRepository.save(history);
 

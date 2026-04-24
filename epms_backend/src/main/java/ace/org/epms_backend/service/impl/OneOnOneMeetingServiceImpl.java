@@ -135,14 +135,24 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     public MeetingCommentResponse addComment(Long meetingId, MeetingCommentRequest request) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
         checkMeetingAccess(meeting);
+
+        Employee currentUser = authService.getCurrentUser();
+        // Restriction: Only assigned manager or employee can comment
+        if (!currentUser.getId().equals(meeting.getEmployee().getId()) && 
+            !currentUser.getId().equals(meeting.getManager().getId())) {
+            throw new AccessDeniedException("Only the assigned manager and employee have permission to comment on this meeting.");
+        }
+
         MeetingComment comment = commentMapper.toEntity(request);
         comment.setMeeting(meeting);
         
-        if (request.getEmployeeId() != null) {
-            comment.setEmployee(fetchEmployee(request.getEmployeeId()));
-        }
-        if (request.getManagerId() != null) {
-            comment.setManager(fetchEmployee(request.getManagerId()));
+        // Attributing the comment to the currentUser correctly
+        if (currentUser.getId().equals(meeting.getManager().getId())) {
+            comment.setManager(currentUser);
+            comment.setEmployee(null);
+        } else {
+            comment.setEmployee(currentUser);
+            comment.setManager(null);
         }
         
         MeetingComment savedComment = commentRepository.save(comment);
@@ -153,9 +163,9 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(meeting.getMeetingId())
                 .title("New Comment in Meeting")
-                .description((comment.getManager() != null ? "Manager " + comment.getManager().getStaffName() : "Employee " + comment.getEmployee().getStaffName()) + " added a comment.")
+                .description(currentUser.getStaffName() + " added a comment.")
                 .isPrivate(meeting.getIsPrivateNote())
-                .createdBy(comment.getManager() != null ? comment.getManager().getId() : comment.getEmployee().getId())
+                .createdBy(currentUser.getId())
                 .build();
         historyRepository.save(history);
 
