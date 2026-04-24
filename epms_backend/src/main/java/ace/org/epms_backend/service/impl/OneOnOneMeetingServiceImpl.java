@@ -21,6 +21,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ace.org.epms_backend.service.AuthService;
+import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.enums.RoleType;
+import ace.org.epms_backend.exception.AccessDeniedException;
+import ace.org.epms_backend.model.employee.Role;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,6 +40,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     private final OneOnOneMeetingMapper meetingMapper;
     private final MeetingCommentMapper commentMapper;
     private final PerformanceHistoryRepository historyRepository;
+    private final AuthService authService;
+    private final EmployeeRoleRepository employeeRoleRepository;
 
     @Override
     public OneOnOneMeetingResponse scheduleMeeting(OneOnOneMeetingRequest request) {
@@ -60,19 +67,34 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public OneOnOneMeetingResponse getMeetingById(Long meetingId) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
+        checkMeetingAccess(meeting);
         return meetingMapper.toResponse(meeting);
     }
 
     @Override
     public List<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId) {
+        Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
+
         return meetingRepository.findByEmployeeId(employeeId).stream()
+                .filter(m -> !Boolean.TRUE.equals(m.getIsPrivateNote()) ||
+                        isPrivileged ||
+                        currentUser.getId().equals(m.getEmployee().getId()) ||
+                        currentUser.getId().equals(m.getManager().getId()))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId) {
+        Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
+
         return meetingRepository.findByManagerId(managerId).stream()
+                .filter(m -> !Boolean.TRUE.equals(m.getIsPrivateNote()) ||
+                        isPrivileged ||
+                        currentUser.getId().equals(m.getEmployee().getId()) ||
+                        currentUser.getId().equals(m.getManager().getId()))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -136,9 +158,33 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
 
     @Override
     public List<MeetingCommentResponse> getCommentsByMeetingId(Long meetingId) {
+        OneOnOneMeeting meeting = fetchMeeting(meetingId);
+        checkMeetingAccess(meeting);
+
         return commentRepository.findByMeetingMeetingId(meetingId).stream()
                 .map(commentMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    private void checkMeetingAccess(OneOnOneMeeting meeting) {
+        if (Boolean.TRUE.equals(meeting.getIsPrivateNote())) {
+            Employee currentUser = authService.getCurrentUser();
+
+            if (currentUser.getId().equals(meeting.getEmployee().getId()) ||
+                    currentUser.getId().equals(meeting.getManager().getId())) {
+                return;
+            }
+
+            if (!isPrivileged(currentUser)) {
+                throw new AccessDeniedException("You do not have permission to view this private meeting.");
+            }
+        }
+    }
+
+    private boolean isPrivileged(Employee employee) {
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
+        return roles.stream()
+                .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
     }
 
     @Override

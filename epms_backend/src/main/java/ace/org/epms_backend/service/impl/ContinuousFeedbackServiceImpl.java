@@ -21,6 +21,11 @@ import ace.org.epms_backend.repository.PerformanceHistoryRepository;
 import ace.org.epms_backend.service.ContinuousFeedbackService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ace.org.epms_backend.service.AuthService;
+import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.enums.RoleType;
+import ace.org.epms_backend.exception.AccessDeniedException;
+import ace.org.epms_backend.model.employee.Role;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -37,6 +42,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     private final EmployeeRepository employeeRepository;
     private final FeedbackTagRepository tagRepository;
     private final PerformanceHistoryRepository historyRepository;
+    private final AuthService authService;
+    private final EmployeeRoleRepository employeeRoleRepository;
 
     @Override
     @Transactional
@@ -79,21 +86,44 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     public ContinuousFeedbackResponse getFeedbackById(Long feedbackId) {
         ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
+        
+        checkFeedbackAccess(feedback);
+        
         return feedbackMapper.toResponse(feedback);
     }
 
     @Override
     public List<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId) {
+        Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
+
         return feedbackRepository.findByEmployee_Id(employeeId).stream()
+                .filter(f -> !Boolean.TRUE.equals(f.getIsPrivate()) ||
+                        isPrivileged ||
+                        currentUser.getId().equals(f.getEmployee().getId()) ||
+                        currentUser.getId().equals(f.getManager().getId()))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId) {
+        Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
+
         return feedbackRepository.findByManager_Id(managerId).stream()
+                .filter(f -> !Boolean.TRUE.equals(f.getIsPrivate()) ||
+                        isPrivileged ||
+                        currentUser.getId().equals(f.getEmployee().getId()) ||
+                        currentUser.getId().equals(f.getManager().getId()))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    private boolean isPrivileged(Employee employee) {
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
+        return roles.stream()
+                .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
     }
 
     @Override
@@ -179,9 +209,30 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
 
     @Override
     public List<FeedbackReplyResponse> getRepliesForFeedback(Long feedbackId) {
+        ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new NotFoundException("Feedback not found"));
+        
+        checkFeedbackAccess(feedback);
+
         return replyRepository.findByFeedback_FeedbackId(feedbackId).stream()
                 .map(replyMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    private void checkFeedbackAccess(ContinuousFeedback feedback) {
+        if (Boolean.TRUE.equals(feedback.getIsPrivate())) {
+            Employee currentUser = authService.getCurrentUser();
+
+            // Check if current user is the employee or manager of the feedback
+            if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
+                    currentUser.getId().equals(feedback.getManager().getId())) {
+                return;
+            }
+
+            if (!isPrivileged(currentUser)) {
+                throw new AccessDeniedException("You do not have permission to view this private feedback.");
+            }
+        }
     }
 
     @Override

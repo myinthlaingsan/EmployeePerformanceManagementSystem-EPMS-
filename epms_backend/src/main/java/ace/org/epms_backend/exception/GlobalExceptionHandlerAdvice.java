@@ -88,4 +88,10 @@ public class GlobalExceptionHandlerAdvice {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
     }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<?>> handleAccessDenied(AccessDeniedException ex){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>(403,ex.getMessage(),null,LocalDateTime.now()));
+    }
 }
