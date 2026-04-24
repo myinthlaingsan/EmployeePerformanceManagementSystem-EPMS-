@@ -41,13 +41,21 @@ public class KpiServiceImpl implements KpiService {
     @Override
     @Transactional
     public KpiLibraryResponse createLibrary(KpiLibraryRequest request) {
-        // Validate total weight
+        // Check individual item cap (35%)
+        boolean anyItemExceedsCap = request.getDetails().stream()
+                .anyMatch(d -> d.getWeightPercent().compareTo(new BigDecimal("35")) > 0);
+
+        if (anyItemExceedsCap) {
+            throw new IllegalArgumentException("Individual KPI weight cannot exceed 35%");
+        }
+
         BigDecimal totalWeight = request.getDetails().stream()
                 .map(KpiLibraryDetailRequest::getWeightPercent)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (totalWeight.compareTo(new BigDecimal("35")) > 0) {
-            throw new IllegalArgumentException("Total weight cannot surpass 35%");
+        // Check total weight (100%)
+        if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
+            throw new IllegalArgumentException("Total weight must be exactly 100%");
         }
 
         KpiLibrary library = kpiMapper.toLibraryEntity(request);
@@ -147,6 +155,10 @@ public class KpiServiceImpl implements KpiService {
             throw new IllegalStateException("Only DRAFT goals can be modified");
         }
 
+        if (request.getWeightPercent().compareTo(new BigDecimal("35")) > 0) {
+            throw new IllegalArgumentException("Individual KPI weight cannot exceed 35%");
+        }
+
         KpiGoalItem item = KpiGoalItem.builder()
                 .goalSet(goalSet)
                 .title(request.getTitle())
@@ -173,6 +185,10 @@ public class KpiServiceImpl implements KpiService {
         KpiGoals goalSet = item.getGoalSet();
         if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
             throw new IllegalStateException("Only DRAFT goals can be modified");
+        }
+
+        if (request.getWeightPercent().compareTo(new BigDecimal("35")) > 0) {
+            throw new IllegalArgumentException("Individual KPI weight cannot exceed 35%");
         }
 
         item.setTitle(request.getTitle());
@@ -217,8 +233,8 @@ public class KpiServiceImpl implements KpiService {
                 .map(KpiGoalItem::getWeightPercent)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        if (totalWeight.compareTo(new BigDecimal("35")) > 0) {
-            throw new IllegalArgumentException("Total weight of goal items cannot surpass 35%");
+        if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
+            throw new IllegalArgumentException("Total weight of goal items must be exactly 100%");
         }
 
         goalSet.setStatus(KpiGoalStatus.APPROVED);
