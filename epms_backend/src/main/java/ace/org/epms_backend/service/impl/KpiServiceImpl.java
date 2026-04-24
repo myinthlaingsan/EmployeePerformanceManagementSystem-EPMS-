@@ -248,7 +248,8 @@ public class KpiServiceImpl implements KpiService {
         progress.setUpdatedBy(currentUser.getId());
         progressRepository.save(progress);
 
-        // Update item status
+        // Update item status and snapshot value
+        item.setActualValue(request.getActualValue());
         if (request.getProgressPercent().compareTo(new BigDecimal("100")) >= 0) {
             item.setStatus(KpiItemStatus.COMPLETED);
         } else {
@@ -306,14 +307,37 @@ public class KpiServiceImpl implements KpiService {
                         item.setWeightPercent(i.getWeightPercent());
                         item.setUnit(i.getUnit());
                         item.setCategory(i.getCategory());
+                        item.setActualValue(i.getActualValue());
+                        item.setStatus(i.getStatus());
                     }
                     return item;
                 })
                 .toList();
 
-        goalItemRepo.saveAll(newItems);
+        List<KpiGoalItem> savedNewItems = goalItemRepo.saveAll(newItems);
 
-        // 4. history log
+        // 4. Carry over progress history for unchanged items
+        for (int index = 0; index < oldGoalSet.getItems().size(); index++) {
+            KpiGoalItem oldItemEntity = oldGoalSet.getItems().get(index);
+            KpiGoalItem newItemEntity = savedNewItems.get(index);
+
+            // If this item was NOT the one revised, copy its progress history
+            if (!oldItemEntity.getId().equals(itemId)) {
+                List<KpiProgress> oldProgress = progressRepository.findByGoalItemIdOrderByIdDesc(oldItemEntity.getId());
+                List<KpiProgress> clonedProgress = oldProgress.stream().map(op -> {
+                    return KpiProgress.builder()
+                            .goalItem(newItemEntity)
+                            .actualValue(op.getActualValue())
+                            .progressPercent(op.getProgressPercent())
+                            .evidenceNote(op.getEvidenceNote())
+                            .updatedBy(op.getUpdatedBy())
+                            .build();
+                }).collect(Collectors.toList());
+                progressRepository.saveAll(clonedProgress);
+            }
+        }
+
+        // 5. history log
         historyRepo.save(
                 KpiHistoryLog.builder()
                         .employeeId(oldGoalSet.getEmployee().getId())
