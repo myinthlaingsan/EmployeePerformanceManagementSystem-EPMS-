@@ -7,6 +7,7 @@ import ace.org.epms_backend.exception.*;
 import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.employee.*;
 import ace.org.epms_backend.repository.*;
+import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.EmployeeService;
 import jakarta.transaction.Transactional;
@@ -34,7 +35,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
     private final DepartmentRepository departmentRepository;
-
+    private final AuthService authService;
     @Override
     @Transactional
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
@@ -180,9 +181,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional
-    public EmployeeResponse updateProfile(Long id, UpdateProfileRequest request) {
-        Employee emp = employeeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Employee not found"));
+    public EmployeeResponse updateProfile(UpdateProfileRequest request) {
+        Employee emp = authService.getCurrentUser();
 
         // Optional: prevent duplicate email
         if (request.getEmail() != null &&
