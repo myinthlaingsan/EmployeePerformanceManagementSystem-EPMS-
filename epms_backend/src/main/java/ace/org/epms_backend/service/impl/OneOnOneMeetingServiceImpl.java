@@ -57,6 +57,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceId(savedMeeting.getMeetingId())
                 .title("New 1-on-1 Meeting Scheduled")
                 .description("Meeting scheduled for " + savedMeeting.getMeetingDate() + " at " + savedMeeting.getMeetingTime())
+                .isPrivate(savedMeeting.getIsPrivateNote())
                 .createdBy(savedMeeting.getManager().getId())
                 .build();
         historyRepository.save(history);
@@ -102,6 +103,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public OneOnOneMeetingResponse updateMeeting(Long meetingId, OneOnOneMeetingRequest request) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
+        checkMeetingAccess(meeting);
         meetingMapper.updateEntityFromRequest(request, meeting);
         meeting.setEmployee(fetchEmployee(request.getEmployeeId()));
         meeting.setManager(fetchEmployee(request.getManagerId()));
@@ -114,6 +116,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceId(updatedMeeting.getMeetingId())
                 .title("1-on-1 Meeting Updated")
                 .description("Meeting details were updated.")
+                .isPrivate(updatedMeeting.getIsPrivateNote())
                 .createdBy(updatedMeeting.getManager().getId())
                 .build();
         historyRepository.save(history);
@@ -124,6 +127,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public void deleteMeeting(Long meetingId) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
+        checkMeetingAccess(meeting);
         meetingRepository.delete(meeting);
     }
 
@@ -149,6 +153,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceId(meeting.getMeetingId())
                 .title("New Comment in Meeting")
                 .description((comment.getManager() != null ? "Manager " + comment.getManager().getStaffName() : "Employee " + comment.getEmployee().getStaffName()) + " added a comment.")
+                .isPrivate(meeting.getIsPrivateNote())
                 .createdBy(comment.getManager() != null ? comment.getManager().getId() : comment.getEmployee().getId())
                 .build();
         historyRepository.save(history);

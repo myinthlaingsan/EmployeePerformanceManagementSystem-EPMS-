@@ -9,6 +9,12 @@ import ace.org.epms_backend.repository.PerformanceHistoryRepository;
 import ace.org.epms_backend.service.PerformanceHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ace.org.epms_backend.service.AuthService;
+import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.enums.RoleType;
+import ace.org.epms_backend.exception.AccessDeniedException;
+import ace.org.epms_backend.model.employee.Role;
+import ace.org.epms_backend.model.employee.Employee;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -21,17 +27,31 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
 
     private final PerformanceHistoryRepository historyRepository;
     private final PerformanceHistoryMapper historyMapper;
+    private final AuthService authService;
+    private final EmployeeRoleRepository employeeRoleRepository;
 
     @Override
     public List<PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId) {
+        Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
+
         return historyRepository.findByEmployee_Id(employeeId).stream()
+                .filter(h -> !Boolean.TRUE.equals(h.getIsPrivate()) ||
+                        isPrivileged ||
+                        currentUser.getId().equals(h.getEmployee().getId()))
                 .map(historyMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<PerformanceHistoryResponse> getHistoryBySource(SourceType sourceType, Long sourceId) {
+        Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
+
         return historyRepository.findBySourceTypeAndSourceId(sourceType, sourceId).stream()
+                .filter(h -> !Boolean.TRUE.equals(h.getIsPrivate()) ||
+                        isPrivileged ||
+                        currentUser.getId().equals(h.getEmployee().getId()))
                 .map(historyMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -40,6 +60,20 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     public PerformanceHistoryResponse getHistoryById(Long historyId) {
         PerformanceHistory history = historyRepository.findById(historyId)
                 .orElseThrow(() -> new NotFoundException("Performance history not found with id: " + historyId));
+        
+        if (Boolean.TRUE.equals(history.getIsPrivate())) {
+            Employee currentUser = authService.getCurrentUser();
+            if (!currentUser.getId().equals(history.getEmployee().getId()) && !isPrivileged(currentUser)) {
+                throw new AccessDeniedException("You do not have permission to view this private history entry.");
+            }
+        }
+        
         return historyMapper.toResponse(history);
+    }
+
+    private boolean isPrivileged(Employee employee) {
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
+        return roles.stream()
+                .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
     }
 }

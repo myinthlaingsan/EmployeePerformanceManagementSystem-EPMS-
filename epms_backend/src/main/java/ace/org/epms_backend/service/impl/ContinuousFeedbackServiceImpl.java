@@ -75,6 +75,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .sourceId(feedback.getFeedbackId())
                 .title("New Continuous Feedback")
                 .description("Manager " + manager.getStaffName() + " created feedback: " + feedback.getDescription())
+                .isPrivate(feedback.getIsPrivate())
                 .createdBy(manager.getId())
                 .build();
         historyRepository.save(history);
@@ -162,6 +163,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .sourceId(feedback.getFeedbackId())
                 .title("Updated Continuous Feedback")
                 .description("Feedback was updated. New description: " + feedback.getDescription())
+                .isPrivate(feedback.getIsPrivate())
                 .createdBy(feedback.getManager().getId())
                 .build();
         historyRepository.save(history);
@@ -200,6 +202,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .sourceId(feedback.getFeedbackId())
                 .title("New Reply to Feedback")
                 .description("Employee " + employee.getStaffName() + " replied: " + reply.getReplyText())
+                .isPrivate(feedback.getIsPrivate())
                 .createdBy(employee.getId())
                 .build();
         historyRepository.save(history);
