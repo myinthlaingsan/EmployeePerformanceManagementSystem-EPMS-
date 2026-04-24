@@ -121,8 +121,8 @@ public class AuthServiceImpl implements AuthService {
                 .getContext()
                 .getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new InvalidTokenException("No user Logged in");
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new InvalidTokenException("No user logged in or session expired. Please provide a valid authentication token.");
         }
 
         Object principal = authentication.getPrincipal();
