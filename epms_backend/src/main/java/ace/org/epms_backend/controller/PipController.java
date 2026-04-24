@@ -1,6 +1,7 @@
 package ace.org.epms_backend.controller;
 
 import ace.org.epms_backend.dto.pip.PipCreateRequest;
+import ace.org.epms_backend.dto.pip.PipExtendRequest;
 import ace.org.epms_backend.dto.pip.PipResponse;
 import ace.org.epms_backend.service.PipService;
 import lombok.RequiredArgsConstructor;
@@ -43,5 +44,11 @@ public class PipController {
     public ResponseEntity<Void> activatePip(@PathVariable Long id) {
         pipService.activatePip(id);
         return ResponseEntity.ok().build();
+    }
+
+    @PreAuthorize("hasRole('HR')")
+    @PutMapping("/{id}/extend")
+    public ResponseEntity<PipResponse> extendPip(@PathVariable Long id, @RequestBody PipExtendRequest request) {
+        return ResponseEntity.ok(pipService.extendPip(id, request.getNewEndDate()));
     }
 }

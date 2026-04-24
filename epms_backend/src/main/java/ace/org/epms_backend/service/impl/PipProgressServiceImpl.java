@@ -2,6 +2,7 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.pip.PipProgressRequest;
 import ace.org.epms_backend.dto.pip.PipProgressResponse;
+import ace.org.epms_backend.enums.ObjectiveStatus;
 import ace.org.epms_backend.enums.PipStatus;
 import ace.org.epms_backend.exception.AccessDeniedException;
 import ace.org.epms_backend.exception.InvalidStateException;
@@ -37,8 +38,8 @@ public class PipProgressServiceImpl implements PipProgressService {
         PipObjective objective = objectiveRepository.findById(request.getObjectiveId())
                 .orElseThrow(() -> new NotFoundException("Objective not found"));
 
-        if (objective.getPip().getStatus() != PipStatus.ACTIVE) {
-            throw new InvalidStateException("Can only log progress on ACTIVE PIP");
+        if (objective.getPip().getStatus() != PipStatus.ACTIVE && objective.getPip().getStatus() != PipStatus.EXTENDED) {
+            throw new InvalidStateException("Can only log progress on ACTIVE or EXTENDED PIP");
         }
 
         // 🔐 ONLY EMPLOYEE OWNERS CAN ADD PROGRESS
@@ -46,9 +47,21 @@ public class PipProgressServiceImpl implements PipProgressService {
             throw new AccessDeniedException("Not your PIP objective");
         }
 
+        if (request.getProgressPercent().compareTo(java.math.BigDecimal.ZERO) < 0 ||
+                request.getProgressPercent().compareTo(new java.math.BigDecimal("100")) > 0) {
+            throw new InvalidStateException("Progress percentage must be between 0 and 100");
+        }
+
         PipProgressLog log = mapper.toEntity(request);
         log.setObjective(objective);
         log.setUpdatedBy(current.getId());
+
+        // Auto transition status if NOT_STARTED
+        if (objective.getStatus() == ObjectiveStatus.NOT_STARTED) {
+            objective.setStatus(ObjectiveStatus.IN_PROGRESS);
+            objective.setUpdatedBy(current.getId()); // Track who triggered status change
+            objectiveRepository.save(objective);
+        }
 
         return mapper.toResponse(progressRepository.save(log));
     }

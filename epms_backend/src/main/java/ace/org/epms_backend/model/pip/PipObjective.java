@@ -41,5 +41,7 @@ public class PipObjective extends BaseEntity {
 
     private Boolean isAchieved = false;
 
+    private Long updatedBy;
+
     private Boolean isActive = true;
 }

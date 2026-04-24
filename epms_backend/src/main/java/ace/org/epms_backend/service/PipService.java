@@ -3,6 +3,7 @@ package ace.org.epms_backend.service;
 import ace.org.epms_backend.dto.pip.PipCreateRequest;
 import ace.org.epms_backend.dto.pip.PipResponse;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface PipService {
@@ -16,4 +17,6 @@ public interface PipService {
     List<PipResponse> getPipsByEmployee(Long employeeId);
 
     void activatePip(Long id);
+
+    PipResponse extendPip(Long id, LocalDate newEndDate);
 }

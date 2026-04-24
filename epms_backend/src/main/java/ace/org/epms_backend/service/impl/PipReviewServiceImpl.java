@@ -44,8 +44,8 @@ public class PipReviewServiceImpl implements PipReviewService {
         PipRecord pip = pipRepository.findById(request.getPipId())
                 .orElseThrow(() -> new NotFoundException("PIP not found"));
 
-        if (pip.getStatus() != PipStatus.ACTIVE) {
-            throw new InvalidStateException("Reviews can only be created for ACTIVE PIP");
+        if (pip.getStatus() != PipStatus.ACTIVE && pip.getStatus() != PipStatus.EXTENDED) {
+            throw new InvalidStateException("Reviews can only be created for ACTIVE or EXTENDED PIP");
         }
 
         // 🔐 ONLY HR OR ASSIGNED MANAGER CAN CREATE REVIEW

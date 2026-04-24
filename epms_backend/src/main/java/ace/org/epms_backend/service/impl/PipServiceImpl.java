@@ -12,9 +12,13 @@ import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.PipRecordRepository;
 import ace.org.epms_backend.service.PipService;
 import ace.org.epms_backend.mapper.PipMapper;
+import ace.org.epms_backend.enums.ObjectiveStatus;
+import ace.org.epms_backend.model.pip.PipObjective;
+import ace.org.epms_backend.repository.PipObjectiveRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -23,6 +27,7 @@ public class PipServiceImpl implements PipService {
 
     private final PipRecordRepository pipRecordRepository;
     private final EmployeeRepository employeeRepository;
+    private final PipObjectiveRepository objectiveRepository;
     private final PipMapper pipMapper;
 
     @Override
@@ -83,5 +88,21 @@ public class PipServiceImpl implements PipService {
 
         pip.setStatus(PipStatus.ACTIVE);
         pipRecordRepository.save(pip);
+    }
+
+    @Override
+    public PipResponse extendPip(Long id, LocalDate newEndDate) {
+        PipRecord pip = pipRecordRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("PIP not found"));
+
+        if (pip.getStatus() != PipStatus.ACTIVE && pip.getStatus() != PipStatus.EXTENDED) {
+            throw new InvalidStateException("Only ACTIVE or EXTENDED PIP can be extended");
+        }
+
+        pip.setEndDate(newEndDate);
+        pip.setStatus(PipStatus.EXTENDED);
+        pip = pipRecordRepository.save(pip);
+
+        return pipMapper.toResponse(pip);
     }
 }

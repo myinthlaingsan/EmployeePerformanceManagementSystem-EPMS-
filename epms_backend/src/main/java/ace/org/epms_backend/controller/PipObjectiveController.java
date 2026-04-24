@@ -3,6 +3,7 @@ package ace.org.epms_backend.controller;
 import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.pip.PipObjectiveRequest;
 import ace.org.epms_backend.dto.pip.PipObjectiveResponse;
+import ace.org.epms_backend.enums.ObjectiveStatus;
 import ace.org.epms_backend.service.PipObjectiveService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,10 +48,10 @@ public class PipObjectiveController {
     @PutMapping("/{id}/status")
     public ResponseEntity<ApiResponse<PipObjectiveResponse>> updateStatus(
             @PathVariable Long id,
-            @RequestParam Boolean achieved
+            @RequestParam ObjectiveStatus status
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(service.updateObjectiveStatus(id, achieved))
+                ApiResponse.success(service.updateObjectiveStatus(id, status))
         );
     }
 }

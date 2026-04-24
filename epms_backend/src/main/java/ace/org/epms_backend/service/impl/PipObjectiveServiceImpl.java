@@ -80,7 +80,7 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
     // UPDATE STATUS (MANAGER / HR ONLY)
     // =========================
     @Override
-    public PipObjectiveResponse updateObjectiveStatus(Long id, Boolean achieved) {
+    public PipObjectiveResponse updateObjectiveStatus(Long id, ObjectiveStatus status) {
 
         if (hasRole("EMPLOYEE")) {
             throw new AccessDeniedException("Only Manager or HR can update objectives");
@@ -89,10 +89,9 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
         PipObjective objective = objectiveRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Objective not found"));
 
-        objective.setIsAchieved(achieved);
-        objective.setStatus(
-                achieved ? ObjectiveStatus.COMPLETED : ObjectiveStatus.IN_PROGRESS
-        );
+        objective.setStatus(status);
+        objective.setIsAchieved(status == ObjectiveStatus.COMPLETED);
+        objective.setUpdatedBy(authService.getCurrentUser().getId());
 
         return mapper.toResponse(objectiveRepository.save(objective));
     }
