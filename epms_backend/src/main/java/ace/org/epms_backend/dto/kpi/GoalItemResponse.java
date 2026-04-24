@@ -13,4 +13,5 @@ public class GoalItemResponse {
     private BigDecimal weightPercent;
     private KpiItemStatus status;
     private BigDecimal currentProgress;
+    private String categoryName;
 }

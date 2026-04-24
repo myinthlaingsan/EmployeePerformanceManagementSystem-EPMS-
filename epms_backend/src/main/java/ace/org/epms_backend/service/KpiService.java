@@ -11,10 +11,18 @@ public interface KpiService {
 
     KpiLibraryResponse toggleLibraryStatus(Long id, boolean status);
 
+    List<KpiCategoryResponse> getAllCategories();
+
     // KPI Assignment
     GoalSetResponse assignKpiToEmployee(GoalAssignmentRequest request);
 
     // Goal Management
+    GoalSetResponse addGoalItem(Long goalSetId, KpiGoalItemRequest request);
+
+    GoalSetResponse updateGoalItem(Long itemId, KpiGoalItemRequest request);
+
+    GoalSetResponse deleteGoalItem(Long itemId);
+
     GoalSetResponse approveGoalSet(Long goalSetId);
 
     // Progress

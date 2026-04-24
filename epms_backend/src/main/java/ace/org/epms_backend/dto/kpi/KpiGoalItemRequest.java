@@ -1,6 +1,5 @@
 package ace.org.epms_backend.dto.kpi;
 
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -8,16 +7,17 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-public class KpiLibraryDetailRequest {
-    @NotBlank(message = "Goal title is required")
-    private String goalTitle;
+public class KpiGoalItemRequest {
+    @NotBlank(message = "Title is required")
+    private String title;
+
+    @NotBlank(message = "Unit is required")
+    private String unit;
 
     @NotNull(message = "Target value is required")
-    @DecimalMin(value = "0.01", message = "Target value must be greater than 0")
     private BigDecimal targetValue;
 
     @NotNull(message = "Weight percent is required")
-    @DecimalMin(value = "0.01", message = "Weight percent must be greater than 0")
     private BigDecimal weightPercent;
 
     @NotNull(message = "Category ID is required")

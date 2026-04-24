@@ -37,6 +37,11 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(kpiService.toggleLibraryStatus(id, active)));
     }
 
+    @GetMapping("/categories")
+    public ResponseEntity<ApiResponse<List<KpiCategoryResponse>>> getAllCategories() {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.getAllCategories()));
+    }
+
     // 2. KPI Assignment (Manager)
     @PostMapping("/assign")
     @PreAuthorize("hasRole('MANAGER')")
@@ -44,7 +49,26 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(kpiService.assignKpiToEmployee(request)));
     }
 
-    // 3. Goal Approval
+    // 3. Goal Item Management (Manager - Pre-Approval)
+    @PostMapping("/goal-set/{goalSetId}/items")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<ApiResponse<GoalSetResponse>> addGoalItem(@PathVariable Long goalSetId, @Valid @RequestBody KpiGoalItemRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.addGoalItem(goalSetId, request)));
+    }
+
+    @PutMapping("/items/{itemId}")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<ApiResponse<GoalSetResponse>> updateGoalItem(@PathVariable Long itemId, @Valid @RequestBody KpiGoalItemRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.updateGoalItem(itemId, request)));
+    }
+
+    @DeleteMapping("/items/{itemId}")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<ApiResponse<GoalSetResponse>> deleteGoalItem(@PathVariable Long itemId) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.deleteGoalItem(itemId)));
+    }
+
+    // 4. Goal Approval
     @PostMapping("/approve/{id}")
     @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<ApiResponse<GoalSetResponse>> approveGoals(@PathVariable Long id) {

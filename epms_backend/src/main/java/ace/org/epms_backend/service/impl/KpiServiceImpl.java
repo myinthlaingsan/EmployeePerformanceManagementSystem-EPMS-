@@ -36,6 +36,7 @@ public class KpiServiceImpl implements KpiService {
     private final KpiGoalItemRepository goalItemRepo;
     private final KpiGoalsRepository goalsRepo;
     private final KpiHistoryLogRepository historyRepo;
+    private final KpiCategoryRepository categoryRepository;
 
     @Override
     @Transactional
@@ -58,6 +59,8 @@ public class KpiServiceImpl implements KpiService {
         List<KpiLibraryDetails> details = request.getDetails().stream().map(d -> {
             KpiLibraryDetails detail = kpiMapper.toLibraryDetailEntity(d);
             detail.setLibrary(savedLibrary);
+            detail.setCategory(categoryRepository.findById(d.getCategoryId())
+                    .orElseThrow(() -> new NotFoundException("Category not found")));
             return detail;
         }).collect(Collectors.toList());
 
@@ -82,6 +85,16 @@ public class KpiServiceImpl implements KpiService {
         library.setIsActive(status);
         KpiLibrary updatedLibrary = libraryRepository.save(library);
         return kpiMapper.toLibraryResponse(updatedLibrary);
+    }
+
+    @Override
+    public List<KpiCategoryResponse> getAllCategories() {
+        return categoryRepository.findAll().stream()
+                .map(cat -> KpiCategoryResponse.builder()
+                        .id(cat.getId())
+                        .name(cat.getName())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -113,6 +126,7 @@ public class KpiServiceImpl implements KpiService {
                     .title(libDetail.getGoalTitle())
                     .targetValue(libDetail.getTargetValue())
                     .weightPercent(libDetail.getWeightPercent())
+                    .category(libDetail.getCategory())
                     .status(KpiItemStatus.NOT_STARTED)
                     .isActive(true)
                     .build();
@@ -125,12 +139,86 @@ public class KpiServiceImpl implements KpiService {
 
     @Override
     @Transactional
+    public GoalSetResponse addGoalItem(Long goalSetId, KpiGoalItemRequest request) {
+        KpiGoals goalSet = goalsRepository.findById(goalSetId)
+                .orElseThrow(() -> new NotFoundException("Goal set not found"));
+
+        if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
+            throw new IllegalStateException("Only DRAFT goals can be modified");
+        }
+
+        KpiGoalItem item = KpiGoalItem.builder()
+                .goalSet(goalSet)
+                .title(request.getTitle())
+                .unit(request.getUnit())
+                .targetValue(request.getTargetValue())
+                .weightPercent(request.getWeightPercent())
+                .category(categoryRepository.findById(request.getCategoryId())
+                        .orElseThrow(() -> new NotFoundException("Category not found")))
+                .status(KpiItemStatus.NOT_STARTED)
+                .isActive(true)
+                .build();
+
+        goalItemRepository.save(item);
+        goalSet.getItems().add(item);
+        return kpiMapper.toGoalSetResponse(goalSet);
+    }
+
+    @Override
+    @Transactional
+    public GoalSetResponse updateGoalItem(Long itemId, KpiGoalItemRequest request) {
+        KpiGoalItem item = goalItemRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundException("Goal item not found"));
+
+        KpiGoals goalSet = item.getGoalSet();
+        if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
+            throw new IllegalStateException("Only DRAFT goals can be modified");
+        }
+
+        item.setTitle(request.getTitle());
+        item.setUnit(request.getUnit());
+        item.setTargetValue(request.getTargetValue());
+        item.setWeightPercent(request.getWeightPercent());
+        item.setCategory(categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new NotFoundException("Category not found")));
+
+        goalItemRepository.save(item);
+        return kpiMapper.toGoalSetResponse(goalSet);
+    }
+
+    @Override
+    @Transactional
+    public GoalSetResponse deleteGoalItem(Long itemId) {
+        KpiGoalItem item = goalItemRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundException("Goal item not found"));
+
+        KpiGoals goalSet = item.getGoalSet();
+        if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
+            throw new IllegalStateException("Only DRAFT goals can be modified");
+        }
+
+        goalItemRepository.delete(item);
+        goalSet.getItems().remove(item);
+        return kpiMapper.toGoalSetResponse(goalSet);
+    }
+
+    @Override
+    @Transactional
     public GoalSetResponse approveGoalSet(Long goalSetId) {
         KpiGoals goalSet = goalsRepository.findById(goalSetId)
                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
 
         if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
             throw new IllegalStateException("Only DRAFT goals can be approved");
+        }
+
+        BigDecimal totalWeight = goalSet.getItems().stream()
+                .filter(KpiGoalItem::getIsActive)
+                .map(KpiGoalItem::getWeightPercent)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
+            throw new IllegalArgumentException("Total weight of goal items must be exactly 100%");
         }
 
         goalSet.setStatus(KpiGoalStatus.APPROVED);
@@ -202,10 +290,23 @@ public class KpiServiceImpl implements KpiService {
                 .map(i -> {
                     KpiGoalItem item = new KpiGoalItem();
                     item.setGoalSet(savedGoalSet);
-                    item.setTitle(i.getTitle());
-                    item.setTargetValue(i.getTargetValue());
-                    item.setWeightPercent(i.getWeightPercent());
                     item.setStatus(KpiItemStatus.NOT_STARTED);
+                    item.setIsActive(true);
+
+                    if (i.getId().equals(itemId)) {
+                        item.setTitle(request.getUpdatedDetails().getGoalTitle());
+                        item.setTargetValue(request.getUpdatedDetails().getTargetValue());
+                        item.setWeightPercent(request.getUpdatedDetails().getWeightPercent());
+                        item.setUnit(i.getUnit());
+                        item.setCategory(categoryRepository.findById(request.getUpdatedDetails().getCategoryId())
+                                .orElseThrow(() -> new NotFoundException("Category not found")));
+                    } else {
+                        item.setTitle(i.getTitle());
+                        item.setTargetValue(i.getTargetValue());
+                        item.setWeightPercent(i.getWeightPercent());
+                        item.setUnit(i.getUnit());
+                        item.setCategory(i.getCategory());
+                    }
                     return item;
                 })
                 .toList();
