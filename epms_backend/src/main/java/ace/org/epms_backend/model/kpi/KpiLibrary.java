@@ -16,9 +16,6 @@ public class KpiLibrary {
 
     private String title;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
     @ManyToOne
     @JoinColumn(name = "position_id")
     private Position position;
