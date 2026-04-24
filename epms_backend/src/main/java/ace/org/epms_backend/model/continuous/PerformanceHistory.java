@@ -34,6 +34,7 @@ public class PerformanceHistory extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Builder.Default
     private Boolean isPrivate = false;
 
     private Long createdBy;
