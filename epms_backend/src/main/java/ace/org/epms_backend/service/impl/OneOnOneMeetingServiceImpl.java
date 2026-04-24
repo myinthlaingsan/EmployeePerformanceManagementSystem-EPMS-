@@ -75,12 +75,9 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public List<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivileged = isPrivileged(currentUser);
 
         return meetingRepository.findByEmployeeId(employeeId).stream()
-                .filter(m -> !Boolean.TRUE.equals(m.getIsPrivateNote()) ||
-                        isPrivileged ||
-                        currentUser.getId().equals(m.getEmployee().getId()) ||
+                .filter(m -> currentUser.getId().equals(m.getEmployee().getId()) ||
                         currentUser.getId().equals(m.getManager().getId()))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
@@ -89,12 +86,9 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public List<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId) {
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivileged = isPrivileged(currentUser);
 
         return meetingRepository.findByManagerId(managerId).stream()
-                .filter(m -> !Boolean.TRUE.equals(m.getIsPrivateNote()) ||
-                        isPrivileged ||
-                        currentUser.getId().equals(m.getEmployee().getId()) ||
+                .filter(m -> currentUser.getId().equals(m.getEmployee().getId()) ||
                         currentUser.getId().equals(m.getManager().getId()))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
@@ -135,24 +129,14 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     public MeetingCommentResponse addComment(Long meetingId, MeetingCommentRequest request) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
         checkMeetingAccess(meeting);
-
-        Employee currentUser = authService.getCurrentUser();
-        // Restriction: Only assigned manager or employee can comment
-        if (!currentUser.getId().equals(meeting.getEmployee().getId()) && 
-            !currentUser.getId().equals(meeting.getManager().getId())) {
-            throw new AccessDeniedException("Only the assigned manager and employee have permission to comment on this meeting.");
-        }
-
         MeetingComment comment = commentMapper.toEntity(request);
         comment.setMeeting(meeting);
         
-        // Attributing the comment to the currentUser correctly
-        if (currentUser.getId().equals(meeting.getManager().getId())) {
-            comment.setManager(currentUser);
-            comment.setEmployee(null);
-        } else {
-            comment.setEmployee(currentUser);
-            comment.setManager(null);
+        if (request.getEmployeeId() != null) {
+            comment.setEmployee(fetchEmployee(request.getEmployeeId()));
+        }
+        if (request.getManagerId() != null) {
+            comment.setManager(fetchEmployee(request.getManagerId()));
         }
         
         MeetingComment savedComment = commentRepository.save(comment);
@@ -163,9 +147,9 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(meeting.getMeetingId())
                 .title("New Comment in Meeting")
-                .description(currentUser.getStaffName() + " added a comment.")
+                .description((comment.getManager() != null ? "Manager " + comment.getManager().getStaffName() : "Employee " + comment.getEmployee().getStaffName()) + " added a comment.")
                 .isPrivate(meeting.getIsPrivateNote())
-                .createdBy(currentUser.getId())
+                .createdBy(comment.getManager() != null ? comment.getManager().getId() : comment.getEmployee().getId())
                 .build();
         historyRepository.save(history);
 
@@ -183,30 +167,23 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     }
 
     private void checkMeetingAccess(OneOnOneMeeting meeting) {
-        if (Boolean.TRUE.equals(meeting.getIsPrivateNote())) {
-            Employee currentUser = authService.getCurrentUser();
+        Employee currentUser = authService.getCurrentUser();
 
-            if (currentUser.getId().equals(meeting.getEmployee().getId()) ||
-                    currentUser.getId().equals(meeting.getManager().getId())) {
-                return;
-            }
-
-            if (!isPrivileged(currentUser)) {
-                throw new NotFoundException("Meeting not found");
-            }
+        if (currentUser.getId().equals(meeting.getEmployee().getId()) ||
+                currentUser.getId().equals(meeting.getManager().getId())) {
+            return;
         }
-    }
 
-    private boolean isPrivileged(Employee employee) {
-        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
-        return roles.stream()
-                .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
+        throw new NotFoundException("Meeting not found");
     }
 
     @Override
     public void deleteComment(Long commentId) {
         MeetingComment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new NotFoundException("Comment not found with id: " + commentId));
+                .orElseThrow(() -> new NotFoundException("Comment not found"));
+        
+        checkMeetingAccess(comment.getMeeting());
+        
         commentRepository.delete(comment);
     }
 

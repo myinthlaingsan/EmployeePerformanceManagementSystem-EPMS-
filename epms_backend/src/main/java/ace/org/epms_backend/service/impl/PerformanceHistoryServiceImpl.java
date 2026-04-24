@@ -31,12 +31,9 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     @Override
     public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivileged = isPrivileged(currentUser);
 
         return historyRepository.findByEmployee_Id(employeeId).stream()
-                .filter(h -> !Boolean.TRUE.equals(h.getIsPrivate()) ||
-                        isPrivileged ||
-                        currentUser.getId().equals(h.getEmployee().getId()))
+                .filter(h -> currentUser.getId().equals(h.getEmployee().getId()))
                 .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
     }
@@ -44,12 +41,9 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     @Override
     public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryBySource(SourceType sourceType, Long sourceId) {
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivileged = isPrivileged(currentUser);
 
         return historyRepository.findBySourceTypeAndSourceId(sourceType, sourceId).stream()
-                .filter(h -> !Boolean.TRUE.equals(h.getIsPrivate()) ||
-                        isPrivileged ||
-                        currentUser.getId().equals(h.getEmployee().getId()))
+                .filter(h -> currentUser.getId().equals(h.getEmployee().getId()))
                 .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
     }
@@ -59,11 +53,9 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
         PerformanceHistory history = historyRepository.findById(historyId)
                 .orElseThrow(() -> new NotFoundException("History not found"));
         
-        if (Boolean.TRUE.equals(history.getIsPrivate())) {
-            Employee currentUser = authService.getCurrentUser();
-            if (!currentUser.getId().equals(history.getEmployee().getId()) && !isPrivileged(currentUser)) {
-                throw new NotFoundException("History not found");
-            }
+        Employee currentUser = authService.getCurrentUser();
+        if (!currentUser.getId().equals(history.getEmployee().getId())) {
+            throw new NotFoundException("History not found");
         }
         
         return historyMapper.toResponse(history);
