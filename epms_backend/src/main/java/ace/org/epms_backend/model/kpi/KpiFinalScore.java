@@ -1,4 +1,5 @@
 package ace.org.epms_backend.model.kpi;
+import ace.org.epms_backend.model.appraisal.Appraisal;
 import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
 import lombok.*;
@@ -17,13 +18,13 @@ public class KpiFinalScore {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long appraisalId; // FK (convert later if needed)
+    @OneToOne
+    @JoinColumn(name = "appraisal_id") // Direct link to your Appraisal table
+    private Appraisal appraisal;
 
     @ManyToOne
     @JoinColumn(name = "employee_id")
     private Employee employee;
-
-    private Long cycleId;
 
     @ManyToOne
     @JoinColumn(name = "goal_set_id")
