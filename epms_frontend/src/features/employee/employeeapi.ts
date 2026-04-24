@@ -94,10 +94,10 @@ export const employeeApi = api.injectEndpoints({
 
     updateProfile: builder.mutation<
       EmployeeResponse,
-      { id: number; body: UpdateProfileRequest }
+      UpdateProfileRequest
     >({
-      query: ({ id, body }) => ({
-        url: `/emp/${id}/profile`,
+      query: (body) => ({
+        url: `/emp/me/profile`,
         method: "PUT",
         body,
       }),

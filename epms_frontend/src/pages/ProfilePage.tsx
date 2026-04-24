@@ -1,16 +1,24 @@
 import { useState, useEffect } from "react";
 import { useGetCurrentUserQuery, useUpdateProfileMutation, useChangePasswordMutation } from "../features/employee/employeeapi";
 import { useAuth } from "../hooks/useAuth";
+import type { UpdateProfileRequest, MaritalStatus } from "../features/employee/employeeTypes";
+
 const ProfilePage = () => {
   const { user: authUser } = useAuth();
   const { data: profile, isLoading } = useGetCurrentUserQuery();
   const [updateProfile] = useUpdateProfileMutation();
   const [changePassword] = useChangePasswordMutation();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<UpdateProfileRequest>({
     staffName: "",
+    otherName: "",
     email: "",
     phoneNo: "",
+    contactAddress: "",
+    permanentAddress: "",
+    maritalStatus: undefined,
+    spouseName: "",
+    fatherName: "",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -22,21 +30,27 @@ const ProfilePage = () => {
   useEffect(() => {
     if (profile) {
       setFormData({
-        staffName: profile.staffName,
-        email: profile.email,
-        phoneNo: profile.phoneNo,
+        staffName: profile.staffName || "",
+        otherName: (profile as any).otherName || "",
+        email: profile.email || "",
+        phoneNo: profile.phoneNo || "",
+        contactAddress: (profile as any).contactAddress || "",
+        permanentAddress: (profile as any).permanentAddress || "",
+        maritalStatus: (profile as any).maritalStatus || undefined,
+        spouseName: (profile as any).spouseName || "",
+        fatherName: (profile as any).fatherName || "",
       });
     }
   }, [profile]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile?.id) return;
     try {
-      await updateProfile({ id: profile.id, body: formData }).unwrap();
+      await updateProfile(formData).unwrap();
       alert("Profile updated successfully!");
     } catch (err) {
       console.error("Update profile failed", err);
+      alert("Failed to update profile.");
     }
   };
 
@@ -53,13 +67,14 @@ const ProfilePage = () => {
       alert("Password changed successfully!");
     } catch (err) {
       console.error("Change password failed", err);
+      alert("Failed to change password.");
     }
   };
 
   if (isLoading) return <div className="p-8 text-center">Loading profile...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <header className="flex items-center space-x-6">
         <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-xl">
           {profile?.staffName.charAt(0)}
@@ -86,38 +101,59 @@ const ProfilePage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Full Name</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                    value={formData.staffName}
-                    onChange={(e) => setFormData({ ...formData, staffName: e.target.value })}
-                  />
+                  <input type="text" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    value={formData.staffName} onChange={(e) => setFormData({ ...formData, staffName: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Other Name</label>
+                  <input type="text" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    value={formData.otherName || ""} onChange={(e) => setFormData({ ...formData, otherName: e.target.value })} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Email</label>
-                  <input
-                    type="email"
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
+                  <input type="email" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Phone</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                    value={formData.phoneNo}
-                    onChange={(e) => setFormData({ ...formData, phoneNo: e.target.value })}
-                  />
+                  <input type="text" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    value={formData.phoneNo} onChange={(e) => setFormData({ ...formData, phoneNo: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Father's Name</label>
+                  <input type="text" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    value={formData.fatherName || ""} onChange={(e) => setFormData({ ...formData, fatherName: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Marital Status</label>
+                  <select className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    value={formData.maritalStatus || ""} onChange={(e) => setFormData({ ...formData, maritalStatus: e.target.value as MaritalStatus })}>
+                    <option value="">Select</option>
+                    <option value="SINGLE">Single</option>
+                    <option value="MARRIED">Married</option>
+                    <option value="DIVORCED">Divorced</option>
+                    <option value="WIDOWED">Widowed</option>
+                  </select>
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Spouse Name</label>
+                  <input type="text" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    value={formData.spouseName || ""} onChange={(e) => setFormData({ ...formData, spouseName: e.target.value })} />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Contact Address</label>
+                  <textarea className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition resize-none h-20"
+                    value={formData.contactAddress || ""} onChange={(e) => setFormData({ ...formData, contactAddress: e.target.value })}></textarea>
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Permanent Address</label>
+                  <textarea className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition resize-none h-20"
+                    value={formData.permanentAddress || ""} onChange={(e) => setFormData({ ...formData, permanentAddress: e.target.value })}></textarea>
                 </div>
               </div>
               <div className="pt-4">
-                <button
-                  type="submit"
-                  className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200"
-                >
-                  Save Changes
+                <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200">
+                  Update Information
                 </button>
               </div>
             </form>
@@ -133,41 +169,23 @@ const ProfilePage = () => {
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Old Password</label>
-                <input
-                  type="password"
-                  required
-                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                  value={passwordData.oldPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
-                />
+                <input type="password" required className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  value={passwordData.oldPassword} onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">New Password</label>
-                  <input
-                    type="password"
-                    required
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                    value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  />
+                  <input type="password" required className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Confirm New Password</label>
-                  <input
-                    type="password"
-                    required
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                  />
+                  <input type="password" required className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} />
                 </div>
               </div>
               <div className="pt-4">
-                <button
-                  type="submit"
-                  className="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-lg shadow-gray-200"
-                >
+                <button type="submit" className="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-lg shadow-gray-200">
                   Change Password
                 </button>
               </div>
