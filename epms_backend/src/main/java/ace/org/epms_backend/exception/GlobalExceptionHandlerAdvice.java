@@ -20,13 +20,23 @@ public class GlobalExceptionHandlerAdvice {
                 .body(new ApiResponse<>(500,ex.getMessage(),null, LocalDateTime.now()));
     }
 
+//    @ExceptionHandler(MethodArgumentNotValidException.class)
+//    public ResponseEntity<Map<String,String>> handleValidationException(MethodArgumentNotValidException ex){
+//        Map<String,String> errors = new HashMap<>();
+//        ex.getBindingResult().getFieldErrors()
+//                .forEach(error-> errors.put(error.getField(),error.getDefaultMessage()));
+//        return ResponseEntity.badRequest().body(errors);
+//    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String,String>> handleValidationException(MethodArgumentNotValidException ex){
+    public ResponseEntity<ApiResponse<?>> handleValidationException(MethodArgumentNotValidException ex){
         Map<String,String> errors = new HashMap<>();
+
         ex.getBindingResult().getFieldErrors()
-                .forEach(error-> errors.put(error.getField(),error.getDefaultMessage()));
-//        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
-        return ResponseEntity.badRequest().body(errors);
+                .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
+
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(400, "Validation failed", errors, LocalDateTime.now()));
     }
 
     @ExceptionHandler(UserNotFoundException.class)

@@ -34,4 +34,5 @@ public class CreateEmployeeRequest {
     private String currency;
 
     private Long roleId;
+    private Long departmentId;
 }
