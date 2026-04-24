@@ -96,12 +96,9 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     @Override
     public List<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivileged = isPrivileged(currentUser);
 
         return feedbackRepository.findByEmployee_Id(employeeId).stream()
-                .filter(f -> !Boolean.TRUE.equals(f.getIsPrivate()) ||
-                        isPrivileged ||
-                        currentUser.getId().equals(f.getEmployee().getId()) ||
+                .filter(f -> currentUser.getId().equals(f.getEmployee().getId()) ||
                         currentUser.getId().equals(f.getManager().getId()))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
@@ -110,12 +107,9 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     @Override
     public List<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId) {
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivileged = isPrivileged(currentUser);
 
         return feedbackRepository.findByManager_Id(managerId).stream()
-                .filter(f -> !Boolean.TRUE.equals(f.getIsPrivate()) ||
-                        isPrivileged ||
-                        currentUser.getId().equals(f.getEmployee().getId()) ||
+                .filter(f -> currentUser.getId().equals(f.getEmployee().getId()) ||
                         currentUser.getId().equals(f.getManager().getId()))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
@@ -228,19 +222,15 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     private void checkFeedbackAccess(ContinuousFeedback feedback) {
-        if (Boolean.TRUE.equals(feedback.getIsPrivate())) {
-            Employee currentUser = authService.getCurrentUser();
+        Employee currentUser = authService.getCurrentUser();
 
-            // Check if current user is the employee or manager of the feedback
-            if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
-                    currentUser.getId().equals(feedback.getManager().getId())) {
-                return;
-            }
-
-            if (!isPrivileged(currentUser)) {
-                throw new NotFoundException("Feedback not found");
-            }
+        // Check if current user is the employee or manager of the feedback
+        if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
+                currentUser.getId().equals(feedback.getManager().getId())) {
+            return;
         }
+
+        throw new NotFoundException("Feedback not found");
     }
 
     @Override
