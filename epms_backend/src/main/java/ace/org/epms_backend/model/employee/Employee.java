@@ -63,7 +63,9 @@ public class Employee extends BaseEntity {
     private String fatherName;
 
     private String department;
-
+//    @ManyToOne
+//    @JoinColumn(name = "department_id")
+//    private Department department;
     @ManyToOne
     @JoinColumn(name = "position_id")
     private Position position;

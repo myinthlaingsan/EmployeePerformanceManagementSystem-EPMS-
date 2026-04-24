@@ -27,7 +27,7 @@ public interface EmployeeService {
     // AUTH SUPPORT
     Employee findByEmail(String email);
 
-    EmployeeResponse updateProfile(Long id, UpdateProfileRequest request);
+    EmployeeResponse updateProfile(UpdateProfileRequest request);
 
     void changePassword(Long id, ChangePasswordRequest request);
 }
