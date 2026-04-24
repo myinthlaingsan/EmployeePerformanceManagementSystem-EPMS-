@@ -2,10 +2,17 @@ package ace.org.epms_backend.repository;
 
 import ace.org.epms_backend.model.kpi.KpiGoals;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
 public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
-    Optional<KpiGoals> findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(Long employeeId, Long cycleId);
+//    Optional<KpiGoals> findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(Long employeeId, Long cycleId);
+@Query("SELECT k FROM KpiGoals k WHERE k.employee.id = :employeeId AND k.cycle.id = :cycleId AND k.isCurrent = true")
+Optional<KpiGoals> findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
+        @Param("employeeId") Long employeeId,
+        @Param("cycleId") Long cycleId
+);
 }
