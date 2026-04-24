@@ -1,9 +1,7 @@
 package ace.org.epms_backend.model.kpi;
-<<<<<<< HEAD
+
 import ace.org.epms_backend.model.BaseEntity;
-=======
 import ace.org.epms_backend.model.appraisal.Appraisal;
->>>>>>> origin/main
 import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
 import lombok.*;

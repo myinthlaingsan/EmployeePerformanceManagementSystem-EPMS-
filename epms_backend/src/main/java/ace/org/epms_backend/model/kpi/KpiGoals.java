@@ -1,6 +1,7 @@
- package ace.org.epms_backend.model.kpi;
+package ace.org.epms_backend.model.kpi;
 
 import ace.org.epms_backend.enums.KpiGoalStatus;
+import ace.org.epms_backend.model.BaseEntity;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
