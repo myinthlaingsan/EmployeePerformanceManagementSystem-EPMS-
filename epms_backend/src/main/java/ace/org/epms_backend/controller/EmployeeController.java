@@ -3,6 +3,7 @@ package ace.org.epms_backend.controller;
 import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.service.EmployeeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -75,13 +76,12 @@ public class EmployeeController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
-    @PutMapping("/{id}/profile")
+    @PutMapping("/me/profile")
     public ResponseEntity<ApiResponse<EmployeeResponse>> updateProfile(
-            @PathVariable Long id,
-            @RequestBody UpdateProfileRequest request
+            @Valid @RequestBody UpdateProfileRequest request
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(employeeService.updateProfile(id, request))
+                ApiResponse.success(employeeService.updateProfile(request))
         );
     }
 

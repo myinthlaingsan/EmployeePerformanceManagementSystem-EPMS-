@@ -10,7 +10,6 @@ const SetPasswordPage = () => {
 
   const [passwordData, setPasswordData] = useState({
     password: "",
-    confirmPassword: "",
   });
 
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -21,11 +20,6 @@ const SetPasswordPage = () => {
       setMessage({ type: 'error', text: "Invalid or missing token." });
       return;
     }
-    if (passwordData.password !== passwordData.confirmPassword) {
-      setMessage({ type: 'error', text: "Passwords do not match." });
-      return;
-    }
-
     try {
       await setPassword({ token, body: { password: passwordData.password } }).unwrap();
       setMessage({ type: 'success', text: "Password set successfully! Redirecting to login..." });
@@ -73,21 +67,6 @@ const SetPasswordPage = () => {
                   className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-2xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition"
                   value={passwordData.password}
                   onChange={(e) => setPasswordData({ ...passwordData, password: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">
-                Confirm Password
-              </label>
-              <div className="mt-1">
-                <input
-                  type="password"
-                  required
-                  className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-2xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                 />
               </div>
             </div>
