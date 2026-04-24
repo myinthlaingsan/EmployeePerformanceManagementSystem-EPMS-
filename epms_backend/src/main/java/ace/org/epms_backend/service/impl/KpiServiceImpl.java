@@ -333,6 +333,19 @@ public class KpiServiceImpl implements KpiService {
         KpiGoals goalSet = goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
                 .orElseThrow(() -> new NotFoundException("Current goal set not found"));
 
+        Employee currentUser = getCurrentEmployee();
+
+        // HR and ADMIN can calculate score for anyone
+        boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_HR") || a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isHrOrAdmin) {
+            // If Manager, must be the assigned manager for this goal set
+            if (!goalSet.getManager().getId().equals(currentUser.getId())) {
+                throw new SecurityException("You are not authorized to calculate or view scores for this employee");
+            }
+        }
+
         List<KpiGoalItem> items = goalItemRepository.findByGoalSetIdAndIsActiveTrue(goalSet.getId());
 
         BigDecimal totalWeightedScore = BigDecimal.ZERO;
