@@ -135,23 +135,20 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         MeetingComment comment = commentMapper.toEntity(request);
         comment.setMeeting(meeting);
 
-        // Attribute the comment based on commentType and verify currentUser's role
-        if (request.getCommentType() == CommentType.MANAGER) {
-            if (!currentUser.getId().equals(meeting.getManager().getId())) {
-                throw new AccessDeniedException("You are not authorized to add a MANAGER comment to this meeting.");
-            }
+        // Automatically attribute the comment based on the user's role in the meeting
+        if (currentUser.getId().equals(meeting.getManager().getId())) {
             comment.setManager(currentUser);
             comment.setEmployee(null);
-        } else if (request.getCommentType() == CommentType.EMPLOYEE) {
-            if (!currentUser.getId().equals(meeting.getEmployee().getId())) {
-                throw new AccessDeniedException("You are not authorized to add an EMPLOYEE comment to this meeting.");
-            }
+            comment.setCommentType(CommentType.MANAGER);
+        } else if (currentUser.getId().equals(meeting.getEmployee().getId())) {
             comment.setEmployee(currentUser);
             comment.setManager(null);
+            comment.setCommentType(CommentType.EMPLOYEE);
         } else {
-            throw new AccessDeniedException("Invalid comment type.");
+            // This case should be caught by checkMeetingAccess, but added for safety
+            throw new AccessDeniedException("You are not authorized to comment on this meeting.");
         }
-        
+
         MeetingComment savedComment = commentRepository.save(comment);
 
         // Update PerformanceHistory
