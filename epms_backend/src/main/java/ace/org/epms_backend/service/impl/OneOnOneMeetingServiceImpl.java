@@ -4,6 +4,7 @@ import ace.org.epms_backend.dto.continuous.MeetingCommentRequest;
 import ace.org.epms_backend.dto.continuous.MeetingCommentResponse;
 import ace.org.epms_backend.dto.continuous.OneOnOneMeetingRequest;
 import ace.org.epms_backend.dto.continuous.OneOnOneMeetingResponse;
+import ace.org.epms_backend.enums.CommentType;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.continuous.MeetingCommentMapper;
 import ace.org.epms_backend.mapper.continuous.OneOnOneMeetingMapper;
