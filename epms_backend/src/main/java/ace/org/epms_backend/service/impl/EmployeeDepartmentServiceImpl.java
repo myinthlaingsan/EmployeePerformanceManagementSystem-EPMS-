@@ -12,6 +12,7 @@ import ace.org.epms_backend.model.employee.EmployeeDepartment;
 import ace.org.epms_backend.repository.DepartmentRepository;
 import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.repository.EmployeeRepository;
+import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmployeeDepartmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,10 +29,10 @@ public class EmployeeDepartmentServiceImpl implements EmployeeDepartmentService 
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
     private final EmployeeDepartmentMapper mapper;
-
+    private final AuthService authService;
     @Override
-    public EmployeeDepartmentResponse assignDepartment(Long employeeId, AssignDepartmentRequest request) {
-        Employee employee = employeeRepository.findById(employeeId)
+    public EmployeeDepartmentResponse assignDepartment(AssignDepartmentRequest request) {
+        Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
 
         Department currentDepartment = departmentRepository.findById(request.getCurrentDepartmentId())
@@ -51,7 +52,7 @@ public class EmployeeDepartmentServiceImpl implements EmployeeDepartmentService 
             }
         }
 
-        Optional<EmployeeDepartment> currentAssignment = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(employeeId);
+        Optional<EmployeeDepartment> currentAssignment = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(request.getEmployeeId());
         if (currentAssignment.isPresent()) {
             EmployeeDepartment previous = currentAssignment.get();
             if (previous.getCurrentDepartment().getId().equals(currentDepartment.getId())) {
@@ -66,7 +67,7 @@ public class EmployeeDepartmentServiceImpl implements EmployeeDepartmentService 
         newAssignment.setCurrentDepartment(currentDepartment);
         newAssignment.setParentDepartment(parentDepartment);
         newAssignment.setIsCurrent(true);
-
+        newAssignment.setCreatedBy(authService.getCurrentUser().getId());
         newAssignment = employeeDepartmentRepository.save(newAssignment);
         return mapper.toResponse(newAssignment);
     }

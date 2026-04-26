@@ -1,4 +1,11 @@
 package ace.org.epms_backend.dto.employee;
 
-public class EmployeeDto {
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
+public class EmployeeCreatedEvent {
+    private final Long employeeId;
+    private final String token;
 }
