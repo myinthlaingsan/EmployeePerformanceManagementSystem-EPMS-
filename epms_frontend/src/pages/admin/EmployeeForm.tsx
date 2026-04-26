@@ -25,9 +25,9 @@ const EmployeeForm = () => {
     email: "",
     phoneNo: "",
     positionId: 0,
-    levelId: 0,
     roleId: 0,
-    departmentId: 0,
+    parentDepartmentId: 0,
+    currentDepartmentId: 0,
     stateCode: undefined,
     township: "",
     nrcType: "",
@@ -59,7 +59,6 @@ const EmployeeForm = () => {
         ...prev,
         ...employeeData, // this merges simple matching fields
         positionId: positions?.find(p => p.positionName === employeeData.positionName)?.positionId || 0,
-        departmentId: departments?.find(d => d.departmentName === employeeData.departmentName)?.id || 0,
       }));
       setSelectedPositionLevel(employeeData.levelName);
     }
@@ -69,7 +68,7 @@ const EmployeeForm = () => {
   const handlePositionChange = (posId: number) => {
     const pos = positions?.find(p => p.positionId === posId);
     if (pos) {
-      setFormData(prev => ({ ...prev, positionId: posId, levelId: pos.levelId }));
+      setFormData(prev => ({ ...prev, positionId: posId }));
       setSelectedPositionLevel(pos.levelName);
     }
   };
@@ -169,14 +168,26 @@ const EmployeeForm = () => {
               {selectedPositionLevel && <p className="text-xs text-indigo-600 mt-1 font-bold px-1">Level: {selectedPositionLevel}</p>}
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Department</label>
-              <select className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                value={formData.departmentId || ""} onChange={e => setFormData({ ...formData, departmentId: Number(e.target.value) })}>
-                <option value="">Select Department</option>
-                {departments?.map(dept => <option key={dept.id} value={dept.id}>{dept.departmentName}</option>)}
-              </select>
-            </div>
+            {!isEdit && (
+              <>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Current Department (ERP) *</label>
+                  <select required className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                    value={formData.currentDepartmentId || ""} onChange={e => setFormData({ ...formData, currentDepartmentId: Number(e.target.value) })}>
+                    <option value="">Select Current Dept</option>
+                    {departments?.map(dept => <option key={dept.id} value={dept.id}>{dept.departmentName}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Parent Department (Banking) *</label>
+                  <select required className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                    value={formData.parentDepartmentId || ""} onChange={e => setFormData({ ...formData, parentDepartmentId: Number(e.target.value) })}>
+                    <option value="">Select Parent Dept</option>
+                    {departments?.map(dept => <option key={dept.id} value={dept.id}>{dept.departmentName}</option>)}
+                  </select>
+                </div>
+              </>
+            )}
 
             {!isEdit && (
               <div className="space-y-1">
