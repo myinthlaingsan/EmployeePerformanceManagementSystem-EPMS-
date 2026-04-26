@@ -57,6 +57,9 @@ const Navbar = () => {
                         <Link to="/roles" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Roles</Link>
                         <Link to="/job-levels" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Job Levels</Link>
                         <Link to="/positions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Positions</Link>
+                        <div className="border-t border-gray-100 my-1"></div>
+                        <Link to="/permissions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Permissions</Link>
+                        <Link to="/permissions/matrix" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold text-blue-600" onClick={() => setIsDropdownOpen(false)}>Access Matrix</Link>
                       </div>
                     )}
                   </div>
