@@ -36,6 +36,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
     private final AuthService authService;
     private final ApplicationEventPublisher applicationEventPublisher;
+
     @Override
     @Transactional
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
@@ -65,11 +66,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setPassword(null); // user will set later
         employee.setEmployeeCode(generateEmployeeCode());
         Employee savedEmployee = employeeRepository.save(employee);
-         //Assign initial department
+        // Assign initial department
         EmployeeDepartment empDept = new EmployeeDepartment();
         empDept.setEmployee(savedEmployee);
-        empDept.setParentDepartment(parentDept);     //Banking
-        empDept.setCurrentDepartment(currentDept);   //ERP
+        empDept.setParentDepartment(parentDept); // Banking
+        empDept.setCurrentDepartment(currentDept); // ERP
         empDept.setIsCurrent(true);
         empDept.setCreatedBy(authService.getCurrentUser().getId());
         employeeDepartmentRepository.save(empDept);
@@ -88,8 +89,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         tokenRepository.save(resetToken);
 
         applicationEventPublisher.publishEvent(
-                new EmployeeCreatedEvent(savedEmployee.getId(),token)
-        );
+                new EmployeeCreatedEvent(savedEmployee.getId(), token));
         return mapToResponse(savedEmployee);
     }
 
@@ -183,7 +183,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             throw new EmailExistException("Email already exists");
         }
-        //useMapstruct
+        // useMapstruct
         employeeMapper.updateProfileFromDto(request, emp);
 
         Employee updated = employeeRepository.save(emp);
@@ -222,16 +222,14 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .map(Permission::getPermissionName)
                 .toList();
         response.setPermissions(permissions);
-        
+
         // Set Department Name
         employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
                 .ifPresent(ed -> {
                     response.setCurrentDepartmentName(
-                            ed.getCurrentDepartment().getDepartmentName()
-                    );
+                            ed.getCurrentDepartment().getDepartmentName());
                     response.setParentDepartmentName(
-                            ed.getParentDepartment().getDepartmentName()
-                    );
+                            ed.getParentDepartment().getDepartmentName());
                 });
 
         return response;

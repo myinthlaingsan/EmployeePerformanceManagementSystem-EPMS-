@@ -119,7 +119,7 @@ public class KpiServiceImpl implements KpiService {
         KpiGoals goalSet = KpiGoals.builder()
                 .employee(employee)
                 .manager(currentManager)
-//                .appraisalCycleId(request.getAppraisalCycleId())
+                // .appraisalCycleId(request.getAppraisalCycleId())
                 .status(KpiGoalStatus.DRAFT)
                 .version(1)
                 .isCurrent(true)
@@ -295,7 +295,7 @@ public class KpiServiceImpl implements KpiService {
                 KpiGoals.builder()
                         .employee(oldGoalSet.getEmployee())
                         .manager(oldGoalSet.getManager())
-//                        .appraisalCycleId(oldGoalSet.getAppraisalCycleId())
+                        // .appraisalCycleId(oldGoalSet.getAppraisalCycleId())
                         .version(oldGoalSet.getVersion() + 1)
                         .isCurrent(true)
                         .status(KpiGoalStatus.DRAFT)
@@ -413,7 +413,7 @@ public class KpiServiceImpl implements KpiService {
 
         finalScore.setEmployee(goalSet.getEmployee());
         finalScore.setGoalSet(goalSet);
-//        finalScore.setCycleId(cycleId);
+        // finalScore.setCycleId(cycleId);
         finalScore.setWeightedScore(totalWeightedScore);
         finalScore.setCalculatedAt(Instant.now());
         finalScore.setFinalizedBy(getCurrentEmployee().getId());

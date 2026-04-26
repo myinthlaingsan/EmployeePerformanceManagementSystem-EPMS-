@@ -24,14 +24,15 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
 
-//    private final UserDetailsService userDetailsService;
-//    private final JwtAuthFilter jwtAuthFilter;
-//
-//    // Manual constructor
-//    public SecurityConfig(UserDetailsService userDetailsService, JwtAuthFilter jwtAuthFilter) {
-//        this.userDetailsService = userDetailsService;
-//        this.jwtAuthFilter = jwtAuthFilter;
-//    }
+    // private final UserDetailsService userDetailsService;
+    // private final JwtAuthFilter jwtAuthFilter;
+    //
+    // // Manual constructor
+    // public SecurityConfig(UserDetailsService userDetailsService, JwtAuthFilter
+    // jwtAuthFilter) {
+    // this.userDetailsService = userDetailsService;
+    // this.jwtAuthFilter = jwtAuthFilter;
+    // }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
