@@ -20,6 +20,14 @@ import JobLevelList from "./pages/admin/JobLevelList";
 import PositionList from "./pages/admin/PositionList";
 import HRDashboard from "./pages/admin/HRDashboard";
 
+// PIP Pages
+import PipListPage from "./pages/pip/PipListPage";
+import PipCreatePage from "./pages/pip/PipCreatePage";
+import PipDetailsPage from "./pages/pip/PipDetailsPage";
+
+
+
+
 // Mock Components for other specialized pages
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
 
@@ -62,6 +70,11 @@ const App = () => {
               <Route path="/roles" element={<RoleList />} />
               <Route path="/job-levels" element={<JobLevelList />} />
               <Route path="/positions" element={<PositionList />} />
+              
+              {/* PIP Routes */}
+              <Route path="/pip" element={<PipListPage />} />
+              <Route path="/pip/new" element={<PipCreatePage />} />
+              <Route path="/pip/:id" element={<PipDetailsPage />} />
             </Route>
 
             {/* Specialized Manager Routes (Level L01-L04 + Specific Permission) */}
