@@ -46,13 +46,8 @@ public class UpdateEmployeeRequest {
     private String spouseName;
     private String fatherName;
 
-    private String department;
-
     @NotNull
     private Long positionId;
-
-    @NotNull
-    private Long levelId;
 
     @Positive
     private BigDecimal salary;
