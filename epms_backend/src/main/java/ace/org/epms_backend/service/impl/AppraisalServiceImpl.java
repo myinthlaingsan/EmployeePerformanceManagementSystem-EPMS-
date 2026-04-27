@@ -31,6 +31,7 @@ public class AppraisalServiceImpl implements AppraisalService {
     private final AppraisalHistoryRepository historyRepo;
     private final AppraisalFormRepository formRepo;
     private final PerformanceCategoryRepository performanceCategoryRepo;
+    private final EmployeeDepartmentRepository employeeDepartmentRepo;
 
     @Override
     public AppraisalResponse createAppraisal(AppraisalCreateRequest request) {
@@ -135,7 +136,7 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .employee(appraisal.getEmployee())
                 .manager(appraisal.getManager())
                 .cycle(appraisal.getCycle())
-                .score(appraisal.getTotalScore())
+                .score(appraisal.getFormScore())
                 .grade(appraisal.getPerformanceGrade())
                 .isFinal(true)
                 .build();
@@ -245,7 +246,7 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = getAppraisalOrThrow(id);
         checkNotLocked(appraisal);
 
-        if (appraisal.getTotalScore() == null) {
+        if (appraisal.getFormScore() == null) {
             throw new RuntimeException("Cannot sign off before score calculation");
         }
 
@@ -258,7 +259,7 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = getAppraisalOrThrow(id);
         checkNotLocked(appraisal);
 
-        if (appraisal.getTotalScore() == null) {
+        if (appraisal.getFormScore() == null) {
             throw new RuntimeException("Cannot sign off before score calculation");
         }
 
@@ -282,10 +283,14 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = getAppraisalOrThrow(id);
 
         // Employee Info
+        String deptName = employeeDepartmentRepo.findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
+                .map(ed -> ed.getCurrentDepartment().getDepartmentName())
+                .orElse("N/A");
+
         AppraisalDetailsResponse.EmployeeInfo empInfo = AppraisalDetailsResponse.EmployeeInfo.builder()
                 .staffName(appraisal.getEmployee().getStaffName())
                 .employeeCode(appraisal.getEmployee().getEmployeeCode())
-                .department(appraisal.getEmployee().getDepartment())
+                .department(deptName)
                 .position(appraisal.getEmployee().getPosition() != null
                         ? appraisal.getEmployee().getPosition().getPositionName()
                         : null)
@@ -331,7 +336,7 @@ public class AppraisalServiceImpl implements AppraisalService {
         return AppraisalDetailsResponse.builder()
                 .employee(empInfo)
                 .answers(answers)
-                .totalScore(appraisal.getTotalScore())
+                .totalScore(appraisal.getFormScore())
                 .grade(appraisal.getPerformanceGrade())
                 .status(appraisal.getStatus().name())
                 .employeeSigned(appraisal.getEmployeeSigned())

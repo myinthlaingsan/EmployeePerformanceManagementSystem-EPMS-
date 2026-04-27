@@ -22,6 +22,8 @@ public class EmployeeResponse {
     private Integer levelRank;
     private String currentDepartmentName;
     private String parentDepartmentName;
+    private Long directManagerId;
+    private String directManagerName;
     private List<String> roles;
     private List<String> permissions;
 }

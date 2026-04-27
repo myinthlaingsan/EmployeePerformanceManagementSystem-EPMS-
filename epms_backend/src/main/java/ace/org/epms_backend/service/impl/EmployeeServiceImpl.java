@@ -7,7 +7,6 @@ import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.employee.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuthService;
-import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.EmployeeService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +14,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -35,7 +33,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
     private final AuthService authService;
     private final ApplicationEventPublisher applicationEventPublisher;
-
     @Override
     @Transactional
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
@@ -61,15 +58,20 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setEmail(email);
         employee.setPosition(position);
         employee.setLevel(position.getLevel()); // Set level from position
+
+        if (request.getDirectManagerId() != null) {
+            employee.setDirectManager(employeeRepository.findById(request.getDirectManagerId())
+                    .orElseThrow(() -> new NotFoundException("Direct Manager Not Found")));
+        }
         employee.setStatus(EmployeeStatus.INACTIVE);
         employee.setPassword(null); // user will set later
         employee.setEmployeeCode(generateEmployeeCode());
         Employee savedEmployee = employeeRepository.save(employee);
-        // Assign initial department
+        //Assign initial department
         EmployeeDepartment empDept = new EmployeeDepartment();
         empDept.setEmployee(savedEmployee);
-        empDept.setParentDepartment(parentDept); // Banking
-        empDept.setCurrentDepartment(currentDept); // ERP
+        empDept.setParentDepartment(parentDept);     //Banking
+        empDept.setCurrentDepartment(currentDept);   //ERP
         empDept.setIsCurrent(true);
         empDept.setCreatedBy(authService.getCurrentUser().getId());
         employeeDepartmentRepository.save(empDept);
@@ -88,7 +90,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         tokenRepository.save(resetToken);
 
         applicationEventPublisher.publishEvent(
-                new EmployeeCreatedEvent(savedEmployee.getId(), token));
+                new EmployeeCreatedEvent(savedEmployee.getId(),token)
+        );
         return mapToResponse(savedEmployee);
     }
 
@@ -137,6 +140,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
         emp.setPosition(position);
         emp.setLevel(position.getLevel()); // Set level from position
+
+        if (request.getDirectManagerId() != null) {
+            emp.setDirectManager(employeeRepository.findById(request.getDirectManagerId())
+                    .orElseThrow(() -> new NotFoundException("Direct Manager Not Found")));
+        }
         Employee updated = employeeRepository.save(emp);
         return mapToResponse(updated);
     }
@@ -182,7 +190,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             throw new EmailExistException("Email already exists");
         }
-        // useMapstruct
+        //useMapstruct
         employeeMapper.updateProfileFromDto(request, emp);
 
         Employee updated = employeeRepository.save(emp);
@@ -226,9 +234,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
                 .ifPresent(ed -> {
                     response.setCurrentDepartmentName(
-                            ed.getCurrentDepartment().getDepartmentName());
+                            ed.getCurrentDepartment().getDepartmentName()
+                    );
                     response.setParentDepartmentName(
-                            ed.getParentDepartment().getDepartmentName());
+                            ed.getParentDepartment().getDepartmentName()
+                    );
                 });
 
         return response;
