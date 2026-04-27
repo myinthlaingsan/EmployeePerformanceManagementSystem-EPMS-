@@ -29,6 +29,12 @@ const Navbar = () => {
               >
                 Profile
               </Link>
+              <Link
+                to="/pip"
+                className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition"
+              >
+                PIP
+              </Link>
               {(isAdmin || isHR) && (
                 <>
                   <Link

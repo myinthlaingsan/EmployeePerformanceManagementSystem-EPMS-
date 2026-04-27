@@ -78,6 +78,14 @@ public class PipServiceImpl implements PipService {
     }
 
     @Override
+    public List<PipResponse> getPipsByInvolvedUser(Long userId) {
+        return pipRecordRepository.findByEmployeeIdOrManagerId(userId, userId)
+                .stream()
+                .map(pipMapper::toResponse)
+                .toList();
+    }
+
+    @Override
     public void activatePip(Long id) {
         PipRecord pip = pipRecordRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("PIP not found"));

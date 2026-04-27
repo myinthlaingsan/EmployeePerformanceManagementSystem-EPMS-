@@ -12,4 +12,6 @@ public interface PipRecordRepository extends JpaRepository<PipRecord, Long> {
     List<PipRecord> findByEmployeeId(Long employeeId);
 
     List<PipRecord> findByManagerId(Long managerId);
+
+    List<PipRecord> findByEmployeeIdOrManagerId(Long employeeId, Long managerId);
 }

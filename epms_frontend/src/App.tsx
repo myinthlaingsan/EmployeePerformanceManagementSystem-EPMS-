@@ -25,6 +25,14 @@ import SelfAssessment from "./pages/appraisal/SelfAssessment";
 import ManagerEvaluation from "./pages/appraisal/ManagerEvaluation";
 import ResultPage from "./pages/appraisal/ResultPage";
 
+// PIP Pages
+import PipListPage from "./pages/pip/PipListPage";
+import PipCreatePage from "./pages/pip/PipCreatePage";
+import PipDetailsPage from "./pages/pip/PipDetailsPage";
+
+
+
+
 // Mock Components for other specialized pages
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
 
@@ -74,7 +82,14 @@ const App = () => {
               <Route path="/roles" element={<RoleList />} />
               <Route path="/job-levels" element={<JobLevelList />} />
               <Route path="/positions" element={<PositionList />} />
+              
+              {/* PIP Creation Route (Restricted) */}
+              <Route path="/pip/new" element={<PipCreatePage />} />
             </Route>
+
+            {/* General PIP Routes */}
+            <Route path="/pip" element={<PipListPage />} />
+            <Route path="/pip/:id" element={<PipDetailsPage />} />
 
             {/* Specialized Manager Routes (Level L01-L04 + Specific Permission) */}
             <Route

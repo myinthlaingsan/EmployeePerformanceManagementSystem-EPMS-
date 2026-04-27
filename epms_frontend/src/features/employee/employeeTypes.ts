@@ -98,7 +98,9 @@ export interface EmployeeResponse {
   levelName: string;
   levelRank: number;
   currentDepartmentName?: string;
+  currentDepartmentId?: number;
   parentDepartmentName?: string;
+  parentDepartmentId?: number;
   roles: string[];
   permissions: string[];
 }
