@@ -51,12 +51,16 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         meeting.setManager(fetchEmployee(request.getManagerId()));
         OneOnOneMeeting savedMeeting = meetingRepository.save(meeting);
 
-        savePerformanceHistory(
-                savedMeeting,
-                "New 1-on-1 Meeting Scheduled",
-                "Meeting scheduled for " + savedMeeting.getMeetingDate(),
-                savedMeeting.getManager().getId()
-        );
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(savedMeeting.getEmployee())
+                .sourceType(SourceType.MEETING)
+                .sourceId(savedMeeting.getMeetingId())
+                .title("New 1-on-1 Meeting Scheduled")
+                .description("Meeting scheduled for " + savedMeeting.getMeetingDate() + " at " + savedMeeting.getMeetingTime())
+                .isPrivate(savedMeeting.getIsPrivateNote())
+                .createdBy(savedMeeting.getManager().getId())
+                .build();
+        historyRepository.save(history);
 
         return meetingMapper.toResponse(savedMeeting);
     }
@@ -96,12 +100,16 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         meeting.setManager(fetchEmployee(request.getManagerId()));
         OneOnOneMeeting updatedMeeting = meetingRepository.save(meeting);
 
-        savePerformanceHistory(
-                updatedMeeting,
-                "1-on-1 Meeting Updated",
-                "Meeting details were updated.",
-                authService.getCurrentUser().getId()
-        );
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(updatedMeeting.getEmployee())
+                .sourceType(SourceType.MEETING)
+                .sourceId(updatedMeeting.getMeetingId())
+                .title("1-on-1 Meeting Updated")
+                .description("Meeting details were updated.")
+                .isPrivate(updatedMeeting.getIsPrivateNote())
+                .createdBy(authService.getCurrentUser().getId())
+                .build();
+        historyRepository.save(history);
 
         return meetingMapper.toResponse(updatedMeeting);
     }
@@ -114,34 +122,54 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     }
 
     @Override
+    @Transactional
     public MeetingCommentResponse addComment(Long meetingId, MeetingCommentRequest request) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
+        checkMeetingAccess(meeting);
+
         Employee currentUser = authService.getCurrentUser();
+
+        // Ensure the person commenting is the one who is logged in and matches the role
+        if (request.getCommentType() == CommentType.MANAGER) {
+            if (!currentUser.getId().equals(request.getManagerId())) {
+                throw new AccessDeniedException("You can only comment as yourself.");
+            }
+            if (!currentUser.getId().equals(meeting.getManager().getId())) {
+                throw new AccessDeniedException("You are not the manager of this meeting.");
+            }
+        } else if (request.getCommentType() == CommentType.EMPLOYEE) {
+            if (!currentUser.getId().equals(request.getEmployeeId())) {
+                throw new AccessDeniedException("You can only comment as yourself.");
+            }
+            if (!currentUser.getId().equals(meeting.getEmployee().getId())) {
+                throw new AccessDeniedException("You are not the employee of this meeting.");
+            }
+        }
 
         MeetingComment comment = commentMapper.toEntity(request);
         comment.setMeeting(meeting);
-
-        // STRICTOR AUTHORIZATION: Only actual participants can comment
-        if (currentUser.getId().equals(meeting.getManager().getId())) {
+        
+        if (request.getCommentType() == CommentType.MANAGER) {
             comment.setManager(currentUser);
             comment.setEmployee(null);
-            comment.setCommentType(CommentType.MANAGER);
-        } else if (currentUser.getId().equals(meeting.getEmployee().getId())) {
+        } else {
             comment.setEmployee(currentUser);
             comment.setManager(null);
-            comment.setCommentType(CommentType.EMPLOYEE);
-        } else {
-            throw new AccessDeniedException("You are not authorized to comment on this meeting.");
         }
 
         MeetingComment savedComment = commentRepository.save(comment);
 
-        savePerformanceHistory(
-                meeting,
-                "New Comment in Meeting",
-                currentUser.getStaffName() + " added a comment.",
-                currentUser.getId()
-        );
+        // Update PerformanceHistory
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(meeting.getEmployee())
+                .sourceType(SourceType.MEETING)
+                .sourceId(meeting.getMeetingId())
+                .title("New Comment in Meeting")
+                .description((request.getCommentType() == CommentType.MANAGER ? "Manager " : "Employee ") + currentUser.getStaffName() + " added a comment.")
+                .isPrivate(meeting.getIsPrivateNote())
+                .createdBy(currentUser.getId())
+                .build();
+        historyRepository.save(history);
 
         return commentMapper.toResponse(savedComment);
     }
@@ -195,18 +223,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
     }
 
-    private void savePerformanceHistory(OneOnOneMeeting meeting, String title, String description, Long creatorId) {
-        PerformanceHistory history = PerformanceHistory.builder()
-                .employee(meeting.getEmployee())
-                .sourceType(SourceType.MEETING)
-                .sourceId(meeting.getMeetingId())
-                .title(title)
-                .description(description)
-                .isPrivate(meeting.getIsPrivateNote())
-                .createdBy(creatorId)
-                .build();
-        historyRepository.save(history);
-    }
+
 
     private OneOnOneMeeting fetchMeeting(Long meetingId) {
         return meetingRepository.findById(meetingId)
