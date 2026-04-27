@@ -76,12 +76,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     public List<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
         return meetingRepository.findByEmployeeId(employeeId).stream()
-                .filter(m -> {
-                    if (Boolean.TRUE.equals(m.getIsPrivateNote())) {
-                        return currentUser.getId().equals(m.getManager().getId());
-                    }
-                    return isParticipant(m, currentUser) || isPrivileged(currentUser);
-                })
+                .filter(m -> isParticipant(m, currentUser) || isPrivileged(currentUser))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -90,12 +85,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     public List<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId) {
         Employee currentUser = authService.getCurrentUser();
         return meetingRepository.findByManagerId(managerId).stream()
-                .filter(m -> {
-                    if (Boolean.TRUE.equals(m.getIsPrivateNote())) {
-                        return currentUser.getId().equals(m.getManager().getId());
-                    }
-                    return isParticipant(m, currentUser) || isPrivileged(currentUser);
-                })
+                .filter(m -> isParticipant(m, currentUser) || isPrivileged(currentUser))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -216,15 +206,6 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
 
     private void checkMeetingAccess(OneOnOneMeeting meeting) {
         Employee currentUser = authService.getCurrentUser();
-        
-        // If private note, ONLY the manager can see
-        if (Boolean.TRUE.equals(meeting.getIsPrivateNote())) {
-            if (currentUser.getId().equals(meeting.getManager().getId())) {
-                return;
-            }
-            throw new NotFoundException("Meeting not found");
-        }
-
         if (!isParticipant(meeting, currentUser) && !isPrivileged(currentUser)) {
             // Throw NotFound instead of AccessDenied to prevent resource leakage
             throw new NotFoundException("Meeting not found");

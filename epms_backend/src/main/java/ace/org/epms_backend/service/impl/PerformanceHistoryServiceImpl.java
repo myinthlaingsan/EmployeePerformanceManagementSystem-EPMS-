@@ -32,16 +32,13 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
 
+        // Only the employee themselves can see their history in this context, 
+        // OR their manager (though the current history entity doesn't directly link to manager, 
+        // we can assume if the user is a manager they should be able to see it? No, let's follow the strict rule.)
+        
         return historyRepository.findByEmployee_Id(employeeId).stream()
-                .filter(h -> {
-                    // If private, only the creator (manager) can see
-                    if (Boolean.TRUE.equals(h.getIsPrivate())) {
-                        return currentUser.getId().equals(h.getCreatedBy());
-                    }
-                    // Otherwise, both employee and creator (manager) can see
-                    return currentUser.getId().equals(h.getEmployee().getId()) || 
-                           currentUser.getId().equals(h.getCreatedBy());
-                })
+                .filter(h -> currentUser.getId().equals(h.getEmployee().getId()) || 
+                             currentUser.getId().equals(h.getCreatedBy())) // Assuming createdBy is the manager
                 .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
     }
@@ -51,13 +48,8 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
         Employee currentUser = authService.getCurrentUser();
 
         return historyRepository.findBySourceTypeAndSourceId(sourceType, sourceId).stream()
-                .filter(h -> {
-                    if (Boolean.TRUE.equals(h.getIsPrivate())) {
-                        return currentUser.getId().equals(h.getCreatedBy());
-                    }
-                    return currentUser.getId().equals(h.getEmployee().getId()) || 
-                           currentUser.getId().equals(h.getCreatedBy());
-                })
+                .filter(h -> currentUser.getId().equals(h.getEmployee().getId()) || 
+                             currentUser.getId().equals(h.getCreatedBy()))
                 .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
     }
@@ -68,15 +60,8 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
                 .orElseThrow(() -> new NotFoundException("History not found"));
         
         Employee currentUser = authService.getCurrentUser();
-        
-        if (Boolean.TRUE.equals(history.getIsPrivate())) {
-            if (!currentUser.getId().equals(history.getCreatedBy())) {
-                throw new NotFoundException("History not found");
-            }
-        } else {
-            if (!currentUser.getId().equals(history.getEmployee().getId()) && !currentUser.getId().equals(history.getCreatedBy())) {
-                throw new NotFoundException("History not found");
-            }
+        if (!currentUser.getId().equals(history.getEmployee().getId()) && !currentUser.getId().equals(history.getCreatedBy())) {
+            throw new NotFoundException("History not found");
         }
         
         return historyMapper.toResponse(history);
