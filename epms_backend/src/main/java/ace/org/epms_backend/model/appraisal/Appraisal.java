@@ -46,7 +46,7 @@ public class Appraisal extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private AppraisalStatus status;
 
-    private BigDecimal totalScore;
+    private BigDecimal formScore;
 
     private String performanceGrade;
 

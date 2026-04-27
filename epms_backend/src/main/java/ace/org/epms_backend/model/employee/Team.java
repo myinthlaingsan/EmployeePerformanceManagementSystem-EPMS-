@@ -1,29 +1,29 @@
-package ace.org.epms_backend.model.appraisal;
+package ace.org.epms_backend.model.employee;
 
-import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "appraisal_form")
+@Table(name = "team")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class AppraisalForm extends BaseEntity {
+public class Team extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long formId;
+    private Long teamId;
 
-    private String formName;
+    private String teamName;
 
-    @Enumerated(EnumType.STRING)
-    private FormType formType;
+    @ManyToOne
+    @JoinColumn(name = "department_id")
+    private Department department;
 
-    private Long createdBy;
+    private Boolean isActive = true;
 }

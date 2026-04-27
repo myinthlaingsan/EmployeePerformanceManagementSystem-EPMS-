@@ -5,10 +5,7 @@ import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.enums.EmployeeStatus;
 import ace.org.epms_backend.exception.*;
 import ace.org.epms_backend.mapper.EmployeeMapper;
-import ace.org.epms_backend.model.employee.Employee;
-import ace.org.epms_backend.model.employee.EmployeeRole;
-import ace.org.epms_backend.model.employee.ResetToken;
-import ace.org.epms_backend.model.employee.Role;
+import ace.org.epms_backend.model.employee.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmailService;
@@ -37,10 +34,11 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
-    private final DepartmentRepository departmentRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
+    private final AuthService authService;
 
     @Override
-
+    @Transactional
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
         String email = request.getEmail().trim().toLowerCase();
         if (email.isEmpty()) {
@@ -54,7 +52,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Position position = positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
-        
+
+        Employee employee = employeeMapper.toEntity(request);
+        employee.setEmail(email);
         employee.setPosition(position);
         employee.setLevel(position.getLevel()); // Set level from position
         employee.setStatus(EmployeeStatus.INACTIVE);
@@ -77,19 +77,20 @@ public class EmployeeServiceImpl implements EmployeeService {
         employeeRole.setEmployee(savedEmployee);
         employeeRole.setRole(role);
         employeeRoleRepository.save(employeeRole);
+
         // Generate token
         String token = UUID.randomUUID().toString();
         ResetToken resetToken = new ResetToken();
         resetToken.setToken(token);
-        resetToken.setEmployee(employee);
+        resetToken.setEmployee(savedEmployee);
         resetToken.setExpiryDate(LocalDateTime.now().plusHours(24));
 
         tokenRepository.save(resetToken);
 
         applicationEventPublisher.publishEvent(
-                new EmployeeCreatedEvent(savedEmployee.getId(),token)
+                new EmployeeCreatedEvent(savedEmployee.getId(), token)
         );
-        return employeeMapper.toResponse(employee);
+        return employeeMapper.toResponse(savedEmployee);
     }
 
     @Override
