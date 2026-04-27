@@ -26,7 +26,6 @@ public class PositionServiceImpl implements PositionService {
     private final JobLevelRepository jobLevelRepository;
     private final EmployeeRepository employeeRepository;
     private final PositionMapper positionMapper;
-
     @Override
     public PositionResponse createPosition(PositionRequest request) {
         if (positionRepository.existsByPositionCode(request.getPositionCode())) {
@@ -35,10 +34,8 @@ public class PositionServiceImpl implements PositionService {
         
         JobLevel level = jobLevelRepository.findById(request.getLevelId())
                 .orElseThrow(() -> new NotFoundException("Job level not found"));
-
         Position position = positionMapper.toEntity(request);
         position.setLevel(level);
-        
         position = positionRepository.save(position);
         return positionMapper.toResponse(position);
     }
@@ -76,10 +73,8 @@ public class PositionServiceImpl implements PositionService {
 
         JobLevel level = jobLevelRepository.findById(request.getLevelId())
                 .orElseThrow(() -> new NotFoundException("Job level not found"));
-
         positionMapper.updateEntity(request, position);
         position.setLevel(level);
-        
         position = positionRepository.save(position);
         return positionMapper.toResponse(position);
     }

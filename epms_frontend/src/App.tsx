@@ -19,6 +19,9 @@ import RoleList from "./pages/admin/RoleList";
 import JobLevelList from "./pages/admin/JobLevelList";
 import PositionList from "./pages/admin/PositionList";
 import HRDashboard from "./pages/admin/HRDashboard";
+import EmployeeDepartmentHistory from "./pages/admin/org/EmployeeDepartmentHistory";
+import PermissionList from "./pages/admin/PermissionList";
+import RoleLevelPermissionManager from "./pages/admin/org/RoleLevelPermissionManager";
 
 // PIP Pages
 import PipListPage from "./pages/pip/PipListPage";
@@ -65,6 +68,10 @@ const App = () => {
               <Route path="/employees" element={<EmployeeList />} />
               <Route path="/employees/new" element={<EmployeeForm />} />
               <Route path="/employees/edit/:id" element={<EmployeeForm />} />
+              <Route path="/employees/:id/departments" element={<EmployeeDepartmentHistory />} />
+              
+              <Route path="/permissions" element={<PermissionList />} />
+              <Route path="/permissions/matrix" element={<RoleLevelPermissionManager />} />
               
               <Route path="/departments" element={<DepartmentList />} />
               <Route path="/roles" element={<RoleList />} />

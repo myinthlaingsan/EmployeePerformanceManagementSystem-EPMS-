@@ -22,10 +22,11 @@ public class EmployeeDepartment extends BaseEntity {
     @JoinColumn(name = "employee_id")
     private Employee employee;
 
+    //Where employee is currently working
     @ManyToOne
     @JoinColumn(name = "current_department_id")
     private Department currentDepartment;
-
+    //Permanent / home department
     @ManyToOne
     @JoinColumn(name = "parent_department_id")
     private Department parentDepartment;

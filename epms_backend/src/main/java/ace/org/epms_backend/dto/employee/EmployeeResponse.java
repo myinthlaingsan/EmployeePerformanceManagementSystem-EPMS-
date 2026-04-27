@@ -20,7 +20,10 @@ public class EmployeeResponse {
     private String positionName;
     private String levelName;
     private Integer levelRank;
-    private String departmentName;
+    private String currentDepartmentName;
+    private Long currentDepartmentId;
+    private String parentDepartmentName;
+    private Long parentDepartmentId;
     private List<String> roles;
     private List<String> permissions;
 }

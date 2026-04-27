@@ -5,7 +5,7 @@ import { baseQueryWithReauth } from "./baseQueryWithReauth";
 export const api = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Employee", "Profile", "Department", "Role", "JobLevel", "Position", "PIP", "PipObjective", "PipProgress", "PipReview"],
+  tagTypes: ["Employee", "Profile", "Department", "Role", "JobLevel", "Position", "EmployeeDepartment", "Permission", "RoleLevelPermission"],
   endpoints: () => ({}),
   // This adds more context to traces
   keepUnusedDataFor: 60,

@@ -39,6 +39,11 @@ public class PipController {
         return ResponseEntity.ok(pipService.getPipsByEmployee(employeeId));
     }
 
+    @GetMapping("/involved/{userId}")
+    public ResponseEntity<List<PipResponse>> getByInvolvedUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(pipService.getPipsByInvolvedUser(userId));
+    }
+
     @PreAuthorize("hasRole('HR')")
     @PutMapping("/{id}/activate")
     public ResponseEntity<Void> activatePip(@PathVariable Long id) {
