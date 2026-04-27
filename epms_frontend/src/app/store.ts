@@ -25,7 +25,7 @@ export const store = configureStore({
     //     }
     // },
     middleware: (getDefaultMiddleware) => 
-        getDefaultMiddleware().concat(api.middleware),
+        getDefaultMiddleware().concat(api.middleware, kpiApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

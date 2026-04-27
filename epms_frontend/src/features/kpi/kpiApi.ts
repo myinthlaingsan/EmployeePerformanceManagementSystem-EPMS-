@@ -1,5 +1,5 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
-import {type ApiResponse } from '../../services/ApiResponse.ts';
+import type { ApiResponse } from '../../services/ApiResponse.ts';
 import { baseQueryWithReauth } from '../../services/baseQueryWithReauth';
 import type {
   KpiLibraryRequest,

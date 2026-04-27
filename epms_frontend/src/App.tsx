@@ -22,6 +22,9 @@ import HRDashboard from "./pages/admin/HRDashboard";
 import EmployeeDepartmentHistory from "./pages/admin/org/EmployeeDepartmentHistory";
 import PermissionList from "./pages/admin/PermissionList";
 import RoleLevelPermissionManager from "./pages/admin/org/RoleLevelPermissionManager";
+import LibraryList from "./pages/kpi/LibraryList";
+import LibraryForm from "./pages/kpi/LibraryForm";
+import GoalManagement from "./pages/kpi/GoalManagement";
 
 // Mock Components for other specialized pages
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
@@ -69,6 +72,11 @@ const App = () => {
               <Route path="/roles" element={<RoleList />} />
               <Route path="/job-levels" element={<JobLevelList />} />
               <Route path="/positions" element={<PositionList />} />
+
+              {/* KPI Routes (HR/Admin) */}
+              <Route path="/kpi/library" element={<LibraryList />} />
+              <Route path="/kpi/library/new" element={<LibraryForm />} />
+              <Route path="/kpi/manage" element={<GoalManagement />} />
             </Route>
 
             {/* Specialized Manager Routes (Level L01-L04 + Specific Permission) */}

@@ -37,7 +37,7 @@ const Navbar = () => {
                   >
                     HR Panel
                   </Link>
-                  
+
                   {/* Management Dropdown */}
                   <div className="relative flex items-center">
                     <button
@@ -49,7 +49,7 @@ const Navbar = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
-                    
+
                     {isDropdownOpen && (
                       <div className="absolute top-16 left-0 w-48 bg-white border border-gray-100 shadow-xl rounded-xl py-2 z-50">
                         <Link to="/employees" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Employees</Link>
@@ -67,7 +67,7 @@ const Navbar = () => {
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-gray-900">{user?.staffName}</p>
