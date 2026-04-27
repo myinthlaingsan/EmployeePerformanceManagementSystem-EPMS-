@@ -1,6 +1,5 @@
 package ace.org.epms_backend.service.impl;
 
-import ace.org.epms_backend.config.EmailTemplateBuilder;
 import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.enums.EmployeeStatus;
 import ace.org.epms_backend.exception.*;
