@@ -83,11 +83,14 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
     private List<CategoryScore> calculateAverages(Map<String, List<Integer>> scoresMap) {
         return scoresMap.entrySet().stream()
                 .map(entry -> {
-                    double avg = entry.getValue().stream()
-                            .mapToInt(Integer::intValue)
-                            .average()
-                            .orElse(0.0);
-                    return new CategoryScore(entry.getKey(), Math.round(avg * 100.0) / 100.0);
+                    List<Integer> scores = entry.getValue();
+                    int totalPoints = scores.stream().mapToInt(Integer::intValue).sum();
+                    int questionCount = scores.size();
+                    
+                    // Formula from image: (Total Point / (Number of Questions Answered * 5)) * 100
+                    double percentageScore = (totalPoints / (double) (questionCount * 5)) * 100.0;
+                    
+                    return new CategoryScore(entry.getKey(), Math.round(percentageScore * 100.0) / 100.0);
                 })
                 .collect(Collectors.toList());
     }
