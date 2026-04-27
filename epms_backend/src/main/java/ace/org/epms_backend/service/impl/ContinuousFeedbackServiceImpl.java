@@ -96,10 +96,12 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     @Override
     public List<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
 
         return feedbackRepository.findByEmployee_Id(employeeId).stream()
                 .filter(f -> currentUser.getId().equals(f.getEmployee().getId()) ||
-                        currentUser.getId().equals(f.getManager().getId()))
+                        currentUser.getId().equals(f.getManager().getId()) ||
+                        (isPrivileged && !Boolean.TRUE.equals(f.getIsPrivate())))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -107,10 +109,12 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     @Override
     public List<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId) {
         Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
 
         return feedbackRepository.findByManager_Id(managerId).stream()
                 .filter(f -> currentUser.getId().equals(f.getEmployee().getId()) ||
-                        currentUser.getId().equals(f.getManager().getId()))
+                        currentUser.getId().equals(f.getManager().getId()) ||
+                        (isPrivileged && !Boolean.TRUE.equals(f.getIsPrivate())))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -228,9 +232,14 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     private void checkFeedbackAccess(ContinuousFeedback feedback) {
         Employee currentUser = authService.getCurrentUser();
 
-        // Check if current user is the employee or manager of the feedback
+        // Involved parties always have access
         if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
                 currentUser.getId().equals(feedback.getManager().getId())) {
+            return;
+        }
+
+        // HR/Admins can only see non-private feedback
+        if (isPrivileged(currentUser) && !Boolean.TRUE.equals(feedback.getIsPrivate())) {
             return;
         }
 
