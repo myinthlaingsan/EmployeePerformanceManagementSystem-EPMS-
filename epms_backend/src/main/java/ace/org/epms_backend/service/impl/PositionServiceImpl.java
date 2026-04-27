@@ -2,6 +2,7 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.org.PositionRequest;
 import ace.org.epms_backend.dto.org.PositionResponse;
+import ace.org.epms_backend.exception.CannotDeleteException;
 import ace.org.epms_backend.exception.CodeAlreadyExistsException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.PositionMapper;
@@ -25,7 +26,6 @@ public class PositionServiceImpl implements PositionService {
     private final JobLevelRepository jobLevelRepository;
     private final EmployeeRepository employeeRepository;
     private final PositionMapper positionMapper;
-
     @Override
     public PositionResponse createPosition(PositionRequest request) {
         if (positionRepository.existsByPositionCode(request.getPositionCode())) {
@@ -34,10 +34,8 @@ public class PositionServiceImpl implements PositionService {
         
         JobLevel level = jobLevelRepository.findById(request.getLevelId())
                 .orElseThrow(() -> new NotFoundException("Job level not found"));
-
         Position position = positionMapper.toEntity(request);
         position.setLevel(level);
-        
         position = positionRepository.save(position);
         return positionMapper.toResponse(position);
     }
@@ -75,10 +73,8 @@ public class PositionServiceImpl implements PositionService {
 
         JobLevel level = jobLevelRepository.findById(request.getLevelId())
                 .orElseThrow(() -> new NotFoundException("Job level not found"));
-
         positionMapper.updateEntity(request, position);
         position.setLevel(level);
-        
         position = positionRepository.save(position);
         return positionMapper.toResponse(position);
     }
@@ -89,7 +85,7 @@ public class PositionServiceImpl implements PositionService {
                 .orElseThrow(() -> new NotFoundException("Position not found"));
 
         if (employeeRepository.existsByPosition(position)) {
-            throw new RuntimeException("Cannot delete position as it is assigned to one or more employees");
+            throw new CannotDeleteException("Cannot delete position as it is assigned to one or more employees");
         }
 
         positionRepository.delete(position);

@@ -2,6 +2,7 @@ package ace.org.epms_backend.model.kpi;
 import java.time.Instant;
 
 import ace.org.epms_backend.enums.KpiGoalStatus;
+import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
 import lombok.*;
@@ -27,7 +28,9 @@ public class KpiGoals {
     @JoinColumn(name = "manager_id")
     private Employee manager;
 
-    private Long appraisalCycleId; // you can convert to entity later
+    @ManyToOne
+    @JoinColumn(name = "cycle_id")
+    private AppraisalCycle cycle;
 
     private Integer version;
 

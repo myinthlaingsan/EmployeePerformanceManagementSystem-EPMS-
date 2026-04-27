@@ -4,16 +4,6 @@ export type MaritalStatus = "SINGLE" | "MARRIED" | "DIVORCED" | "WIDOWED";
 
 export type EmployeeStatus = "PENDING" | "ACTIVE" | "INACTIVE" | "TERMINATED";
 
-export interface EmployeeResponse {
-  id: number;
-  employeeCode: string;
-  staffName: string;
-  email: string;
-  phoneNo: string;
-  positionName: string;
-  levelName: string;
-}
-
 export interface ChangePasswordRequest {
   oldPassword: string;
   newPassword: string;
@@ -32,10 +22,11 @@ export interface CreateEmployeeRequest {
   gender?: Gender;
   dateOfBirth?: string; // ISO string (yyyy-MM-dd)
   positionId: number;
-  levelId: number;
   salary?: number;
   currency?: string;
   roleId: number;
+  parentDepartmentId: number;
+  currentDepartmentId: number;
 }
 
 export interface SetPasswordRequest {
@@ -67,10 +58,7 @@ export interface UpdateEmployeeRequest {
   spouseName?: string;
   fatherName?: string;
 
-  department?: string;
-
   positionId: number;
-  levelId: number;
 
   salary?: number;
   currency?: string;
@@ -98,4 +86,19 @@ export interface UpdateProfileRequest {
   maritalStatus?: MaritalStatus;
   spouseName?: string;
   fatherName?: string;
+}
+
+export interface EmployeeResponse {
+  id: number;
+  employeeCode: string;
+  staffName: string;
+  email: string;
+  phoneNo: string;
+  positionName: string;
+  levelName: string;
+  levelRank: number;
+  currentDepartmentName?: string;
+  parentDepartmentName?: string;
+  roles: string[];
+  permissions: string[];
 }

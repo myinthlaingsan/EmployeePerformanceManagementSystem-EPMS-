@@ -28,10 +28,13 @@ public class CreateEmployeeRequest {
     private LocalDate dateOfBirth;
 
     private Long positionId;
-    private Long levelId;
+//    private Long levelId;
 
     private BigDecimal salary;
     private String currency;
 
     private Long roleId;
+    private Long parentDepartmentId;   //Banking
+    private Long currentDepartmentId;  // ERP or banking
+
 }

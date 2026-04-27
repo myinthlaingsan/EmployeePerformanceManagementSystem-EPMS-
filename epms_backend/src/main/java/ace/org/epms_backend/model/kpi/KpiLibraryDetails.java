@@ -24,8 +24,12 @@ public class KpiLibraryDetails extends BaseEntity {
     @JoinColumn(name = "library_id")
     private KpiLibrary library;
 
-    private String goalTitle;
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private KpiCategory category;
 
+    private String goalTitle;
+    private String unit;
     private BigDecimal targetValue;
 
     private BigDecimal weightPercent;
