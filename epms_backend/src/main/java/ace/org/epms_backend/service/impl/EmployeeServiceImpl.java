@@ -58,11 +58,12 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setEmail(email);
         employee.setPosition(position);
         employee.setLevel(position.getLevel()); // Set level from position
-
+        // change this in thunmyathsu branch
         if (request.getDirectManagerId() != null) {
             employee.setDirectManager(employeeRepository.findById(request.getDirectManagerId())
                     .orElseThrow(() -> new NotFoundException("Direct Manager Not Found")));
         }
+        // ...
         employee.setStatus(EmployeeStatus.INACTIVE);
         employee.setPassword(null); // user will set later
         employee.setEmployeeCode(generateEmployeeCode());
