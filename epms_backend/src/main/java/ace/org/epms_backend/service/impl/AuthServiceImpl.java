@@ -1,22 +1,25 @@
 package ace.org.epms_backend.service.impl;
 
-import ace.org.epms_backend.dto.auth.AuthRequest;
-import ace.org.epms_backend.dto.auth.AuthResponse;
-import ace.org.epms_backend.dto.auth.RefreshTokenRequest;
+import ace.org.epms_backend.dto.auth.*;
 import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.exception.InvalidTokenException;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.exception.TokenExpiredException;
 import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.UserPrincipal;
+import ace.org.epms_backend.model.auth.PasswordResetToken;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.employee.Permission;
 import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.repository.PassowrdResetTokenRepository;
 import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
+import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -30,6 +33,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +45,10 @@ public class AuthServiceImpl implements AuthService {
     private final EmployeeMapper employeeMapper;
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
-
+    private final PassowrdResetTokenRepository resetTokenRepository;
+    private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher applicationEventPublisher;
     @Override
     public AuthResponse login(AuthRequest authDto) {
         Employee employee = employeeRepository.findByEmail(authDto.getEmail())
@@ -137,6 +144,44 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public EmployeeResponse getCurrentUserProfile() {
         return mapToResponse(getCurrentUser());
+    }
+
+    @Override
+    public void forgotPassword(ForgotPasswordRequest request) {
+        Employee emp = employeeRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new NotFoundException("Email not found"));
+        String token = UUID.randomUUID().toString();
+
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(token);
+        resetToken.setEmployee(emp);
+        resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(30));
+        resetTokenRepository.save(resetToken);
+
+        applicationEventPublisher.publishEvent(
+                new ForgotPasswordEvent(emp.getId(),token)
+        );
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        PasswordResetToken resetToken = resetTokenRepository.findByToken(request.getToken())
+                .orElseThrow(() -> new InvalidTokenException("Invalid token"));
+
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new TokenExpiredException("Token expired");
+        }
+
+        Employee emp = resetToken.getEmployee();
+
+        emp.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        emp.setFailedLoginAttempts(0);
+        emp.setAccountLocked(false);
+        emp.setLockTime(null);
+
+        employeeRepository.save(emp);
+
+        resetTokenRepository.delete(resetToken);
     }
 
     private EmployeeResponse mapToResponse(Employee emp) {
