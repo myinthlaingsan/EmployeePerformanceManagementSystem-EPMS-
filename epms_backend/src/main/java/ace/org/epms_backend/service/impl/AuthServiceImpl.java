@@ -1,16 +1,25 @@
 package ace.org.epms_backend.service.impl;
 
-import ace.org.epms_backend.dto.auth.AuthRequest;
-import ace.org.epms_backend.dto.auth.AuthResponse;
-import ace.org.epms_backend.dto.auth.RefreshTokenRequest;
+import ace.org.epms_backend.dto.auth.*;
+import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.exception.InvalidTokenException;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.exception.TokenExpiredException;
+import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.UserPrincipal;
+import ace.org.epms_backend.model.auth.PasswordResetToken;
 import ace.org.epms_backend.model.employee.Employee;
+import ace.org.epms_backend.model.employee.Permission;
+import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.EmployeeRepository;
+import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.repository.PassowrdResetTokenRepository;
+import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
+import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -19,12 +28,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import ace.org.epms_backend.mapper.EmployeeMapper;
-import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,10 +41,14 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final EmployeeRepository employeeRepository;
-    private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final EmployeeMapper employeeMapper;
-
+    private final EmployeeRoleRepository employeeRoleRepository;
+    private final RoleLevelPermissionRepository roleLevelPermissionRepository;
+    private final PassowrdResetTokenRepository resetTokenRepository;
+    private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher applicationEventPublisher;
     @Override
     public AuthResponse login(AuthRequest authDto) {
         Employee employee = employeeRepository.findByEmail(authDto.getEmail())
@@ -62,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
                 UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
                 String token = jwtService.generateAccessToken(userPrincipal);
                 String refreshToken = jwtService.generateRefreshToken(userPrincipal);
-                return new AuthResponse(token, refreshToken, "Login successful");
+                return new AuthResponse(token, refreshToken);
             }
         } catch (BadCredentialsException ex) {
             int newAttempts = employee.getFailedLoginAttempts() + 1;
@@ -79,7 +92,7 @@ public class AuthServiceImpl implements AuthService {
             employeeRepository.save(employee);
             throw new LockedException(msg);
         }
-        return new AuthResponse("fail", "fail", "Login Failed");
+        return new AuthResponse("fail", "fail");
     }
 
     @Override
@@ -95,7 +108,7 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidTokenException("Invalid Refresh Token");
         }
         String newAccessToken = jwtService.generateAccessToken(userPrincipal);
-        return new AuthResponse(newAccessToken, refreshToken, "new token success");
+        return new AuthResponse(newAccessToken, refreshToken);
     }
 
     @Override
@@ -110,19 +123,83 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public Employee getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()
-                || authentication.getPrincipal().equals("anonymousUser")) {
-            return null;
+
+        Authentication authentication = SecurityContextHolder
+                .getContext()
+                .getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new InvalidTokenException("No user Logged in");
         }
-        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-        return userPrincipal.getEmployee();
+
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof UserPrincipal userPrincipal) {
+            return userPrincipal.getEmployee();
+        }
+
+        throw new InvalidTokenException("Invalid authentication principal");
     }
 
     @Override
     public EmployeeResponse getCurrentUserProfile() {
-        Employee employee = getCurrentUser();
-        return employee != null ? employeeMapper.toResponse(employee) : null;
+        return mapToResponse(getCurrentUser());
+    }
+
+    @Override
+    public void forgotPassword(ForgotPasswordRequest request) {
+        Employee emp = employeeRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new NotFoundException("Email not found"));
+        String token = UUID.randomUUID().toString();
+
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(token);
+        resetToken.setEmployee(emp);
+        resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(30));
+        resetTokenRepository.save(resetToken);
+
+        applicationEventPublisher.publishEvent(
+                new ForgotPasswordEvent(emp.getId(),token)
+        );
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        PasswordResetToken resetToken = resetTokenRepository.findByToken(request.getToken())
+                .orElseThrow(() -> new InvalidTokenException("Invalid token"));
+
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new TokenExpiredException("Token expired");
+        }
+
+        Employee emp = resetToken.getEmployee();
+
+        emp.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        emp.setFailedLoginAttempts(0);
+        emp.setAccountLocked(false);
+        emp.setLockTime(null);
+
+        employeeRepository.save(emp);
+
+        resetTokenRepository.delete(resetToken);
+    }
+
+    private EmployeeResponse mapToResponse(Employee emp) {
+        EmployeeResponse response = employeeMapper.toResponse(emp);
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(emp.getId());
+        List<String> roleNames = roles.stream()
+                .map(role -> role.getRoleName().name())
+                .toList();
+        response.setRoles(roleNames);
+
+        // Fetch permissions based on roles and level
+        List<String> permissions = roleLevelPermissionRepository.findPermissionsByRolesAndLevel(roles, emp.getLevel())
+                .stream()
+                .map(Permission::getPermissionName)
+                .toList();
+        response.setPermissions(permissions);
+
+        return response;
     }
 
     public boolean unlockIfTimeExpired(Employee emp) {
