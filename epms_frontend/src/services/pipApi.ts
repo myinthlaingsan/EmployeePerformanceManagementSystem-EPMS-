@@ -20,18 +20,25 @@ export const pipApi = api.injectEndpoints({
     endpoints: (builder) => ({
         // PIP Endpoints
         getPips: builder.query<PipResponse[], void>({
-            query: () => "/v1/pip",
+            query: () => "/pip",
             providesTags: (result) =>
                 result
                     ? [...result.map(({ pipId }) => ({ type: "PIP" as const, id: pipId })), { type: "PIP", id: "LIST" }]
                     : [{ type: "PIP", id: "LIST" }],
         }),
         getPipById: builder.query<PipResponse, number>({
-            query: (id) => `/v1/pip/${id}`,
+            query: (id) => `/pip/${id}`,
             providesTags: (_result, _error, id) => [{ type: "PIP", id }],
         }),
         getPipsByEmployee: builder.query<PipResponse[], number>({
-            query: (employeeId) => `/v1/pip/employee/${employeeId}`,
+            query: (employeeId) => `/pip/employee/${employeeId}`,
+            providesTags: (result) =>
+                result
+                    ? [...result.map(({ pipId }) => ({ type: "PIP" as const, id: pipId })), { type: "PIP", id: "LIST" }]
+                    : [{ type: "PIP", id: "LIST" }],
+        }),
+        getPipsByInvolvedUser: builder.query<PipResponse[], number>({
+            query: (userId) => `/pip/involved/${userId}`,
             providesTags: (result) =>
                 result
                     ? [...result.map(({ pipId }) => ({ type: "PIP" as const, id: pipId })), { type: "PIP", id: "LIST" }]
@@ -39,7 +46,7 @@ export const pipApi = api.injectEndpoints({
         }),
         createPip: builder.mutation<PipResponse, PipCreateRequest>({
             query: (body) => ({
-                url: "/v1/pip",
+                url: "/pip",
                 method: "POST",
                 body,
             }),
@@ -47,14 +54,14 @@ export const pipApi = api.injectEndpoints({
         }),
         activatePip: builder.mutation<void, number>({
             query: (id) => ({
-                url: `/v1/pip/${id}/activate`,
+                url: `/pip/${id}/activate`,
                 method: "PUT",
             }),
             invalidatesTags: (_result, _error, id) => [{ type: "PIP", id }],
         }),
         extendPip: builder.mutation<PipResponse, { id: number; body: PipExtendRequest }>({
             query: ({ id, body }) => ({
-                url: `/v1/pip/${id}/extend`,
+                url: `/pip/${id}/extend`,
                 method: "PUT",
                 body,
             }),
@@ -63,7 +70,7 @@ export const pipApi = api.injectEndpoints({
 
         // Objective Endpoints
         getObjectivesByPip: builder.query<ApiResponse<PipObjectiveResponse[]>, number>({
-            query: (pipId) => `/v1/pip/objectives/${pipId}`,
+            query: (pipId) => `/pip/objectives/${pipId}`,
             providesTags: (result) =>
                 result?.data
                     ? [...result.data.map(({ objectiveId }) => ({ type: "PipObjective" as const, id: objectiveId })), { type: "PipObjective", id: "LIST" }]
@@ -71,7 +78,7 @@ export const pipApi = api.injectEndpoints({
         }),
         createObjective: builder.mutation<ApiResponse<PipObjectiveResponse>, PipObjectiveRequest>({
             query: (body) => ({
-                url: "/v1/pip/objectives",
+                url: "/pip/objectives",
                 method: "POST",
                 body,
             }),
@@ -79,7 +86,7 @@ export const pipApi = api.injectEndpoints({
         }),
         updateObjectiveStatus: builder.mutation<ApiResponse<PipObjectiveResponse>, { id: number; status: ObjectiveStatus }>({
             query: ({ id, status }) => ({
-                url: `/v1/pip/objectives/${id}/status`,
+                url: `/pip/objectives/${id}/status`,
                 method: "PUT",
                 params: { status },
             }),
@@ -88,7 +95,7 @@ export const pipApi = api.injectEndpoints({
 
         // Progress Endpoints
         getProgressByObjective: builder.query<ApiResponse<PipProgressResponse[]>, number>({
-            query: (objectiveId) => `/v1/pip/progress/${objectiveId}`,
+            query: (objectiveId) => `/pip/progress/${objectiveId}`,
             providesTags: (result) =>
                 result?.data
                     ? [...result.data.map(({ logId }) => ({ type: "PipProgress" as const, id: logId })), { type: "PipProgress", id: "LIST" }]
@@ -96,7 +103,7 @@ export const pipApi = api.injectEndpoints({
         }),
         addProgress: builder.mutation<ApiResponse<PipProgressResponse>, PipProgressRequest>({
             query: (body) => ({
-                url: "/v1/pip/progress",
+                url: "/pip/progress",
                 method: "POST",
                 body,
             }),
@@ -105,7 +112,7 @@ export const pipApi = api.injectEndpoints({
 
         // Review Endpoints
         getReviewsByPip: builder.query<ApiResponse<PipReviewResponse[]>, number>({
-            query: (pipId) => `/v1/pip/reviews/${pipId}`,
+            query: (pipId) => `/pip/reviews/${pipId}`,
             providesTags: (result) =>
                 result?.data
                     ? [...result.data.map(({ reviewId }) => ({ type: "PipReview" as const, id: reviewId })), { type: "PipReview", id: "LIST" }]
@@ -113,7 +120,7 @@ export const pipApi = api.injectEndpoints({
         }),
         createReview: builder.mutation<ApiResponse<PipReviewResponse>, PipReviewRequest>({
             query: (body) => ({
-                url: "/v1/pip/reviews",
+                url: "/pip/reviews",
                 method: "POST",
                 body,
             }),
@@ -121,7 +128,7 @@ export const pipApi = api.injectEndpoints({
         }),
         finalizePip: builder.mutation<ApiResponse<void>, { pipId: number; outcome: PipOutcome; comment: string }>({
             query: ({ pipId, outcome, comment }) => ({
-                url: `/v1/pip/reviews/${pipId}/finalize`,
+                url: `/pip/reviews/${pipId}/finalize`,
                 method: "PUT",
                 params: { outcome, comment },
             }),
@@ -134,6 +141,7 @@ export const {
     useGetPipsQuery,
     useGetPipByIdQuery,
     useGetPipsByEmployeeQuery,
+    useGetPipsByInvolvedUserQuery,
     useCreatePipMutation,
     useActivatePipMutation,
     useExtendPipMutation,

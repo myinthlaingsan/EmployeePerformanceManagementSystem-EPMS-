@@ -78,11 +78,13 @@ const App = () => {
               <Route path="/job-levels" element={<JobLevelList />} />
               <Route path="/positions" element={<PositionList />} />
               
-              {/* PIP Routes */}
-              <Route path="/pip" element={<PipListPage />} />
+              {/* PIP Creation Route (Restricted) */}
               <Route path="/pip/new" element={<PipCreatePage />} />
-              <Route path="/pip/:id" element={<PipDetailsPage />} />
             </Route>
+
+            {/* General PIP Routes */}
+            <Route path="/pip" element={<PipListPage />} />
+            <Route path="/pip/:id" element={<PipDetailsPage />} />
 
             {/* Specialized Manager Routes (Level L01-L04 + Specific Permission) */}
             <Route

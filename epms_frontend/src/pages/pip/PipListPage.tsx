@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGetPipsQuery, useGetPipsByEmployeeQuery } from '../../services/pipApi';
+import { useGetPipsQuery, useGetPipsByInvolvedUserQuery } from '../../services/pipApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
 import PipStatusBadge from '../../components/pip/PipStatusBadge';
@@ -15,7 +15,7 @@ const PipListPage: React.FC = () => {
     // In a real scenario, managers would see their team's PIPs too.
     const { data: pips, isLoading: isPipsLoading } = (isHR || isAdmin)
         ? useGetPipsQuery()
-        : useGetPipsByEmployeeQuery(user?.id || 0);
+        : useGetPipsByInvolvedUserQuery(user?.id || 0);
 
     const { data: employees } = useGetEmployeesQuery();
 

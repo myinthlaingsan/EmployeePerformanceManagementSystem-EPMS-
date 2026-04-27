@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreatePipMutation } from '../../services/pipApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
 import type { PipCreateRequest } from '../../features/pip/types';
 
 const PipCreatePage: React.FC = () => {
     const navigate = useNavigate();
     const [createPip, { isLoading: isCreating }] = useCreatePipMutation();
+    const { data: departments, isLoading: isDepartmentsLoading } = useGetDepartmentsQuery();
     const { data: employees, isLoading: isEmployeesLoading } = useGetEmployeesQuery();
+
+    const [selectedDepartmentId, setSelectedDepartmentId] = useState<number>(0);
 
     const [formData, setFormData] = useState<PipCreateRequest>({
         employeeId: 0,
@@ -22,6 +26,11 @@ const PipCreatePage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        if (!selectedDepartmentId) {
+            setError('Please select a department.');
+            return;
+        }
 
         if (!formData.employeeId || !formData.managerId || !formData.startDate || !formData.endDate || !formData.reason) {
             setError('Please fill in all fields.');
@@ -44,7 +53,20 @@ const PipCreatePage: React.FC = () => {
         }));
     };
 
-    if (isEmployeesLoading) {
+    const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const deptId = parseInt(e.target.value);
+        setSelectedDepartmentId(deptId);
+        setFormData(prev => ({
+            ...prev,
+            employeeId: 0,
+            managerId: 0
+        }));
+    };
+
+    const filteredEmployees = employees?.filter(emp => selectedDepartmentId === 0 || emp.currentDepartmentId === selectedDepartmentId) || [];
+    const filteredManagers = filteredEmployees.filter(emp => emp.roles.includes('MANAGER') || emp.roles.includes('HR'));
+
+    if (isEmployeesLoading || isDepartmentsLoading) {
         return (
             <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -75,6 +97,22 @@ const PipCreatePage: React.FC = () => {
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Department</label>
+                            <select
+                                value={selectedDepartmentId}
+                                onChange={handleDepartmentChange}
+                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                            >
+                                <option value={0}>Select Department</option>
+                                {departments?.map(dept => (
+                                    <option key={dept.id} value={dept.id}>
+                                        {dept.departmentName}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Employee</label>
                             <select
@@ -85,7 +123,7 @@ const PipCreatePage: React.FC = () => {
                                 required
                             >
                                 <option value={0}>Select Employee</option>
-                                {employees?.map(emp => (
+                                {filteredEmployees.map(emp => (
                                     <option key={emp.id} value={emp.id}>
                                         {emp.staffName} ({emp.employeeCode})
                                     </option>
@@ -103,7 +141,7 @@ const PipCreatePage: React.FC = () => {
                                 required
                             >
                                 <option value={0}>Select Manager</option>
-                                {employees?.filter(emp => emp.roles.includes('ROLE_MANAGER') || emp.roles.includes('ROLE_HR')).map(emp => (
+                                {filteredManagers.map(emp => (
                                     <option key={emp.id} value={emp.id}>
                                         {emp.staffName}
                                     </option>
