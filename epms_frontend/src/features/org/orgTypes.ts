@@ -65,3 +65,29 @@ export interface EmployeeDepartmentResponse {
   isCurrent: boolean;
   createdAt: string; // ISO string
 }
+
+export interface PermissionRequest {
+  permissionName: string;
+}
+
+export interface PermissionResponse {
+  permissionId: number;
+  permissionName: string;
+}
+
+export interface AssignPermissionRequest {
+  roleId: number;
+  levelId: number;
+  permissionId: number;
+}
+
+export interface RoleLevelPermissionResponse {
+  id: number;
+  roleId: number;
+  roleName: string;
+  levelId: number;
+  levelName: string;
+  permissionId: number;
+  permissionName: string;
+}
+

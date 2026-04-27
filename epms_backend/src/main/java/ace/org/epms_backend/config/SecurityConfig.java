@@ -1,5 +1,6 @@
 package ace.org.epms_backend.config;
 
+import ace.org.epms_backend.exception.JwtAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,16 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
-
-//    private final UserDetailsService userDetailsService;
-//    private final JwtAuthFilter jwtAuthFilter;
-//
-//    // Manual constructor
-//    public SecurityConfig(UserDetailsService userDetailsService, JwtAuthFilter jwtAuthFilter) {
-//        this.userDetailsService = userDetailsService;
-//        this.jwtAuthFilter = jwtAuthFilter;
-//    }
-
+    private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
@@ -43,15 +35,15 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html")
-                        .permitAll()
+                                "/swagger-ui.html"
+                        ).permitAll()
                         .anyRequest().permitAll())
-                .sessionManagement(session -> session
+                .sessionManagement(session->session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                // .exceptionHandling(ex->ex
-                // .authenticationEntryPoint(authenticationEntryPoint))
+                .exceptionHandling(ex->ex
+                        .authenticationEntryPoint(authenticationEntryPoint))
                 .build();
     }
 

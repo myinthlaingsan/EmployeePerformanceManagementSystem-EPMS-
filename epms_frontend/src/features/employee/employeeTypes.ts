@@ -22,11 +22,11 @@ export interface CreateEmployeeRequest {
   gender?: Gender;
   dateOfBirth?: string; // ISO string (yyyy-MM-dd)
   positionId: number;
-  levelId: number;
   salary?: number;
   currency?: string;
   roleId: number;
-  departmentId: number;
+  parentDepartmentId: number;
+  currentDepartmentId: number;
 }
 
 export interface SetPasswordRequest {
@@ -58,10 +58,7 @@ export interface UpdateEmployeeRequest {
   spouseName?: string;
   fatherName?: string;
 
-  department?: string;
-
   positionId: number;
-  levelId: number;
 
   salary?: number;
   currency?: string;
@@ -100,7 +97,8 @@ export interface EmployeeResponse {
   positionName: string;
   levelName: string;
   levelRank: number;
-  departmentName?: string;
+  currentDepartmentName?: string;
+  parentDepartmentName?: string;
   roles: string[];
   permissions: string[];
 }
