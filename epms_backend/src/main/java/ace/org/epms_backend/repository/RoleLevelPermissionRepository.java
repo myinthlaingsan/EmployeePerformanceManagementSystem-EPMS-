@@ -17,4 +17,9 @@ public interface RoleLevelPermissionRepository extends JpaRepository<RoleLevelPe
                 WHERE rlp.role IN :roles AND rlp.level = :level
             """)
     List<Permission> findPermissionsByRolesAndLevel(List<Role> roles, JobLevel level);
+
+    boolean existsByRoleAndLevelAndPermission(Role role, JobLevel level, Permission permission);
+    boolean existsByPermission(Permission permission);
+
+    List<RoleLevelPermission> findByRole_RoleIdAndLevel_LevelId(Long roleId, Long levelId);
 }

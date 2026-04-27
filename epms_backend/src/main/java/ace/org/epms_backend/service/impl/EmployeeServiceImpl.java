@@ -12,6 +12,7 @@ import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.EmployeeService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -27,46 +28,52 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final RoleRepository roleRepository;
     private final ResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
     private final PositionRepository positionRepository;
-    private final JobLevelRepository levelRepository;
+    private final DepartmentRepository departmentRepository;
     private final EmployeeMapper employeeMapper;
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
-    private final DepartmentRepository departmentRepository;
     private final AuthService authService;
+    private final ApplicationEventPublisher applicationEventPublisher;
     @Override
     @Transactional
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        if (email.isEmpty()) {
+            throw new RuntimeException("Email is required");
+        }
         if (employeeRepository.existsByEmail(request.getEmail())) {
             throw new EmailExistException("Email already exists");
         }
         Role role = roleRepository.findById(request.getRoleId())
                 .orElseThrow(() -> new NotFoundException("Role not found"));
-        Employee employee = employeeMapper.toEntity(request);
 
         Position position = positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
-        
+        Department parentDept = departmentRepository.findById(request.getParentDepartmentId())
+                .orElseThrow(() -> new NotFoundException("Parent Department Not Found"));
+
+        Department currentDept = departmentRepository.findById(request.getCurrentDepartmentId())
+                .orElseThrow(() -> new NotFoundException("Current Department Not Found"));
+        Employee employee = employeeMapper.toEntity(request);
+
+        employee.setEmail(email);
         employee.setPosition(position);
         employee.setLevel(position.getLevel()); // Set level from position
         employee.setStatus(EmployeeStatus.INACTIVE);
         employee.setPassword(null); // user will set later
         employee.setEmployeeCode(generateEmployeeCode());
         Employee savedEmployee = employeeRepository.save(employee);
-
-        // Assign initial department
-        if (request.getDepartmentId() != null) {
-            Department dept = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new NotFoundException("Department Not Found"));
-            EmployeeDepartment empDept = new EmployeeDepartment();
-            empDept.setEmployee(savedEmployee);
-            empDept.setCurrentDepartment(dept);
-            empDept.setIsCurrent(true);
-            employeeDepartmentRepository.save(empDept);
-        }
-
+         //Assign initial department
+        EmployeeDepartment empDept = new EmployeeDepartment();
+        empDept.setEmployee(savedEmployee);
+        empDept.setParentDepartment(parentDept);     //Banking
+        empDept.setCurrentDepartment(currentDept);   //ERP
+        empDept.setIsCurrent(true);
+        empDept.setCreatedBy(authService.getCurrentUser().getId());
+        employeeDepartmentRepository.save(empDept);
+        // roles
         EmployeeRole employeeRole = new EmployeeRole();
         employeeRole.setEmployee(savedEmployee);
         employeeRole.setRole(role);
@@ -80,21 +87,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         tokenRepository.save(resetToken);
 
-        // Send email
-        String link = "http://localhost:5173/set-password?token=" + token;
-        String htmlContent = EmailTemplateBuilder.buildSetPasswordEmail(
-                employee.getStaffName(),
-                link
-        );
-//        emailService.sendEmail(
-//                employee.getEmail(),
-//                "Set Your Password",
-//                "Click here: " + link
-//        );
-        emailService.sendHtmlEmail(
-                employee.getEmail(),
-                "Set Your Password",
-                htmlContent
+        applicationEventPublisher.publishEvent(
+                new EmployeeCreatedEvent(savedEmployee.getId(),token)
         );
         return mapToResponse(savedEmployee);
     }
@@ -142,10 +136,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Position position = positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
-        
         emp.setPosition(position);
         emp.setLevel(position.getLevel()); // Set level from position
-
         Employee updated = employeeRepository.save(emp);
         return mapToResponse(updated);
     }
@@ -234,9 +226,12 @@ public class EmployeeServiceImpl implements EmployeeService {
         // Set Department Name
         employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
                 .ifPresent(ed -> {
-                    if (ed.getCurrentDepartment() != null) {
-                        response.setDepartmentName(ed.getCurrentDepartment().getDepartmentName());
-                    }
+                    response.setCurrentDepartmentName(
+                            ed.getCurrentDepartment().getDepartmentName()
+                    );
+                    response.setParentDepartmentName(
+                            ed.getParentDepartment().getDepartmentName()
+                    );
                 });
 
         return response;
