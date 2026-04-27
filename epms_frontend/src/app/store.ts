@@ -2,11 +2,14 @@ import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "../features/auth/authSlice";
 // import themeReducer from "../features/theme/themeSlice"
 import { api } from "../services/api";
+import { kpiApi } from "../features/kpi/kpiApi";
+
 export const store = configureStore({
     reducer: {
         auth: authReducer,
         // theme: themeReducer,
         [api.reducerPath]: api.reducer,
+        [kpiApi.reducerPath]: kpiApi.reducer,
     },
     // devTools: {
     //     trace: true,
