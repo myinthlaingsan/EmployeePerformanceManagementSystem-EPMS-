@@ -20,13 +20,23 @@ public class GlobalExceptionHandlerAdvice {
                 .body(new ApiResponse<>(500,ex.getMessage(),null, LocalDateTime.now()));
     }
 
+//    @ExceptionHandler(MethodArgumentNotValidException.class)
+//    public ResponseEntity<Map<String,String>> handleValidationException(MethodArgumentNotValidException ex){
+//        Map<String,String> errors = new HashMap<>();
+//        ex.getBindingResult().getFieldErrors()
+//                .forEach(error-> errors.put(error.getField(),error.getDefaultMessage()));
+//        return ResponseEntity.badRequest().body(errors);
+//    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String,String>> handleValidationException(MethodArgumentNotValidException ex){
+    public ResponseEntity<ApiResponse<?>> handleValidationException(MethodArgumentNotValidException ex){
         Map<String,String> errors = new HashMap<>();
+
         ex.getBindingResult().getFieldErrors()
-                .forEach(error-> errors.put(error.getField(),error.getDefaultMessage()));
-//        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
-        return ResponseEntity.badRequest().body(errors);
+                .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
+
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(400, "Validation failed", errors, LocalDateTime.now()));
     }
 
     @ExceptionHandler(UserNotFoundException.class)
@@ -89,21 +99,9 @@ public class GlobalExceptionHandlerAdvice {
                 .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
     }
 
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ApiResponse<?>> handleNotFound(NotFoundException ex){
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ApiResponse<>(404, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<?>> handleIllegalArgument(IllegalArgumentException ex){
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse<>(400, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiResponse<?>> handleIllegalState(IllegalStateException ex){
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<?>> handleAccessDenied(AccessDeniedException ex){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>(403,ex.getMessage(),null,LocalDateTime.now()));
     }
 }
