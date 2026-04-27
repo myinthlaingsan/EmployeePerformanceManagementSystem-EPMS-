@@ -13,7 +13,7 @@ public interface AppraisalMapper {
     @Mapping(target = "employeeId", source = "employee.id")
     @Mapping(target = "managerId", source = "manager.id")
     @Mapping(target = "status", expression = "java(appraisal.getStatus().name())")
-    @Mapping(target = "totalScore", expression = "java(appraisal.getTotalScore() != null ? appraisal.getTotalScore().doubleValue() : null)")
+    @Mapping(target = "formScore", expression = "java(appraisal.getFormScore() != null ? appraisal.getFormScore().doubleValue() : null)")
     @Mapping(target = "categoryName", source = "performanceCategory.name")
     AppraisalResponse toResponse(Appraisal appraisal);
 
@@ -23,7 +23,7 @@ public interface AppraisalMapper {
     @Mapping(target = "cycle", ignore = true)
     @Mapping(target = "form", ignore = true)
     @Mapping(target = "performanceCategory", ignore = true)
-    @Mapping(target = "totalScore", ignore = true)
+    @Mapping(target = "formScore", ignore = true)
     @Mapping(target = "performanceGrade", ignore = true)
     @Mapping(target = "employeeSigned", ignore = true)
     @Mapping(target = "managerSigned", ignore = true)

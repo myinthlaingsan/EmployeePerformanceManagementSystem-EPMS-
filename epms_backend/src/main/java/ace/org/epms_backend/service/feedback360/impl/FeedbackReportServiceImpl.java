@@ -2,13 +2,14 @@ package ace.org.epms_backend.service.feedback360.impl;
 
 import ace.org.epms_backend.dto.feedback360.CategoryScore;
 import ace.org.epms_backend.dto.feedback360.FeedbackSummaryResponse;
+import ace.org.epms_backend.dto.feedback360.DetailedComment;
 import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.feedback360.Feedback;
 import ace.org.epms_backend.model.feedback360.FeedbackResponse;
 import ace.org.epms_backend.repository.EmployeeRepository;
-import ace.org.epms_backend.repository.appraisal.AppraisalCycleRepository;
+import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackResponseRepository;
 import ace.org.epms_backend.service.feedback360.FeedbackReportService;
@@ -38,7 +39,7 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
 
         Map<String, List<Integer>> selfScoresMap = new HashMap<>();
         Map<String, List<Integer>> othersScoresMap = new HashMap<>();
-        List<FeedbackSummaryResponse.DetailedComment> detailedComments = new ArrayList<>();
+        List<DetailedComment> detailedComments = new ArrayList<>();
 
         for (Feedback feedback : allFeedbacks) {
             List<FeedbackResponse> responses = feedbackResponseRepository.findByFeedbackId(feedback.getId());
@@ -59,7 +60,7 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                 }
 
                 if (response.getComment() != null && !response.getComment().isBlank()) {
-                    detailedComments.add(FeedbackSummaryResponse.DetailedComment.builder()
+                    detailedComments.add(DetailedComment.builder()
                             .categoryName(categoryName)
                             .evaluatorRole(relationship.name())
                             .evaluatorName(evaluatorName)

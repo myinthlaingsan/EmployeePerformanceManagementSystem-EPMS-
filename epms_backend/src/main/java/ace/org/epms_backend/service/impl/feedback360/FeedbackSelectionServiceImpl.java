@@ -3,11 +3,11 @@ package ace.org.epms_backend.service.impl.feedback360;
 import ace.org.epms_backend.dto.feedback360.EmployeeEvaluationDTO;
 import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.enums.FeedbackStatus;
-// import ace.org.epms_backend.model.appraisal.AppraisalCycle; // Commented out
+import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.feedback360.FeedbackRequest;
 import ace.org.epms_backend.repository.EmployeeRepository;
-// import ace.org.epms_backend.repository.appraisal.AppraisalCycleRepository; // Commented out
+import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository;
 import ace.org.epms_backend.service.feedback360.FeedbackSelectionService;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
 
     private final EmployeeRepository employeeRepository;
     private final FeedbackRequestRepository feedbackRequestRepository;
-    // private final AppraisalCycleRepository appraisalCycleRepository; // Commented out
+    private final AppraisalCycleRepository appraisalCycleRepository;
 
     @Override
     public List<EmployeeEvaluationDTO> suggestEvaluators(Long employeeId) {
@@ -34,9 +34,9 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
 
         List<EmployeeEvaluationDTO> result = new ArrayList<>();
 
-        // 1. DIRECT MANAGER
+        // 1. MANAGER
         if (target.getDirectManager() != null) {
-            result.add(mapToDTO(target.getDirectManager(), FeedbackRelationship.DIRECT_MANAGER));
+            result.add(mapToDTO(target.getDirectManager(), FeedbackRelationship.MANAGER));
         }
 
         // 2. PEERS
@@ -65,10 +65,8 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
         Employee targetEmployee = employeeRepository.findById(targetEmployeeId)
                 .orElseThrow(() -> new RuntimeException("Target Employee not found"));
 
-        // Cycle logic is temporarily commented out as it belongs to another module
-        /* AppraisalCycle cycle = appraisalCycleRepository.findById(cycleId)
+        AppraisalCycle cycle = appraisalCycleRepository.findById(cycleId)
                 .orElseThrow(() -> new RuntimeException("Appraisal Cycle not found"));
-        */
 
         for (EmployeeEvaluationDTO dto : selectedEvaluators) {
             Employee evaluator = employeeRepository.findById(dto.getEmployeeId())
@@ -77,7 +75,7 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
             FeedbackRequest request = FeedbackRequest.builder()
                     .targetUser(targetEmployee)
                     .evaluator(evaluator)
-                    // .cycle(cycle) // Commented out temporarily
+                    .cycle(cycle)
                     .relationship(dto.getRelationship())
                     .status(FeedbackStatus.PENDING)
                     .isAnonymous(true)

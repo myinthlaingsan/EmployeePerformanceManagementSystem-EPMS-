@@ -1,69 +1,130 @@
 package ace.org.epms_backend.service.feedback360.impl;
 
-import ace.org.epms_backend.dto.feedback360.FeedbackSubmissionRequest;
+import ace.org.epms_backend.dto.feedback360.*;
 import ace.org.epms_backend.enums.FeedbackStatus;
+import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.mapper.FeedbackMapper;
 import ace.org.epms_backend.model.appraisal.Question;
-import ace.org.epms_backend.model.feedback360.Feedback;
-import ace.org.epms_backend.model.feedback360.FeedbackRequest;
-import ace.org.epms_backend.model.feedback360.FeedbackResponse;
-import ace.org.epms_backend.repository.appraisal.QuestionRepository;
-import ace.org.epms_backend.repository.feedback360.FeedbackRepository;
-import ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository;
-import ace.org.epms_backend.repository.feedback360.FeedbackResponseRepository;
+import ace.org.epms_backend.model.feedback360.*;
+import ace.org.epms_backend.repository.QuestionRepository;
+import ace.org.epms_backend.repository.feedback360.*;
 import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService {
 
-    private final FeedbackRequestRepository feedbackRequestRepository;
     private final FeedbackRepository feedbackRepository;
-    private final FeedbackResponseRepository feedbackResponseRepository;
+    private final FeedbackResponseRepository responseRepository;
+    private final FeedbackRequestRepository requestRepository;
     private final QuestionRepository questionRepository;
+    private final FeedbackMapper feedbackMapper;
 
     @Override
     @Transactional
     public void submitFeedback(FeedbackSubmissionRequest request, Long evaluatorId) {
-        FeedbackRequest feedbackRequest = feedbackRequestRepository.findById(request.getRequestId())
-                .orElseThrow(() -> new RuntimeException("Feedback request not found"));
+        FeedbackRequest feedbackRequest = requestRepository.findById(request.getRequestId())
+                .orElseThrow(() -> new NotFoundException("Feedback request not found"));
+
+        if (feedbackRequest.getStatus() == FeedbackStatus.COMPLETED) {
+            throw new RuntimeException("Feedback already submitted for this request");
+        }
 
         if (!feedbackRequest.getEvaluator().getId().equals(evaluatorId)) {
-            throw new RuntimeException("You are not authorized to submit this feedback");
+            throw new RuntimeException("You are not authorized to submit feedback for this request");
         }
 
-        if (feedbackRequest.getStatus() != FeedbackStatus.PENDING) {
-            throw new RuntimeException("Feedback has already been submitted or is closed");
-        }
-
-        // 1. Create main Feedback record
         Feedback feedback = Feedback.builder()
                 .request(feedbackRequest)
+                .relationship(feedbackRequest.getRelationship())
                 .overallComment(request.getOverallComment())
                 .submittedAt(Instant.now())
                 .build();
-        feedbackRepository.save(feedback);
 
-        // 2. Create individual responses
-        for (FeedbackSubmissionRequest.FeedbackAnswerRequest answerDTO : request.getAnswers()) {
-            Question question = questionRepository.findById(answerDTO.getQuestionId())
-                    .orElseThrow(() -> new RuntimeException("Question not found with ID: " + answerDTO.getQuestionId()));
-
-            FeedbackResponse response = FeedbackResponse.builder()
+        List<FeedbackResponse> responses = request.getResponses().stream().map(respDto -> {
+            Question question = questionRepository.findById(respDto.getQuestionId())
+                    .orElseThrow(() -> new NotFoundException("Question not found: " + respDto.getQuestionId()));
+            return FeedbackResponse.builder()
                     .feedback(feedback)
                     .question(question)
-                    .score(answerDTO.getScore())
-                    .comment(answerDTO.getComment())
+                    .score(respDto.getScore())
+                    .comment(respDto.getComment())
                     .build();
-            feedbackResponseRepository.save(response);
-        }
+        }).collect(Collectors.toList());
 
-        // 3. Mark request as SUBMITTED
-        feedbackRequest.setStatus(FeedbackStatus.SUBMITTED);
-        feedbackRequestRepository.save(feedbackRequest);
+        // Calculate Average Score: (Total Points / (Questions * 5)) * 100
+        int totalPoints = responses.stream().mapToInt(FeedbackResponse::getScore).sum();
+        int questionCount = responses.size();
+        BigDecimal averageScore = BigDecimal.valueOf(totalPoints)
+                .divide(BigDecimal.valueOf(questionCount * 5), 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+
+        feedback.setAverageScore(averageScore);
+        
+        feedbackRepository.save(feedback);
+        responseRepository.saveAll(responses);
+
+        feedbackRequest.setStatus(FeedbackStatus.COMPLETED);
+        requestRepository.save(feedbackRequest);
+    }
+
+    @Override
+    public FeedbackDetailsResponse getFeedbackByRequest(Long requestId) {
+        Feedback feedback = feedbackRepository.findByRequestId(requestId)
+                .orElseThrow(() -> new NotFoundException("Feedback not found"));
+        
+        FeedbackDetailsResponse response = feedbackMapper.toFeedbackDetails(feedback);
+        response.setResponses(responseRepository.findByFeedbackId(feedback.getId()).stream()
+                .map(feedbackMapper::toResponseDetails)
+                .collect(Collectors.toList()));
+        
+        return response;
+    }
+
+    @Override
+    public List<FeedbackDetailsResponse> getMySubmittedFeedbacks(Long evaluatorId) {
+        return feedbackRepository.findByRequestEvaluatorId(evaluatorId).stream()
+                .map(f -> {
+                    FeedbackDetailsResponse res = feedbackMapper.toFeedbackDetails(f);
+                    res.setResponses(responseRepository.findByFeedbackId(f.getId()).stream()
+                            .map(feedbackMapper::toResponseDetails)
+                            .collect(Collectors.toList()));
+                    return res;
+                }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<FeedbackDetailsResponse> getFeedbackReceivedByEmployee(Long employeeId, Long cycleId) {
+        return feedbackRepository.findByRequestTargetUserIdAndRequestCycleCycleId(employeeId, cycleId).stream()
+                .map(f -> {
+                    FeedbackDetailsResponse res = feedbackMapper.toFeedbackDetails(f);
+                    res.setResponses(responseRepository.findByFeedbackId(f.getId()).stream()
+                            .map(feedbackMapper::toResponseDetails)
+                            .collect(Collectors.toList()));
+                    return res;
+                }).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void deleteFeedback(Long feedbackId) {
+        Feedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new NotFoundException("Feedback not found"));
+        
+        FeedbackRequest request = feedback.getRequest();
+        request.setStatus(FeedbackStatus.PENDING);
+        requestRepository.save(request);
+        
+        responseRepository.deleteByFeedbackId(feedbackId);
+        feedbackRepository.delete(feedback);
     }
 }

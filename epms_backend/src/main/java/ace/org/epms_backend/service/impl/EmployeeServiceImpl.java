@@ -1,6 +1,5 @@
 package ace.org.epms_backend.service.impl;
 
-import ace.org.epms_backend.config.EmailTemplateBuilder;
 import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.enums.EmployeeStatus;
 import ace.org.epms_backend.exception.*;
@@ -8,7 +7,6 @@ import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.employee.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuthService;
-import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.EmployeeService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +14,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -34,9 +31,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
-    private final ApplicationEventPublisher applicationEventPublisher;
     private final AuthService authService;
-
+    private final ApplicationEventPublisher applicationEventPublisher;
     @Override
     @Transactional
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
@@ -52,32 +48,38 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Position position = positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
+        Department parentDept = departmentRepository.findById(request.getParentDepartmentId())
+                .orElseThrow(() -> new NotFoundException("Parent Department Not Found"));
 
+        Department currentDept = departmentRepository.findById(request.getCurrentDepartmentId())
+                .orElseThrow(() -> new NotFoundException("Current Department Not Found"));
         Employee employee = employeeMapper.toEntity(request);
+
         employee.setEmail(email);
         employee.setPosition(position);
         employee.setLevel(position.getLevel()); // Set level from position
+
+        if (request.getDirectManagerId() != null) {
+            employee.setDirectManager(employeeRepository.findById(request.getDirectManagerId())
+                    .orElseThrow(() -> new NotFoundException("Direct Manager Not Found")));
+        }
         employee.setStatus(EmployeeStatus.INACTIVE);
         employee.setPassword(null); // user will set later
         employee.setEmployeeCode(generateEmployeeCode());
         Employee savedEmployee = employeeRepository.save(employee);
-
-        // Assign initial department
-        if (request.getDepartmentId() != null) {
-            Department dept = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new NotFoundException("Department Not Found"));
-            EmployeeDepartment empDept = new EmployeeDepartment();
-            empDept.setEmployee(savedEmployee);
-            empDept.setCurrentDepartment(dept);
-            empDept.setIsCurrent(true);
-            employeeDepartmentRepository.save(empDept);
-        }
-
+        //Assign initial department
+        EmployeeDepartment empDept = new EmployeeDepartment();
+        empDept.setEmployee(savedEmployee);
+        empDept.setParentDepartment(parentDept);     //Banking
+        empDept.setCurrentDepartment(currentDept);   //ERP
+        empDept.setIsCurrent(true);
+        empDept.setCreatedBy(authService.getCurrentUser().getId());
+        employeeDepartmentRepository.save(empDept);
+        // roles
         EmployeeRole employeeRole = new EmployeeRole();
         employeeRole.setEmployee(savedEmployee);
         employeeRole.setRole(role);
         employeeRoleRepository.save(employeeRole);
-
         // Generate token
         String token = UUID.randomUUID().toString();
         ResetToken resetToken = new ResetToken();
@@ -88,9 +90,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         tokenRepository.save(resetToken);
 
         applicationEventPublisher.publishEvent(
-                new EmployeeCreatedEvent(savedEmployee.getId(), token)
+                new EmployeeCreatedEvent(savedEmployee.getId(),token)
         );
-        return employeeMapper.toResponse(savedEmployee);
+        return mapToResponse(savedEmployee);
     }
 
     @Override
@@ -116,14 +118,14 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee emp = employeeRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
 
-        return employeeMapper.toResponse(emp);
+        return mapToResponse(emp);
     }
 
     @Override
     public List<EmployeeResponse> getAll() {
         return employeeRepository.findAll()
                 .stream()
-                .map(employeeMapper::toResponse)
+                .map(this::mapToResponse)
                 .toList();
     }
 
@@ -136,10 +138,13 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Position position = positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
-        
         emp.setPosition(position);
         emp.setLevel(position.getLevel()); // Set level from position
 
+        if (request.getDirectManagerId() != null) {
+            emp.setDirectManager(employeeRepository.findById(request.getDirectManagerId())
+                    .orElseThrow(() -> new NotFoundException("Direct Manager Not Found")));
+        }
         Employee updated = employeeRepository.save(emp);
         return mapToResponse(updated);
     }
@@ -190,7 +195,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Employee updated = employeeRepository.save(emp);
 
-        return employeeMapper.toResponse(updated);
+        return mapToResponse(updated);
     }
 
     @Override
@@ -224,13 +229,16 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .map(Permission::getPermissionName)
                 .toList();
         response.setPermissions(permissions);
-        
+
         // Set Department Name
         employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
                 .ifPresent(ed -> {
-                    if (ed.getCurrentDepartment() != null) {
-                        response.setDepartmentName(ed.getCurrentDepartment().getDepartmentName());
-                    }
+                    response.setCurrentDepartmentName(
+                            ed.getCurrentDepartment().getDepartmentName()
+                    );
+                    response.setParentDepartmentName(
+                            ed.getParentDepartment().getDepartmentName()
+                    );
                 });
 
         return response;
