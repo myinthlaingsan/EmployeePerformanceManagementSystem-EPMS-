@@ -75,11 +75,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public List<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivileged = isPrivileged(currentUser);
-
         return meetingRepository.findByEmployeeId(employeeId).stream()
-                .filter(m -> isParticipant(m, currentUser) ||
-                        (isPrivileged && !Boolean.TRUE.equals(m.getIsPrivateNote())))
+                .filter(m -> isParticipant(m, currentUser) || isPrivileged(currentUser))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -87,11 +84,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public List<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId) {
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivileged = isPrivileged(currentUser);
-
         return meetingRepository.findByManagerId(managerId).stream()
-                .filter(m -> isParticipant(m, currentUser) ||
-                        (isPrivileged && !Boolean.TRUE.equals(m.getIsPrivateNote())))
+                .filter(m -> isParticipant(m, currentUser) || isPrivileged(currentUser))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -212,19 +206,10 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
 
     private void checkMeetingAccess(OneOnOneMeeting meeting) {
         Employee currentUser = authService.getCurrentUser();
-        
-        // Involved parties always have access
-        if (isParticipant(meeting, currentUser)) {
-            return;
+        if (!isParticipant(meeting, currentUser) && !isPrivileged(currentUser)) {
+            // Throw NotFound instead of AccessDenied to prevent resource leakage
+            throw new NotFoundException("Meeting not found");
         }
-
-        // HR/Admins can only see non-private meetings
-        if (isPrivileged(currentUser) && !Boolean.TRUE.equals(meeting.getIsPrivateNote())) {
-            return;
-        }
-
-        // Throw NotFound instead of AccessDenied to prevent resource leakage
-        throw new NotFoundException("Meeting not found");
     }
 
     private boolean isParticipant(OneOnOneMeeting meeting, Employee user) {
