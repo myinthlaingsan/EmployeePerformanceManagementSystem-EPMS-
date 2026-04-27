@@ -5,10 +5,7 @@ import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.enums.EmployeeStatus;
 import ace.org.epms_backend.exception.*;
 import ace.org.epms_backend.mapper.EmployeeMapper;
-import ace.org.epms_backend.model.employee.Employee;
-import ace.org.epms_backend.model.employee.EmployeeRole;
-import ace.org.epms_backend.model.employee.ResetToken;
-import ace.org.epms_backend.model.employee.Role;
+import ace.org.epms_backend.model.employee.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmailService;
@@ -32,7 +29,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final ResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final PositionRepository positionRepository;
-    private final DepartmentRepository departmentRepository;
     private final EmployeeMapper employeeMapper;
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
@@ -49,12 +45,18 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (employeeRepository.existsByEmail(request.getEmail())) {
             throw new EmailExistException("Email already exists");
         }
+
         Role role = roleRepository.findById(request.getRoleId())
                 .orElseThrow(() -> new NotFoundException("Role not found"));
 
         Position position = positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
-        
+        Department parentDept = departmentRepository.findById(request.getParentDepartmentId())
+                .orElseThrow(() -> new NotFoundException("Parent Department Not Found"));
+
+        Department currentDept = departmentRepository.findById(request.getCurrentDepartmentId())
+                .orElseThrow(() -> new NotFoundException("Current Department Not Found"));
+        Employee employee = employeeMapper.toEntity(request);
         employee.setPosition(position);
         employee.setLevel(position.getLevel()); // Set level from position
         employee.setStatus(EmployeeStatus.INACTIVE);
