@@ -3,6 +3,7 @@ package ace.org.epms_backend.controller;
 import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.appraisal.*;
 import ace.org.epms_backend.service.AppraisalService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,7 @@ public class AppraisalController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AppraisalResponse>> create(
-            @RequestBody AppraisalCreateRequest request
+            @Valid @RequestBody AppraisalCreateRequest request
     ) {
         AppraisalResponse response = appraisalService.createAppraisal(request);
 
@@ -44,7 +45,7 @@ public class AppraisalController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AppraisalResponse>> update(
             @PathVariable Long id,
-            @RequestBody AppraisalUpdateRequest request) {
+            @Valid @RequestBody AppraisalUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.success(appraisalService.update(id, request)));
     }
 
@@ -58,7 +59,7 @@ public class AppraisalController {
     @PostMapping("/assign")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AppraisalResponse>> assign(
-            @RequestBody AppraisalAssignRequest request
+            @Valid @RequestBody AppraisalAssignRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 appraisalService.assignAppraisal(request)

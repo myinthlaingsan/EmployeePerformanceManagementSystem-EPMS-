@@ -5,6 +5,7 @@ import ace.org.epms_backend.enums.KpiGoalStatus;
 import ace.org.epms_backend.enums.KpiItemStatus;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
+import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.kpi.*;
 import ace.org.epms_backend.repository.*;
@@ -37,7 +38,7 @@ public class KpiServiceImpl implements KpiService {
     private final KpiGoalsRepository goalsRepo;
     private final KpiHistoryLogRepository historyRepo;
     private final KpiCategoryRepository categoryRepository;
-
+    private final AppraisalCycleRepository cycleRepository;
     @Override
     @Transactional
     public KpiLibraryResponse createLibrary(KpiLibraryRequest request) {
@@ -113,13 +114,14 @@ public class KpiServiceImpl implements KpiService {
 
         KpiLibrary library = libraryRepository.findById(request.getLibraryId())
                 .orElseThrow(() -> new NotFoundException("Library not found"));
-
+        AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
+                .orElseThrow(() -> new NotFoundException("Appraisal Cycle Not found"));
         Employee currentManager = getCurrentEmployee();
 
         KpiGoals goalSet = KpiGoals.builder()
                 .employee(employee)
                 .manager(currentManager)
-                // .appraisalCycleId(request.getAppraisalCycleId())
+                .cycle(cycle) //fixed from test branch
                 .status(KpiGoalStatus.DRAFT)
                 .version(1)
                 .isCurrent(true)
@@ -295,7 +297,7 @@ public class KpiServiceImpl implements KpiService {
                 KpiGoals.builder()
                         .employee(oldGoalSet.getEmployee())
                         .manager(oldGoalSet.getManager())
-                        // .appraisalCycleId(oldGoalSet.getAppraisalCycleId())
+                        .cycle(oldGoalSet.getCycle()) //fixed from test
                         .version(oldGoalSet.getVersion() + 1)
                         .isCurrent(true)
                         .status(KpiGoalStatus.DRAFT)

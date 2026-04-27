@@ -31,13 +31,18 @@ public class SecurityConfig {
                 .csrf(csrf-> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth->auth
-                        .requestMatchers("/api/v1/auth/**", "/api/v1/hr/**").permitAll()
+                        .requestMatchers(
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh-token",
+                                "/api/v1/auth/forgot-password",
+                                "/api/v1/auth/reset-password"
+                        ).permitAll()
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
-                        .anyRequest().permitAll())
+                        .anyRequest().authenticated())
                 .sessionManagement(session->session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())

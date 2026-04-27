@@ -7,9 +7,11 @@ import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.JwtService;
 import ace.org.epms_backend.service.TokenBlacklistService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,7 +24,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @RequestBody AuthRequest request) {
+            @Valid @RequestBody AuthRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -31,7 +33,7 @@ public class AuthController {
 
     @PostMapping("/refresh-token")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
-            @RequestBody RefreshTokenRequest request) {
+            @Valid @RequestBody RefreshTokenRequest request) {
         AuthResponse response = authService.refreshToken(request);
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -39,6 +41,7 @@ public class AuthController {
     }
 
     @PutMapping("/unlock/{employeeId}")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
     public ResponseEntity<ApiResponse<Employee>> unlockEmployee(
             @PathVariable Long employeeId) {
         Employee employee = authService.unlockEmployee(employeeId);

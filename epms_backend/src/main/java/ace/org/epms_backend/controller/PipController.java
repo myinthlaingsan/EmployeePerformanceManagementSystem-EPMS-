@@ -1,9 +1,11 @@
 package ace.org.epms_backend.controller;
 
+import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.pip.PipCreateRequest;
 import ace.org.epms_backend.dto.pip.PipExtendRequest;
 import ace.org.epms_backend.dto.pip.PipResponse;
 import ace.org.epms_backend.service.PipService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,40 +22,40 @@ public class PipController {
 
     @PreAuthorize("hasRole('HR')")
     @PostMapping
-    public ResponseEntity<PipResponse> createPip(@RequestBody PipCreateRequest request) {
-        return ResponseEntity.ok(pipService.createPip(request));
+    public ResponseEntity<ApiResponse<PipResponse>> createPip(@Valid @RequestBody PipCreateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(pipService.createPip(request)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PipResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(pipService.getPipById(id));
+    public ResponseEntity<ApiResponse<PipResponse>> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(pipService.getPipById(id)));
     }
 
     @GetMapping
-    public ResponseEntity<List<PipResponse>> getAll() {
-        return ResponseEntity.ok(pipService.getAllPips());
+    public ResponseEntity<ApiResponse<List<PipResponse>>> getAll() {
+        return ResponseEntity.ok(ApiResponse.success(pipService.getAllPips()));
     }
 
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<PipResponse>> getByEmployee(@PathVariable Long employeeId) {
-        return ResponseEntity.ok(pipService.getPipsByEmployee(employeeId));
+    public ResponseEntity<ApiResponse<List<PipResponse>>> getByEmployee(@PathVariable Long employeeId) {
+        return ResponseEntity.ok(ApiResponse.success(pipService.getPipsByEmployee(employeeId)));
     }
 
     @GetMapping("/involved/{userId}")
-    public ResponseEntity<List<PipResponse>> getByInvolvedUser(@PathVariable Long userId) {
-        return ResponseEntity.ok(pipService.getPipsByInvolvedUser(userId));
+    public ResponseEntity<ApiResponse<List<PipResponse>>> getByInvolvedUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.success(pipService.getPipsByInvolvedUser(userId)));
     }
 
     @PreAuthorize("hasRole('HR')")
     @PutMapping("/{id}/activate")
-    public ResponseEntity<Void> activatePip(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> activatePip(@PathVariable Long id) {
         pipService.activatePip(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @PreAuthorize("hasRole('HR')")
     @PutMapping("/{id}/extend")
-    public ResponseEntity<PipResponse> extendPip(@PathVariable Long id, @RequestBody PipExtendRequest request) {
-        return ResponseEntity.ok(pipService.extendPip(id, request.getNewEndDate()));
+    public ResponseEntity<ApiResponse<PipResponse>> extendPip(@PathVariable Long id, @Valid @RequestBody PipExtendRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(pipService.extendPip(id, request.getNewEndDate())));
     }
 }
