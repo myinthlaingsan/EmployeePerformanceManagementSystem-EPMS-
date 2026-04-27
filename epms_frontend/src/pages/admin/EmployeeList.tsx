@@ -1,13 +1,13 @@
-import { 
-  useGetEmployeesQuery, 
-  useDeleteEmployeeMutation, 
-  useActivateEmployeeMutation, 
-  useDeactivateEmployeeMutation 
+import {
+  useGetEmployeesQuery,
+  useDeleteEmployeeMutation,
+  useActivateEmployeeMutation,
+  useDeactivateEmployeeMutation
 } from "../../features/employee/employeeapi";
-import { 
-  useGetRolesQuery, 
-  useAssignRoleToEmployeeMutation, 
-  useRemoveRoleFromEmployeeMutation 
+import {
+  useGetRolesQuery,
+  useAssignRoleToEmployeeMutation,
+  useRemoveRoleFromEmployeeMutation
 } from "../../features/org/roleApi";
 import { Link } from "react-router-dom";
 import { useState } from "react";
@@ -81,7 +81,8 @@ const EmployeeList = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-700 font-medium">{emp.departmentName || "No Dept"}</div>
+                  <div className="text-sm text-gray-700 font-medium">{emp.currentDepartmentName || "No Dept"}</div>
+                  <div className="text-sm text-gray-700 font-medium">{emp.parentDepartmentName || "No Dept"}</div>
                   <div className="text-xs text-blue-500 font-bold">{emp.positionName} ({emp.levelName})</div>
                 </td>
                 <td className="px-6 py-4">
@@ -100,7 +101,7 @@ const EmployeeList = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                       </svg>
                     </button>
-                    
+
                     {selectedEmp === emp.id && (
                       <div className="absolute z-50 mt-12 p-3 bg-white border border-gray-100 shadow-2xl rounded-2xl w-52 space-y-2 animate-in fade-in zoom-in duration-150">
                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2 mb-1">Assign Roles</p>
@@ -131,6 +132,15 @@ const EmployeeList = () => {
                 </td>
                 <td className="px-6 py-4 text-sm text-right">
                   <div className="flex justify-end items-center space-x-2">
+                    <Link
+                      to={`/employees/${emp.id}/departments`}
+                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                      title="Manage Departments"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </Link>
                     <Link
                       to={`/employees/edit/${emp.id}`}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"

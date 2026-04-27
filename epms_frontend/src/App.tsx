@@ -20,13 +20,6 @@ import JobLevelList from "./pages/admin/JobLevelList";
 import PositionList from "./pages/admin/PositionList";
 import HRDashboard from "./pages/admin/HRDashboard";
 
-// Appraisal Pages
-import AppraisalList from "./pages/appraisal/AppraisalList";
-import AppraisalDetail from "./pages/appraisal/AppraisalDetail";
-import SelfAssessment from "./pages/appraisal/SelfAssessment";
-import ManagerEvaluation from "./pages/appraisal/ManagerEvaluation";
-import ResultPage from "./pages/appraisal/ResultPage";
-
 // Mock Components for other specialized pages
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
 
@@ -71,7 +64,7 @@ const App = () => {
               <Route path="/employees" element={<EmployeeList />} />
               <Route path="/employees/new" element={<EmployeeForm />} />
               <Route path="/employees/edit/:id" element={<EmployeeForm />} />
-
+              
               <Route path="/departments" element={<DepartmentList />} />
               <Route path="/roles" element={<RoleList />} />
               <Route path="/job-levels" element={<JobLevelList />} />

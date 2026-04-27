@@ -61,9 +61,6 @@ public class Employee extends BaseEntity {
 
     private String spouseName;
     private String fatherName;
-
-    private String department;
-
     @ManyToOne
     @JoinColumn(name = "position_id")
     private Position position;
@@ -89,4 +86,5 @@ public class Employee extends BaseEntity {
     @Column(name = "account_locked", columnDefinition = "BOOLEAN DEFAULT false")
     private boolean accountLocked = false;
     private LocalDateTime lockTime;
+
 }
