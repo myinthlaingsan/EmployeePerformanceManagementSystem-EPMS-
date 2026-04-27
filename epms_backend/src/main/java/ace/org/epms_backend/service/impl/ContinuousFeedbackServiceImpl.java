@@ -98,8 +98,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         Employee currentUser = authService.getCurrentUser();
 
         return feedbackRepository.findByEmployee_Id(employeeId).stream()
-                .filter(f -> currentUser.getId().equals(f.getEmployee().getId()) ||
-                        currentUser.getId().equals(f.getManager().getId()))
+                .filter(f -> (currentUser.getId().equals(f.getManager().getId())) ||
+                             (!Boolean.TRUE.equals(f.getIsPrivate()) && currentUser.getId().equals(f.getEmployee().getId())))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -109,8 +109,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         Employee currentUser = authService.getCurrentUser();
 
         return feedbackRepository.findByManager_Id(managerId).stream()
-                .filter(f -> currentUser.getId().equals(f.getEmployee().getId()) ||
-                        currentUser.getId().equals(f.getManager().getId()))
+                .filter(f -> (currentUser.getId().equals(f.getManager().getId())) ||
+                             (!Boolean.TRUE.equals(f.getIsPrivate()) && currentUser.getId().equals(f.getEmployee().getId())))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -228,10 +228,17 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     private void checkFeedbackAccess(ContinuousFeedback feedback) {
         Employee currentUser = authService.getCurrentUser();
 
-        // Check if current user is the employee or manager of the feedback
-        if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
-                currentUser.getId().equals(feedback.getManager().getId())) {
-            return;
+        // If private, only Manager can see
+        if (Boolean.TRUE.equals(feedback.getIsPrivate())) {
+            if (currentUser.getId().equals(feedback.getManager().getId())) {
+                return;
+            }
+        } else {
+            // If not private, both Manager and Employee can see
+            if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
+                    currentUser.getId().equals(feedback.getManager().getId())) {
+                return;
+            }
         }
 
         throw new NotFoundException("Feedback not found");
