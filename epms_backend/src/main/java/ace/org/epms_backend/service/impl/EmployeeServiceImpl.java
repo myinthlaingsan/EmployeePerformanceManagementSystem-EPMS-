@@ -5,7 +5,10 @@ import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.enums.EmployeeStatus;
 import ace.org.epms_backend.exception.*;
 import ace.org.epms_backend.mapper.EmployeeMapper;
-import ace.org.epms_backend.model.employee.*;
+import ace.org.epms_backend.model.employee.Employee;
+import ace.org.epms_backend.model.employee.EmployeeRole;
+import ace.org.epms_backend.model.employee.ResetToken;
+import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmailService;
@@ -34,10 +37,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
-    private final AuthService authService;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final DepartmentRepository departmentRepository;
+
     @Override
-    @Transactional
+
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
         String email = request.getEmail().trim().toLowerCase();
         if (email.isEmpty()) {
@@ -51,29 +54,25 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Position position = positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
-        Department parentDept = departmentRepository.findById(request.getParentDepartmentId())
-                .orElseThrow(() -> new NotFoundException("Parent Department Not Found"));
-
-        Department currentDept = departmentRepository.findById(request.getCurrentDepartmentId())
-                .orElseThrow(() -> new NotFoundException("Current Department Not Found"));
-        Employee employee = employeeMapper.toEntity(request);
-
-        employee.setEmail(email);
+        
         employee.setPosition(position);
         employee.setLevel(position.getLevel()); // Set level from position
         employee.setStatus(EmployeeStatus.INACTIVE);
         employee.setPassword(null); // user will set later
         employee.setEmployeeCode(generateEmployeeCode());
         Employee savedEmployee = employeeRepository.save(employee);
-         //Assign initial department
-        EmployeeDepartment empDept = new EmployeeDepartment();
-        empDept.setEmployee(savedEmployee);
-        empDept.setParentDepartment(parentDept);     //Banking
-        empDept.setCurrentDepartment(currentDept);   //ERP
-        empDept.setIsCurrent(true);
-        empDept.setCreatedBy(authService.getCurrentUser().getId());
-        employeeDepartmentRepository.save(empDept);
-        // roles
+
+        // Assign initial department
+        if (request.getDepartmentId() != null) {
+            Department dept = departmentRepository.findById(request.getDepartmentId())
+                    .orElseThrow(() -> new NotFoundException("Department Not Found"));
+            EmployeeDepartment empDept = new EmployeeDepartment();
+            empDept.setEmployee(savedEmployee);
+            empDept.setCurrentDepartment(dept);
+            empDept.setIsCurrent(true);
+            employeeDepartmentRepository.save(empDept);
+        }
+
         EmployeeRole employeeRole = new EmployeeRole();
         employeeRole.setEmployee(savedEmployee);
         employeeRole.setRole(role);
@@ -82,7 +81,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         String token = UUID.randomUUID().toString();
         ResetToken resetToken = new ResetToken();
         resetToken.setToken(token);
-        resetToken.setEmployee(savedEmployee);
+        resetToken.setEmployee(employee);
         resetToken.setExpiryDate(LocalDateTime.now().plusHours(24));
 
         tokenRepository.save(resetToken);
@@ -90,7 +89,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         applicationEventPublisher.publishEvent(
                 new EmployeeCreatedEvent(savedEmployee.getId(),token)
         );
-        return mapToResponse(savedEmployee);
+        return employeeMapper.toResponse(employee);
     }
 
     @Override
@@ -116,14 +115,14 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee emp = employeeRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
 
-        return mapToResponse(emp);
+        return employeeMapper.toResponse(emp);
     }
 
     @Override
     public List<EmployeeResponse> getAll() {
         return employeeRepository.findAll()
                 .stream()
-                .map(this::mapToResponse)
+                .map(employeeMapper::toResponse)
                 .toList();
     }
 
@@ -136,8 +135,10 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Position position = positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
+        
         emp.setPosition(position);
         emp.setLevel(position.getLevel()); // Set level from position
+
         Employee updated = employeeRepository.save(emp);
         return mapToResponse(updated);
     }
@@ -188,7 +189,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Employee updated = employeeRepository.save(emp);
 
-        return mapToResponse(updated);
+        return employeeMapper.toResponse(updated);
     }
 
     @Override
@@ -226,12 +227,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         // Set Department Name
         employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
                 .ifPresent(ed -> {
-                    response.setCurrentDepartmentName(
-                            ed.getCurrentDepartment().getDepartmentName()
-                    );
-                    response.setParentDepartmentName(
-                            ed.getParentDepartment().getDepartmentName()
-                    );
+                    if (ed.getCurrentDepartment() != null) {
+                        response.setDepartmentName(ed.getCurrentDepartment().getDepartmentName());
+                    }
                 });
 
         return response;
