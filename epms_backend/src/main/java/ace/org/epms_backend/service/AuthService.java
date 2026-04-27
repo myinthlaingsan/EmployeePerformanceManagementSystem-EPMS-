@@ -1,8 +1,6 @@
 package ace.org.epms_backend.service;
 
-import ace.org.epms_backend.dto.auth.AuthRequest;
-import ace.org.epms_backend.dto.auth.AuthResponse;
-import ace.org.epms_backend.dto.auth.RefreshTokenRequest;
+import ace.org.epms_backend.dto.auth.*;
 import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.model.employee.Employee;
 
@@ -16,4 +14,6 @@ public interface AuthService {
 
     // Optional: return DTO for frontend
     EmployeeResponse getCurrentUserProfile();
+    void forgotPassword(ForgotPasswordRequest request);
+    void resetPassword(ResetPasswordRequest request);
 }
