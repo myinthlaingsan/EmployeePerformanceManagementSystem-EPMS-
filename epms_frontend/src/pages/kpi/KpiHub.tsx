@@ -5,17 +5,19 @@ import {
   useGetAllLibrariesQuery,
   useGetGoalSetByEmployeeQuery
 } from '../../features/kpi/kpiApi';
+import { useActiveCycle } from '../../context/ActiveCycleContext';
 
 const KpiHub: React.FC = () => {
   const navigate = useNavigate();
   const { user, isHR, isAdmin } = useAuth();
+  const { activeCycleId } = useActiveCycle();
   
   const { data: librariesResponse } = useGetAllLibrariesQuery();
   const libraries = librariesResponse?.data || [];
 
   const { data: myGoalsResponse, isLoading: loadingGoals } = useGetGoalSetByEmployeeQuery({ 
     employeeId: user?.id || 0, 
-    cycleId: 1 // Default cycle
+    cycleId: activeCycleId 
   }, { skip: !user });
 
   const myGoals = myGoalsResponse?.data;

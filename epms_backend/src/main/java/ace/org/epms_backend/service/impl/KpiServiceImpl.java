@@ -1,11 +1,13 @@
 package ace.org.epms_backend.service.impl;
 
+import ace.org.epms_backend.dto.appraisal.AppraisalCycleResponse;
 import ace.org.epms_backend.dto.kpi.*;
 import ace.org.epms_backend.enums.KpiGoalStatus;
 import ace.org.epms_backend.enums.KpiItemStatus;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.employee.Employee;
+import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.kpi.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.KpiService;
@@ -37,6 +39,17 @@ public class KpiServiceImpl implements KpiService {
     private final KpiGoalsRepository goalsRepo;
     private final KpiHistoryLogRepository historyRepo;
     private final KpiCategoryRepository categoryRepository;
+    private final AppraisalCycleRepository cycleRepository;
+
+    @Override
+    public AppraisalCycleResponse getActiveCycle() {
+        AppraisalCycle cycle = cycleRepository.findByIsActiveTrue()
+                .orElseThrow(() -> new NotFoundException("No active appraisal cycle found"));
+        return AppraisalCycleResponse.builder()
+                .cycleId(cycle.getCycleId())
+                .cycleName(cycle.getCycleName())
+                .build();
+    }
 
     @Override
     @Transactional
@@ -119,7 +132,8 @@ public class KpiServiceImpl implements KpiService {
         KpiGoals goalSet = KpiGoals.builder()
                 .employee(employee)
                 .manager(currentManager)
-//                .appraisalCycleId(request.getAppraisalCycleId())
+                .cycle(cycleRepository.findById(request.getAppraisalCycleId())
+                        .orElseThrow(() -> new NotFoundException("Appraisal cycle not found")))
                 .status(KpiGoalStatus.DRAFT)
                 .version(1)
                 .isCurrent(true)
@@ -295,7 +309,7 @@ public class KpiServiceImpl implements KpiService {
                 KpiGoals.builder()
                         .employee(oldGoalSet.getEmployee())
                         .manager(oldGoalSet.getManager())
-//                        .appraisalCycleId(oldGoalSet.getAppraisalCycleId())
+                        .cycle(oldGoalSet.getCycle())
                         .version(oldGoalSet.getVersion() + 1)
                         .isCurrent(true)
                         .status(KpiGoalStatus.DRAFT)
@@ -413,13 +427,27 @@ public class KpiServiceImpl implements KpiService {
 
         finalScore.setEmployee(goalSet.getEmployee());
         finalScore.setGoalSet(goalSet);
-//        finalScore.setCycleId(cycleId);
+        finalScore.setCycle(goalSet.getCycle());
         finalScore.setWeightedScore(totalWeightedScore);
         finalScore.setCalculatedAt(Instant.now());
         finalScore.setFinalizedBy(getCurrentEmployee().getId());
 
         KpiFinalScore savedScore = finalScoreRepository.save(finalScore);
         return kpiMapper.toScoreResponse(savedScore);
+    }
+
+    @Override
+    public GoalSetResponse getGoalSetByEmployee(Long employeeId, Long cycleId) {
+        return goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
+                .map(kpiMapper::toGoalSetResponse)
+                .orElseThrow(() -> new NotFoundException("Current goal set not found for this employee and cycle"));
+    }
+
+    @Override
+    public GoalSetResponse getGoalSetById(Long id) {
+        return goalsRepository.findById(id)
+                .map(kpiMapper::toGoalSetResponse)
+                .orElseThrow(() -> new NotFoundException("Goal set not found with ID: " + id));
     }
 
     private Employee getCurrentEmployee() {

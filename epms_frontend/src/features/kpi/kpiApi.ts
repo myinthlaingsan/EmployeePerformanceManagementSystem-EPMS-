@@ -138,6 +138,12 @@ export const kpiApi = createApi({
       providesTags: ['GoalSet'],
     }),
 
+    // ==================== Appraisal Cycle ====================
+    getActiveCycle: builder.query<ApiResponse<any>, void>({
+      query: () => '/kpi/active-cycle',
+      providesTags: ['GoalSet'], // Can use a specific tag if needed
+    }),
+
     // ==================== Score Calculation ====================
     calculateScore: builder.mutation<
       ApiResponse<KpiScoreResponse>,
@@ -167,4 +173,5 @@ export const {
   useCalculateScoreMutation,
   useGetGoalSetByEmployeeQuery,
   useGetGoalSetByIdQuery,
+  useGetActiveCycleQuery,
 } = kpiApi;

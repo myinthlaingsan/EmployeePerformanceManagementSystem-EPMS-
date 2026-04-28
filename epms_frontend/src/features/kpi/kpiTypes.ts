@@ -26,6 +26,7 @@ export interface KpiLibraryRequest {
   title: string;
   description?: string;
   positionId: number;
+  targetLevelId?: number;
   details: KpiLibraryDetailRequest[];
 }
 
@@ -44,7 +45,10 @@ export interface KpiLibraryResponse {
   id: number;
   title: string;
   description?: string;
+  positionId?: number;
   positionName: string;
+  targetLevelId?: number;
+  levelName?: string;
   isActive: boolean;
   details: KpiLibraryDetailResponse[];
 }
@@ -68,6 +72,7 @@ export interface KpiGoalItemRequest {
 export interface GoalItemResponse {
   id: number;
   title: string;
+  description?: string;
   targetValue: number;
   unit?: string;
   weightPercent: number;
@@ -85,6 +90,7 @@ export interface GoalSetResponse {
   managerId: number;
   managerName: string;
   appraisalCycleId: number;
+  appraisalCycleName?: string;
   status: KpiGoalStatus;
   items: GoalItemResponse[];
 }

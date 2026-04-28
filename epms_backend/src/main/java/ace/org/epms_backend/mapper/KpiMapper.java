@@ -32,6 +32,8 @@ public interface KpiMapper {
     @Mapping(target = "managerId", source = "manager.id")
     @Mapping(target = "employeeName", source = "employee.staffName")
     @Mapping(target = "managerName", source = "manager.staffName")
+    @Mapping(target = "appraisalCycleId", source = "cycle.cycleId")
+    @Mapping(target = "appraisalCycleName", source = "cycle.cycleName")
     @Mapping(target = "items", source = "items")
     GoalSetResponse toGoalSetResponse(KpiGoals goalSet);
 

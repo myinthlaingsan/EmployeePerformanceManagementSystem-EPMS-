@@ -29,6 +29,23 @@ const Navbar = () => {
               >
                 Profile
               </Link>
+              {/* Role-Based KPI Links */}
+              <Link
+                to="/kpi/my-goals"
+                className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition"
+              >
+                My Performance
+              </Link>
+
+              {user?.roles.some(r => ['ROLE_ADMIN', 'ROLE_MANAGER'].includes(r)) && (
+                <Link
+                  to="/kpi/team"
+                  className="text-gray-500 hover:text-indigo-600 px-1 pt-1 text-sm font-medium transition"
+                >
+                  Team Intelligence
+                </Link>
+              )}
+
               {(isAdmin || isHR) && (
                 <>
                   <Link
@@ -36,14 +53,6 @@ const Navbar = () => {
                     className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition"
                   >
                     HR Panel
-                  </Link>
-
-                  <Link
-                    to="/kpi/hub"
-                    className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1 rounded-lg text-sm font-bold transition border border-blue-100 flex items-center gap-1"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                    KPI Hub
                   </Link>
 
                   {/* Management Dropdown */}
@@ -59,15 +68,21 @@ const Navbar = () => {
                     </button>
 
                     {isDropdownOpen && (
-                      <div className="absolute top-16 left-0 w-48 bg-white border border-gray-100 shadow-xl rounded-xl py-2 z-50">
+                      <div className="absolute top-16 left-0 w-56 bg-white border border-gray-100 shadow-xl rounded-2xl py-3 z-50">
+                        <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Organization</div>
                         <Link to="/employees" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Employees</Link>
                         <Link to="/departments" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Departments</Link>
-                        <Link to="/roles" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Roles</Link>
-                        <Link to="/job-levels" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Job Levels</Link>
                         <Link to="/positions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Positions</Link>
-                        <div className="border-t border-gray-100 my-1"></div>
+                        
+                        <div className="border-t border-gray-100 my-2"></div>
+                        <div className="px-4 py-2 text-[10px] font-black text-blue-600 uppercase tracking-widest">Performance (KPI)</div>
+                        <Link to="/kpi/library" className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 font-bold text-blue-600" onClick={() => setIsDropdownOpen(false)}>KPI Library</Link>
+                        <Link to="/kpi/manage" className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50" onClick={() => setIsDropdownOpen(false)}>Goal Assignments</Link>
+                        
+                        <div className="border-t border-gray-100 my-2"></div>
+                        <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Access Control</div>
                         <Link to="/permissions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Permissions</Link>
-                        <Link to="/permissions/matrix" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold text-blue-600" onClick={() => setIsDropdownOpen(false)}>Access Matrix</Link>
+                        <Link to="/permissions/matrix" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Access Matrix</Link>
                       </div>
                     )}
                   </div>
