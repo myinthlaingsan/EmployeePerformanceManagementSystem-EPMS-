@@ -13,10 +13,11 @@ const PipListPage: React.FC = () => {
     // Fetch PIPs based on role
     // For HR/Admin, we fetch all. For others, we fetch their own for now.
     // In a real scenario, managers would see their team's PIPs too.
-    const { data: pips, isLoading: isPipsLoading } = (isHR || isAdmin)
+    const { data: pipsResponse, isLoading: isPipsLoading } = (isHR || isAdmin)
         ? useGetPipsQuery()
         : useGetPipsByInvolvedUserQuery(user?.id || 0);
 
+    const pips = pipsResponse?.data;
     const { data: employees } = useGetEmployeesQuery();
 
     const getEmployeeName = (id: number) => {

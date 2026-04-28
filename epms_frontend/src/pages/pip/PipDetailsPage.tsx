@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-    useGetPipByIdQuery, 
-    useGetObjectivesByPipQuery, 
+import {
+    useGetPipByIdQuery,
+    useGetObjectivesByPipQuery,
     useGetReviewsByPipQuery,
     useCreateObjectiveMutation,
+    useUpdateObjectiveMutation,
     useUpdateObjectiveStatusMutation,
     useAddProgressMutation,
     useCreateReviewMutation,
     useFinalizePipMutation,
     useActivatePipMutation,
     useExtendPipMutation,
+    useUpdatePipMutation,
     useDeletePipMutation
 } from '../../services/pipApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
@@ -21,11 +23,13 @@ import ObjectiveModal from '../../components/pip/ObjectiveModal';
 import ProgressModal from '../../components/pip/ProgressModal';
 import ReviewModal from '../../components/pip/ReviewModal';
 import FinalizeModal from '../../components/pip/FinalizeModal';
+import EditPipModal from '../../components/pip/EditPipModal';
 import ObjectiveProgressList from '../../components/pip/ObjectiveProgressList';
-import { 
-    ObjectiveStatus, 
-    PipOutcome, 
-    PipStatus 
+import {
+    ObjectiveStatus,
+    PipOutcome,
+    PipStatus,
+    type PipObjectiveResponse
 } from '../../features/pip/types';
 
 const PipDetailsPage: React.FC = () => {
@@ -34,22 +38,27 @@ const PipDetailsPage: React.FC = () => {
     const navigate = useNavigate();
     const { isHR, isManager, isEmployee } = useAuth();
 
-    const { data: pip, isLoading: isPipLoading } = useGetPipByIdQuery(pipId);
+    const { data: pipResponse, isLoading: isPipLoading } = useGetPipByIdQuery(pipId);
+    const pip = pipResponse?.data;
     const { data: objectivesResponse } = useGetObjectivesByPipQuery(pipId);
     const { data: reviewsResponse } = useGetReviewsByPipQuery(pipId);
     const { data: employees } = useGetEmployeesQuery();
 
     const [createObjective] = useCreateObjectiveMutation();
+    const [updateObjective] = useUpdateObjectiveMutation();
     const [updateStatus] = useUpdateObjectiveStatusMutation();
     const [addProgress] = useAddProgressMutation();
     const [createReview] = useCreateReviewMutation();
     const [finalizePip] = useFinalizePipMutation();
     const [activatePip] = useActivatePipMutation();
     const [extendPip] = useExtendPipMutation();
+    const [updatePip] = useUpdatePipMutation();
     const [deletePip] = useDeletePipMutation();
 
     // UI States
     const [showObjModal, setShowObjModal] = useState(false);
+    const [showPipEditModal, setShowPipEditModal] = useState(false);
+    const [selectedObjective, setSelectedObjective] = useState<PipObjectiveResponse | null>(null);
     const [showProgressModal, setShowProgressModal] = useState(false);
     const [selectedObjectiveId, setSelectedObjectiveId] = useState<number | null>(null);
     const [showReviewModal, setShowReviewModal] = useState(false);
@@ -61,7 +70,7 @@ const PipDetailsPage: React.FC = () => {
     };
 
     const toggleObjective = (id: number) => {
-        setExpandedObjectives(prev => 
+        setExpandedObjectives(prev =>
             prev.includes(id) ? prev.filter(oid => oid !== id) : [...prev, id]
         );
     };
@@ -70,12 +79,12 @@ const PipDetailsPage: React.FC = () => {
         try {
             if (data.outcome === PipOutcome.EXTEND && data.newEndDate) {
                 await extendPip({ id: pipId, body: { newEndDate: data.newEndDate } }).unwrap();
-                await createReview({ 
-                    pipId, 
+                await createReview({
+                    pipId,
                     reviewDate: new Date().toISOString().split('T')[0],
                     progressSummary: "PIP extension decision recorded.",
-                    managerFeedback: "PIP Extended", 
-                    nextAction: data.comment 
+                    managerFeedback: "PIP Extended",
+                    nextAction: data.comment
                 }).unwrap();
             } else {
                 await finalizePip({ pipId, outcome: data.outcome, comment: data.comment }).unwrap();
@@ -115,6 +124,17 @@ const PipDetailsPage: React.FC = () => {
                         <div className="flex items-center gap-3">
                             <h1 className="text-3xl font-bold text-gray-900">PIP Details</h1>
                             <PipStatusBadge status={pip.status} />
+                            {isHR && pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED && (
+                                <button
+                                    onClick={() => setShowPipEditModal(true)}
+                                    className="text-gray-400 hover:text-blue-600 transition p-1"
+                                    title="Edit PIP Details"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            )}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-2">
                             <div className="flex items-center gap-2 text-gray-600">
@@ -135,18 +155,18 @@ const PipDetailsPage: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="flex flex-col gap-3">
                         {(isHR || isManager) && pip.status === PipStatus.DRAFT && (
                             <>
-                                <button 
+                                <button
                                     onClick={() => activatePip(pipId)}
                                     className="bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition"
                                 >
                                     Activate Plan
                                 </button>
                                 {isHR && (
-                                    <button 
+                                    <button
                                         onClick={handleDelete}
                                         className="bg-red-50 text-red-600 border border-red-200 px-6 py-2.5 rounded-2xl font-bold hover:bg-red-100 transition"
                                     >
@@ -156,7 +176,7 @@ const PipDetailsPage: React.FC = () => {
                             </>
                         )}
                         {(isHR || isManager) && (pip.status === PipStatus.ACTIVE || pip.status === PipStatus.EXTENDED) && (
-                            <button 
+                            <button
                                 onClick={() => setShowFinalizeModal(true)}
                                 className="bg-red-600 text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg shadow-red-100 hover:bg-red-700 transition"
                             >
@@ -165,7 +185,7 @@ const PipDetailsPage: React.FC = () => {
                         )}
                     </div>
                 </div>
-                
+
                 <div className="mt-8 pt-8 border-t border-gray-100">
                     <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Reason for Plan</h3>
                     <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-2xl italic">"{pip.reason}"</p>
@@ -177,7 +197,7 @@ const PipDetailsPage: React.FC = () => {
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-gray-900">Objectives</h2>
                     {(isHR || isManager) && pip.status === PipStatus.DRAFT && (
-                        <button 
+                        <button
                             onClick={() => setShowObjModal(true)}
                             className="text-blue-600 flex items-center gap-1 font-bold hover:underline"
                         >
@@ -185,7 +205,7 @@ const PipDetailsPage: React.FC = () => {
                         </button>
                     )}
                 </div>
-                
+
                 <div className="grid grid-cols-1 gap-4">
                     {objectives.length > 0 ? (
                         objectives.map(obj => (
@@ -193,7 +213,19 @@ const PipDetailsPage: React.FC = () => {
                                 <div className="p-6">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex-1">
-                                            <h4 className="text-lg font-bold text-gray-900">{obj.title}</h4>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="text-lg font-bold text-gray-900">{obj.title}</h4>
+                                                {(isHR || isManager) && pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED && (
+                                                    <button
+                                                        onClick={() => setSelectedObjective(obj)}
+                                                        className="text-gray-300 hover:text-blue-500 transition"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </div>
                                             <p className="text-sm text-gray-500 mt-1">{obj.description}</p>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
@@ -201,14 +233,14 @@ const PipDetailsPage: React.FC = () => {
                                             <span className="text-[10px] text-gray-400 font-medium">Target: {obj.targetDate}</span>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="bg-blue-50/50 p-3 rounded-xl mb-4 border border-blue-100/50">
                                         <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Success Criteria</span>
                                         <p className="text-xs text-blue-900 mt-1">{obj.successCriteria}</p>
                                     </div>
 
                                     <div className="flex justify-between items-center">
-                                        <button 
+                                        <button
                                             onClick={() => toggleObjective(obj.objectiveId)}
                                             className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-blue-600 transition flex items-center gap-1"
                                         >
@@ -217,18 +249,18 @@ const PipDetailsPage: React.FC = () => {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                             </svg>
                                         </button>
-                                        
+
                                         <div className="flex gap-3">
                                             {isEmployee && (pip.status === PipStatus.ACTIVE || pip.status === PipStatus.EXTENDED) && (
-                                                <button 
+                                                <button
                                                     onClick={() => { setSelectedObjectiveId(obj.objectiveId); setShowProgressModal(true); }}
                                                     className="text-xs bg-white border border-blue-200 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-50 transition"
                                                 >
                                                     Log Progress
                                                 </button>
                                             )}
-                                            {(isHR || isManager) && (
-                                                <select 
+                                            {(isHR || isManager) && (pip.status === PipStatus.ACTIVE || pip.status === PipStatus.EXTENDED) && (
+                                                <select
                                                     value={obj.status}
                                                     onChange={(e) => updateStatus({ id: obj.objectiveId, status: e.target.value as ObjectiveStatus })}
                                                     className="text-xs border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
@@ -260,7 +292,7 @@ const PipDetailsPage: React.FC = () => {
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-gray-900">Progress Reviews</h2>
                     {(isHR || isManager) && (pip.status === PipStatus.ACTIVE || pip.status === PipStatus.EXTENDED) && (
-                        <button 
+                        <button
                             onClick={() => setShowReviewModal(true)}
                             className="text-blue-600 flex items-center gap-1 font-bold hover:underline"
                         >
@@ -299,29 +331,62 @@ const PipDetailsPage: React.FC = () => {
 
             {/* Simple Modals */}
             {showObjModal && (
-                <ObjectiveModal 
+                <ObjectiveModal
                     pipStartDate={pip.startDate}
-                    onClose={() => setShowObjModal(false)} 
-                    onSave={(data) => createObjective({ ...data, pipId }).unwrap().then(() => setShowObjModal(false))} 
+                    onClose={() => setShowObjModal(false)}
+                    onSave={(data) => createObjective({ ...data, pipId }).unwrap().then(() => setShowObjModal(false))}
+                />
+            )}
+            {selectedObjective && (
+                <ObjectiveModal
+                    initialData={{
+                        title: selectedObjective.title,
+                        description: selectedObjective.description,
+                        successCriteria: selectedObjective.successCriteria,
+                        targetDate: selectedObjective.targetDate
+                    }}
+                    onClose={() => setSelectedObjective(null)}
+                    onSave={async (formData) => {
+                        const { title, description, successCriteria } = formData;
+                        await updateObjective({ 
+                            id: selectedObjective.objectiveId, 
+                            body: { title, description, successCriteria } 
+                        }).unwrap();
+                        setSelectedObjective(null);
+                    }}
+                />
+            )}
+            {showPipEditModal && employees && (
+                <EditPipModal
+                    initialData={{
+                        managerId: pip.managerId,
+                        reason: pip.reason
+                    }}
+                    employees={employees}
+                    onClose={() => setShowPipEditModal(false)}
+                    onSave={async (formData) => {
+                        await updatePip({ id: pipId, body: formData }).unwrap();
+                        setShowPipEditModal(false);
+                    }}
                 />
             )}
             {showProgressModal && (
-                <ProgressModal 
-                    onClose={() => setShowProgressModal(false)} 
-                    onSave={(data) => addProgress({ ...data, objectiveId: selectedObjectiveId! }).unwrap().then(() => setShowProgressModal(false))} 
+                <ProgressModal
+                    onClose={() => setShowProgressModal(false)}
+                    onSave={(data) => addProgress({ ...data, objectiveId: selectedObjectiveId! }).unwrap().then(() => setShowProgressModal(false))}
                 />
             )}
             {showReviewModal && (
-                <ReviewModal 
-                    onClose={() => setShowReviewModal(false)} 
-                    onSave={(data) => createReview({ ...data, pipId }).unwrap().then(() => setShowReviewModal(false))} 
+                <ReviewModal
+                    onClose={() => setShowReviewModal(false)}
+                    onSave={(data) => createReview({ ...data, pipId }).unwrap().then(() => setShowReviewModal(false))}
                 />
             )}
             {showFinalizeModal && (
-                <FinalizeModal 
+                <FinalizeModal
                     currentEndDate={pip.endDate}
-                    onClose={() => setShowFinalizeModal(false)} 
-                    onSave={handleFinalize} 
+                    onClose={() => setShowFinalizeModal(false)}
+                    onSave={handleFinalize}
                 />
             )}
         </div>

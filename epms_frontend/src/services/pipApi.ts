@@ -3,8 +3,10 @@ import type {
     PipResponse,
     PipCreateRequest,
     PipExtendRequest,
+    PipUpdateRequest,
     PipObjectiveResponse,
     PipObjectiveRequest,
+    PipObjectiveUpdateRequest,
     PipProgressResponse,
     PipProgressRequest,
     PipReviewResponse,
@@ -19,32 +21,32 @@ import type { ApiResponse } from "./ApiResponse";
 export const pipApi = api.injectEndpoints({
     endpoints: (builder) => ({
         // PIP Endpoints
-        getPips: builder.query<PipResponse[], void>({
+        getPips: builder.query<ApiResponse<PipResponse[]>, void>({
             query: () => "/pip",
             providesTags: (result) =>
-                result
-                    ? [...result.map(({ pipId }) => ({ type: "PIP" as const, id: pipId })), { type: "PIP", id: "LIST" }]
+                result?.data
+                    ? [...result.data.map(({ pipId }) => ({ type: "PIP" as const, id: pipId })), { type: "PIP", id: "LIST" }]
                     : [{ type: "PIP", id: "LIST" }],
         }),
-        getPipById: builder.query<PipResponse, number>({
+        getPipById: builder.query<ApiResponse<PipResponse>, number>({
             query: (id) => `/pip/${id}`,
             providesTags: (_result, _error, id) => [{ type: "PIP", id }],
         }),
-        getPipsByEmployee: builder.query<PipResponse[], number>({
+        getPipsByEmployee: builder.query<ApiResponse<PipResponse[]>, number>({
             query: (employeeId) => `/pip/employee/${employeeId}`,
             providesTags: (result) =>
-                result
-                    ? [...result.map(({ pipId }) => ({ type: "PIP" as const, id: pipId })), { type: "PIP", id: "LIST" }]
+                result?.data
+                    ? [...result.data.map(({ pipId }) => ({ type: "PIP" as const, id: pipId })), { type: "PIP", id: "LIST" }]
                     : [{ type: "PIP", id: "LIST" }],
         }),
-        getPipsByInvolvedUser: builder.query<PipResponse[], number>({
+        getPipsByInvolvedUser: builder.query<ApiResponse<PipResponse[]>, number>({
             query: (userId) => `/pip/involved/${userId}`,
             providesTags: (result) =>
-                result
-                    ? [...result.map(({ pipId }) => ({ type: "PIP" as const, id: pipId })), { type: "PIP", id: "LIST" }]
+                result?.data
+                    ? [...result.data.map(({ pipId }) => ({ type: "PIP" as const, id: pipId })), { type: "PIP", id: "LIST" }]
                     : [{ type: "PIP", id: "LIST" }],
         }),
-        createPip: builder.mutation<PipResponse, PipCreateRequest>({
+        createPip: builder.mutation<ApiResponse<PipResponse>, PipCreateRequest>({
             query: (body) => ({
                 url: "/pip",
                 method: "POST",
@@ -52,14 +54,22 @@ export const pipApi = api.injectEndpoints({
             }),
             invalidatesTags: [{ type: "PIP", id: "LIST" }],
         }),
-        activatePip: builder.mutation<void, number>({
+        updatePip: builder.mutation<ApiResponse<PipResponse>, { id: number; body: PipUpdateRequest }>({
+            query: ({ id, body }) => ({
+                url: `/pip/${id}`,
+                method: "PUT",
+                body,
+            }),
+            invalidatesTags: (_result, _error, { id }) => [{ type: "PIP", id }],
+        }),
+        activatePip: builder.mutation<ApiResponse<void>, number>({
             query: (id) => ({
                 url: `/pip/${id}/activate`,
                 method: "PUT",
             }),
             invalidatesTags: (_result, _error, id) => [{ type: "PIP", id }],
         }),
-        extendPip: builder.mutation<PipResponse, { id: number; body: PipExtendRequest }>({
+        extendPip: builder.mutation<ApiResponse<PipResponse>, { id: number; body: PipExtendRequest }>({
             query: ({ id, body }) => ({
                 url: `/pip/${id}/extend`,
                 method: "PUT",
@@ -83,6 +93,14 @@ export const pipApi = api.injectEndpoints({
                 body,
             }),
             invalidatesTags: [{ type: "PipObjective", id: "LIST" }],
+        }),
+        updateObjective: builder.mutation<ApiResponse<PipObjectiveResponse>, { id: number; body: PipObjectiveUpdateRequest }>({
+            query: ({ id, body }) => ({
+                url: `/pip/objectives/${id}`,
+                method: "PUT",
+                body,
+            }),
+            invalidatesTags: (_result, _error, { id }) => [{ type: "PipObjective", id }],
         }),
         updateObjectiveStatus: builder.mutation<ApiResponse<PipObjectiveResponse>, { id: number; status: ObjectiveStatus }>({
             query: ({ id, status }) => ({
@@ -150,11 +168,13 @@ export const {
     useGetPipsByEmployeeQuery,
     useGetPipsByInvolvedUserQuery,
     useCreatePipMutation,
+    useUpdatePipMutation,
     useActivatePipMutation,
     useExtendPipMutation,
     useDeletePipMutation,
     useGetObjectivesByPipQuery,
     useCreateObjectiveMutation,
+    useUpdateObjectiveMutation,
     useUpdateObjectiveStatusMutation,
     useGetProgressByObjectiveQuery,
     useAddProgressMutation,
