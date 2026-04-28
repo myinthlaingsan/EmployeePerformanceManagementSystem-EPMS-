@@ -10,6 +10,18 @@ import SetPasswordPage from "./pages/auth/SetPasswordPage";
 import Dashboard from "./pages/Dashboard";
 import ProfilePage from "./pages/ProfilePage";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
+import ProfilePage from "./pages/ProfilePage";
+import SetPasswordPage from "./pages/SetPasswordPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+
+// Admin Pages
+import EmployeeList from "./pages/admin/EmployeeList";
+import EmployeeForm from "./pages/admin/EmployeeForm";
+import DepartmentList from "./pages/admin/DepartmentList";
+import RoleList from "./pages/admin/RoleList";
+import JobLevelList from "./pages/admin/JobLevelList";
+import PositionList from "./pages/admin/PositionList";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
 import HRDashboard from "./pages/admin/HRDashboard";
@@ -47,68 +59,76 @@ const AppContent = () => {
   }, [isSuccess, userData, dispatch]);
 
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      <Route path="/set-password" element={<SetPasswordPage />} />
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          <Route path="/set-password" element={<SetPasswordPage />} />
 
-      {/* Protected Routes Wrapper */}
-      <Route element={<ProtectedRoute />}>
-        <Route element={<MainLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/kpi/goals/:employeeId" element={<GoalDetail />} />
-          <Route path="/kpi/my-goals" element={<MyKpiDashboard />} />
-          <Route path="/kpi/hub" element={<KpiHub />} />
+          {/* Protected Routes Wrapper */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<MainLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/kpi/goals/:employeeId" element={<GoalDetail />} />
+              <Route path="/kpi/my-goals" element={<MyKpiDashboard />} />
+              <Route path="/kpi/hub" element={<KpiHub />} />
 
-          {/* HR/Admin Management Routes */}
-          <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
-            <Route path="/hr" element={<HRDashboard />} />
-            <Route path="/employees" element={<EmployeeList />} />
-            <Route path="/employees/new" element={<EmployeeForm />} />
-            <Route path="/employees/edit/:id" element={<EmployeeForm />} />
-            <Route path="/employees/:id/departments" element={<EmployeeDepartmentHistory />} />
-            
-            <Route path="/permissions" element={<PermissionList />} />
-            <Route path="/permissions/matrix" element={<RoleLevelPermissionManager />} />
-            
-            <Route path="/departments" element={<DepartmentList />} />
-            <Route path="/roles" element={<RoleList />} />
-            <Route path="/job-levels" element={<JobLevelList />} />
-            <Route path="/positions" element={<PositionList />} />
+              {/* HR/Admin Management Routes */}
+              <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
+                <Route path="/hr" element={<HRDashboard />} />
+                <Route path="/employees" element={<EmployeeList />} />
+                <Route path="/employees/new" element={<EmployeeForm />} />
+                <Route path="/employees/edit/:id" element={<EmployeeForm />} />
+                <Route path="/employees/:id/departments" element={<EmployeeDepartmentHistory />} />
 
-            {/* KPI Routes (HR/Admin) */}
-            <Route path="/kpi/library" element={<KpiLibraryDashboard />} />
-            <Route path="/kpi/library/new" element={<KpiLibraryEntry />} />
-            <Route path="/kpi/manage" element={<GoalManagement />} />
+                <Route path="/permissions" element={<PermissionList />} />
+                <Route path="/permissions/matrix" element={<RoleLevelPermissionManager />} />
+
+                <Route path="/departments" element={<DepartmentList />} />
+                <Route path="/roles" element={<RoleList />} />
+                <Route path="/job-levels" element={<JobLevelList />} />
+                <Route path="/positions" element={<PositionList />} />
+
+                {/* KPI Routes (HR/Admin) */}
+                <Route path="/kpi/library" element={<KpiLibraryDashboard />} />
+                <Route path="/kpi/library/new" element={<KpiLibraryEntry />} />
+                <Route path="/kpi/manage" element={<GoalManagement />} />
+              </Route>
+
+              {/* Specialized Manager Routes */}
+              <Route element={<ProtectedRoute allowedRoles={["MANAGER"]} />}>
+                <Route path="/approvals" element={<ApprovalPage />} />
+                <Route path="/kpi/team" element={<TeamKpiDashboard />} />
+              </Route>
+            </Route>
           </Route>
 
-          {/* Specialized Manager Routes */}
-          <Route element={<ProtectedRoute allowedRoles={["MANAGER"]} />}>
-            <Route path="/approvals" element={<ApprovalPage />} />
-            <Route path="/kpi/team" element={<TeamKpiDashboard />} />
-          </Route>
-        </Route>
-      </Route>
-
-      {/* Default Redirects */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<div className="p-6 text-center mt-20 font-bold text-gray-400">404 | Page Not Found</div>} />
-    </Routes>
-  );
+          {/* Default Redirects */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<div className="p-6 text-center mt-20 font-bold text-gray-400">404 | Page Not Found</div>} />
+        </Routes>
+        );
 };
 
 const App = () => {
   return (
-    <Provider store={store}>
-      <ActiveCycleProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </ActiveCycleProvider>
-    </Provider>
-  );
+        <Provider store={store}>
+          <ActiveCycleProvider>
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </ActiveCycleProvider>
+        </Provider>
+        );
 };
 
-export default App;
+        export default App;
