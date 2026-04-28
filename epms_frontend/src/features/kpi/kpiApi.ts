@@ -127,6 +127,17 @@ export const kpiApi = createApi({
       invalidatesTags: ['GoalSet'],
     }),
 
+    // ==================== Goal Set Retrieval ====================
+    getGoalSetByEmployee: builder.query<ApiResponse<GoalSetResponse>, { employeeId: number; cycleId: number }>({
+      query: ({ employeeId, cycleId }) => `/kpi/goal-set/employee/${employeeId}?cycleId=${cycleId}`,
+      providesTags: ['GoalSet'],
+    }),
+
+    getGoalSetById: builder.query<ApiResponse<GoalSetResponse>, number>({
+      query: (id) => `/kpi/goal-set/${id}`,
+      providesTags: ['GoalSet'],
+    }),
+
     // ==================== Score Calculation ====================
     calculateScore: builder.mutation<
       ApiResponse<KpiScoreResponse>,
@@ -154,4 +165,6 @@ export const {
   useUpdateProgressMutation,
   useReviseKpiMutation,
   useCalculateScoreMutation,
+  useGetGoalSetByEmployeeQuery,
+  useGetGoalSetByIdQuery,
 } = kpiApi;

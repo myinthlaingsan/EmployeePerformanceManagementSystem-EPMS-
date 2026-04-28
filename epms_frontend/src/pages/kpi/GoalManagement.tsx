@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   useGetEmployeesQuery 
 } from '../../features/employee/employeeapi';
@@ -10,6 +11,7 @@ import {
 } from '../../features/kpi/kpiApi';
 
 const GoalManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { data: employees = [], isLoading: loadingEmployees } = useGetEmployeesQuery();
   const { data: librariesResponse } = useGetAllLibrariesQuery();
   const libraries = librariesResponse?.data || [];
@@ -79,10 +81,7 @@ const GoalManagement: React.FC = () => {
                     Assign KPI
                   </button>
                   <button
-                    onClick={() => {
-                        // This would navigate to a detail view or open a drawer
-                        alert('Detail view implementation pending backend support for goal set retrieval.');
-                    }}
+                    onClick={() => navigate(`/kpi/goals/${emp.id}`)}
                     className="text-gray-600 hover:text-gray-900"
                   >
                     View Goals

@@ -25,6 +25,7 @@ import RoleLevelPermissionManager from "./pages/admin/org/RoleLevelPermissionMan
 import LibraryList from "./pages/kpi/LibraryList";
 import LibraryForm from "./pages/kpi/LibraryForm";
 import GoalManagement from "./pages/kpi/GoalManagement";
+import GoalDetail from "./pages/kpi/GoalDetail";
 
 // Mock Components for other specialized pages
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
@@ -56,6 +57,7 @@ const App = () => {
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/kpi/goals/:employeeId" element={<GoalDetail />} />
 
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
