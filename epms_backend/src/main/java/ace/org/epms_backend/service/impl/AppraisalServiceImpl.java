@@ -11,8 +11,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import ace.org.epms_backend.model.*;
 import ace.org.epms_backend.model.appraisal.*;
+import ace.org.epms_backend.model.employee.*;
+
 import ace.org.epms_backend.exception.NotFoundException;
+
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +35,7 @@ public class AppraisalServiceImpl implements AppraisalService {
     private final AppraisalHistoryRepository historyRepo;
     private final AppraisalFormRepository formRepo;
     private final PerformanceCategoryRepository performanceCategoryRepo;
+    private final EmployeeDepartmentRepository employeeDeptRepo;
 
     @Override
     public AppraisalResponse createAppraisal(AppraisalCreateRequest request) {
@@ -282,10 +287,14 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = getAppraisalOrThrow(id);
 
         // Employee Info
+        String departmentName = employeeDeptRepo.findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
+                .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : null)
+                .orElse(null);
+
         AppraisalDetailsResponse.EmployeeInfo empInfo = AppraisalDetailsResponse.EmployeeInfo.builder()
                 .staffName(appraisal.getEmployee().getStaffName())
                 .employeeCode(appraisal.getEmployee().getEmployeeCode())
-                .department(appraisal.getEmployee().getDepartment())
+                .department(departmentName)
                 .position(appraisal.getEmployee().getPosition() != null
                         ? appraisal.getEmployee().getPosition().getPositionName()
                         : null)
