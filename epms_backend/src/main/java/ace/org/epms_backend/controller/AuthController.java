@@ -1,9 +1,7 @@
 package ace.org.epms_backend.controller;
 
 import ace.org.epms_backend.dto.ApiResponse;
-import ace.org.epms_backend.dto.auth.AuthRequest;
-import ace.org.epms_backend.dto.auth.AuthResponse;
-import ace.org.epms_backend.dto.auth.RefreshTokenRequest;
+import ace.org.epms_backend.dto.auth.*;
 import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.service.AuthService;
@@ -62,5 +60,27 @@ public class AuthController {
             tokenBlacklistService.blacklistToken(token);
         }
         return ResponseEntity.ok(ApiResponse.success("Logged out successfully"));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(
+            @RequestBody ForgotPasswordRequest request) {
+
+        authService.forgotPassword(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(null)
+        );
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @RequestBody ResetPasswordRequest request) {
+
+        authService.resetPassword(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(null)
+        );
     }
 }
