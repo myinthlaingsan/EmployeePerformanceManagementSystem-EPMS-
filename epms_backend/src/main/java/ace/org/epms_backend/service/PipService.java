@@ -21,4 +21,6 @@ public interface PipService {
     void activatePip(Long id);
 
     PipResponse extendPip(Long id, LocalDate newEndDate);
+
+    void deletePip(Long id);
 }

@@ -44,16 +44,23 @@ public class PipController {
         return ResponseEntity.ok(pipService.getPipsByInvolvedUser(userId));
     }
 
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'MANAGER')")
     @PutMapping("/{id}/activate")
     public ResponseEntity<Void> activatePip(@PathVariable Long id) {
         pipService.activatePip(id);
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'MANAGER')")
     @PutMapping("/{id}/extend")
     public ResponseEntity<PipResponse> extendPip(@PathVariable Long id, @RequestBody PipExtendRequest request) {
         return ResponseEntity.ok(pipService.extendPip(id, request.getNewEndDate()));
+    }
+
+    @PreAuthorize("hasRole('HR')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePip(@PathVariable Long id) {
+        pipService.deletePip(id);
+        return ResponseEntity.ok().build();
     }
 }

@@ -39,6 +39,10 @@ public class PipServiceImpl implements PipService {
         Employee manager = employeeRepository.findById(request.getManagerId())
                 .orElseThrow(() -> new UserNotFoundException("Manager not found"));
 
+        if (request.getEndDate().isBefore(request.getStartDate())) {
+            throw new InvalidStateException("End date cannot be before start date");
+        }
+
         PipRecord pip = pipMapper.toEntity(request);
 
         pip.setEmployee(employee);
@@ -73,6 +77,7 @@ public class PipServiceImpl implements PipService {
 
         return pipRecordRepository.findByEmployeeId(employeeId)
                 .stream()
+                .filter(pip -> pip.getStatus() != PipStatus.DRAFT)
                 .map(pipMapper::toResponse)
                 .toList();
     }
@@ -81,6 +86,7 @@ public class PipServiceImpl implements PipService {
     public List<PipResponse> getPipsByInvolvedUser(Long userId) {
         return pipRecordRepository.findByEmployeeIdOrManagerId(userId, userId)
                 .stream()
+                .filter(pip -> pip.getStatus() != PipStatus.DRAFT || pip.getManager().getId().equals(userId))
                 .map(pipMapper::toResponse)
                 .toList();
     }
@@ -107,10 +113,29 @@ public class PipServiceImpl implements PipService {
             throw new InvalidStateException("Only ACTIVE or EXTENDED PIP can be extended");
         }
 
+        if (!newEndDate.isAfter(pip.getEndDate())) {
+            throw new InvalidStateException("Extended date must be after current end date");
+        }
+
         pip.setEndDate(newEndDate);
         pip.setStatus(PipStatus.EXTENDED);
         pip = pipRecordRepository.save(pip);
 
         return pipMapper.toResponse(pip);
+    }
+
+    @Override
+    public void deletePip(Long id) {
+        PipRecord pip = pipRecordRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("PIP not found"));
+
+        if (pip.getStatus() != PipStatus.DRAFT) {
+            throw new InvalidStateException("Only DRAFT PIP can be deleted");
+        }
+
+        List<PipObjective> objectives = objectiveRepository.findByPip_PipId(id);
+        objectiveRepository.deleteAll(objectives);
+
+        pipRecordRepository.delete(pip);
     }
 }

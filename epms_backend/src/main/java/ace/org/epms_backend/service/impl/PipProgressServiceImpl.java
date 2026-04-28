@@ -52,6 +52,17 @@ public class PipProgressServiceImpl implements PipProgressService {
             throw new InvalidStateException("Progress percentage must be between 0 and 100");
         }
 
+        List<PipProgressLog> previousLogs = progressRepository.findByObjective_ObjectiveId(objective.getObjectiveId());
+        if (!previousLogs.isEmpty()) {
+            java.math.BigDecimal maxPrevious = previousLogs.stream()
+                    .map(PipProgressLog::getProgressPercent)
+                    .max(java.math.BigDecimal::compareTo)
+                    .orElse(java.math.BigDecimal.ZERO);
+            if (request.getProgressPercent().compareTo(maxPrevious) <= 0) {
+                throw new InvalidStateException("New progress must be greater than previous progress (" + maxPrevious + "%)");
+            }
+        }
+
         PipProgressLog log = mapper.toEntity(request);
         log.setObjective(objective);
         log.setUpdatedBy(current.getId());

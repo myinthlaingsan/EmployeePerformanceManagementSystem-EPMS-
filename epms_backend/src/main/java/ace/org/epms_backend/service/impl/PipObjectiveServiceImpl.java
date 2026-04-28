@@ -89,6 +89,10 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
         PipObjective objective = objectiveRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Objective not found"));
 
+        if (objective.getPip().getStatus() != PipStatus.ACTIVE && objective.getPip().getStatus() != PipStatus.EXTENDED) {
+            throw new InvalidStateException("Objective status can only be updated if PIP is ACTIVE or EXTENDED");
+        }
+
         objective.setStatus(status);
         objective.setIsAchieved(status == ObjectiveStatus.COMPLETED);
         objective.setUpdatedBy(authService.getCurrentUser().getId());
