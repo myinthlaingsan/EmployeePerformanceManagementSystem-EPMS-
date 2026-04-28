@@ -226,6 +226,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 .ifPresent(ed -> {
                                         response.setCurrentDepartmentName(
                                                         ed.getCurrentDepartment().getDepartmentName());
+                                        response.setCurrentDepartmentId(
+                                                        ed.getCurrentDepartment().getId());
                                         response.setParentDepartmentName(
                                                         ed.getParentDepartment().getDepartmentName());
                                 });

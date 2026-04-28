@@ -18,6 +18,13 @@ const FeedbackPage = () => {
   const { data: employees } = useGetEmployeesQuery();
   const [createFeedback, { isLoading: isCreating }] = useCreateFeedbackMutation();
 
+  const filteredEmployees = (isAdmin || isHR)
+    ? employees
+    : employees?.filter(emp => 
+        emp.currentDepartmentId === user?.currentDepartmentId && 
+        emp.id !== user?.id
+      );
+
   const [showModal, setShowModal] = useState(false);
   const [newFeedback, setNewFeedback] = useState<{
     employeeId: number;
@@ -28,7 +35,7 @@ const FeedbackPage = () => {
   }>({
     employeeId: 0,
     tagId: "",
-    feedbackType: FeedbackType.POSITIVE,
+    feedbackType: FeedbackType.PRAISE,
     description: "",
     isPrivate: false
   });
@@ -50,7 +57,7 @@ const FeedbackPage = () => {
       }).unwrap();
 
       setShowModal(false);
-      setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.POSITIVE, description: "", isPrivate: false });
+      setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "", isPrivate: false });
     } catch (err) {
       console.error("Failed to create feedback", err);
     }
@@ -89,8 +96,8 @@ const FeedbackPage = () => {
           <div key={fb.feedbackId} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition">
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-bold ${fb.feedbackType === FeedbackType.POSITIVE ? 'bg-emerald-100 text-emerald-600' :
-                  fb.feedbackType === FeedbackType.CONSTRUCTIVE ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-bold ${fb.feedbackType === FeedbackType.PRAISE ? 'bg-emerald-100 text-emerald-600' :
+                  fb.feedbackType === FeedbackType.IMPROVEMENT ? 'bg-amber-100 text-amber-600' : 'bg-rose-100 text-rose-600'
                   }`}>
                   {fb.managerName.charAt(0)}
                 </div>
@@ -103,8 +110,8 @@ const FeedbackPage = () => {
                   <p className="text-xs text-gray-400">{format(new Date(fb.createdAt), 'PPP p')}</p>
                 </div>
               </div>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${fb.feedbackType === FeedbackType.POSITIVE ? 'bg-emerald-50 text-emerald-600' :
-                fb.feedbackType === FeedbackType.CONSTRUCTIVE ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${fb.feedbackType === FeedbackType.PRAISE ? 'bg-emerald-50 text-emerald-600' :
+                fb.feedbackType === FeedbackType.IMPROVEMENT ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
                 }`}>
                 {fb.feedbackType}
               </span>
@@ -145,7 +152,7 @@ const FeedbackPage = () => {
                       onChange={e => setNewFeedback({ ...newFeedback, employeeId: Number(e.target.value) })}
                     >
                       <option value="">Choose Staff</option>
-                      {employees?.map(emp => (
+                      {filteredEmployees?.map(emp => (
                         <option key={emp.id} value={emp.id}>{emp.staffName}</option>
                       ))}
                     </select>
@@ -185,8 +192,10 @@ const FeedbackPage = () => {
                         key={type}
                         type="button"
                         onClick={() => setNewFeedback({ ...newFeedback, feedbackType: type })}
-                        className={`px-3 py-2 rounded-xl text-xs font-bold border-2 transition ${newFeedback.feedbackType === type
-                          ? 'border-blue-600 bg-blue-50 text-blue-600'
+                        className={`px-3 py-2 rounded-xl text-[10px] font-bold border-2 transition ${newFeedback.feedbackType === type
+                          ? type === FeedbackType.PRAISE ? 'border-emerald-500 bg-emerald-50 text-emerald-600' :
+                            type === FeedbackType.IMPROVEMENT ? 'border-amber-500 bg-amber-50 text-amber-600' :
+                            'border-rose-500 bg-rose-50 text-rose-600'
                           : 'border-transparent bg-gray-50 text-gray-400 hover:bg-gray-100'
                           }`}
                       >

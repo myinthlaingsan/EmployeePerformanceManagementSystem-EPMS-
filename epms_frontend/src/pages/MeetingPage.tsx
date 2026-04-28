@@ -15,6 +15,13 @@ const MeetingPage = () => {
   const { data: employees } = useGetEmployeesQuery();
   const [scheduleMeeting, { isLoading: isScheduling }] = useScheduleMeetingMutation();
 
+  const filteredEmployees = (isAdmin || isHR)
+    ? employees
+    : employees?.filter(emp => 
+        emp.currentDepartmentId === user?.currentDepartmentId && 
+        emp.id !== user?.id
+      );
+
   const [showModal, setShowModal] = useState(false);
   const [newMeeting, setNewMeeting] = useState({
     employeeId: 0,
@@ -23,6 +30,7 @@ const MeetingPage = () => {
     discussionPoints: "",
     keyIssues: "",
     actionItems: "",
+    followUpDate: "",
     isPrivateNote: false
   });
 
@@ -44,6 +52,7 @@ const MeetingPage = () => {
         discussionPoints: "",
         keyIssues: "",
         actionItems: "",
+        followUpDate: "",
         isPrivateNote: false
       });
     } catch (err) {
@@ -145,7 +154,7 @@ const MeetingPage = () => {
                     onChange={e => setNewMeeting({ ...newMeeting, employeeId: Number(e.target.value) })}
                   >
                     <option value="">Choose Staff Member</option>
-                    {employees?.map(emp => (
+                    {filteredEmployees?.map(emp => (
                       <option key={emp.id} value={emp.id}>{emp.staffName}</option>
                     ))}
                   </select>
@@ -164,13 +173,13 @@ const MeetingPage = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Meeting Date</label>
                     <input
                       type="date"
                       required
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                      className="w-full px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-xs"
                       value={newMeeting.meetingDate}
                       onChange={e => setNewMeeting({ ...newMeeting, meetingDate: e.target.value })}
                     />
@@ -180,9 +189,18 @@ const MeetingPage = () => {
                     <input
                       type="time"
                       required
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                      className="w-full px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-xs"
                       value={newMeeting.meetingTime}
                       onChange={e => setNewMeeting({ ...newMeeting, meetingTime: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Follow-up</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-xs"
+                      value={newMeeting.followUpDate}
+                      onChange={e => setNewMeeting({ ...newMeeting, followUpDate: e.target.value })}
                     />
                   </div>
                 </div>
@@ -190,7 +208,7 @@ const MeetingPage = () => {
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Discussion Points</label>
                   <textarea 
-                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-16 resize-none text-sm"
+                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-14 resize-none text-sm"
                     placeholder="What would you like to discuss?"
                     value={newMeeting.discussionPoints}
                     onChange={e => setNewMeeting({...newMeeting, discussionPoints: e.target.value})}

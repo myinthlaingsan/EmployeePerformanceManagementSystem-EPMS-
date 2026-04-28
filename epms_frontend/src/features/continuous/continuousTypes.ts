@@ -1,7 +1,7 @@
 export const FeedbackType = {
-  POSITIVE: 'POSITIVE',
-  CONSTRUCTIVE: 'CONSTRUCTIVE',
+  PRAISE: 'PRAISE',
   IMPROVEMENT: 'IMPROVEMENT',
+  WARNING: 'WARNING',
 } as const;
 
 export type FeedbackType = typeof FeedbackType[keyof typeof FeedbackType];
