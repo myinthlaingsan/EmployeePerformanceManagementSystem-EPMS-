@@ -356,13 +356,14 @@ const PipDetailsPage: React.FC = () => {
                     }}
                 />
             )}
-            {showPipEditModal && employees && (
+            {showPipEditModal && employees && pip && (
                 <EditPipModal
                     initialData={{
                         managerId: pip.managerId,
                         reason: pip.reason
                     }}
                     employees={employees}
+                    targetDepartmentId={employees.find(e => e.id === pip.employeeId)?.currentDepartmentId}
                     onClose={() => setShowPipEditModal(false)}
                     onSave={async (formData) => {
                         await updatePip({ id: pipId, body: formData }).unwrap();

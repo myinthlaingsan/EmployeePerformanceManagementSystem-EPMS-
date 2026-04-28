@@ -3,16 +3,14 @@ import type { PipUpdateRequest } from '../../features/pip/types';
 import type { EmployeeResponse } from '../../features/employee/employeeTypes';
 
 interface EditPipModalProps {
-    initialData: {
-        managerId: number;
-        reason: string;
-    };
+    initialData: PipUpdateRequest;
     employees: EmployeeResponse[];
+    targetDepartmentId?: number;
     onClose: () => void;
     onSave: (data: PipUpdateRequest) => Promise<void>;
 }
 
-const EditPipModal: React.FC<EditPipModalProps> = ({ initialData, employees, onClose, onSave }) => {
+const EditPipModal: React.FC<EditPipModalProps> = ({ initialData, employees, targetDepartmentId, onClose, onSave }) => {
     const [data, setData] = useState<PipUpdateRequest>(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -21,7 +19,8 @@ const EditPipModal: React.FC<EditPipModalProps> = ({ initialData, employees, onC
     }, [initialData]);
 
     const managers = employees.filter(emp =>
-        emp.roles?.some(role => role === 'MANAGER' || role === 'HR')
+        (emp.roles?.some(role => role === 'MANAGER' || role === 'HR')) &&
+        (!targetDepartmentId || emp.currentDepartmentId === targetDepartmentId)
     );
 
     const handleSubmit = async () => {
