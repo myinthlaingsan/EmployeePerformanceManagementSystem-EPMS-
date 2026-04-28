@@ -12,6 +12,7 @@ public interface OneOnOneMeetingService {
     OneOnOneMeetingResponse getMeetingById(Long meetingId);
     List<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId);
     List<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId);
+    List<OneOnOneMeetingResponse> getAllMeetings();
     OneOnOneMeetingResponse updateMeeting(Long meetingId, OneOnOneMeetingRequest request);
     void deleteMeeting(Long meetingId);
 

@@ -117,6 +117,19 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     }
 
     @Override
+    public List<OneOnOneMeetingResponse> getAllMeetings() {
+        Employee currentUser = authService.getCurrentUser();
+        boolean isPrivilegedUser = isPrivileged(currentUser);
+
+        return meetingRepository.findAll().stream()
+                .filter(m -> isPrivilegedUser || 
+                             currentUser.getId().equals(m.getManager().getId()) ||
+                             (!Boolean.TRUE.equals(m.getIsPrivateNote()) && currentUser.getId().equals(m.getEmployee().getId())))
+                .map(meetingMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public void deleteMeeting(Long meetingId) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
         checkMeetingAccess(meeting);

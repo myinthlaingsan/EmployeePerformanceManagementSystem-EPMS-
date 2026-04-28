@@ -12,6 +12,7 @@ public interface ContinuousFeedbackService {
     ContinuousFeedbackResponse getFeedbackById(Long feedbackId);
     List<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId);
     List<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId);
+    List<ContinuousFeedbackResponse> getAllFeedbacks();
     ContinuousFeedbackResponse updateFeedback(Long feedbackId, ContinuousFeedbackRequest request);
     void deleteFeedback(Long feedbackId);
 

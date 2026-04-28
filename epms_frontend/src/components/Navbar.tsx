@@ -29,6 +29,18 @@ const Navbar = () => {
               >
                 Profile
               </Link>
+              <Link
+                to="/feedback"
+                className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition"
+              >
+                Feedback
+              </Link>
+              <Link
+                to="/meetings"
+                className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition"
+              >
+                Meetings
+              </Link>
               {(isAdmin || isHR) && (
                 <>
                   <Link

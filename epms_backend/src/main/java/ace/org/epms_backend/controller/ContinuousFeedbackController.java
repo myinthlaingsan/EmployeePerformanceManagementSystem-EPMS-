@@ -22,6 +22,12 @@ public class ContinuousFeedbackController {
     private final ContinuousFeedbackService feedbackService;
 
     // --- CONTINUOUS FEEDBACK APIs ---
+    
+    @GetMapping("/feedbacks")
+    public ResponseEntity<ApiResponse<List<ContinuousFeedbackResponse>>> getAllFeedbacks() {
+        List<ContinuousFeedbackResponse> responses = feedbackService.getAllFeedbacks();
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
 
     @PostMapping("/feedbacks")
     public ResponseEntity<ApiResponse<ContinuousFeedbackResponse>> createFeedback(

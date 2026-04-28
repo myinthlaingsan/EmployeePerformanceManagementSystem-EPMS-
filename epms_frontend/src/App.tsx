@@ -10,6 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 import ProfilePage from "./pages/ProfilePage";
 import SetPasswordPage from "./pages/SetPasswordPage";
+import FeedbackPage from "./pages/FeedbackPage";
+import MeetingPage from "./pages/MeetingPage";
 
 // Admin Pages
 import EmployeeList from "./pages/admin/EmployeeList";
@@ -53,6 +55,8 @@ const App = () => {
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/feedback" element={<FeedbackPage />} />
+            <Route path="/meetings" element={<MeetingPage />} />
 
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>

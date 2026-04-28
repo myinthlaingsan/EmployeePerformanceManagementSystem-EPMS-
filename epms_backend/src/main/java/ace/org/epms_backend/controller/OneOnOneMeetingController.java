@@ -23,6 +23,12 @@ public class OneOnOneMeetingController {
 
     // --- MEETING APIs ---
 
+    @GetMapping("/meetings")
+    public ResponseEntity<ApiResponse<List<OneOnOneMeetingResponse>>> getAllMeetings() {
+        List<OneOnOneMeetingResponse> responses = meetingService.getAllMeetings();
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
     @PostMapping("/meetings")
     public ResponseEntity<ApiResponse<OneOnOneMeetingResponse>> scheduleMeeting(
             @Valid @RequestBody OneOnOneMeetingRequest request) {

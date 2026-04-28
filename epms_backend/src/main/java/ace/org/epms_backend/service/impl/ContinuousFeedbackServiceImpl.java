@@ -245,6 +245,19 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     @Override
+    public List<ContinuousFeedbackResponse> getAllFeedbacks() {
+        Employee currentUser = authService.getCurrentUser();
+        boolean isPrivilegedUser = isPrivileged(currentUser);
+
+        return feedbackRepository.findAll().stream()
+                .filter(f -> isPrivilegedUser || 
+                             currentUser.getId().equals(f.getManager().getId()) ||
+                             (!Boolean.TRUE.equals(f.getIsPrivate()) && currentUser.getId().equals(f.getEmployee().getId())))
+                .map(feedbackMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public void deleteReply(Long replyId) {
         FeedbackReply reply = replyRepository.findById(replyId)
