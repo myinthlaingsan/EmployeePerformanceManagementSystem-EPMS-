@@ -2,6 +2,7 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.pip.PipCreateRequest;
 import ace.org.epms_backend.dto.pip.PipResponse;
+import ace.org.epms_backend.dto.pip.PipUpdateRequest;
 import ace.org.epms_backend.enums.PipStatus;
 import ace.org.epms_backend.exception.InvalidStateException;
 import ace.org.epms_backend.exception.NotFoundException;
@@ -17,12 +18,14 @@ import ace.org.epms_backend.model.pip.PipObjective;
 import ace.org.epms_backend.repository.PipObjectiveRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class PipServiceImpl implements PipService {
 
     private final PipRecordRepository pipRecordRepository;
@@ -51,6 +54,29 @@ public class PipServiceImpl implements PipService {
 
         pip = pipRecordRepository.save(pip);
 
+        return pipMapper.toResponse(pip);
+    }
+
+    @Override
+    public PipResponse updatePip(Long id, PipUpdateRequest request) {
+        PipRecord pip = pipRecordRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("PIP not found"));
+
+        if (pip.getStatus() == PipStatus.COMPLETED || pip.getStatus() == PipStatus.CLOSED) {
+            throw new InvalidStateException("Cannot edit PIP after it is COMPLETED or CLOSED");
+        }
+
+        if (request.getManagerId() != null) {
+            Employee manager = employeeRepository.findById(request.getManagerId())
+                    .orElseThrow(() -> new UserNotFoundException("Manager not found"));
+            pip.setManager(manager);
+        }
+
+        if (request.getReason() != null) {
+            pip.setReason(request.getReason());
+        }
+
+        pip = pipRecordRepository.save(pip);
         return pipMapper.toResponse(pip);
     }
 

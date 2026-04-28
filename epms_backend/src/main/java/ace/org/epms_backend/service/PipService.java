@@ -2,6 +2,7 @@ package ace.org.epms_backend.service;
 
 import ace.org.epms_backend.dto.pip.PipCreateRequest;
 import ace.org.epms_backend.dto.pip.PipResponse;
+import ace.org.epms_backend.dto.pip.PipUpdateRequest;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -9,6 +10,8 @@ import java.util.List;
 public interface PipService {
 
     PipResponse createPip(PipCreateRequest request);
+
+    PipResponse updatePip(Long id, PipUpdateRequest request);
 
     PipResponse getPipById(Long id);
 
