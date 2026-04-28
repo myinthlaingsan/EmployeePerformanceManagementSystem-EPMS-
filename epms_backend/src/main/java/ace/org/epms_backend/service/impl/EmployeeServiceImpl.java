@@ -10,12 +10,14 @@ import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmployeeService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import ace.org.epms_backend.repository.employee.ReportingLineRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -31,6 +33,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
+    private final ReportingLineRepository reportingLineRepository;
     private final AuthService authService;
     private final ApplicationEventPublisher applicationEventPublisher;
     @Override
@@ -58,11 +61,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setEmail(email);
         employee.setPosition(position);
         employee.setLevel(position.getLevel()); // Set level from position
-        // change this in thunmyathsu branch
-        if (request.getDirectManagerId() != null) {
-            employee.setDirectManager(employeeRepository.findById(request.getDirectManagerId())
-                    .orElseThrow(() -> new NotFoundException("Direct Manager Not Found")));
-        }
         // ...
         employee.setStatus(EmployeeStatus.INACTIVE);
         employee.setPassword(null); // user will set later
@@ -89,6 +87,19 @@ public class EmployeeServiceImpl implements EmployeeService {
         resetToken.setExpiryDate(LocalDateTime.now().plusHours(24));
 
         tokenRepository.save(resetToken);
+
+        // Assign Manager (Reporting Line)
+        if (request.getDirectManagerId() != null) {
+            Employee manager = employeeRepository.findById(request.getDirectManagerId())
+                    .orElseThrow(() -> new NotFoundException("Manager not found"));
+
+            ReportingLine reportingLine = ReportingLine.builder()
+                    .employee(savedEmployee)
+                    .manager(manager)
+                    .isActive(true)
+                    .build();
+            reportingLineRepository.save(reportingLine);
+        }
 
         applicationEventPublisher.publishEvent(
                 new EmployeeCreatedEvent(savedEmployee.getId(),token)
@@ -141,12 +152,32 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
         emp.setPosition(position);
         emp.setLevel(position.getLevel()); // Set level from position
-
-        if (request.getDirectManagerId() != null) {
-            emp.setDirectManager(employeeRepository.findById(request.getDirectManagerId())
-                    .orElseThrow(() -> new NotFoundException("Direct Manager Not Found")));
-        }
         Employee updated = employeeRepository.save(emp);
+
+        // Update Manager (Reporting Line)
+        if (request.getDirectManagerId() != null) {
+            Optional<ReportingLine> existingLine = reportingLineRepository.findByEmployeeAndIsActiveTrue(updated);
+            
+            if (existingLine.isEmpty() || !existingLine.get().getManager().getId().equals(request.getDirectManagerId())) {
+                // Deactivate old one
+                existingLine.ifPresent(line -> {
+                    line.setIsActive(false);
+                    reportingLineRepository.save(line);
+                });
+
+                // Create new one
+                Employee newManager = employeeRepository.findById(request.getDirectManagerId())
+                        .orElseThrow(() -> new NotFoundException("Manager not found"));
+
+                ReportingLine newLine = ReportingLine.builder()
+                        .employee(updated)
+                        .manager(newManager)
+                        .isActive(true)
+                        .build();
+                reportingLineRepository.save(newLine);
+            }
+        }
+
         return mapToResponse(updated);
     }
 

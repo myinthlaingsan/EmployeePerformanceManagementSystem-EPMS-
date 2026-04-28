@@ -9,6 +9,10 @@ import ace.org.epms_backend.model.feedback360.FeedbackRequest;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository;
+import ace.org.epms_backend.repository.employee.ReportingLineRepository;
+import ace.org.epms_backend.repository.employee.EmployeeTeamRepository;
+import ace.org.epms_backend.model.employee.EmployeeTeam;
+import ace.org.epms_backend.model.employee.ReportingLine;
 import ace.org.epms_backend.service.feedback360.FeedbackSelectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,6 +30,8 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
     private final EmployeeRepository employeeRepository;
     private final FeedbackRequestRepository feedbackRequestRepository;
     private final AppraisalCycleRepository appraisalCycleRepository;
+    private final ReportingLineRepository reportingLineRepository;
+    private final EmployeeTeamRepository teamRepository;
 
     @Override
     public List<EmployeeEvaluationDTO> suggestEvaluators(Long employeeId) {
@@ -35,20 +41,22 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
         List<EmployeeEvaluationDTO> result = new ArrayList<>();
 
         // 1. MANAGER
-        if (target.getDirectManager() != null) {
-            result.add(mapToDTO(target.getDirectManager(), FeedbackRelationship.MANAGER));
-        }
+        reportingLineRepository.findByEmployeeAndIsActiveTrue(target)
+                .ifPresent(line -> result.add(mapToDTO(line.getManager(), FeedbackRelationship.MANAGER)));
 
         // 2. PEERS
-        if (target.getDirectManager() != null) {
-            List<Employee> allPeers = employeeRepository.findByDirectManagerAndIdNot(target.getDirectManager(), target.getId());
+        List<Employee> allPeers = findPeers(target);
+        if (!allPeers.isEmpty()) {
             List<Employee> selectedPeers = selectPeersDynamically(allPeers);
             selectedPeers.forEach(p -> result.add(mapToDTO(p, FeedbackRelationship.PEER)));
         }
 
         // 3. SUBORDINATES
-        List<Employee> allSubordinates = target.getSubordinates();
-        if (allSubordinates != null && !allSubordinates.isEmpty()) {
+        List<ReportingLine> subLines = reportingLineRepository.findAllByManagerAndIsActiveTrue(target);
+        if (!subLines.isEmpty()) {
+            List<Employee> allSubordinates = subLines.stream()
+                    .map(ReportingLine::getEmployee)
+                    .collect(Collectors.toList());
             List<Employee> selectedSubs = selectSubordinatesDynamically(allSubordinates);
             selectedSubs.forEach(s -> result.add(mapToDTO(s, FeedbackRelationship.SUBORDINATE)));
         }
@@ -87,6 +95,23 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
 
     private EmployeeEvaluationDTO mapToDTO(Employee emp, FeedbackRelationship rel) {
         return new EmployeeEvaluationDTO(emp.getId(), emp.getStaffName(), rel);
+    }
+
+    private List<Employee> findPeers(Employee employee) {
+        List<EmployeeTeam> teams = teamRepository.findByEmployeeId(employee.getId());
+        if (!teams.isEmpty()) {
+            Long primaryTeamId = teams.stream()
+                    .filter(EmployeeTeam::getIsPrimary)
+                    .findFirst()
+                    .orElse(teams.get(0))
+                    .getTeam().getTeamId();
+
+            return teamRepository.findByTeamTeamId(primaryTeamId).stream()
+                    .map(EmployeeTeam::getEmployee)
+                    .filter(e -> !e.getId().equals(employee.getId()))
+                    .collect(Collectors.toList());
+        }
+        return Collections.emptyList();
     }
 
     private List<Employee> selectPeersDynamically(List<Employee> peers) {

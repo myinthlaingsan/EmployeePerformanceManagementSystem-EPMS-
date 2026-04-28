@@ -13,6 +13,9 @@ import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.repository.employee.EmployeeTeamRepository;
+import ace.org.epms_backend.repository.employee.ReportingLineRepository;
+import ace.org.epms_backend.model.employee.ReportingLine;
+import ace.org.epms_backend.dto.feedback360.FeedbackRequestGenerateDTO;
 import ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository;
 import ace.org.epms_backend.service.feedback360.FeedbackRequestService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     private final AppraisalCycleRepository cycleRepository;
     private final EmployeeTeamRepository teamRepository;
     private final EmployeeDepartmentRepository departmentRepository;
+    private final ReportingLineRepository reportingLineRepository;
     private final FeedbackMapper feedbackMapper;
 
     @Override
@@ -47,24 +51,60 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             createRequest(cycle, employee, employee, FeedbackRelationship.SELF, false);
 
             // 2. MANAGER
-            if (employee.getDirectManager() != null) {
-                createRequest(cycle, employee, employee.getDirectManager(), FeedbackRelationship.MANAGER, false);
-            }
+            reportingLineRepository.findByEmployeeAndIsActiveTrue(employee)
+                    .ifPresent(reportingLine -> {
+                        createRequest(cycle, employee, reportingLine.getManager(), FeedbackRelationship.MANAGER, false);
+                    });
 
             // 3. PEERS (From Team) - with limits
             List<Employee> peers = findPeers(employee);
             Collections.shuffle(peers);
             int peerCount = Math.min(peers.size(), maxPeers);
-            peers.stream().limit(peerCount).forEach(peer -> 
-                createRequest(cycle, employee, peer, FeedbackRelationship.PEER, true));
+            peers.stream().limit(peerCount)
+                    .forEach(peer -> createRequest(cycle, employee, peer, FeedbackRelationship.PEER, true));
 
             // 4. SUBORDINATES - with limits
-            List<Employee> subs = employee.getSubordinates();
-            if (subs != null && !subs.isEmpty()) {
-                Collections.shuffle(subs);
-                int subCount = Math.min(subs.size(), maxSubs);
-                subs.stream().limit(subCount).forEach(sub -> 
-                    createRequest(cycle, employee, sub, FeedbackRelationship.SUBORDINATE, true));
+            List<ReportingLine> subLines = reportingLineRepository.findAllByManagerAndIsActiveTrue(employee);
+            if (!subLines.isEmpty()) {
+                Collections.shuffle(subLines);
+                int subCount = Math.min(subLines.size(), maxSubs);
+                subLines.stream().limit(subCount).forEach(line -> createRequest(cycle, employee, line.getEmployee(),
+                        FeedbackRelationship.SUBORDINATE, true));
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void generateRequests(FeedbackRequestGenerateDTO dto) {
+        AppraisalCycle cycle = cycleRepository.findById(dto.getCycleId())
+                .orElseThrow(() -> new NotFoundException("Cycle not found"));
+
+        for (Long employeeId : dto.getEmployeeIds()) {
+            Employee target = employeeRepository.findById(employeeId)
+                    .orElseThrow(() -> new NotFoundException("Employee not found: " + employeeId));
+
+            // 1. SELF
+            createRequest(cycle, target, target, FeedbackRelationship.SELF, false);
+
+            // 2. MANAGER
+            reportingLineRepository.findByEmployeeAndIsActiveTrue(target)
+                    .ifPresent(reportingLine -> {
+                        createRequest(cycle, target, reportingLine.getManager(), FeedbackRelationship.MANAGER, false);
+                    });
+
+            // 3. PEERS (TEAM BASED)
+            List<Employee> peers = findPeers(target);
+            Collections.shuffle(peers);
+            peers.stream().limit(dto.getPeerLimit())
+                    .forEach(peer -> createRequest(cycle, target, peer, FeedbackRelationship.PEER, true));
+
+            // 4. SUBORDINATES
+            if (Boolean.TRUE.equals(dto.getIncludeSubordinates())) {
+                List<ReportingLine> subLines = reportingLineRepository.findAllByManagerAndIsActiveTrue(target);
+                for (ReportingLine line : subLines) {
+                    createRequest(cycle, target, line.getEmployee(), FeedbackRelationship.SUBORDINATE, true);
+                }
             }
         }
     }
@@ -77,7 +117,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     .findFirst()
                     .orElse(teams.get(0))
                     .getTeam().getTeamId();
-            
+
             return teamRepository.findByTeamTeamId(primaryTeamId).stream()
                     .map(EmployeeTeam::getEmployee)
                     .filter(e -> !e.getId().equals(employee.getId()))
@@ -86,8 +126,10 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         return Collections.emptyList();
     }
 
-    private void createRequest(AppraisalCycle cycle, Employee target, Employee evaluator, FeedbackRelationship rel, boolean anon) {
-        if (!requestRepository.existsByTargetUserIdAndEvaluatorIdAndCycleCycleId(target.getId(), evaluator.getId(), cycle.getCycleId())) {
+    private void createRequest(AppraisalCycle cycle, Employee target, Employee evaluator, FeedbackRelationship rel,
+            boolean anon) {
+        if (!requestRepository.existsByTargetUserIdAndEvaluatorIdAndCycleCycleId(target.getId(), evaluator.getId(),
+                cycle.getCycleId())) {
             FeedbackRequest request = FeedbackRequest.builder()
                     .targetUser(target)
                     .evaluator(evaluator)

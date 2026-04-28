@@ -80,12 +80,7 @@ public class Employee extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private EmployeeStatus status;
 
-    @ManyToOne
-    @JoinColumn(name = "manager_id")
-    private Employee directManager;
 
-    @OneToMany(mappedBy = "directManager")
-    private List<Employee> subordinates;
 
     private Boolean isActive = true;
 
