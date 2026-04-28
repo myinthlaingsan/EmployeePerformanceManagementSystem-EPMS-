@@ -91,6 +91,12 @@ const MeetingPage = () => {
                   <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
                     <p>{format(new Date(meeting.meetingDate), 'MMM d, yyyy')}</p>
                     <p>{meeting.meetingTime}</p>
+                    {meeting.isPrivateNote && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                        Private
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -126,10 +132,10 @@ const MeetingPage = () => {
       {/* Schedule Meeting Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl animate-in slide-in-from-bottom-4 duration-200 overflow-hidden">
-            <div className="p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Schedule 1-on-1 Meeting</h2>
-              <form onSubmit={handleSchedule} className="space-y-6">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Schedule 1-on-1 Meeting</h2>
+              <form onSubmit={handleSchedule} className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Employee</label>
                   <select
@@ -183,31 +189,42 @@ const MeetingPage = () => {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Discussion Points</label>
-                  <textarea
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-24 resize-none"
+                  <textarea 
+                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-16 resize-none text-sm"
                     placeholder="What would you like to discuss?"
                     value={newMeeting.discussionPoints}
-                    onChange={e => setNewMeeting({ ...newMeeting, discussionPoints: e.target.value })}
+                    onChange={e => setNewMeeting({...newMeeting, discussionPoints: e.target.value})}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Key Issues</label>
-                    <textarea
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-20 resize-none"
+                    <textarea 
+                      className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-12 resize-none text-sm"
                       value={newMeeting.keyIssues}
                       onChange={e => setNewMeeting({ ...newMeeting, keyIssues: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</label>
-                    <textarea
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-20 resize-none"
+                    <textarea 
+                      className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-12 resize-none text-sm"
                       value={newMeeting.actionItems}
                       onChange={e => setNewMeeting({ ...newMeeting, actionItems: e.target.value })}
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2 px-1">
+                  <input
+                    type="checkbox"
+                    id="isPrivateNote"
+                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                    checked={newMeeting.isPrivateNote}
+                    onChange={e => setNewMeeting({ ...newMeeting, isPrivateNote: e.target.checked })}
+                  />
+                  <label htmlFor="isPrivateNote" className="text-sm font-medium text-gray-600">Mark as Private Note (Visible only to Manager)</label>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">
