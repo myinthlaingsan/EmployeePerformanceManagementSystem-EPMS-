@@ -50,5 +50,6 @@ public interface KpiMapper {
 
     @Mapping(target = "employeeId", source = "employee.id")
     @Mapping(target = "employeeName", source = "employee.staffName")
+    @Mapping(target = "cycleId", source = "goalSet.cycle.cycleId")
     KpiScoreResponse toScoreResponse(KpiFinalScore finalScore);
 }

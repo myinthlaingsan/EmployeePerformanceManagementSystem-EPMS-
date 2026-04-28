@@ -427,7 +427,7 @@ public class KpiServiceImpl implements KpiService {
 
         finalScore.setEmployee(goalSet.getEmployee());
         finalScore.setGoalSet(goalSet);
-        finalScore.setCycle(goalSet.getCycle());
+        // finalScore.setCycle(goalSet.getCycle());
         finalScore.setWeightedScore(totalWeightedScore);
         finalScore.setCalculatedAt(Instant.now());
         finalScore.setFinalizedBy(getCurrentEmployee().getId());
