@@ -156,6 +156,7 @@ const PipCreatePage: React.FC = () => {
                                 name="startDate"
                                 value={formData.startDate}
                                 onChange={handleChange}
+                                min={new Date().toISOString().split('T')[0]}
                                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                                 required
                             />
@@ -168,6 +169,7 @@ const PipCreatePage: React.FC = () => {
                                 name="endDate"
                                 value={formData.endDate}
                                 onChange={handleChange}
+                                min={formData.startDate || new Date().toISOString().split('T')[0]}
                                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                                 required
                             />

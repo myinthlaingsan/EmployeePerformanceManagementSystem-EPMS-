@@ -134,6 +134,13 @@ export const pipApi = api.injectEndpoints({
             }),
             invalidatesTags: (_result, _error, { pipId }) => [{ type: "PIP", id: pipId }],
         }),
+        deletePip: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/pip/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: [{ type: "PIP", id: "LIST" }],
+        }),
     }),
 });
 
@@ -145,6 +152,7 @@ export const {
     useCreatePipMutation,
     useActivatePipMutation,
     useExtendPipMutation,
+    useDeletePipMutation,
     useGetObjectivesByPipQuery,
     useCreateObjectiveMutation,
     useUpdateObjectiveStatusMutation,

@@ -10,7 +10,8 @@ import {
     useCreateReviewMutation,
     useFinalizePipMutation,
     useActivatePipMutation,
-    useExtendPipMutation
+    useExtendPipMutation,
+    useDeletePipMutation
 } from '../../services/pipApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
@@ -45,6 +46,7 @@ const PipDetailsPage: React.FC = () => {
     const [finalizePip] = useFinalizePipMutation();
     const [activatePip] = useActivatePipMutation();
     const [extendPip] = useExtendPipMutation();
+    const [deletePip] = useDeletePipMutation();
 
     // UI States
     const [showObjModal, setShowObjModal] = useState(false);
@@ -68,11 +70,30 @@ const PipDetailsPage: React.FC = () => {
         try {
             if (data.outcome === PipOutcome.EXTEND && data.newEndDate) {
                 await extendPip({ id: pipId, body: { newEndDate: data.newEndDate } }).unwrap();
+                await createReview({ 
+                    pipId, 
+                    reviewDate: new Date().toISOString().split('T')[0],
+                    progressSummary: "PIP extension decision recorded.",
+                    managerFeedback: "PIP Extended", 
+                    nextAction: data.comment 
+                }).unwrap();
+            } else {
+                await finalizePip({ pipId, outcome: data.outcome, comment: data.comment }).unwrap();
             }
-            await finalizePip({ pipId, outcome: data.outcome, comment: data.comment }).unwrap();
             navigate('/pip');
         } catch (err) {
             console.error("Failed to finalize PIP", err);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (window.confirm("Are you sure you want to delete this Draft PIP?")) {
+            try {
+                await deletePip(pipId).unwrap();
+                navigate('/pip');
+            } catch (err) {
+                console.error("Failed to delete PIP", err);
+            }
         }
     };
 
@@ -116,15 +137,25 @@ const PipDetailsPage: React.FC = () => {
                     </div>
                     
                     <div className="flex flex-col gap-3">
-                        {isHR && pip.status === PipStatus.DRAFT && (
-                            <button 
-                                onClick={() => activatePip(pipId)}
-                                className="bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition"
-                            >
-                                Activate Plan
-                            </button>
+                        {(isHR || isManager) && pip.status === PipStatus.DRAFT && (
+                            <>
+                                <button 
+                                    onClick={() => activatePip(pipId)}
+                                    className="bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition"
+                                >
+                                    Activate Plan
+                                </button>
+                                {isHR && (
+                                    <button 
+                                        onClick={handleDelete}
+                                        className="bg-red-50 text-red-600 border border-red-200 px-6 py-2.5 rounded-2xl font-bold hover:bg-red-100 transition"
+                                    >
+                                        Delete Plan
+                                    </button>
+                                )}
+                            </>
                         )}
-                        {(isHR || isManager) && pip.status !== PipStatus.CLOSED && (
+                        {(isHR || isManager) && (pip.status === PipStatus.ACTIVE || pip.status === PipStatus.EXTENDED) && (
                             <button 
                                 onClick={() => setShowFinalizeModal(true)}
                                 className="bg-red-600 text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg shadow-red-100 hover:bg-red-700 transition"
@@ -145,7 +176,7 @@ const PipDetailsPage: React.FC = () => {
             <div className="space-y-4">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-gray-900">Objectives</h2>
-                    {(isHR || isManager) && pip.status !== PipStatus.CLOSED && (
+                    {(isHR || isManager) && pip.status === PipStatus.DRAFT && (
                         <button 
                             onClick={() => setShowObjModal(true)}
                             className="text-blue-600 flex items-center gap-1 font-bold hover:underline"
@@ -188,7 +219,7 @@ const PipDetailsPage: React.FC = () => {
                                         </button>
                                         
                                         <div className="flex gap-3">
-                                            {isEmployee && pip.status === PipStatus.ACTIVE && (
+                                            {isEmployee && (pip.status === PipStatus.ACTIVE || pip.status === PipStatus.EXTENDED) && (
                                                 <button 
                                                     onClick={() => { setSelectedObjectiveId(obj.objectiveId); setShowProgressModal(true); }}
                                                     className="text-xs bg-white border border-blue-200 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-50 transition"
@@ -228,7 +259,7 @@ const PipDetailsPage: React.FC = () => {
             <div className="space-y-4">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-gray-900">Progress Reviews</h2>
-                    {(isHR || isManager) && pip.status !== PipStatus.CLOSED && (
+                    {(isHR || isManager) && (pip.status === PipStatus.ACTIVE || pip.status === PipStatus.EXTENDED) && (
                         <button 
                             onClick={() => setShowReviewModal(true)}
                             className="text-blue-600 flex items-center gap-1 font-bold hover:underline"
@@ -269,6 +300,7 @@ const PipDetailsPage: React.FC = () => {
             {/* Simple Modals */}
             {showObjModal && (
                 <ObjectiveModal 
+                    pipStartDate={pip.startDate}
                     onClose={() => setShowObjModal(false)} 
                     onSave={(data) => createObjective({ ...data, pipId }).unwrap().then(() => setShowObjModal(false))} 
                 />
@@ -287,6 +319,7 @@ const PipDetailsPage: React.FC = () => {
             )}
             {showFinalizeModal && (
                 <FinalizeModal 
+                    currentEndDate={pip.endDate}
                     onClose={() => setShowFinalizeModal(false)} 
                     onSave={handleFinalize} 
                 />

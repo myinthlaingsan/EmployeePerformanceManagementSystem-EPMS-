@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import type { PipObjectiveRequest } from '../../features/pip/types';
 
 interface ObjectiveModalProps {
+    pipStartDate?: string;
     onClose: () => void;
     onSave: (data: Omit<PipObjectiveRequest, 'pipId'>) => Promise<void>;
 }
 
-const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ onClose, onSave }) => {
+const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ pipStartDate, onClose, onSave }) => {
     const [data, setData] = useState({ 
         title: '', 
         description: '', 
@@ -58,6 +59,7 @@ const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ onClose, onSave }) => {
                         <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Target Completion Date</label>
                         <input 
                             type="date" 
+                            min={pipStartDate}
                             className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition" 
                             onChange={e => setData({ ...data, targetDate: e.target.value })} 
                         />
