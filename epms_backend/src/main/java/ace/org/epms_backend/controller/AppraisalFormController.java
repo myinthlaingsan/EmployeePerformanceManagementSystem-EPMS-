@@ -1,49 +1,44 @@
 package ace.org.epms_backend.controller;
 
-import ace.org.epms_backend.dto.ApiResponse;
-import ace.org.epms_backend.dto.appraisal.AppraisalFormRequest;
-import ace.org.epms_backend.dto.appraisal.AppraisalFormResponse;
+import ace.org.epms_backend.dto.appraisal.form.*;
 import ace.org.epms_backend.service.AppraisalFormService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/api/v1/appraisal-forms")
+@RequestMapping("/api/v1/forms")
 @RequiredArgsConstructor
 public class AppraisalFormController {
 
-    private final AppraisalFormService appraisalFormService;
+    private final AppraisalFormService formService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<AppraisalFormResponse>> create(@RequestBody AppraisalFormRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(appraisalFormService.create(request)));
+    public ResponseEntity<Long> createForm(@RequestBody AppraisalFormRequest request) {
+        return new ResponseEntity<>(formService.createForm(request), HttpStatus.CREATED);
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<AppraisalFormResponse>>> getAll() {
-        return ResponseEntity.ok(ApiResponse.success(appraisalFormService.getAll()));
+    @PostMapping("/{formId}/categories")
+    public ResponseEntity<Void> addCategory(@PathVariable Long formId, @RequestBody CategoryRequest request) {
+        formService.addCategory(formId, request);
+        return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<AppraisalFormResponse>> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalFormService.getById(id)));
+    @PostMapping("/categories/{categoryId}/questions")
+    public ResponseEntity<Void> addQuestion(@PathVariable Long categoryId, @RequestBody QuestionRequest request) {
+        formService.addQuestion(categoryId, request);
+        return ResponseEntity.ok().build();
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<AppraisalFormResponse>> update(
-            @PathVariable Long id,
-            @RequestBody AppraisalFormRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalFormService.update(id, request)));
+    @GetMapping("/{formId}/full")
+    public ResponseEntity<FullFormResponse> getFullForm(@PathVariable Long formId) {
+        return ResponseEntity.ok(formService.getFullForm(formId));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
-        appraisalFormService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success(null));
+    @PutMapping("/{formId}/status")
+    public ResponseEntity<Void> updateStatus(@PathVariable Long formId, @RequestParam Boolean isActive) {
+        formService.updateFormStatus(formId, isActive);
+        return ResponseEntity.ok().build();
     }
 }

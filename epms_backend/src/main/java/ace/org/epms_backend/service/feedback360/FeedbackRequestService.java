@@ -1,0 +1,15 @@
+package ace.org.epms_backend.service.feedback360;
+
+import ace.org.epms_backend.dto.feedback360.FeedbackRequestResponse;
+import ace.org.epms_backend.enums.FeedbackStatus;
+import java.util.List;
+
+public interface FeedbackRequestService {
+    void generate360FeedbackRequests(Long cycleId, int minPeers, int maxPeers, int minSubs, int maxSubs);
+    List<FeedbackRequestResponse> getMyPendingRequests(Long evaluatorId);
+    List<FeedbackRequestResponse> getRequestsByEmployee(Long targetEmployeeId, Long cycleId);
+    List<FeedbackRequestResponse> getRequestsByCycle(Long cycleId);
+    FeedbackRequestResponse getRequest(Long requestId);
+    void updateRequestStatus(Long requestId, FeedbackStatus status);
+    void deleteRequest(Long requestId);
+}

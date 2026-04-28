@@ -1,5 +1,6 @@
 package ace.org.epms_backend.model.appraisal;
 
+import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,6 +21,9 @@ public class AppraisalForm extends BaseEntity {
     private Long formId;
 
     private String formName;
+
+    @Enumerated(EnumType.STRING)
+    private FormType formType;
 
     private Long createdBy;
 }

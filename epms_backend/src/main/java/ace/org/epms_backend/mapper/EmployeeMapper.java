@@ -22,6 +22,8 @@ public interface EmployeeMapper {
     @Mapping(source = "position.positionName", target = "positionName")
     @Mapping(source = "level.levelName", target = "levelName")
     @Mapping(source = "level.levelRank", target = "levelRank")
+    @Mapping(source = "directManager.id", target = "directManagerId")
+    @Mapping(source = "directManager.staffName", target = "directManagerName")
     EmployeeResponse toResponse(Employee employee);
 
     // 🔥 UPDATE (THIS IS WHAT YOU MISSED)

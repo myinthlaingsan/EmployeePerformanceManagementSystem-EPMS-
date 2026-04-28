@@ -57,7 +57,7 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                 .findFirst()
                 .orElse(null);
 
-        appraisal.setTotalScore(avg);
+        appraisal.setFormScore(avg);
         appraisal.setPerformanceCategory(category);
         if (category != null) {
             appraisal.setPerformanceGrade(category.getName());
