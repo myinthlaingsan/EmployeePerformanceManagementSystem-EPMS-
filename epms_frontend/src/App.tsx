@@ -24,8 +24,10 @@ import PermissionList from "./pages/admin/PermissionList";
 import RoleLevelPermissionManager from "./pages/admin/org/RoleLevelPermissionManager";
 import LibraryList from "./pages/kpi/LibraryList";
 import LibraryForm from "./pages/kpi/LibraryForm";
+import KpiLibraryEntry from "./pages/kpi/KpiLibraryEntry";
 import GoalManagement from "./pages/kpi/GoalManagement";
 import GoalDetail from "./pages/kpi/GoalDetail";
+import KpiHub from "./pages/kpi/KpiHub";
 
 // Mock Components for other specialized pages
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
@@ -58,6 +60,7 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/kpi/goals/:employeeId" element={<GoalDetail />} />
+            <Route path="/kpi/hub" element={<KpiHub />} />
 
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
@@ -77,7 +80,7 @@ const App = () => {
 
               {/* KPI Routes (HR/Admin) */}
               <Route path="/kpi/library" element={<LibraryList />} />
-              <Route path="/kpi/library/new" element={<LibraryForm />} />
+              <Route path="/kpi/library/new" element={<KpiLibraryEntry />} />
               <Route path="/kpi/manage" element={<GoalManagement />} />
             </Route>
 
