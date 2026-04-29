@@ -14,4 +14,5 @@ public class GoalItemResponse {
     private KpiItemStatus status;
     private BigDecimal currentProgress;
     private String categoryName;
+    private Long categoryId;
 }

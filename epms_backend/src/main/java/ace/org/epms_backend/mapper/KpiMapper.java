@@ -25,6 +25,7 @@ public interface KpiMapper {
     KpiLibraryDetails toLibraryDetailEntity(KpiLibraryDetailRequest request);
 
     @Mapping(target = "categoryName", source = "category.name")
+    @Mapping(target = "categoryId", source = "category.id")
     KpiLibraryDetailResponse toLibraryDetailResponse(KpiLibraryDetails details);
 
     List<KpiLibraryDetailResponse> toLibraryDetailResponseList(List<KpiLibraryDetails> details);
@@ -40,6 +41,7 @@ public interface KpiMapper {
 
     @Mapping(target = "currentProgress", ignore = true)
     @Mapping(target = "categoryName", source = "category.name")
+    @Mapping(target = "categoryId", source = "category.id")
     GoalItemResponse toGoalItemResponse(KpiGoalItem item);
 
     List<GoalItemResponse> toGoalItemResponseList(List<KpiGoalItem> items);

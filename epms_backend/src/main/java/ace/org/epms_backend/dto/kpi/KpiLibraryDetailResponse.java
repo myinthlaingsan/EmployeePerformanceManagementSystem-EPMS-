@@ -12,4 +12,5 @@ public class KpiLibraryDetailResponse {
     private Boolean isActive;
     private String unit;
     private String categoryName;
+    private Long categoryId;
 }
