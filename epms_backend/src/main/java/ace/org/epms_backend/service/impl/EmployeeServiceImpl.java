@@ -89,17 +89,17 @@ public class EmployeeServiceImpl implements EmployeeService {
         tokenRepository.save(resetToken);
 
         // Assign Manager (Reporting Line)
-        if (request.getDirectManagerId() != null) {
-            Employee manager = employeeRepository.findById(request.getDirectManagerId())
-                    .orElseThrow(() -> new NotFoundException("Manager not found"));
-
-            ReportingLine reportingLine = ReportingLine.builder()
-                    .employee(savedEmployee)
-                    .manager(manager)
-                    .isActive(true)
-                    .build();
-            reportingLineRepository.save(reportingLine);
-        }
+//        if (request.getDirectManagerId() != null) {
+//            Employee manager = employeeRepository.findById(request.getDirectManagerId())
+//                    .orElseThrow(() -> new NotFoundException("Manager not found"));
+//
+//            ReportingLine reportingLine = ReportingLine.builder()
+//                    .employee(savedEmployee)
+//                    .manager(manager)
+//                    .isActive(true)
+//                    .build();
+//            reportingLineRepository.save(reportingLine);
+//        }
 
         applicationEventPublisher.publishEvent(
                 new EmployeeCreatedEvent(savedEmployee.getId(),token)

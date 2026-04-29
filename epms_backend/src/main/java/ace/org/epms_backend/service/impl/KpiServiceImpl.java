@@ -66,6 +66,9 @@ public class KpiServiceImpl implements KpiService {
         KpiLibrary savedLibrary = libraryRepository.save(library);
 
         List<KpiLibraryDetails> details = request.getDetails().stream().map(d -> {
+            if (d.getCategoryId() == null) {
+                throw new IllegalArgumentException("Category ID is required");
+            }
             KpiLibraryDetails detail = kpiMapper.toLibraryDetailEntity(d);
             detail.setLibrary(savedLibrary);
             detail.setCategory(categoryRepository.findById(d.getCategoryId())
@@ -73,7 +76,7 @@ public class KpiServiceImpl implements KpiService {
             return detail;
         }).collect(Collectors.toList());
 
-        libraryDetailsRepository.saveAll(details);
+//        libraryDetailsRepository.saveAll(details);
         savedLibrary.setDetails(details);
 
         return kpiMapper.toLibraryResponse(savedLibrary);

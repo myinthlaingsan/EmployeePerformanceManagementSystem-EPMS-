@@ -37,10 +37,10 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(kpiService.toggleLibraryStatus(id, active)));
     }
 
-    @GetMapping("/categories")
-    public ResponseEntity<ApiResponse<List<KpiCategoryResponse>>> getAllCategories() {
-        return ResponseEntity.ok(ApiResponse.success(kpiService.getAllCategories()));
-    }
+//    @GetMapping("/categories")
+//    public ResponseEntity<ApiResponse<List<KpiCategoryResponse>>> getAllCategories() {
+//        return ResponseEntity.ok(ApiResponse.success(kpiService.getAllCategories()));
+//    }
 
     // 2. KPI Assignment (Manager/HR/Admin)
     @PostMapping("/assign")

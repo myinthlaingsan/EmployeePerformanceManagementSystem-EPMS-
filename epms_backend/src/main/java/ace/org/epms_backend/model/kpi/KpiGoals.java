@@ -9,6 +9,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Table(name = "kpi_goals")
@@ -45,7 +46,7 @@ public class KpiGoals extends BaseEntity {
     private KpiGoalStatus status;
 
     @OneToMany(mappedBy = "goalSet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private java.util.List<KpiGoalItem> items;
+    private List<KpiGoalItem> items;
 
     private Long approvedBy;
 
