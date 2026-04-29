@@ -8,6 +8,4 @@ import java.util.Optional;
 
 public interface AppraisalCycleRepository extends JpaRepository<AppraisalCycle, Long> {
     List<AppraisalCycle> findByIsActiveTrue();
-
-    Optional<AppraisalCycle> findByActiveTrue();
 }
