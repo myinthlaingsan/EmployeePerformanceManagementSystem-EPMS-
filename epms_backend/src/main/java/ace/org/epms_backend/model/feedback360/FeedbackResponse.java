@@ -28,7 +28,7 @@ public class FeedbackResponse extends BaseEntity {
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
-    private Integer score;
+    private Integer score; // rating (1-5)
 
     @Column(columnDefinition = "TEXT")
     private String comment;

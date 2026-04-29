@@ -21,9 +21,14 @@ import RoleList from "./pages/admin/RoleList";
 import JobLevelList from "./pages/admin/JobLevelList";
 import PositionList from "./pages/admin/PositionList";
 import HRDashboard from "./pages/admin/HRDashboard";
-import EmployeeDepartmentHistory from "./pages/admin/org/EmployeeDepartmentHistory";
-import PermissionList from "./pages/admin/PermissionList";
-import RoleLevelPermissionManager from "./pages/admin/org/RoleLevelPermissionManager";
+import AppraisalList from "./pages/appraisal/AppraisalList";
+import AppraisalDetail from "./pages/appraisal/AppraisalDetail";
+import SelfAssessment from "./pages/appraisal/SelfAssessment";
+import ManagerEvaluation from "./pages/appraisal/ManagerEvaluation";
+import ResultPage from "./pages/appraisal/ResultPage";
+import AppraisalFormList from "./pages/admin/AppraisalFormList";
+import AppraisalFormEditor from "./pages/admin/AppraisalFormEditor";
+import AppraisalAdminDashboard from "./pages/admin/AppraisalAdminDashboard";
 
 // KPI Pages
 import KpiHub from "./pages/kpi/KpiHub";
@@ -67,6 +72,13 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<ProfilePage />} />
 
+            {/* Appraisal Workflow Routes */}
+            <Route path="/appraisal" element={<AppraisalList />} />
+            <Route path="/appraisal/:id" element={<AppraisalDetail />} />
+            <Route path="/appraisal/:id/self-assessment" element={<SelfAssessment />} />
+            <Route path="/appraisal/:id/manager-evaluation" element={<ManagerEvaluation />} />
+            <Route path="/appraisal/:id/results" element={<ResultPage />} />
+
             {/* KPI Performance Routes - Accessible to all logged in users */}
             <Route path="/kpi/hub" element={<KpiHub />} />
             <Route path="/kpi/my-goals" element={<MyKpiDashboard />} />
@@ -78,15 +90,15 @@ const App = () => {
               <Route path="/employees" element={<EmployeeList />} />
               <Route path="/employees/new" element={<EmployeeForm />} />
               <Route path="/employees/edit/:id" element={<EmployeeForm />} />
-              <Route path="/employees/:id/departments" element={<EmployeeDepartmentHistory />} />
-
-              <Route path="/permissions" element={<PermissionList />} />
-              <Route path="/permissions/matrix" element={<RoleLevelPermissionManager />} />
 
               <Route path="/departments" element={<DepartmentList />} />
               <Route path="/roles" element={<RoleList />} />
               <Route path="/job-levels" element={<JobLevelList />} />
               <Route path="/positions" element={<PositionList />} />
+              <Route path="/appraisal-forms" element={<AppraisalFormList />} />
+              <Route path="/appraisal-forms/new" element={<AppraisalFormEditor />} />
+              <Route path="/appraisal-forms/edit/:id" element={<AppraisalFormEditor />} />
+              <Route path="/appraisal-management" element={<AppraisalAdminDashboard />} />
 
               {/* HR/Admin KPI Routes */}
               <Route path="/kpi/library" element={<KpiLibraryDashboard />} />

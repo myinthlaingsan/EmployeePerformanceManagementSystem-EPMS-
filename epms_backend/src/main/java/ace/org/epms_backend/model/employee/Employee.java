@@ -8,6 +8,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import ace.org.epms_backend.enums.Gender;
 import ace.org.epms_backend.enums.MaritalStatus;
@@ -78,6 +79,13 @@ public class Employee extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private EmployeeStatus status;
+
+    @ManyToOne
+    @JoinColumn(name = "manager_id")
+    private Employee directManager;
+
+    @OneToMany(mappedBy = "directManager")
+    private List<Employee> subordinates;
 
     private Boolean isActive = true;
 

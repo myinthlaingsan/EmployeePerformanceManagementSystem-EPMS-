@@ -115,6 +115,60 @@ public class EmployeeServiceImpl implements EmployeeService {
 
                 return mapToResponse(emp);
         }
+        Role role = roleRepository.findById(request.getRoleId())
+                .orElseThrow(() -> new NotFoundException("Role not found"));
+
+        Position position = positionRepository.findById(request.getPositionId())
+                .orElseThrow(() -> new NotFoundException("Position Not Found"));
+        Department parentDept = departmentRepository.findById(request.getParentDepartmentId())
+                .orElseThrow(() -> new NotFoundException("Parent Department Not Found"));
+
+        Department currentDept = departmentRepository.findById(request.getCurrentDepartmentId())
+                .orElseThrow(() -> new NotFoundException("Current Department Not Found"));
+        Employee employee = employeeMapper.toEntity(request);
+
+        employee.setEmail(email);
+        employee.setPosition(position);
+        employee.setLevel(position.getLevel()); // Set level from position
+        employee.setStatus(EmployeeStatus.INACTIVE);
+        employee.setPassword(null); // user will set later
+        employee.setEmployeeCode(generateEmployeeCode());
+        Employee savedEmployee = employeeRepository.save(employee);
+        //Assign initial department
+        EmployeeDepartment empDept = new EmployeeDepartment();
+        empDept.setEmployee(savedEmployee);
+        empDept.setParentDepartment(parentDept);     //Banking
+        empDept.setCurrentDepartment(currentDept);   //ERP
+        empDept.setIsCurrent(true);
+        empDept.setCreatedBy(authService.getCurrentUser().getId());
+        employeeDepartmentRepository.save(empDept);
+        // roles
+        EmployeeRole employeeRole = new EmployeeRole();
+        employeeRole.setEmployee(savedEmployee);
+        employeeRole.setRole(role);
+        employeeRoleRepository.save(employeeRole);
+        // Generate token
+        String token = UUID.randomUUID().toString();
+        ResetToken resetToken = new ResetToken();
+        resetToken.setToken(token);
+        resetToken.setEmployee(savedEmployee);
+        resetToken.setExpiryDate(LocalDateTime.now().plusHours(24));
+
+        tokenRepository.save(resetToken);
+
+        applicationEventPublisher.publishEvent(
+                new EmployeeCreatedEvent(savedEmployee.getId(),token)
+        );
+        return mapToResponse(savedEmployee);
+    }
+
+    @Override
+    public void setPassword(String token, String newPassword) {
+        ResetToken resetToken = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new InvalidTokenException("Invalid token"));
+
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new TokenExpiredException("Token expired");
 
         @Override
         public List<EmployeeResponse> getAll() {
@@ -168,6 +222,43 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 .orElseThrow(() -> new NotFoundException("Employee not found with email: " + email));
         }
 
+        emp.setPassword(passwordEncoder.encode(request.getNewPassword()));
+    }
+
+    private String generateEmployeeCode() {
+        long count = employeeRepository.count() + 1;
+        return String.format("EMP%05d", count);
+    }
+
+    private EmployeeResponse mapToResponse(Employee emp) {
+        EmployeeResponse response = employeeMapper.toResponse(emp);
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(emp.getId());
+        List<String> roleNames = roles.stream()
+                .map(role -> role.getRoleName().name())
+                .toList();
+        response.setRoles(roleNames);
+
+        // Fetch permissions based on roles and level
+        List<String> permissions = roleLevelPermissionRepository.findPermissionsByRolesAndLevel(roles, emp.getLevel())
+                .stream()
+                .map(Permission::getPermissionName)
+                .toList();
+        response.setPermissions(permissions);
+
+        // Set Department Name
+        employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
+                .ifPresent(ed -> {
+                    response.setCurrentDepartmentName(
+                            ed.getCurrentDepartment().getDepartmentName()
+                    );
+                    response.setParentDepartmentName(
+                            ed.getParentDepartment().getDepartmentName()
+                    );
+                });
+
+        return response;
+    }
+}
         @Override
         @Transactional
         public EmployeeResponse updateProfile(UpdateProfileRequest request) {

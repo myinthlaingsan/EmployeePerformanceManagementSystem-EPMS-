@@ -1,8 +1,9 @@
 package ace.org.epms_backend.enums;
 
 public enum FeedbackRelationship {
-    DIRECT_MANAGER,
+    MANAGER,
     PEER,
     SUBORDINATE,
-    SELF
+    SELF,
+    DIRECT_MANAGER // Keep for legacy if needed, but MANAGER is preferred
 }

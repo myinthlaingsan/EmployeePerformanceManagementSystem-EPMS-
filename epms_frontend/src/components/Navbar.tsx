@@ -29,6 +29,12 @@ const Navbar = () => {
               >
                 Profile
               </Link>
+              <Link
+                to={isAdmin || isHR ? "/appraisal-management" : "/appraisal"}
+                className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition"
+              >
+                Appraisals
+              </Link>
               {/* Role-Based KPI Links */}
               <Link
                 to="/kpi/my-goals"
@@ -73,12 +79,12 @@ const Navbar = () => {
                         <Link to="/employees" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Employees</Link>
                         <Link to="/departments" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Departments</Link>
                         <Link to="/positions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Positions</Link>
-                        
+
                         <div className="border-t border-gray-100 my-2"></div>
                         <div className="px-4 py-2 text-[10px] font-black text-blue-600 uppercase tracking-widest">Performance (KPI)</div>
                         <Link to="/kpi/library" className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 font-bold text-blue-600" onClick={() => setIsDropdownOpen(false)}>KPI Library</Link>
                         <Link to="/kpi/manage" className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50" onClick={() => setIsDropdownOpen(false)}>Goal Assignments</Link>
-                        
+
                         <div className="border-t border-gray-100 my-2"></div>
                         <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Access Control</div>
                         <Link to="/permissions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Permissions</Link>
