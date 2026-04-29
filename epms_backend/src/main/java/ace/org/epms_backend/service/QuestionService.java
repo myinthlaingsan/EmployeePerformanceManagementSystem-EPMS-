@@ -1,7 +1,7 @@
 package ace.org.epms_backend.service;
 
-import ace.org.epms_backend.dto.appraisal.form.QuestionRequest;
-import ace.org.epms_backend.dto.appraisal.form.QuestionResponse;
+import ace.org.epms_backend.dto.appraisal.QuestionRequest;
+import ace.org.epms_backend.dto.appraisal.QuestionResponse;
 
 import java.util.List;
 
