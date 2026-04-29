@@ -25,7 +25,7 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
     targetValue: item.targetValue,
     weightPercent: item.weightPercent,
     priority: 'MEDIUM' as Priority,
-    categoryId: 0,
+    categoryId: item.categoryId || 0,
   });
 
   const handlePriorityChange = (priority: Priority) => {
@@ -46,7 +46,6 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
     }
 
     try {
-      // Remove priority field before sending to backend
       const { priority, ...updatedDetails } = formData;
       
       await reviseKpi({
@@ -64,34 +63,34 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden transition-all">
         <form onSubmit={handleSubmit}>
           <div className="p-6 border-b border-gray-100">
-            <h3 className="text-xl font-bold text-gray-900">Revise KPI Goal</h3>
-            <p className="text-sm text-gray-500 mt-1">Changes will be logged in the revision history.</p>
+            <h3 className="text-lg font-bold text-gray-900">Revise KPI Goal</h3>
+            <p className="text-sm text-gray-500 mt-1">Modifications will be logged in the revision history.</p>
           </div>
 
-          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Goal Title</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Goal Title</label>
                 <input
                   type="text"
                   required
                   value={formData.goalTitle}
                   onChange={(e) => setFormData({ ...formData, goalTitle: e.target.value })}
-                  className="w-full border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
                 <select
                   required
                   value={formData.categoryId}
                   onChange={(e) => setFormData({ ...formData, categoryId: parseInt(e.target.value) })}
-                  className="w-full border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 >
                   <option value={0}>Select Category</option>
                   {categories.map((c) => (
@@ -101,70 +100,70 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Priority</label>
                 <select
                   value={formData.priority}
                   onChange={(e) => handlePriorityChange(e.target.value as Priority)}
-                  className="w-full border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 >
-                  <option value="LOW">🟢 Lower</option>
-                  <option value="MEDIUM">🟡 Medium</option>
-                  <option value="HIGH">🟠 High</option>
-                  <option value="CRITICAL">🔴 Critical</option>
+                  <option value="LOW">Lower</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="CRITICAL">Critical</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Target Value</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Target Value</label>
                 <input
                   type="number"
                   required
                   value={formData.targetValue}
                   onChange={(e) => setFormData({ ...formData, targetValue: parseFloat(e.target.value) })}
-                  className="w-full border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Weight (%)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Weight (%)</label>
                 <input
                   type="number"
                   max={35}
                   required
                   value={formData.weightPercent}
                   onChange={(e) => setFormData({ ...formData, weightPercent: parseFloat(e.target.value) })}
-                  className="w-full border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
             </div>
 
             <div className="pt-4 border-t border-gray-100">
-              <label className="block text-sm font-medium text-red-700 mb-1">Reason for Revision *</label>
+              <label className="block text-sm font-bold text-red-600 mb-1">Reason for Revision *</label>
               <textarea
                 required
                 value={changeReason}
                 onChange={(e) => setChangeReason(e.target.value)}
                 rows={3}
-                placeholder="Explain why this KPI is being modified..."
-                className="w-full border-red-200 bg-red-50 rounded-xl focus:ring-red-500 focus:border-red-500 shadow-sm"
+                placeholder="Explain the reason for this change..."
+                className="w-full border-red-100 bg-red-50 rounded-lg focus:ring-2 focus:ring-red-500 text-sm"
               />
             </div>
           </div>
 
-          <div className="p-6 bg-gray-50 flex justify-end gap-3">
+          <div className="p-4 bg-gray-50 flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg transition"
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-sm disabled:opacity-50"
+              className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50"
             >
-              {isLoading ? 'Saving Revision...' : 'Apply Revision'}
+              {isLoading ? 'Applying...' : 'Apply Revision'}
             </button>
           </div>
         </form>

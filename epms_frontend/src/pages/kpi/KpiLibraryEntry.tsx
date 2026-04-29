@@ -4,7 +4,7 @@ import { useCreateLibraryMutation, useGetCategoriesQuery } from '../../features/
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useGetJobLevelsQuery } from '../../features/org/jobLevelApi';
 import { validateKpiWeights } from '../../utils/kpiCalculations';
-import type { Priority } from '../../features/kpi/kpiTypes';
+import type { Priority, KpiLibraryDetailRequest } from '../../features/kpi/kpiTypes';
 
 const PRIORITY_WEIGHTS: Record<Priority, number> = {
   CRITICAL: 25,
@@ -95,54 +95,48 @@ const KpiLibraryEntry: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB] pb-20 animate-in fade-in duration-300">
-      <div className="max-w-7xl mx-auto px-8 pt-8">
-        {/* Navigation Breadcrumbs */}
-        <nav className="text-[10px] font-bold tracking-[0.2em] text-gray-400 uppercase mb-2 flex gap-2">
-          <span>KPI Library</span>
-          <span>/</span>
-          <span className="text-blue-600">New Entry</span>
-        </nav>
-        
-        {/* Header Actions */}
-        <div className="flex justify-between items-center mb-10">
-          <h1 className="text-4xl font-black text-[#1A1C1E] tracking-tight">Create New Library Entry</h1>
-          <div className="flex gap-4">
-            <button 
-              onClick={() => navigate(-1)}
-              className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-800 transition"
-            >
-              Discard
-            </button>
-            <button 
-              onClick={handleSave}
-              disabled={isSubmitting}
-              className="px-8 py-2.5 bg-[#0052CC] text-white text-sm font-bold rounded-xl shadow-lg hover:bg-[#0747A6] transition disabled:opacity-50 active:scale-95 transform"
-            >
-              {isSubmitting ? 'Saving...' : 'Save to Library'}
-            </button>
-          </div>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Create Library Entry</h1>
+          <p className="text-gray-600 mt-1">Configure a new KPI performance template.</p>
         </div>
-
-        <div className="space-y-8">
-          <LibraryBasicInfo 
-            formData={formData} 
-            positions={positions} 
-            jobLevels={jobLevels} 
-            onChange={handleInputChange} 
-          />
-
-          <LibraryKpiTable 
-            details={details}
-            categories={categories}
-            onDetailChange={handleDetailChange}
-            onAddRow={addRow}
-            onRemoveRow={removeRow}
-            totalWeight={totalWeight}
-          />
-
-          <LibrarySyncInfo />
+        <div className="flex gap-3">
+          <button 
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg border border-gray-200"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleSave}
+            disabled={isSubmitting}
+            className="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {isSubmitting ? 'Saving...' : 'Save Template'}
+          </button>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
+        <LibraryBasicInfo 
+          formData={formData} 
+          positions={positions} 
+          jobLevels={jobLevels} 
+          onChange={handleInputChange} 
+        />
+
+        <LibraryKpiTable 
+          details={details}
+          categories={categories}
+          onDetailChange={handleDetailChange}
+          onAddRow={addRow}
+          onRemoveRow={removeRow}
+          totalWeight={totalWeight}
+        />
+
+        <LibrarySyncInfo />
       </div>
     </div>
   );

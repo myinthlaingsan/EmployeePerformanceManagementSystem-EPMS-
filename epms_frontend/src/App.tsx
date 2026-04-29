@@ -25,6 +25,15 @@ import EmployeeDepartmentHistory from "./pages/admin/org/EmployeeDepartmentHisto
 import PermissionList from "./pages/admin/PermissionList";
 import RoleLevelPermissionManager from "./pages/admin/org/RoleLevelPermissionManager";
 
+// KPI Pages
+import KpiHub from "./pages/kpi/KpiHub";
+import KpiLibraryDashboard from "./pages/kpi/KpiLibraryDashboard";
+import KpiLibraryEntry from "./pages/kpi/KpiLibraryEntry";
+import GoalManagement from "./pages/kpi/GoalManagement";
+import MyKpiDashboard from "./pages/kpi/MyKpiDashboard";
+import TeamKpiDashboard from "./pages/kpi/TeamKpiDashboard";
+import GoalDetail from "./pages/kpi/GoalDetail";
+
 // Mock Components for other specialized pages
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
 
@@ -58,6 +67,11 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<ProfilePage />} />
 
+            {/* KPI Performance Routes - Accessible to all logged in users */}
+            <Route path="/kpi/hub" element={<KpiHub />} />
+            <Route path="/kpi/my-goals" element={<MyKpiDashboard />} />
+            <Route path="/kpi/goals/:employeeId" element={<GoalDetail />} />
+
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
               <Route path="/hr" element={<HRDashboard />} />
@@ -73,6 +87,12 @@ const App = () => {
               <Route path="/roles" element={<RoleList />} />
               <Route path="/job-levels" element={<JobLevelList />} />
               <Route path="/positions" element={<PositionList />} />
+
+              {/* HR/Admin KPI Routes */}
+              <Route path="/kpi/library" element={<KpiLibraryDashboard />} />
+              <Route path="/kpi/library/new" element={<KpiLibraryEntry />} />
+              <Route path="/kpi/library/edit/:id" element={<KpiLibraryEntry />} />
+              <Route path="/kpi/manage" element={<GoalManagement />} />
             </Route>
 
             {/* Specialized Manager Routes (Level L01-L04 + Specific Permission) */}
@@ -86,6 +106,7 @@ const App = () => {
               }
             >
               <Route path="/approvals" element={<ApprovalPage />} />
+              <Route path="/kpi/team" element={<TeamKpiDashboard />} />
             </Route>
           </Route>
         </Route>

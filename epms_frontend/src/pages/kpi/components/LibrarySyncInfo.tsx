@@ -2,13 +2,13 @@ import React from 'react';
 
 const LibrarySyncInfo: React.FC = () => {
   return (
-    <div className="mt-10 bg-[#E9F2FF] rounded-2xl p-6 flex items-start gap-5 border border-[#D0E4FF] shadow-sm">
-      <div className="w-8 h-8 bg-[#0052CC] rounded-full flex items-center justify-center text-white font-bold italic shrink-0 shadow-md">i</div>
+    <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3 border border-blue-100 shadow-sm">
+      <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0">i</div>
       <div>
-        <h4 className="text-[10px] font-black text-[#0052CC] uppercase tracking-widest mb-1">Spreadsheet Sync</h4>
-        <p className="text-xs font-bold text-[#4C81CC] leading-relaxed">
-          Changes are auto-validated against role-level benchmarks. Use TAB to navigate cells quickly. 
-          Weights must sum to 100% and individual goals cannot exceed 35%.
+        <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-0.5">Validation Rules</h4>
+        <p className="text-xs text-blue-700 leading-relaxed font-medium">
+          Weights must sum to 100% and individual goals cannot exceed 35%. 
+          Use TAB to navigate cells quickly.
         </p>
       </div>
     </div>

@@ -1,5 +1,7 @@
 package ace.org.epms_backend.model.kpi;
 
+import java.util.List;
+
 import ace.org.epms_backend.model.BaseEntity;
 import ace.org.epms_backend.model.employee.Position;
 import jakarta.persistence.*;
@@ -26,7 +28,7 @@ public class KpiLibrary extends BaseEntity {
     private Position position;
 
     @OneToMany(mappedBy = "library", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private java.util.List<KpiLibraryDetails> details;
+    private List<KpiLibraryDetails> details;
 
     private Boolean isActive = true;
 }
