@@ -5,12 +5,24 @@ import ace.org.epms_backend.dto.auth.AuthResponse;
 import ace.org.epms_backend.dto.auth.RefreshTokenRequest;
 import ace.org.epms_backend.exception.InvalidTokenException;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.dto.auth.*;
+import ace.org.epms_backend.dto.employee.EmployeeResponse;
+import ace.org.epms_backend.exception.InvalidTokenException;
+import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.exception.TokenExpiredException;
+import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.UserPrincipal;
+import ace.org.epms_backend.model.auth.PasswordResetToken;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.repository.EmployeeRepository;
+import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.repository.PassowrdResetTokenRepository;
+import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
+import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -22,9 +34,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.dto.employee.EmployeeResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +51,12 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final EmployeeMapper employeeMapper;
 
+    private final EmployeeRoleRepository employeeRoleRepository;
+    private final RoleLevelPermissionRepository roleLevelPermissionRepository;
+    private final PassowrdResetTokenRepository resetTokenRepository;
+    private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher applicationEventPublisher;
     @Override
     public AuthResponse login(AuthRequest authDto) {
         Employee employee = employeeRepository.findByEmail(authDto.getEmail())
@@ -123,6 +144,64 @@ public class AuthServiceImpl implements AuthService {
     public EmployeeResponse getCurrentUserProfile() {
         Employee employee = getCurrentUser();
         return employee != null ? employeeMapper.toResponse(employee) : null;
+        return mapToResponse(getCurrentUser());
+    }
+
+    @Transactional
+    @Override
+    public void forgotPassword(ForgotPasswordRequest request) {
+        Employee emp = employeeRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new NotFoundException("Email not found"));
+        String token = UUID.randomUUID().toString();
+
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(token);
+        resetToken.setEmployee(emp);
+        resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(30));
+        resetTokenRepository.save(resetToken);
+
+        applicationEventPublisher.publishEvent(
+                new ForgotPasswordEvent(emp.getId(),token)
+        );
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        PasswordResetToken resetToken = resetTokenRepository.findByToken(request.getToken())
+                .orElseThrow(() -> new InvalidTokenException("Invalid token"));
+
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new TokenExpiredException("Token expired");
+        }
+
+        Employee emp = resetToken.getEmployee();
+
+        emp.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        emp.setFailedLoginAttempts(0);
+        emp.setAccountLocked(false);
+        emp.setLockTime(null);
+
+        employeeRepository.save(emp);
+
+        resetTokenRepository.delete(resetToken);
+    }
+
+    private EmployeeResponse mapToResponse(Employee emp) {
+        EmployeeResponse response = employeeMapper.toResponse(emp);
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(emp.getId());
+        List<String> roleNames = roles.stream()
+                .map(role -> role.getRoleName().name())
+                .toList();
+        response.setRoles(roleNames);
+
+        // Fetch permissions based on roles and level
+        List<String> permissions = roleLevelPermissionRepository.findPermissionsByRolesAndLevel(roles, emp.getLevel())
+                .stream()
+                .map(Permission::getPermissionName)
+                .toList();
+        response.setPermissions(permissions);
+
+        return response;
     }
 
     public boolean unlockIfTimeExpired(Employee emp) {

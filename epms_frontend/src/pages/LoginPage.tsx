@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLoginMutation } from "../features/auth/authApi";
 import { useAppDispatch } from "../hooks/reduxHooks";
 import { loginSuccess } from "../features/auth/authSlice";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -82,6 +82,14 @@ const LoginPage = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end">
+            <div className="text-sm">
+              <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
+                Forgot your password?
+              </Link>
             </div>
           </div>
 

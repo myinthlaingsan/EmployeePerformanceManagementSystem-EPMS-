@@ -4,6 +4,8 @@ import type {
   AuthRequest,
   AuthResponse,
   RefreshTokenRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
 } from "./authTypes";
 import type { EmployeeResponse } from "../employee/employeeTypes";
 
@@ -42,6 +44,20 @@ export const authApi = api.injectEndpoints({
         method: "POST",
       }),
     }),
+    forgotPassword: builder.mutation<void, ForgotPasswordRequest>({
+      query: (data) => ({
+        url: "/auth/forgot-password",
+        method: "POST",
+        body: data,
+      }),
+    }),
+    resetPassword: builder.mutation<void, ResetPasswordRequest>({
+      query: (data) => ({
+        url: "/auth/reset-password",
+        method: "POST",
+        body: data,
+      }),
+    }),
   }),
 });
 
@@ -51,4 +67,6 @@ export const {
   useGetMeQuery,
   useUnlockEmployeeMutation,
   useLogoutUserApiMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
 } = authApi;
