@@ -13,6 +13,11 @@ import java.util.List;
 import java.util.Optional;
 import ace.org.epms_backend.model.appraisal.*;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +37,7 @@ public class AppraisalServiceImpl implements AppraisalService {
     private final AppraisalFormRepository formRepo;
     private final PerformanceCategoryRepository performanceCategoryRepo;
     private final EmployeeDepartmentRepository employeeDepartmentRepo;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public AppraisalResponse createAppraisal(AppraisalCreateRequest request) {
@@ -142,6 +148,17 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .build();
         historyRepo.save(history);
 
+        // Notify Employee: Final Result Published
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(appraisal.getEmployee().getId())
+                .type(NotificationType.FINAL_RESULT_PUBLISHED)
+                .title("Appraisal Result Published")
+                .message("Your final appraisal result for " + appraisal.getCycle().getCycleName() + " has been published.")
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(appraisal.getAppraisalId())
+                .actionUrl("/appraisals/history")
+                .build());
+
         return appraisalMapper.toResponse(appraisal);
     }
 
@@ -251,7 +268,21 @@ public class AppraisalServiceImpl implements AppraisalService {
         }
 
         appraisal.setEmployeeSigned(true);
-        return appraisalMapper.toResponse(appraisalRepo.save(appraisal));
+        appraisal = appraisalRepo.save(appraisal);
+
+        // Notify Manager
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(appraisal.getManager().getId())
+                .senderId(appraisal.getEmployee().getId())
+                .type(NotificationType.APPRAISAL_CYCLE_OPENED) // Reuse or use a generic type if needed
+                .title("Appraisal Signed by Employee")
+                .message(appraisal.getEmployee().getStaffName() + " has signed off on their appraisal.")
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(appraisal.getAppraisalId())
+                .actionUrl("/appraisals/review/" + appraisal.getAppraisalId())
+                .build());
+
+        return appraisalMapper.toResponse(appraisal);
     }
 
     @Override
@@ -264,7 +295,21 @@ public class AppraisalServiceImpl implements AppraisalService {
         }
 
         appraisal.setManagerSigned(true);
-        return appraisalMapper.toResponse(appraisalRepo.save(appraisal));
+        appraisal = appraisalRepo.save(appraisal);
+
+        // Notify Employee
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(appraisal.getEmployee().getId())
+                .senderId(appraisal.getManager().getId())
+                .type(NotificationType.APPRAISAL_CYCLE_OPENED) // Reuse
+                .title("Appraisal Signed by Manager")
+                .message("Your Manager has signed off on your appraisal.")
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(appraisal.getAppraisalId())
+                .actionUrl("/appraisals/my-appraisals")
+                .build());
+
+        return appraisalMapper.toResponse(appraisal);
     }
 
     private Appraisal getAppraisalOrThrow(Long id) {

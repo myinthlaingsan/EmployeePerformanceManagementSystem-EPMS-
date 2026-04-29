@@ -1,9 +1,10 @@
 package ace.org.epms_backend.enums;
 
 public enum NotificationType {
-    //Appraisal Cycle
+    // Appraisal Cycle
     APPRAISAL_CYCLE_OPENED,
     APPRAISAL_CYCLE_CLOSED,
+    APPRAISAL_CYCLE_REMINDER,
     DEADLINE_REMINDER,
 
     // KPI
@@ -25,6 +26,7 @@ public enum NotificationType {
 
     // Collaboration
     COMMENT_ADDED,
+    COMMENT_REPLY,
 
     // Final Results
     FINAL_RESULT_PUBLISHED,
@@ -32,7 +34,13 @@ public enum NotificationType {
     // PIP
     PIP_CREATED,
     PIP_UPDATED,
+    PIP_REVIEW_DUE,
+    PIP_COMPLETED,
+    PIP_ESCALATED,
 
-    // System
+    // Employee & System
+    ACCOUNT_ACTIVATED,
+    PASSWORD_CHANGED,
+    PROFILE_UPDATED,
     SYSTEM
 }

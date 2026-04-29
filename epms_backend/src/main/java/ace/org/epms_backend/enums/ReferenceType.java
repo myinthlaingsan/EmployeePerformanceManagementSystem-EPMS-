@@ -6,5 +6,6 @@ public enum ReferenceType {
     SELF_ASSESSMENT,
     FEEDBACK,
     COMMENT,
-    PIP
+    PIP,
+    ACCOUNT
 }

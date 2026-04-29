@@ -18,6 +18,9 @@ import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.JwtService;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -180,6 +183,17 @@ public class AuthServiceImpl implements AuthService {
         emp.setLockTime(null);
 
         employeeRepository.save(emp);
+
+        // Notify Password Reset
+        applicationEventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(emp.getId())
+                .type(NotificationType.PASSWORD_CHANGED)
+                .title("Password Reset Successful")
+                .message("Your password has been successfully reset. You can now login with your new password.")
+                .referenceType(ReferenceType.ACCOUNT)
+                        .referenceId(emp.getId())
+                .actionUrl("/login")
+                .build());
 
         resetTokenRepository.delete(resetToken);
     }

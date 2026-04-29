@@ -11,6 +11,9 @@ import ace.org.epms_backend.service.EmployeeService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import ace.org.epms_backend.repository.employee.ReportingLineRepository;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -121,6 +124,16 @@ public class EmployeeServiceImpl implements EmployeeService {
         emp.setPassword(passwordEncoder.encode(newPassword));
         emp.setStatus(EmployeeStatus.ACTIVE);
         employeeRepository.save(emp);
+
+        // Notify Account Activated
+        applicationEventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(emp.getId())
+                .type(NotificationType.ACCOUNT_ACTIVATED)
+                .title("Account Activated")
+                .message("Your EPMS account has been successfully activated.")
+                .referenceType(ReferenceType.ACCOUNT)
+                .actionUrl("/profile")
+                .build());
         // OPTIONAL (recommended): delete token after use
         tokenRepository.delete(resetToken);
     }
@@ -227,6 +240,16 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Employee updated = employeeRepository.save(emp);
 
+        // Notify Profile Updated
+        applicationEventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(updated.getId())
+                .type(NotificationType.PROFILE_UPDATED)
+                .title("Profile Updated")
+                .message("Your profile information has been updated.")
+                .referenceType(ReferenceType.ACCOUNT)
+                .actionUrl("/profile")
+                .build());
+
         return mapToResponse(updated);
     }
 
@@ -238,6 +261,17 @@ public class EmployeeServiceImpl implements EmployeeService {
             throw new PasswordIncorrectException("Old password incorrect");
         }
         emp.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        employeeRepository.save(emp);
+
+        // Notify Password Changed
+        applicationEventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(emp.getId())
+                .type(NotificationType.PASSWORD_CHANGED)
+                .title("Password Changed")
+                .message("Your account password has been successfully changed.")
+                .referenceType(ReferenceType.ACCOUNT)
+                .actionUrl("/profile")
+                .build());
     }
 
     private String generateEmployeeCode() {

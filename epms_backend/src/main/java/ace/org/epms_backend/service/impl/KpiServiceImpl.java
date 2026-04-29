@@ -10,7 +10,11 @@ import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.kpi.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.KpiService;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +43,7 @@ public class KpiServiceImpl implements KpiService {
     private final KpiHistoryLogRepository historyRepo;
     private final KpiCategoryRepository categoryRepository;
     private final AppraisalCycleRepository cycleRepository;
+    private final ApplicationEventPublisher eventPublisher;
     @Override
     @Transactional
     public KpiLibraryResponse createLibrary(KpiLibraryRequest request) {
@@ -147,6 +152,18 @@ public class KpiServiceImpl implements KpiService {
 
         goalItemRepository.saveAll(goalItems);
 
+        // Trigger Notification
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(request.getEmployeeId())
+                .senderId(currentManager.getId())
+                .type(NotificationType.KPI_ASSIGNED)
+                .title("New KPI Assigned")
+                .message("A new KPI set has been assigned to you for the current cycle.")
+                .referenceType(ReferenceType.KPI)
+                .referenceId(savedGoalSet.getId())
+                .actionUrl("/kpis/my-goals")
+                .build());
+
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
@@ -246,6 +263,19 @@ public class KpiServiceImpl implements KpiService {
         goalSet.setApprovedAt(Instant.now());
         goalSet.setApprovedBy(getCurrentEmployee().getId());
         KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+        // Trigger Notification
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(goalSet.getEmployee().getId())
+                .senderId(getCurrentEmployee().getId())
+                .type(NotificationType.KPI_APPROVED)
+                .title("KPI Approved")
+                .message("Your Manager has approved your KPI goals.")
+                .referenceType(ReferenceType.KPI)
+                .referenceId(goalSet.getId())
+                .actionUrl("/kpis/my-goals")
+                .build());
+
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 

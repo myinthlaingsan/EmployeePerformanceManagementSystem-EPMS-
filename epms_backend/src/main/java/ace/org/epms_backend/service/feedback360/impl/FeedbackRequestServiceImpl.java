@@ -18,7 +18,11 @@ import ace.org.epms_backend.model.employee.ReportingLine;
 import ace.org.epms_backend.dto.feedback360.FeedbackRequestGenerateDTO;
 import ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository;
 import ace.org.epms_backend.service.feedback360.FeedbackRequestService;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +41,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     private final EmployeeDepartmentRepository departmentRepository;
     private final ReportingLineRepository reportingLineRepository;
     private final FeedbackMapper feedbackMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -138,7 +143,19 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     .isAnonymous(anon)
                     .status(FeedbackStatus.PENDING)
                     .build();
-            requestRepository.save(request);
+            request = requestRepository.save(request);
+
+            // Notify Evaluator
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(evaluator.getId())
+                    .type(NotificationType.FEEDBACK_REQUESTED)
+                    .title("Feedback Requested")
+                    .message("You have been requested to provide 360 feedback for "
+                            + (anon ? "a colleague" : target.getStaffName()) + ".")
+                    .referenceType(ReferenceType.FEEDBACK)
+                    .referenceId(request.getId())
+                    .actionUrl("/feedback/my-pending")
+                    .build());
         }
     }
 

@@ -15,7 +15,11 @@ import ace.org.epms_backend.mapper.PipMapper;
 import ace.org.epms_backend.enums.ObjectiveStatus;
 import ace.org.epms_backend.model.pip.PipObjective;
 import ace.org.epms_backend.repository.PipObjectiveRepository;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -29,6 +33,7 @@ public class PipServiceImpl implements PipService {
     private final EmployeeRepository employeeRepository;
     private final PipObjectiveRepository objectiveRepository;
     private final PipMapper pipMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public PipResponse createPip(PipCreateRequest request) {
@@ -46,6 +51,17 @@ public class PipServiceImpl implements PipService {
         pip.setStatus(PipStatus.DRAFT);
 
         pip = pipRecordRepository.save(pip);
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(employee.getId())
+                .senderId(manager.getId())
+                .type(NotificationType.PIP_CREATED)
+                .title("New PIP Created")
+                .message("A Performance Improvement Plan (PIP) has been drafted for you.")
+                .referenceType(ReferenceType.PIP)
+                .referenceId(pip.getPipId())
+                .actionUrl("/pips/" + pip.getPipId())
+                .build());
 
         return pipMapper.toResponse(pip);
     }
@@ -95,7 +111,18 @@ public class PipServiceImpl implements PipService {
         }
 
         pip.setStatus(PipStatus.ACTIVE);
-        pipRecordRepository.save(pip);
+        pip = pipRecordRepository.save(pip);
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(pip.getEmployee().getId())
+                .senderId(pip.getManager().getId())
+                .type(NotificationType.PIP_UPDATED)
+                .title("PIP Activated")
+                .message("Your Performance Improvement Plan (PIP) is now ACTIVE.")
+                .referenceType(ReferenceType.PIP)
+                .referenceId(pip.getPipId())
+                .actionUrl("/pips/" + pip.getPipId())
+                .build());
     }
 
     @Override
@@ -110,6 +137,17 @@ public class PipServiceImpl implements PipService {
         pip.setEndDate(newEndDate);
         pip.setStatus(PipStatus.EXTENDED);
         pip = pipRecordRepository.save(pip);
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(pip.getEmployee().getId())
+                .senderId(pip.getManager().getId())
+                .type(NotificationType.PIP_UPDATED)
+                .title("PIP Extended")
+                .message("Your Performance Improvement Plan (PIP) has been extended until " + newEndDate)
+                .referenceType(ReferenceType.PIP)
+                .referenceId(pip.getPipId())
+                .actionUrl("/pips/" + pip.getPipId())
+                .build());
 
         return pipMapper.toResponse(pip);
     }
