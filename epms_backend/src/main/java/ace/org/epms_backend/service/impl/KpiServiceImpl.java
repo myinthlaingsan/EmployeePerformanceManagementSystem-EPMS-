@@ -35,8 +35,6 @@ public class KpiServiceImpl implements KpiService {
     private final EmployeeRepository employeeRepository;
     private final PositionRepository positionRepository;
     private final KpiMapper kpiMapper;
-    private final KpiGoalItemRepository goalItemRepo;
-    private final KpiGoalsRepository goalsRepo;
     private final KpiHistoryLogRepository historyRepo;
     private final KpiCategoryRepository categoryRepository;
     private final AppraisalCycleRepository cycleRepository;
@@ -127,6 +125,9 @@ public class KpiServiceImpl implements KpiService {
         KpiLibrary library = libraryRepository.findById(request.getLibraryId())
                 .orElseThrow(() -> new NotFoundException("Library not found"));
 
+        if (!library.getIsActive()) {
+            throw new IllegalArgumentException("Cannot assign from an inactive library");
+        }
         Employee currentManager = getCurrentEmployee();
 
         KpiGoals goalSet = KpiGoals.builder()
@@ -238,6 +239,10 @@ public class KpiServiceImpl implements KpiService {
         KpiGoals goalSet = goalsRepository.findById(goalSetId)
                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
 
+        if (!goalSet.getManager().getId().equals(getCurrentEmployee().getId())) {
+            throw new SecurityException("Only the assigned manager can approve this goal set");
+        }
+
         if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
             throw new IllegalStateException("Only DRAFT goals can be approved");
         }
@@ -294,7 +299,7 @@ public class KpiServiceImpl implements KpiService {
     @Override
     public GoalSetResponse reviseKpi(Long itemId, KpiRevisionRequest request) {
 
-        KpiGoalItem oldItem = goalItemRepo.findById(itemId)
+        KpiGoalItem oldItem = goalItemRepository.findById(itemId)
                 .orElseThrow();
 
         KpiGoals oldGoalSet = oldItem.getGoalSet();
@@ -302,10 +307,10 @@ public class KpiServiceImpl implements KpiService {
         // 1. lock old version
         oldGoalSet.setIsCurrent(false);
         oldGoalSet.setStatus(KpiGoalStatus.ARCHIVED);
-        goalsRepo.save(oldGoalSet);
+        goalsRepository.save(oldGoalSet);
 
         // 2. create new version
-        final KpiGoals savedGoalSet = goalsRepo.save(
+        final KpiGoals savedGoalSet = goalsRepository.save(
                 KpiGoals.builder()
                         .employee(oldGoalSet.getEmployee())
                         .manager(oldGoalSet.getManager())
@@ -344,7 +349,7 @@ public class KpiServiceImpl implements KpiService {
                 })
                 .toList();
 
-        List<KpiGoalItem> savedNewItems = goalItemRepo.saveAll(newItems);
+        List<KpiGoalItem> savedNewItems = goalItemRepository.saveAll(newItems);
 
         // 4. Carry over progress history for unchanged items
         for (int index = 0; index < oldGoalSet.getItems().size(); index++) {
