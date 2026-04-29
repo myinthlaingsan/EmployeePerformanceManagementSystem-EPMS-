@@ -234,11 +234,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void changePassword(Long id, ChangePasswordRequest request) {
         Employee emp = employeeRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
-
         if (!passwordEncoder.matches(request.getOldPassword(), emp.getPassword())) {
             throw new PasswordIncorrectException("Old password incorrect");
         }
-
         emp.setPassword(passwordEncoder.encode(request.getNewPassword()));
     }
 
@@ -272,7 +270,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                             ed.getParentDepartment().getDepartmentName()
                     );
                 });
-
         return response;
     }
 }
