@@ -10,5 +10,6 @@ public class KpiLibraryDetailResponse {
     private BigDecimal targetValue;
     private BigDecimal weightPercent;
     private Boolean isActive;
+    private String unit;
     private String categoryName;
 }
