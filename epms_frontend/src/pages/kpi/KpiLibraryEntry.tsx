@@ -3,8 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { useCreateLibraryMutation, useGetCategoriesQuery } from '../../features/kpi/kpiApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useGetJobLevelsQuery } from '../../features/org/jobLevelApi';
-import type { KpiLibraryDetailRequest } from '../../features/kpi/kpiTypes';
 import { validateKpiWeights } from '../../utils/kpiCalculations';
+import type { Priority } from '../../features/kpi/kpiTypes';
+
+const PRIORITY_WEIGHTS: Record<Priority, number> = {
+  CRITICAL: 25,
+  HIGH: 15,
+  MEDIUM: 10,
+  LOW: 5
+};
+
+interface FormKpiDetail extends KpiLibraryDetailRequest {
+  priority: Priority;
+}
 
 // Sub-components
 import LibraryBasicInfo from './components/LibraryBasicInfo';
@@ -26,8 +37,8 @@ const KpiLibraryEntry: React.FC = () => {
     targetLevelId: 0,
   });
 
-  const [details, setDetails] = useState<KpiLibraryDetailRequest[]>([
-    { goalTitle: '', unit: '', targetValue: 0, weightPercent: 0, priority: 'MEDIUM', categoryId: 0 }
+  const [details, setDetails] = useState<FormKpiDetail[]>([
+    { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, priority: 'MEDIUM', categoryId: 0 }
   ]);
 
   const { totalWeight, isValid, errors } = validateKpiWeights(details);
@@ -37,17 +48,24 @@ const KpiLibraryEntry: React.FC = () => {
     setFormData({ ...formData, [name]: name.endsWith('Id') ? parseInt(value) : value });
   };
 
-  const handleDetailChange = (index: number, field: keyof KpiLibraryDetailRequest, value: any) => {
+  const handleDetailChange = (index: number, field: keyof FormKpiDetail, value: any) => {
     const newDetails = [...details];
-    newDetails[index] = {
+    let updatedItem = {
       ...newDetails[index],
-      [field]: ['targetValue', 'weightPercent', 'categoryId'].includes(field) ? parseFloat(value) || 0 : value
+      [field]: ['targetValue', 'weightPercent', 'categoryId'].includes(field as string) ? parseFloat(value) || 0 : value
     };
+
+    // If priority changed, update weight automatically
+    if (field === 'priority') {
+      updatedItem.weightPercent = PRIORITY_WEIGHTS[value as Priority];
+    }
+
+    newDetails[index] = updatedItem;
     setDetails(newDetails);
   };
 
   const addRow = () => {
-    setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 0, priority: 'MEDIUM', categoryId: 0 }]);
+    setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, priority: 'MEDIUM', categoryId: 0 }]);
   };
 
   const removeRow = (index: number) => {
@@ -63,9 +81,12 @@ const KpiLibraryEntry: React.FC = () => {
     }
 
     try {
+      // Remove priority field before sending to backend
+      const backendDetails = details.map(({ priority, ...rest }) => rest);
+
       await createLibrary({
         ...formData,
-        details,
+        details: backendDetails,
       }).unwrap();
       navigate('/kpi/library');
     } catch (err) {

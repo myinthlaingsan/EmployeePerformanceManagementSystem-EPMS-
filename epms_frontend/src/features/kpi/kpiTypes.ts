@@ -18,7 +18,6 @@ export interface KpiLibraryDetailRequest {
   unit?: string;
   targetValue: number;
   weightPercent: number;
-  priority: Priority;
   categoryId: number;
 }
 
@@ -36,7 +35,6 @@ export interface KpiLibraryDetailResponse {
   unit?: string;
   targetValue: number;
   weightPercent: number;
-  priority?: string;
   isActive: boolean;
   categoryName?: string;
 }
@@ -76,7 +74,6 @@ export interface GoalItemResponse {
   targetValue: number;
   unit?: string;
   weightPercent: number;
-  priority?: string;
   status: KpiItemStatus;
   currentProgress?: number;
   categoryName?: string;

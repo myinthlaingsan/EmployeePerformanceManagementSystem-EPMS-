@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import { useReviseKpiMutation, useGetCategoriesQuery } from '../../../features/kpi/kpiApi';
 import type { GoalItemResponse, Priority } from '../../../features/kpi/kpiTypes';
 
+const PRIORITY_WEIGHTS: Record<Priority, number> = {
+  CRITICAL: 25,
+  HIGH: 15,
+  MEDIUM: 10,
+  LOW: 5
+};
+
 interface KpiRevisionModalProps {
   item: GoalItemResponse;
   onClose: () => void;
@@ -17,9 +24,17 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
     unit: item.unit || '',
     targetValue: item.targetValue,
     weightPercent: item.weightPercent,
-    priority: (item.priority as Priority) || 'MEDIUM',
-    categoryId: 0, // Should ideally map from item.categoryName
+    priority: 'MEDIUM' as Priority,
+    categoryId: 0,
   });
+
+  const handlePriorityChange = (priority: Priority) => {
+    setFormData({
+      ...formData,
+      priority,
+      weightPercent: PRIORITY_WEIGHTS[priority]
+    });
+  };
 
   const [changeReason, setChangeReason] = useState('');
 
@@ -31,11 +46,14 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
     }
 
     try {
+      // Remove priority field before sending to backend
+      const { priority, ...updatedDetails } = formData;
+      
       await reviseKpi({
         itemId: item.id,
         data: {
           changeReason,
-          updatedDetails: formData,
+          updatedDetails: updatedDetails as any,
         },
       }).unwrap();
       onClose();
@@ -86,13 +104,13 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
                 <select
                   value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value as Priority })}
+                  onChange={(e) => handlePriorityChange(e.target.value as Priority)}
                   className="w-full border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 shadow-sm"
                 >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
+                  <option value="LOW">🟢 Lower</option>
+                  <option value="MEDIUM">🟡 Medium</option>
+                  <option value="HIGH">🟠 High</option>
+                  <option value="CRITICAL">🔴 Critical</option>
                 </select>
               </div>
 

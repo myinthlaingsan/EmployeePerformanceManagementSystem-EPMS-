@@ -2,9 +2,9 @@ import React from 'react';
 import type { KpiLibraryDetailRequest } from '../../../features/kpi/kpiTypes';
 
 interface LibraryKpiTableProps {
-  details: KpiLibraryDetailRequest[];
+  details: any[]; // Changed to any[] to support local priority field
   categories: any[];
-  onDetailChange: (index: number, field: keyof KpiLibraryDetailRequest, value: any) => void;
+  onDetailChange: (index: number, field: string, value: any) => void;
   onAddRow: () => void;
   onRemoveRow: (index: number) => void;
   totalWeight: number;
@@ -42,6 +42,7 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Goal Title</th>
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Category</th>
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Target Value</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Priority</th>
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-40 text-center">Weight (%)</th>
               <th className="px-6 py-4 w-12"></th>
             </tr>
@@ -84,6 +85,18 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                     />
                     <span className="text-[8px] font-black text-gray-300 uppercase tracking-tighter bg-gray-100 px-1.5 py-0.5 rounded">UNIT</span>
                   </div>
+                </td>
+                <td className="px-6 py-5">
+                  <select
+                    value={detail.priority}
+                    onChange={(e) => onDetailChange(index, 'priority', e.target.value)}
+                    className="w-full bg-transparent border-none focus:ring-0 p-0 text-[10px] font-black text-[#0052CC] uppercase tracking-widest text-center appearance-none cursor-pointer"
+                  >
+                    <option value="CRITICAL">🔴 Critical</option>
+                    <option value="HIGH">🟠 High</option>
+                    <option value="MEDIUM">🟡 Medium</option>
+                    <option value="LOW">🟢 Lower</option>
+                  </select>
                 </td>
                 <td className="px-6 py-5">
                   <input

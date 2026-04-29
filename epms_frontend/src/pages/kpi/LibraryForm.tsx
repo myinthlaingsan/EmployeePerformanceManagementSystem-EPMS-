@@ -4,6 +4,17 @@ import { useCreateLibraryMutation, useGetCategoriesQuery } from '../../features/
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import type { KpiLibraryDetailRequest, Priority } from '../../features/kpi/kpiTypes';
 
+const PRIORITY_WEIGHTS: Record<Priority, number> = {
+  CRITICAL: 25,
+  HIGH: 15,
+  MEDIUM: 10,
+  LOW: 5
+};
+
+interface FormKpiDetail extends KpiLibraryDetailRequest {
+  priority: Priority;
+}
+
 const LibraryForm: React.FC = () => {
   const navigate = useNavigate();
   const [createLibrary, { isLoading: isSubmitting }] = useCreateLibraryMutation();
@@ -17,8 +28,8 @@ const LibraryForm: React.FC = () => {
     positionId: 0,
   });
 
-  const [details, setDetails] = useState<KpiLibraryDetailRequest[]>([
-    { goalTitle: '', unit: '', targetValue: 0, weightPercent: 0, priority: 'MEDIUM', categoryId: 0 }
+  const [details, setDetails] = useState<FormKpiDetail[]>([
+    { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, priority: 'MEDIUM', categoryId: 0 }
   ]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -26,17 +37,24 @@ const LibraryForm: React.FC = () => {
     setFormData({ ...formData, [name]: name === 'positionId' ? parseInt(value) : value });
   };
 
-  const handleDetailChange = (index: number, field: keyof KpiLibraryDetailRequest, value: any) => {
+  const handleDetailChange = (index: number, field: keyof FormKpiDetail, value: any) => {
     const newDetails = [...details];
-    newDetails[index] = {
+    let updatedItem = {
       ...newDetails[index],
       [field]: field === 'targetValue' || field === 'weightPercent' || field === 'categoryId' ? parseFloat(value) : value
     };
+
+    // If priority changed, update weight automatically
+    if (field === 'priority') {
+      updatedItem.weightPercent = PRIORITY_WEIGHTS[value as Priority];
+    }
+
+    newDetails[index] = updatedItem;
     setDetails(newDetails);
   };
 
   const addDetail = () => {
-    setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 0, priority: 'MEDIUM', categoryId: 0 }]);
+    setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, priority: 'MEDIUM', categoryId: 0 }]);
   };
 
   const removeDetail = (index: number) => {
@@ -60,9 +78,12 @@ const LibraryForm: React.FC = () => {
     }
 
     try {
+      // Remove priority field before sending to backend
+      const backendDetails = details.map(({ priority, ...rest }) => rest);
+      
       await createLibrary({
         ...formData,
-        details,
+        details: backendDetails,
       }).unwrap();
       navigate('/kpi/library');
     } catch (err) {

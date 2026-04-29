@@ -11,5 +11,6 @@ public class KpiScoreResponse {
     private String employeeName;
     private Long cycleId;
     private BigDecimal weightedScore;
+    private BigDecimal totalAchievementPercent;
     private Instant calculatedAt;
 }
