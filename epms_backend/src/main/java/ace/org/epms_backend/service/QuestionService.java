@@ -7,8 +7,12 @@ import java.util.List;
 
 public interface QuestionService {
     QuestionResponse create(QuestionRequest request);
+
     List<QuestionResponse> getByCategoryId(Long categoryId);
+
     QuestionResponse getById(Long id);
+
     QuestionResponse update(Long id, QuestionRequest request);
+
     void delete(Long id);
 }

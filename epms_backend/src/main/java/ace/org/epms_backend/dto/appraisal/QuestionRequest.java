@@ -1,11 +1,11 @@
-package ace.org.epms_backend.dto.appraisal.form;
+package ace.org.epms_backend.dto.appraisal;
 
 import lombok.Data;
 
 @Data
 public class QuestionRequest {
+    private Long categoryId;
     private String questionText;
-    private String questionType; // RATING, TEXT, etc
+    private String questionType;
     private Boolean isRequired;
-
 }
