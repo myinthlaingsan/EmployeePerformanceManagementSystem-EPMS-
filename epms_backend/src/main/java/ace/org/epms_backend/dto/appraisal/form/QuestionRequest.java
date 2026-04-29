@@ -7,4 +7,5 @@ public class QuestionRequest {
     private String questionText;
     private String questionType; // RATING, TEXT, etc
     private Boolean isRequired;
+
 }

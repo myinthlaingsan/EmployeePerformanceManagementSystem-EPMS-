@@ -1,7 +1,9 @@
 package ace.org.epms_backend.service.impl;
 
-import ace.org.epms_backend.dto.appraisal.QuestionRequest;
-import ace.org.epms_backend.dto.appraisal.QuestionResponse;
+
+
+import ace.org.epms_backend.dto.appraisal.form.QuestionRequest;
+import ace.org.epms_backend.dto.appraisal.form.QuestionResponse;
 import ace.org.epms_backend.exception.ResourceNotFoundException;
 import ace.org.epms_backend.mapper.QuestionMapper;
 import ace.org.epms_backend.model.appraisal.FormCategory;

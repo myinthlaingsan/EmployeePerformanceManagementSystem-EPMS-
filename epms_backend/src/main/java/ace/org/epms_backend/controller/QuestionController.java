@@ -2,7 +2,6 @@ package ace.org.epms_backend.controller;
 
 import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.appraisal.QuestionRequest;
-import ace.org.epms_backend.dto.appraisal.QuestionResponse;
 import ace.org.epms_backend.service.QuestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
