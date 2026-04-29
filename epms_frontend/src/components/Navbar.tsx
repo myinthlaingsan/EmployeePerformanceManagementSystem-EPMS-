@@ -29,6 +29,12 @@ const Navbar = () => {
               >
                 Profile
               </Link>
+              <Link
+                to={isAdmin || isHR ? "/appraisal-management" : "/appraisal"}
+                className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition"
+              >
+                Appraisals
+              </Link>
               {(isAdmin || isHR) && (
                 <>
                   <Link
