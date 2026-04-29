@@ -4,6 +4,11 @@ import {
   useGetAllFeedbacksQuery,
   useGetFeedbackTagsQuery,
   useCreateFeedbackMutation,
+  useUpdateFeedbackMutation,
+  useDeleteFeedbackMutation,
+  useGetFeedbackRepliesQuery,
+  useReplyToFeedbackMutation,
+  useDeleteReplyMutation,
 } from "../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../features/employee/employeeapi";
 import { FeedbackType } from "../features/continuous/continuousTypes";
@@ -17,6 +22,11 @@ const FeedbackPage = () => {
   const { data: tags } = useGetFeedbackTagsQuery();
   const { data: employees } = useGetEmployeesQuery();
   const [createFeedback, { isLoading: isCreating }] = useCreateFeedbackMutation();
+  const [updateFeedback, { isLoading: isUpdating }] = useUpdateFeedbackMutation();
+  const [deleteFeedback] = useDeleteFeedbackMutation();
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [expandedFeedbackId, setExpandedFeedbackId] = useState<number | null>(null);
 
   const filteredEmployees = (isAdmin || isHR)
     ? employees
@@ -44,23 +54,55 @@ const FeedbackPage = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newFeedback.employeeId || !newFeedback.tagId) return;
+    if (!user || !newFeedback.employeeId || !newFeedback.tagId) {
+      alert("Please select an employee and a category.");
+      return;
+    }
 
     try {
-      await createFeedback({
+      const body = {
         employeeId: newFeedback.employeeId,
         tagId: newFeedback.tagId as number,
         feedbackType: newFeedback.feedbackType,
         description: newFeedback.description,
         isPrivate: newFeedback.isPrivate,
         managerId: user.id,
-      }).unwrap();
+      };
+
+      if (editingId) {
+        await updateFeedback({ id: editingId, body }).unwrap();
+      } else {
+        await createFeedback(body).unwrap();
+      }
 
       setShowModal(false);
+      setEditingId(null);
       setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "", isPrivate: false });
-    } catch (err) {
-      console.error("Failed to create feedback", err);
+    } catch (err: any) {
+      alert(err.data?.message || "Failed to save feedback");
     }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (window.confirm("Are you sure you want to delete this feedback?")) {
+      try {
+        await deleteFeedback(id).unwrap();
+      } catch (err: any) {
+        alert(err.data?.message || "Failed to delete feedback");
+      }
+    }
+  };
+
+  const handleEdit = (fb: any) => {
+    setEditingId(fb.feedbackId);
+    setNewFeedback({
+      employeeId: fb.employeeId,
+      tagId: fb.tag.tagId,
+      feedbackType: fb.feedbackType,
+      description: fb.description,
+      isPrivate: fb.isPrivate,
+    });
+    setShowModal(true);
   };
 
   if (isLoading) return <div className="p-8 text-center">Loading Feedbacks...</div>;
@@ -93,7 +135,7 @@ const FeedbackPage = () => {
         )}
 
         {feedbacks?.map((fb) => (
-          <div key={fb.feedbackId} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition">
+          <div key={fb.feedbackId} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition group">
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-bold ${fb.feedbackType === FeedbackType.PRAISE ? 'bg-emerald-100 text-emerald-600' :
@@ -110,12 +152,36 @@ const FeedbackPage = () => {
                   <p className="text-xs text-gray-400">{format(new Date(fb.createdAt), 'PPP p')}</p>
                 </div>
               </div>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${fb.feedbackType === FeedbackType.PRAISE ? 'bg-emerald-50 text-emerald-600' :
-                fb.feedbackType === FeedbackType.IMPROVEMENT ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
-                }`}>
-                {fb.feedbackType}
-              </span>
-            </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${fb.feedbackType === FeedbackType.PRAISE ? 'bg-emerald-50 text-emerald-600' :
+                    fb.feedbackType === FeedbackType.IMPROVEMENT ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
+                    }`}>
+                    {fb.feedbackType}
+                  </span>
+                  {(fb.managerId === user?.id || isAdmin || isHR) && (
+                    <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => handleEdit(fb)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        title="Edit Feedback"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(fb.feedbackId)}
+                        className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        title="Delete Feedback"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
 
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -129,8 +195,24 @@ const FeedbackPage = () => {
               </div>
               <p className="text-gray-700 leading-relaxed">{fb.description}</p>
             </div>
+            <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
+              <button 
+                onClick={() => setExpandedFeedbackId(expandedFeedbackId === fb.feedbackId ? null : fb.feedbackId)}
+                className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-indigo-600 transition group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-gray-50 group-hover:bg-indigo-50 flex items-center justify-center transition">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <span>Replies</span>
+              </button>
+            </div>
 
-            {/* Replies Section could be added here */}
+            {/* Replies Section */}
+            {expandedFeedbackId === fb.feedbackId && (
+              <FeedbackReplies feedbackId={fb.feedbackId} />
+            )}
           </div>
         ))}
       </div>
@@ -140,7 +222,7 @@ const FeedbackPage = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Give Performance Feedback</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">{editingId ? 'Edit Feedback' : 'Give Performance Feedback'}</h2>
               <form onSubmit={handleCreate} className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -230,17 +312,21 @@ const FeedbackPage = () => {
                 <div className="flex justify-end gap-3 pt-4">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={() => {
+                      setShowModal(false);
+                      setEditingId(null);
+                      setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "", isPrivate: false });
+                    }}
                     className="px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={isCreating}
+                    disabled={isCreating || isUpdating}
                     className="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-xl shadow-gray-200 disabled:opacity-50"
                   >
-                    {isCreating ? "Saving..." : "Submit Feedback"}
+                    {isCreating || isUpdating ? "Saving..." : editingId ? "Update Feedback" : "Submit Feedback"}
                   </button>
                 </div>
               </form>
@@ -248,6 +334,106 @@ const FeedbackPage = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const FeedbackReplies = ({ feedbackId }: { feedbackId: number }) => {
+  const { user } = useAuth();
+  const { data: replies, isLoading } = useGetFeedbackRepliesQuery(feedbackId);
+  const [replyToFeedback, { isLoading: isReplying }] = useReplyToFeedbackMutation();
+  const [deleteReply] = useDeleteReplyMutation();
+  const [newReply, setNewReply] = useState("");
+
+  const handleDeleteReply = async (replyId: number) => {
+    if (window.confirm("Are you sure you want to delete this reply?")) {
+      try {
+        await deleteReply({ replyId, feedbackId }).unwrap();
+      } catch (err) {
+        console.error("Failed to delete reply", err);
+      }
+    }
+  };
+
+  const handleReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReply.trim() || !user) return;
+
+    try {
+      await replyToFeedback({
+        feedbackId,
+        body: {
+          replyText: newReply,
+          employeeId: user.id
+        }
+      }).unwrap();
+      setNewReply("");
+    } catch (err) {
+      console.error("Failed to reply", err);
+    }
+  };
+
+  if (isLoading) return <div className="mt-4 text-[10px] text-gray-400">Loading replies...</div>;
+
+  return (
+    <div className="mt-6 pt-6 border-t border-gray-50 space-y-4">
+      <div className="space-y-4">
+        {replies?.map((reply) => (
+          <div key={reply.replyId} className={`flex gap-3 ${reply.employeeId === user?.id ? 'flex-row-reverse' : ''}`}>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
+              reply.employeeId === user?.id ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
+            }`}>
+              {reply.employeeName?.charAt(0) || '?'}
+            </div>
+            <div className={`max-w-[80%] ${reply.employeeId === user?.id ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+              <div className={`px-4 py-2 rounded-2xl text-sm ${
+                reply.employeeId === user?.id 
+                  ? 'bg-indigo-600 text-white rounded-tr-none' 
+                  : 'bg-gray-50 text-gray-700 rounded-tl-none'
+              }`}>
+                {reply.replyText}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                  {reply.employeeName}
+                </span>
+                <span className="text-[10px] text-gray-300">•</span>
+                <span className="text-[10px] text-gray-300">{reply.createdAt ? format(new Date(reply.createdAt), 'MMM d, p') : ''}</span>
+                {reply.employeeId === user?.id && (
+                  <button 
+                    onClick={() => handleDeleteReply(reply.replyId)}
+                    className="ml-1 text-gray-300 hover:text-rose-500 transition"
+                    title="Delete Reply"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={handleReply} className="flex gap-2 pt-2">
+        <input
+          type="text"
+          placeholder="Write a reply..."
+          className="flex-1 px-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
+          value={newReply}
+          onChange={(e) => setNewReply(e.target.value)}
+        />
+        <button
+          type="submit"
+          disabled={isReplying || !newReply.trim()}
+          className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition shadow-lg shadow-indigo-100"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+        </button>
+      </form>
     </div>
   );
 };

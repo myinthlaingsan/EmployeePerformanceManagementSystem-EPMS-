@@ -95,7 +95,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public OneOnOneMeetingResponse updateMeeting(Long meetingId, OneOnOneMeetingRequest request) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
-        checkMeetingAccess(meeting);
+        checkMeetingModificationAccess(meeting);
 
         meetingMapper.updateEntityFromRequest(request, meeting);
         meeting.setEmployee(fetchEmployee(request.getEmployeeId()));
@@ -132,7 +132,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     @Override
     public void deleteMeeting(Long meetingId) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
-        checkMeetingAccess(meeting);
+        checkMeetingModificationAccess(meeting);
         meetingRepository.delete(meeting);
     }
 
@@ -236,6 +236,15 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         }
 
         throw new NotFoundException("Meeting not found");
+    }
+
+    private void checkMeetingModificationAccess(OneOnOneMeeting meeting) {
+        Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
+
+        if (!isPrivileged && !currentUser.getId().equals(meeting.getManager().getId())) {
+            throw new AccessDeniedException("You do not have permission to modify this meeting.");
+        }
     }
 
     private boolean isParticipant(OneOnOneMeeting meeting, Employee user) {

@@ -127,7 +127,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
-        checkFeedbackAccess(feedback);
+        checkFeedbackModificationAccess(feedback);
 
         if (!feedback.getEmployee().getId().equals(request.getEmployeeId())) {
             Employee employee = employeeRepository.findById(request.getEmployeeId())
@@ -173,7 +173,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
-        checkFeedbackAccess(feedback);
+        checkFeedbackModificationAccess(feedback);
         feedbackRepository.delete(feedback);
     }
 
@@ -242,6 +242,15 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         }
 
         throw new NotFoundException("Feedback not found");
+    }
+
+    private void checkFeedbackModificationAccess(ContinuousFeedback feedback) {
+        Employee currentUser = authService.getCurrentUser();
+        boolean isPrivileged = isPrivileged(currentUser);
+
+        if (!isPrivileged && !currentUser.getId().equals(feedback.getManager().getId())) {
+            throw new AccessDeniedException("You do not have permission to modify this feedback.");
+        }
     }
 
     @Override

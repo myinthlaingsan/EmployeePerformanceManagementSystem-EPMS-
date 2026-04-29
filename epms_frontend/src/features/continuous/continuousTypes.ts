@@ -6,6 +6,13 @@ export const FeedbackType = {
 
 export type FeedbackType = typeof FeedbackType[keyof typeof FeedbackType];
 
+export const CommentType = {
+  MANAGER: 'MANAGER',
+  EMPLOYEE: 'EMPLOYEE',
+} as const;
+
+export type CommentType = typeof CommentType[keyof typeof CommentType];
+
 export interface FeedbackTagResponse {
   tagId: number;
   tagName: string;
@@ -41,13 +48,14 @@ export interface ContinuousFeedbackRequest {
 export interface FeedbackReplyResponse {
   replyId: number;
   feedbackId: number;
-  repliedBy: number;
-  replierName: string;
+  employeeId: number;
+  employeeName: string;
   replyText: string;
   createdAt: string;
 }
 
 export interface FeedbackReplyRequest {
+  employeeId: number;
   replyText: string;
 }
 
@@ -81,16 +89,20 @@ export interface OneOnOneMeetingRequest {
 }
 
 export interface MeetingCommentResponse {
-  commentId: number;
+  id: number;
   meetingId: number;
-  commentedBy: number;
-  commenterName: string;
-  commentText: string;
-  isInternal: boolean;
+  employeeId?: number;
+  employeeName?: string;
+  managerId?: number;
+  managerName?: string;
+  comment: string;
+  commentType: CommentType;
   createdAt: string;
 }
 
 export interface MeetingCommentRequest {
-  commentText: string;
-  isInternal: boolean;
+  employeeId?: number;
+  managerId?: number;
+  comment: string;
+  commentType: CommentType;
 }

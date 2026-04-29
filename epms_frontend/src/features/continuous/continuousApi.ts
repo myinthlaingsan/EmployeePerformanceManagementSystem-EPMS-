@@ -59,6 +59,15 @@ export const continuousApi = api.injectEndpoints({
       transformResponse: (response: ApiResponse<ContinuousFeedbackResponse>) => response.data,
       invalidatesTags: ["ContinuousFeedback" as any],
     }),
+    updateFeedback: builder.mutation<ContinuousFeedbackResponse, { id: number; body: ContinuousFeedbackRequest }>({
+      query: ({ id, body }) => ({
+        url: `/feedbacks/${id}`,
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<ContinuousFeedbackResponse>) => response.data,
+      invalidatesTags: ["ContinuousFeedback" as any],
+    }),
     deleteFeedback: builder.mutation<void, number>({
       query: (id) => ({
         url: `/feedbacks/${id}`,
@@ -80,6 +89,13 @@ export const continuousApi = api.injectEndpoints({
         body,
       }),
       transformResponse: (response: ApiResponse<FeedbackReplyResponse>) => response.data,
+      invalidatesTags: (result, error, { feedbackId }) => [{ type: "FeedbackReply" as any, id: feedbackId }],
+    }),
+    deleteReply: builder.mutation<void, { replyId: number; feedbackId: number }>({
+      query: ({ replyId }) => ({
+        url: `/feedbacks/replies/${replyId}`,
+        method: "DELETE",
+      }),
       invalidatesTags: (result, error, { feedbackId }) => [{ type: "FeedbackReply" as any, id: feedbackId }],
     }),
 
@@ -108,6 +124,22 @@ export const continuousApi = api.injectEndpoints({
       transformResponse: (response: ApiResponse<OneOnOneMeetingResponse>) => response.data,
       invalidatesTags: ["OneOnOneMeeting" as any],
     }),
+    updateMeeting: builder.mutation<OneOnOneMeetingResponse, { id: number; body: OneOnOneMeetingRequest }>({
+      query: ({ id, body }) => ({
+        url: `/meetings/${id}`,
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<OneOnOneMeetingResponse>) => response.data,
+      invalidatesTags: ["OneOnOneMeeting" as any],
+    }),
+    deleteMeeting: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `/meetings/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["OneOnOneMeeting" as any],
+    }),
 
     // Meeting Comments
     getMeetingComments: builder.query<MeetingCommentResponse[], number>({
@@ -124,6 +156,13 @@ export const continuousApi = api.injectEndpoints({
       transformResponse: (response: ApiResponse<MeetingCommentResponse>) => response.data,
       invalidatesTags: (result, error, { meetingId }) => [{ type: "MeetingComment" as any, id: meetingId }],
     }),
+    deleteComment: builder.mutation<void, { commentId: number; meetingId: number }>({
+      query: ({ commentId }) => ({
+        url: `/meetings/comments/${commentId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { meetingId }) => [{ type: "MeetingComment" as any, id: meetingId }],
+    }),
   }),
 });
 
@@ -134,13 +173,18 @@ export const {
   useGetFeedbacksByEmployeeQuery,
   useGetFeedbacksByManagerQuery,
   useCreateFeedbackMutation,
+  useUpdateFeedbackMutation,
   useDeleteFeedbackMutation,
   useGetFeedbackRepliesQuery,
   useReplyToFeedbackMutation,
+  useDeleteReplyMutation,
   useGetAllMeetingsQuery,
   useGetMeetingsByEmployeeQuery,
   useGetMeetingsByManagerQuery,
   useScheduleMeetingMutation,
+  useUpdateMeetingMutation,
+  useDeleteMeetingMutation,
   useGetMeetingCommentsQuery,
   useAddMeetingCommentMutation,
+  useDeleteCommentMutation,
 } = continuousApi;
