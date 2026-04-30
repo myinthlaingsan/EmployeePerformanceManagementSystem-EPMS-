@@ -14,6 +14,10 @@ import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import lombok.RequiredArgsConstructor;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.service.AuditService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -44,6 +48,7 @@ public class KpiServiceImpl implements KpiService {
     private final KpiCategoryRepository categoryRepository;
     private final AppraisalCycleRepository cycleRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditService auditService;
     @Override
     @Transactional
     public KpiLibraryResponse createLibrary(KpiLibraryRequest request) {
@@ -164,6 +169,15 @@ public class KpiServiceImpl implements KpiService {
                 .actionUrl("/kpis/my-goals")
                 .build());
 
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("kpi_goals")
+                .recordId(savedGoalSet.getId())
+                .action(AuditAction.INSERT)
+                .newState(savedGoalSet)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
@@ -274,6 +288,15 @@ public class KpiServiceImpl implements KpiService {
                 .referenceType(ReferenceType.KPI)
                 .referenceId(goalSet.getId())
                 .actionUrl("/kpis/my-goals")
+                .build());
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("kpi_goals")
+                .recordId(savedGoalSet.getId())
+                .action(AuditAction.UPDATE)
+                .newState(savedGoalSet)
+                .status(AuditStatus.SUCCESS)
                 .build());
 
         return kpiMapper.toGoalSetResponse(savedGoalSet);
@@ -454,6 +477,16 @@ public class KpiServiceImpl implements KpiService {
         finalScore.setFinalizedBy(getCurrentEmployee().getId());
 
         KpiFinalScore savedScore = finalScoreRepository.save(finalScore);
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("kpi_final_score")
+                .recordId(savedScore.getId())
+                .action(savedScore.getId() == null ? AuditAction.INSERT : AuditAction.UPDATE)
+                .newState(savedScore)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return kpiMapper.toScoreResponse(savedScore);
     }
 

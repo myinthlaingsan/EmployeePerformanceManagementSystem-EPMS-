@@ -108,10 +108,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional(readOnly = true)
     public List<NotificationResponse> getMyNotifications() {
         Employee employee = authService.getCurrentUser();
-        System.out.println("Current Employee ID: " + employee.getId());
         List<Notification> notifications = notificationRepository
                 .findByRecipientAndIsDeletedFalseOrderByCreatedAtDesc(employee);
-        System.out.println("Found notifications: " + notifications.size());
         return notificationMapper.toResponseList(notifications);
     }
 

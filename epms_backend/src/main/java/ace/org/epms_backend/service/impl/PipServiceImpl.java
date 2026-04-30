@@ -19,6 +19,10 @@ import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
 import lombok.RequiredArgsConstructor;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.service.AuditService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +38,7 @@ public class PipServiceImpl implements PipService {
     private final PipObjectiveRepository objectiveRepository;
     private final PipMapper pipMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditService auditService;
 
     @Override
     public PipResponse createPip(PipCreateRequest request) {
@@ -51,6 +56,15 @@ public class PipServiceImpl implements PipService {
         pip.setStatus(PipStatus.DRAFT);
 
         pip = pipRecordRepository.save(pip);
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("pip_records")
+                .recordId(pip.getPipId())
+                .action(AuditAction.INSERT)
+                .newState(pip)
+                .status(AuditStatus.SUCCESS)
+                .build());
 
         eventPublisher.publishEvent(NotificationEvent.builder()
                 .recipientId(employee.getId())
@@ -113,6 +127,15 @@ public class PipServiceImpl implements PipService {
         pip.setStatus(PipStatus.ACTIVE);
         pip = pipRecordRepository.save(pip);
 
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("pip_records")
+                .recordId(pip.getPipId())
+                .action(AuditAction.UPDATE)
+                .newState(pip)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         eventPublisher.publishEvent(NotificationEvent.builder()
                 .recipientId(pip.getEmployee().getId())
                 .senderId(pip.getManager().getId())
@@ -137,6 +160,15 @@ public class PipServiceImpl implements PipService {
         pip.setEndDate(newEndDate);
         pip.setStatus(PipStatus.EXTENDED);
         pip = pipRecordRepository.save(pip);
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("pip_records")
+                .recordId(pip.getPipId())
+                .action(AuditAction.UPDATE)
+                .newState(pip)
+                .status(AuditStatus.SUCCESS)
+                .build());
 
         eventPublisher.publishEvent(NotificationEvent.builder()
                 .recipientId(pip.getEmployee().getId())

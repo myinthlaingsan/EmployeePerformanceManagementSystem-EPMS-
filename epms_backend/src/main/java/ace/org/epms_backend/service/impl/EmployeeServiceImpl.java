@@ -14,6 +14,10 @@ import ace.org.epms_backend.repository.employee.ReportingLineRepository;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.service.AuditService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -39,6 +43,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final ReportingLineRepository reportingLineRepository;
     private final AuthService authService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final AuditService auditService;
     @Override
     @Transactional
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
@@ -235,10 +240,27 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             throw new EmailExistException("Email already exists");
         }
+        // Capture old state for audit
+        Employee oldState = Employee.builder()
+                .staffName(emp.getStaffName())
+                .email(emp.getEmail())
+                .phoneNo(emp.getPhoneNo())
+                .build();
+
         //useMapstruct
         employeeMapper.updateProfileFromDto(request, emp);
 
         Employee updated = employeeRepository.save(emp);
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("employees")
+                .recordId(updated.getId())
+                .action(AuditAction.UPDATE)
+                .oldState(oldState)
+                .newState(updated)
+                .status(AuditStatus.SUCCESS)
+                .build());
 
         // Notify Profile Updated
         applicationEventPublisher.publishEvent(NotificationEvent.builder()
