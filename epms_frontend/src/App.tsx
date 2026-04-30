@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 import ProfilePage from "./pages/ProfilePage";
 import SetPasswordPage from "./pages/SetPasswordPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 // Admin Pages
 import EmployeeList from "./pages/admin/EmployeeList";
@@ -63,6 +64,7 @@ const App = () => {
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
 
             {/* Appraisal Workflow Routes */}
             <Route path="/appraisal" element={<AppraisalList />} />

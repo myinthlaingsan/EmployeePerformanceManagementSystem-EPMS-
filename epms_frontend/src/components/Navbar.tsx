@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
+import { NotificationBell } from "./NotificationBell";
 
 const Navbar = () => {
   const { user, logout, isAdmin, isHR } = useAuth();
@@ -79,6 +80,9 @@ const Navbar = () => {
               <p className="text-sm font-bold text-gray-900">{user?.staffName}</p>
               <p className="text-[10px] text-gray-500 uppercase tracking-widest">{user?.positionName}</p>
             </div>
+            
+            <NotificationBell />
+
             <button
               onClick={logout}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-red-600 hover:bg-red-700 transition shadow-sm"

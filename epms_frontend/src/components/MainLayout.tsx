@@ -1,7 +1,11 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 const MainLayout = () => {
+  // Initialize WebSocket connection when the layout is mounted
+  useWebSocket();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />

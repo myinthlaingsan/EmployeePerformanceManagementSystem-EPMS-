@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { appraisalApi } from '../../api/appraisalApi';
 import type { Appraisal } from '../../types/appraisal';
-import { format } from 'date-fns';
+import {format} from 'date-fns';
 
 const AppraisalList: React.FC = () => {
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
