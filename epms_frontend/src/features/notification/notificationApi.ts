@@ -16,7 +16,7 @@ export const notificationApi = api.injectEndpoints({
     markAsRead: builder.mutation<void, number>({
       query: (id) => ({
         url: `/notifications/${id}/read`,
-        method: "PUT",
+        method: "PATCH",
       }),
     }),
     markAllAsRead: builder.mutation<void, void>({
