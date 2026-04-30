@@ -2,22 +2,22 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
 import { 
-  HiOutlineViewGrid, 
-  HiOutlineClipboardCheck, 
-  HiOutlineUserCircle, 
-  HiOutlineUsers, 
-  HiOutlineChatAlt2, 
-  HiOutlineTrendingUp, 
-  HiOutlineChartBar,
-  HiOutlineChevronDown,
-  HiOutlinePlus,
-  HiOutlineQuestionMarkCircle,
-  HiOutlineLogout,
-  HiOutlineOfficeBuilding,
-  HiOutlineShieldCheck,
-  HiOutlineBriefcase,
-  HiOutlineLightningBolt
-} from "react-icons/hi";
+  LayoutDashboard, 
+  ClipboardCheck, 
+  User, 
+  Users, 
+  MessageSquare, 
+  TrendingUp, 
+  BarChart3,
+  ChevronDown,
+  Plus,
+  LifeBuoy,
+  LogOut,
+  Building2,
+  ShieldCheck,
+  Briefcase,
+  Zap
+} from "lucide-react";
 
 interface NavItem {
   label: string;
@@ -28,22 +28,22 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", to: "/dashboard", icon: HiOutlineViewGrid },
-  { label: "Appraisals", to: "/appraisal", icon: HiOutlineClipboardCheck },
-  { label: "Self-Assessment", to: "/appraisal/self", icon: HiOutlineUserCircle },
-  { label: "360 Feedback", to: "/appraisal/360", icon: HiOutlineUsers },
-  { label: "1-on-1s", to: "/appraisal/1-on-1", icon: HiOutlineChatAlt2 },
-  { label: "PIP", to: "/pip", icon: HiOutlineTrendingUp },
-  { label: "Analytics", to: "/hr", icon: HiOutlineChartBar, adminOnly: true },
+  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
+  { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck },
+  { label: "Self-Assessment", to: "/appraisal/self", icon: User },
+  { label: "360 Feedback", to: "/appraisal/360", icon: Users },
+  { label: "1-on-1s", to: "/appraisal/1-on-1", icon: MessageSquare },
+  { label: "PIP", to: "/pip", icon: TrendingUp },
+  { label: "Analytics", to: "/hr", icon: BarChart3, adminOnly: true },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
-  { label: "Employees", to: "/employees", icon: HiOutlineUsers },
-  { label: "Departments", to: "/departments", icon: HiOutlineOfficeBuilding },
-  { label: "Roles", to: "/roles", icon: HiOutlineShieldCheck },
-  { label: "Job Levels", to: "/job-levels", icon: HiOutlineLightningBolt },
-  { label: "Positions", to: "/positions", icon: HiOutlineBriefcase },
-  { label: "Permissions", to: "/permissions", icon: HiOutlineShieldCheck },
+  { label: "Employees", to: "/employees", icon: Users },
+  { label: "Departments", to: "/departments", icon: Building2 },
+  { label: "Roles", to: "/roles", icon: ShieldCheck },
+  { label: "Job Levels", to: "/job-levels", icon: Zap },
+  { label: "Positions", to: "/positions", icon: Briefcase },
+  { label: "Permissions", to: "/permissions", icon: ShieldCheck },
 ];
 
 const Sidebar = () => {
@@ -80,7 +80,7 @@ const Sidebar = () => {
                 }`
               }
             >
-              <item.icon className="w-5 h-5" />
+              <item.icon className="w-5 h-5" strokeWidth={2} />
               {item.label}
             </NavLink>
           ))}
@@ -93,10 +93,10 @@ const Sidebar = () => {
                 className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
               >
                 <div className="flex items-center gap-3">
-                  <HiOutlineOfficeBuilding className="w-5 h-5" />
+                  <Building2 className="w-5 h-5" strokeWidth={2} />
                   Management
                 </div>
-                <HiOutlineChevronDown className={`w-4 h-4 transition-transform ${mgmtOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-4 h-4 transition-transform ${mgmtOpen ? "rotate-180" : ""}`} />
               </button>
               {mgmtOpen && (
                 <div className="bg-gray-50/50 py-1">
@@ -110,7 +110,7 @@ const Sidebar = () => {
                         }`
                       }
                     >
-                      <item.icon className="w-4 h-4" />
+                      <item.icon className="w-4 h-4" strokeWidth={2} />
                       {item.label}
                     </NavLink>
                   ))}
@@ -127,7 +127,7 @@ const Sidebar = () => {
           onClick={() => navigate("/appraisal/new")}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 px-4 text-sm font-semibold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
         >
-          <HiOutlinePlus className="w-4 h-4" />
+          <Plus className="w-4 h-4" strokeWidth={3} />
           New Review
         </button>
       </div>
@@ -135,14 +135,14 @@ const Sidebar = () => {
       {/* Footer */}
       <div className="border-t border-gray-100 p-4 space-y-1">
         <button className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-all">
-          <HiOutlineQuestionMarkCircle className="w-5 h-5" />
+          <LifeBuoy className="w-5 h-5" strokeWidth={2} />
           Support
         </button>
         <button
           onClick={logout}
           className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-red-600 rounded-lg transition-all"
         >
-          <HiOutlineLogout className="w-5 h-5" />
+          <LogOut className="w-5 h-5" strokeWidth={2} />
           Logout
         </button>
       </div>
