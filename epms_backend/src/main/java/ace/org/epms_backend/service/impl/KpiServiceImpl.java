@@ -46,7 +46,6 @@ public class KpiServiceImpl implements KpiService {
         private final KpiMapper kpiMapper;
         private final KpiHistoryLogRepository historyRepo;
         private final KpiCategoryRepository categoryRepository;
-        private final AppraisalCycleRepository cycleRepository;
         private final ApplicationEventPublisher eventPublisher;
         private final AuditService auditService;
         private final AppraisalCycleRepository cycleRepository;
