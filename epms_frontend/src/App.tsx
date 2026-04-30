@@ -10,8 +10,6 @@ import Dashboard from "./pages/Dashboard";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 import ProfilePage from "./pages/ProfilePage";
 import SetPasswordPage from "./pages/SetPasswordPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 // Admin Pages
 import EmployeeList from "./pages/admin/EmployeeList";
@@ -26,6 +24,14 @@ import AppraisalDetail from "./pages/appraisal/AppraisalDetail";
 import SelfAssessment from "./pages/appraisal/SelfAssessment";
 import ManagerEvaluation from "./pages/appraisal/ManagerEvaluation";
 import ResultPage from "./pages/appraisal/ResultPage";
+
+// PIP Pages
+import PipListPage from "./pages/pip/PipListPage";
+import PipCreatePage from "./pages/pip/PipCreatePage";
+import PipDetailsPage from "./pages/pip/PipDetailsPage";
+
+
+
 import AppraisalFormList from "./pages/admin/AppraisalFormList";
 import AppraisalFormEditor from "./pages/admin/AppraisalFormEditor";
 import AppraisalAdminDashboard from "./pages/admin/AppraisalAdminDashboard";
@@ -71,6 +77,7 @@ const App = () => {
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
 
             {/* Appraisal Workflow Routes */}
             <Route path="/appraisal" element={<AppraisalList />} />
@@ -95,6 +102,9 @@ const App = () => {
               <Route path="/roles" element={<RoleList />} />
               <Route path="/job-levels" element={<JobLevelList />} />
               <Route path="/positions" element={<PositionList />} />
+
+              {/* PIP Creation Route (Restricted) */}
+              <Route path="/pip/new" element={<PipCreatePage />} />
               <Route path="/appraisal-forms" element={<AppraisalFormList />} />
               <Route path="/appraisal-forms/new" element={<AppraisalFormEditor />} />
               <Route path="/appraisal-forms/edit/:id" element={<AppraisalFormEditor />} />
@@ -106,6 +116,10 @@ const App = () => {
               <Route path="/kpi/library/edit/:id" element={<KpiLibraryEntry />} />
               <Route path="/kpi/manage" element={<GoalManagement />} />
             </Route>
+
+            {/* General PIP Routes */}
+            <Route path="/pip" element={<PipListPage />} />
+            <Route path="/pip/:id" element={<PipDetailsPage />} />
 
             {/* Specialized Manager Routes (Level L01-L04 + Specific Permission) */}
             <Route

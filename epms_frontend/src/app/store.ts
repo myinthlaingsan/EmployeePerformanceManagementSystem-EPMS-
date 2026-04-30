@@ -1,5 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "../features/auth/authSlice";
+import notificationReducer from "../features/notification/notificationSlice";
 // import themeReducer from "../features/theme/themeSlice"
 import { api } from "../services/api";
 import { kpiApi } from "../features/kpi/kpiApi";
@@ -7,6 +8,7 @@ import { kpiApi } from "../features/kpi/kpiApi";
 export const store = configureStore({
     reducer: {
         auth: authReducer,
+        notification: notificationReducer,
         // theme: themeReducer,
         [api.reducerPath]: api.reducer,
         [kpiApi.reducerPath]: kpiApi.reducer,

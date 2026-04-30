@@ -4,6 +4,7 @@ import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.appraisal.AppraisalCycleRequest;
 import ace.org.epms_backend.dto.appraisal.AppraisalCycleResponse;
 import ace.org.epms_backend.service.AppraisalCycleService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class AppraisalCycleController {
     private final AppraisalCycleService appraisalCycleService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<AppraisalCycleResponse>> create(@RequestBody AppraisalCycleRequest request) {
+    public ResponseEntity<ApiResponse<AppraisalCycleResponse>> create(@Valid @RequestBody AppraisalCycleRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(appraisalCycleService.create(request)));
     }
@@ -37,7 +38,7 @@ public class AppraisalCycleController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<AppraisalCycleResponse>> update(
             @PathVariable Long id,
-            @RequestBody AppraisalCycleRequest request) {
+            @Valid @RequestBody AppraisalCycleRequest request) {
         return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.update(id, request)));
     }
 

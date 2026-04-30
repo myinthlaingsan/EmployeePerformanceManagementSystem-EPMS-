@@ -5,7 +5,11 @@ import ace.org.epms_backend.enums.AppraisalStatus;
 import ace.org.epms_backend.model.appraisal.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.SelfAssessmentService;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +26,7 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
     private final SelfAssessmentRepository selfRepo;
     private final SelfAssessmentAnswerRepository answerRepo;
     private final QuestionRepository questionRepo;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -99,6 +104,18 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
         Appraisal appraisal = self.getAppraisal();
         appraisal.setStatus(AppraisalStatus.SELF_ASSESSED);
         appraisalRepo.save(appraisal);
+
+        // Notify Manager
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(appraisal.getManager().getId())
+                .senderId(appraisal.getEmployee().getId())
+                .type(NotificationType.SELF_ASSESSMENT_SUBMITTED)
+                .title("Self Assessment Submitted")
+                .message(appraisal.getEmployee().getStaffName() + " has submitted their self-assessment.")
+                .referenceType(ReferenceType.SELF_ASSESSMENT)
+                .referenceId(appraisal.getAppraisalId())
+                .actionUrl("/appraisals/review/" + appraisal.getAppraisalId())
+                .build());
     }
 
     @Override

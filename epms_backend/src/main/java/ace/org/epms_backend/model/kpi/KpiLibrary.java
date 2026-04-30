@@ -8,6 +8,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.util.List;
+
 @Entity
 @Table(name = "kpi_library")
 @Getter
@@ -27,7 +29,7 @@ public class KpiLibrary extends BaseEntity {
     @JoinColumn(name = "position_id")
     private Position position;
 
-    @OneToMany(mappedBy = "library", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "library", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KpiLibraryDetails> details;
 
     private Boolean isActive = true;

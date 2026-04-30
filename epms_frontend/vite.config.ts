@@ -6,4 +6,8 @@ export default defineConfig({
   plugins: [react(),
     tailwincss(),
   ],
+  define: {
+    // Fix for sockjs-client "global is not defined" error
+    global: 'globalThis',
+  },
 })

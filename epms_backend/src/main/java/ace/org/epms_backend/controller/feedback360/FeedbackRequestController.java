@@ -1,7 +1,8 @@
 package ace.org.epms_backend.controller.feedback360;
 
+import ace.org.epms_backend.dto.feedback360.FeedbackRequestGenerateDTO;
 import ace.org.epms_backend.dto.feedback360.FeedbackRequestResponse;
-import ace.org.epms_backend.dto.feedback360.GenerateRequestTrigger;
+
 import ace.org.epms_backend.enums.FeedbackStatus;
 import ace.org.epms_backend.service.feedback360.FeedbackRequestService;
 import lombok.RequiredArgsConstructor;
@@ -18,8 +19,8 @@ public class FeedbackRequestController {
     private final FeedbackRequestService requestService;
 
     @PostMapping("/generate")
-    public ResponseEntity<Void> generateRequests(@RequestBody GenerateRequestTrigger trigger) {
-        requestService.generate360FeedbackRequests(trigger.getCycleId(), 1, 3, 1, 3);
+    public ResponseEntity<Void> generateRequests(@RequestBody FeedbackRequestGenerateDTO dto) {
+        requestService.generateRequests(dto);
         return ResponseEntity.ok().build();
     }
 
@@ -29,7 +30,8 @@ public class FeedbackRequestController {
     }
 
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<FeedbackRequestResponse>> getByEmployee(@PathVariable Long employeeId, @RequestParam Long cycleId) {
+    public ResponseEntity<List<FeedbackRequestResponse>> getByEmployee(@PathVariable Long employeeId,
+            @RequestParam Long cycleId) {
         return ResponseEntity.ok(requestService.getRequestsByEmployee(employeeId, cycleId));
     }
 

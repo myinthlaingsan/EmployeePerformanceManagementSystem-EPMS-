@@ -10,6 +10,7 @@ import lombok.experimental.SuperBuilder;
 import java.util.List;
 
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Table(name = "kpi_goals")
