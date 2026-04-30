@@ -32,6 +32,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -149,6 +150,7 @@ public class AuthServiceImpl implements AuthService {
         return mapToResponse(getCurrentUser());
     }
 
+    @Transactional
     @Override
     public void forgotPassword(ForgotPasswordRequest request) {
         Employee emp = employeeRepository.findByEmail(request.getEmail())
