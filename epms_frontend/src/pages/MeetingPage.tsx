@@ -8,6 +8,7 @@ import {
   useGetMeetingCommentsQuery,
   useAddMeetingCommentMutation,
   useDeleteCommentMutation,
+  useUpdateCommentMutation,
 } from "../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../features/employee/employeeapi";
 import { format } from "date-fns";
@@ -378,7 +379,35 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
   const { data: comments, isLoading } = useGetMeetingCommentsQuery(meetingId);
   const [addComment, { isLoading: isCommenting }] = useAddMeetingCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
+  const [updateComment, { isLoading: isUpdatingComment }] = useUpdateCommentMutation();
   const [newComment, setNewComment] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
+
+  const handleEditComment = (comment: any) => {
+    setEditingCommentId(comment.id);
+    setEditCommentText(comment.comment);
+  };
+
+  const handleUpdateComment = async (commentId: number) => {
+    if (!editCommentText.trim() || !user) return;
+    try {
+      await updateComment({
+        commentId,
+        meetingId,
+        body: { 
+          comment: editCommentText,
+          commentType: isManager ? 'MANAGER' : 'EMPLOYEE',
+          managerId: isManager ? user.id : undefined,
+          employeeId: !isManager ? user.id : undefined,
+        }
+      }).unwrap();
+      setEditingCommentId(null);
+      setEditCommentText("");
+    } catch (err) {
+      console.error("Failed to update comment", err);
+    }
+  };
 
   const handleDeleteComment = async (commentId: number) => {
     if (window.confirm("Are you sure you want to delete this comment?")) {
@@ -433,7 +462,23 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
                     ? 'bg-indigo-600 text-white rounded-tr-none' 
                     : 'bg-gray-50 text-gray-700 rounded-tl-none'
                 }`}>
-                  {comment.comment}
+                  {editingCommentId === comment.id ? (
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="text"
+                        className="text-black px-2 py-1 rounded text-sm w-full outline-none"
+                        value={editCommentText}
+                        onChange={(e) => setEditCommentText(e.target.value)}
+                        autoFocus
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <button onClick={() => setEditingCommentId(null)} className="text-[10px] uppercase font-bold text-indigo-200 hover:text-white">Cancel</button>
+                        <button onClick={() => handleUpdateComment(comment.id)} disabled={isUpdatingComment} className="text-[10px] uppercase font-bold text-white hover:text-indigo-200">Save</button>
+                      </div>
+                    </div>
+                  ) : (
+                    comment.comment
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
@@ -442,15 +487,26 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
                   <span className="text-[10px] text-gray-300">•</span>
                   <span className="text-[10px] text-gray-300">{comment.createdAt ? format(new Date(comment.createdAt), 'MMM d, p') : ''}</span>
                   {isOwnComment && (
-                    <button 
-                      onClick={() => handleDeleteComment(comment.id)}
-                      className="ml-1 text-gray-300 hover:text-rose-500 transition"
-                      title="Delete Comment"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    <div className="flex items-center">
+                      <button 
+                        onClick={() => handleEditComment(comment)}
+                        className="ml-1 text-gray-300 hover:text-indigo-400 transition"
+                        title="Edit Comment"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="ml-1 text-gray-300 hover:text-rose-500 transition"
+                        title="Delete Comment"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

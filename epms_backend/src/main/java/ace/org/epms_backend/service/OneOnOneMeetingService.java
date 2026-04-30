@@ -18,5 +18,6 @@ public interface OneOnOneMeetingService {
 
     MeetingCommentResponse addComment(Long meetingId, MeetingCommentRequest request);
     List<MeetingCommentResponse> getCommentsByMeetingId(Long meetingId);
+    MeetingCommentResponse updateComment(Long commentId, MeetingCommentRequest request);
     void deleteComment(Long commentId);
 }

@@ -65,6 +65,7 @@ const Navbar = () => {
                     {isDropdownOpen && (
                       <div className="absolute top-16 left-0 w-48 bg-white border border-gray-100 shadow-xl rounded-xl py-2 z-50">
                         <Link to="/employees" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Employees</Link>
+                        <Link to="/performance-history" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Performance History</Link>
                         <Link to="/departments" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Departments</Link>
                         <Link to="/roles" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Roles</Link>
                         <Link to="/job-levels" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Job Levels</Link>

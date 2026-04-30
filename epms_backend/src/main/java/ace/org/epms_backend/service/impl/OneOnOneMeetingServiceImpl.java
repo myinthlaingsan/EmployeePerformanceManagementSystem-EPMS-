@@ -56,9 +56,10 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(savedMeeting.getMeetingId())
                 .title("New 1-on-1 Meeting Scheduled")
-                .description("Meeting scheduled for " + savedMeeting.getMeetingDate() + " at " + savedMeeting.getMeetingTime())
+                .description("Meeting scheduled for " + savedMeeting.getMeetingDate() + " at " + savedMeeting.getMeetingTime() + ". Agenda/Reason: " + (savedMeeting.getDiscussionPoints() != null ? savedMeeting.getDiscussionPoints() : "Not specified"))
                 .isPrivate(savedMeeting.getIsPrivateNote())
                 .createdBy(savedMeeting.getManager().getId())
+                .manager(savedMeeting.getManager())
                 .build();
         historyRepository.save(history);
 
@@ -107,9 +108,10 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(updatedMeeting.getMeetingId())
                 .title("1-on-1 Meeting Updated")
-                .description("Meeting details were updated.")
+                .description("Meeting details were updated. Agenda/Reason: " + (updatedMeeting.getDiscussionPoints() != null ? updatedMeeting.getDiscussionPoints() : "Not specified"))
                 .isPrivate(updatedMeeting.getIsPrivateNote())
                 .createdBy(authService.getCurrentUser().getId())
+                .manager(updatedMeeting.getManager())
                 .build();
         historyRepository.save(history);
 
@@ -134,6 +136,19 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
         checkMeetingModificationAccess(meeting);
         meetingRepository.delete(meeting);
+
+        Employee currentUser = authService.getCurrentUser();
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(meeting.getEmployee())
+                .sourceType(SourceType.MEETING)
+                .sourceId(meetingId)
+                .title("Meeting Deleted")
+                .description("Manager " + currentUser.getStaffName() + " deleted the 1-on-1 meeting.")
+                .isPrivate(meeting.getIsPrivateNote())
+                .createdBy(currentUser.getId())
+                .manager(meeting.getManager())
+                .build();
+        historyRepository.save(history);
     }
 
     @Override
@@ -180,9 +195,10 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(meeting.getMeetingId())
                 .title("New Comment in Meeting")
-                .description((request.getCommentType() == CommentType.MANAGER ? "Manager " : "Employee ") + currentUser.getStaffName() + " added a comment.")
+                .description((request.getCommentType() == CommentType.MANAGER ? "Manager " : "Employee ") + currentUser.getStaffName() + " commented: " + request.getComment())
                 .isPrivate(meeting.getIsPrivateNote())
                 .createdBy(currentUser.getId())
+                .manager(meeting.getManager())
                 .build();
         historyRepository.save(history);
 
@@ -197,6 +213,39 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         return commentRepository.findByMeetingMeetingId(meetingId).stream()
                 .map(commentMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public MeetingCommentResponse updateComment(Long commentId, MeetingCommentRequest request) {
+        MeetingComment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new NotFoundException("Comment not found"));
+                
+        Employee currentUser = authService.getCurrentUser();
+        
+        boolean isOwner = (comment.getManager() != null && comment.getManager().getId().equals(currentUser.getId())) ||
+                (comment.getEmployee() != null && comment.getEmployee().getId().equals(currentUser.getId()));
+                
+        if (!isOwner && !isPrivileged(currentUser)) {
+            throw new AccessDeniedException("You can only edit your own comments.");
+        }
+
+        comment.setComment(request.getComment());
+        MeetingComment updatedComment = commentRepository.save(comment);
+
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(comment.getMeeting().getEmployee())
+                .sourceType(SourceType.MEETING)
+                .sourceId(comment.getMeeting().getMeetingId())
+                .title("Meeting Comment Updated")
+                .description((isOwner ? "Owner " : "Admin ") + currentUser.getStaffName() + " updated comment to: " + request.getComment())
+                .isPrivate(comment.getMeeting().getIsPrivateNote())
+                .createdBy(currentUser.getId())
+                .manager(comment.getMeeting().getManager())
+                .build();
+        historyRepository.save(history);
+
+        return commentMapper.toResponse(updatedComment);
     }
 
     @Override
@@ -215,6 +264,18 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         }
 
         commentRepository.delete(comment);
+
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(comment.getMeeting().getEmployee())
+                .sourceType(SourceType.MEETING)
+                .sourceId(comment.getMeeting().getMeetingId())
+                .title("Meeting Comment Deleted")
+                .description((comment.getManager() != null ? "Manager " : "Employee ") + currentUser.getStaffName() + " deleted their comment.")
+                .isPrivate(comment.getMeeting().getIsPrivateNote())
+                .createdBy(currentUser.getId())
+                .manager(comment.getMeeting().getManager())
+                .build();
+        historyRepository.save(history);
     }
 
     // --- Private Helper Methods ---

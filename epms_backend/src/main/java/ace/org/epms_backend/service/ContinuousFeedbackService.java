@@ -18,5 +18,6 @@ public interface ContinuousFeedbackService {
 
     FeedbackReplyResponse replyToFeedback(Long feedbackId, FeedbackReplyRequest request);
     List<FeedbackReplyResponse> getRepliesForFeedback(Long feedbackId);
+    FeedbackReplyResponse updateReply(Long replyId, FeedbackReplyRequest request);
     void deleteReply(Long replyId);
 }

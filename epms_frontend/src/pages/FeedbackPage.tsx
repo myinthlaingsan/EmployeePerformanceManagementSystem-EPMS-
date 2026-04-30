@@ -9,6 +9,7 @@ import {
   useGetFeedbackRepliesQuery,
   useReplyToFeedbackMutation,
   useDeleteReplyMutation,
+  useUpdateReplyMutation,
 } from "../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../features/employee/employeeapi";
 import { FeedbackType } from "../features/continuous/continuousTypes";
@@ -97,7 +98,7 @@ const FeedbackPage = () => {
     setEditingId(fb.feedbackId);
     setNewFeedback({
       employeeId: fb.employeeId,
-      tagId: fb.tag.tagId,
+      tagId: fb.tag?.tagId || 0,
       feedbackType: fb.feedbackType,
       description: fb.description,
       isPrivate: fb.isPrivate,
@@ -185,7 +186,7 @@ const FeedbackPage = () => {
 
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-md text-[10px] font-bold">#{fb.tag.tagName}</span>
+                {fb.tag && <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-md text-[10px] font-bold">#{fb.tag.tagName}</span>}
                 {fb.isPrivate && (
                   <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
@@ -343,7 +344,30 @@ const FeedbackReplies = ({ feedbackId }: { feedbackId: number }) => {
   const { data: replies, isLoading } = useGetFeedbackRepliesQuery(feedbackId);
   const [replyToFeedback, { isLoading: isReplying }] = useReplyToFeedbackMutation();
   const [deleteReply] = useDeleteReplyMutation();
+  const [updateReply, { isLoading: isUpdatingReply }] = useUpdateReplyMutation();
   const [newReply, setNewReply] = useState("");
+  const [editingReplyId, setEditingReplyId] = useState<number | null>(null);
+  const [editReplyText, setEditReplyText] = useState("");
+
+  const handleEditReply = (reply: any) => {
+    setEditingReplyId(reply.replyId);
+    setEditReplyText(reply.replyText);
+  };
+
+  const handleUpdateReply = async (replyId: number) => {
+    if (!editReplyText.trim() || !user) return;
+    try {
+      await updateReply({
+        replyId,
+        feedbackId,
+        body: { replyText: editReplyText, employeeId: user.id }
+      }).unwrap();
+      setEditingReplyId(null);
+      setEditReplyText("");
+    } catch (err) {
+      console.error("Failed to update reply", err);
+    }
+  };
 
   const handleDeleteReply = async (replyId: number) => {
     if (window.confirm("Are you sure you want to delete this reply?")) {
@@ -391,7 +415,23 @@ const FeedbackReplies = ({ feedbackId }: { feedbackId: number }) => {
                   ? 'bg-indigo-600 text-white rounded-tr-none' 
                   : 'bg-gray-50 text-gray-700 rounded-tl-none'
               }`}>
-                {reply.replyText}
+                {editingReplyId === reply.replyId ? (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      className="text-black px-2 py-1 rounded text-sm w-full outline-none"
+                      value={editReplyText}
+                      onChange={(e) => setEditReplyText(e.target.value)}
+                      autoFocus
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button onClick={() => setEditingReplyId(null)} className="text-[10px] uppercase font-bold text-indigo-200 hover:text-white">Cancel</button>
+                      <button onClick={() => handleUpdateReply(reply.replyId)} disabled={isUpdatingReply} className="text-[10px] uppercase font-bold text-white hover:text-indigo-200">Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  reply.replyText
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
@@ -400,15 +440,26 @@ const FeedbackReplies = ({ feedbackId }: { feedbackId: number }) => {
                 <span className="text-[10px] text-gray-300">•</span>
                 <span className="text-[10px] text-gray-300">{reply.createdAt ? format(new Date(reply.createdAt), 'MMM d, p') : ''}</span>
                 {reply.employeeId === user?.id && (
-                  <button 
-                    onClick={() => handleDeleteReply(reply.replyId)}
-                    className="ml-1 text-gray-300 hover:text-rose-500 transition"
-                    title="Delete Reply"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center">
+                    <button 
+                      onClick={() => handleEditReply(reply)}
+                      className="ml-1 text-gray-300 hover:text-indigo-400 transition"
+                      title="Edit Reply"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteReply(reply.replyId)}
+                      className="ml-1 text-gray-300 hover:text-rose-500 transition"
+                      title="Delete Reply"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

@@ -24,6 +24,10 @@ public class PerformanceHistory extends BaseEntity {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
+    @ManyToOne
+    @JoinColumn(name = "manager_id")
+    private Employee manager;
+
     @Enumerated(EnumType.STRING)
     private SourceType sourceType;
 

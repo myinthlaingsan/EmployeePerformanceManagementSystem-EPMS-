@@ -12,6 +12,7 @@ import ProfilePage from "./pages/ProfilePage";
 import SetPasswordPage from "./pages/SetPasswordPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import MeetingPage from "./pages/MeetingPage";
+import PerformanceHistoryPage from "./pages/PerformanceHistoryPage";
 
 // Admin Pages
 import EmployeeList from "./pages/admin/EmployeeList";
@@ -61,6 +62,7 @@ const App = () => {
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
               <Route path="/hr" element={<HRDashboard />} />
+              <Route path="/performance-history" element={<PerformanceHistoryPage />} />
               <Route path="/employees" element={<EmployeeList />} />
               <Route path="/employees/new" element={<EmployeeForm />} />
               <Route path="/employees/edit/:id" element={<EmployeeForm />} />

@@ -11,6 +11,7 @@ import type {
   MeetingCommentRequest,
   FeedbackTagResponse,
   FeedbackTagRequest,
+  PerformanceHistoryResponse,
 } from "./continuousTypes";
 
 export const continuousApi = api.injectEndpoints({
@@ -57,7 +58,7 @@ export const continuousApi = api.injectEndpoints({
         body,
       }),
       transformResponse: (response: ApiResponse<ContinuousFeedbackResponse>) => response.data,
-      invalidatesTags: ["ContinuousFeedback" as any],
+      invalidatesTags: ["ContinuousFeedback" as any, "PerformanceHistory" as any],
     }),
     updateFeedback: builder.mutation<ContinuousFeedbackResponse, { id: number; body: ContinuousFeedbackRequest }>({
       query: ({ id, body }) => ({
@@ -66,14 +67,14 @@ export const continuousApi = api.injectEndpoints({
         body,
       }),
       transformResponse: (response: ApiResponse<ContinuousFeedbackResponse>) => response.data,
-      invalidatesTags: ["ContinuousFeedback" as any],
+      invalidatesTags: ["ContinuousFeedback" as any, "PerformanceHistory" as any],
     }),
     deleteFeedback: builder.mutation<void, number>({
       query: (id) => ({
         url: `/feedbacks/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["ContinuousFeedback" as any],
+      invalidatesTags: ["ContinuousFeedback" as any, "PerformanceHistory" as any],
     }),
 
     // Feedback Replies
@@ -89,14 +90,23 @@ export const continuousApi = api.injectEndpoints({
         body,
       }),
       transformResponse: (response: ApiResponse<FeedbackReplyResponse>) => response.data,
-      invalidatesTags: (result, error, { feedbackId }) => [{ type: "FeedbackReply" as any, id: feedbackId }],
+      invalidatesTags: (result, error, { feedbackId }) => [{ type: "FeedbackReply" as any, id: feedbackId }, "PerformanceHistory" as any],
     }),
     deleteReply: builder.mutation<void, { replyId: number; feedbackId: number }>({
       query: ({ replyId }) => ({
         url: `/feedbacks/replies/${replyId}`,
         method: "DELETE",
       }),
-      invalidatesTags: (result, error, { feedbackId }) => [{ type: "FeedbackReply" as any, id: feedbackId }],
+      invalidatesTags: (result, error, { feedbackId }) => [{ type: "FeedbackReply" as any, id: feedbackId }, "PerformanceHistory" as any],
+    }),
+    updateReply: builder.mutation<FeedbackReplyResponse, { replyId: number; feedbackId: number; body: FeedbackReplyRequest }>({
+      query: ({ replyId, body }) => ({
+        url: `/feedbacks/replies/${replyId}`,
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<FeedbackReplyResponse>) => response.data,
+      invalidatesTags: (result, error, { feedbackId }) => [{ type: "FeedbackReply" as any, id: feedbackId }, "PerformanceHistory" as any],
     }),
 
     // 1-on-1 Meetings
@@ -122,7 +132,7 @@ export const continuousApi = api.injectEndpoints({
         body,
       }),
       transformResponse: (response: ApiResponse<OneOnOneMeetingResponse>) => response.data,
-      invalidatesTags: ["OneOnOneMeeting" as any],
+      invalidatesTags: ["OneOnOneMeeting" as any, "PerformanceHistory" as any],
     }),
     updateMeeting: builder.mutation<OneOnOneMeetingResponse, { id: number; body: OneOnOneMeetingRequest }>({
       query: ({ id, body }) => ({
@@ -131,14 +141,14 @@ export const continuousApi = api.injectEndpoints({
         body,
       }),
       transformResponse: (response: ApiResponse<OneOnOneMeetingResponse>) => response.data,
-      invalidatesTags: ["OneOnOneMeeting" as any],
+      invalidatesTags: ["OneOnOneMeeting" as any, "PerformanceHistory" as any],
     }),
     deleteMeeting: builder.mutation<void, number>({
       query: (id) => ({
         url: `/meetings/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["OneOnOneMeeting" as any],
+      invalidatesTags: ["OneOnOneMeeting" as any, "PerformanceHistory" as any],
     }),
 
     // Meeting Comments
@@ -154,14 +164,30 @@ export const continuousApi = api.injectEndpoints({
         body,
       }),
       transformResponse: (response: ApiResponse<MeetingCommentResponse>) => response.data,
-      invalidatesTags: (result, error, { meetingId }) => [{ type: "MeetingComment" as any, id: meetingId }],
+      invalidatesTags: (result, error, { meetingId }) => [{ type: "MeetingComment" as any, id: meetingId }, "PerformanceHistory" as any],
     }),
     deleteComment: builder.mutation<void, { commentId: number; meetingId: number }>({
       query: ({ commentId }) => ({
         url: `/meetings/comments/${commentId}`,
         method: "DELETE",
       }),
-      invalidatesTags: (result, error, { meetingId }) => [{ type: "MeetingComment" as any, id: meetingId }],
+      invalidatesTags: (result, error, { meetingId }) => [{ type: "MeetingComment" as any, id: meetingId }, "PerformanceHistory" as any],
+    }),
+    updateComment: builder.mutation<MeetingCommentResponse, { commentId: number; meetingId: number; body: MeetingCommentRequest }>({
+      query: ({ commentId, body }) => ({
+        url: `/meetings/comments/${commentId}`,
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<MeetingCommentResponse>) => response.data,
+      invalidatesTags: (result, error, { meetingId }) => [{ type: "MeetingComment" as any, id: meetingId }, "PerformanceHistory" as any],
+    }),
+
+    // Performance History
+    getPerformanceHistoryByEmployee: builder.query<PerformanceHistoryResponse[], number>({
+      query: (employeeId) => `/performance-history/employee/${employeeId}`,
+      transformResponse: (response: ApiResponse<PerformanceHistoryResponse[]>) => response.data,
+      providesTags: ["PerformanceHistory" as any],
     }),
   }),
 });
@@ -187,4 +213,7 @@ export const {
   useGetMeetingCommentsQuery,
   useAddMeetingCommentMutation,
   useDeleteCommentMutation,
+  useUpdateReplyMutation,
+  useUpdateCommentMutation,
+  useGetPerformanceHistoryByEmployeeQuery,
 } = continuousApi;

@@ -90,7 +90,15 @@ public class ContinuousFeedbackController {
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
-    @DeleteMapping("/replies/{replyId}")
+    @PutMapping("/feedbacks/replies/{replyId}")
+    public ResponseEntity<ApiResponse<FeedbackReplyResponse>> updateReply(
+            @PathVariable Long replyId,
+            @Valid @RequestBody FeedbackReplyRequest request) {
+        FeedbackReplyResponse response = feedbackService.updateReply(replyId, request);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @DeleteMapping("/feedbacks/replies/{replyId}")
     public ResponseEntity<ApiResponse<Void>> deleteReply(@PathVariable Long replyId) {
         feedbackService.deleteReply(replyId);
         return ResponseEntity.ok(ApiResponse.success());

@@ -31,10 +31,12 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     @Override
     public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId) {
         Employee currentUser = authService.getCurrentUser();
+        boolean privileged = isPrivileged(currentUser);
 
-        return historyRepository.findByEmployee_Id(employeeId).stream()
-                .filter(h -> (currentUser.getId().equals(h.getCreatedBy())) || 
-                             (!Boolean.TRUE.equals(h.getIsPrivate()) && currentUser.getId().equals(h.getEmployee().getId())))
+        return historyRepository.findByEmployee_IdOrManager_Id(employeeId, employeeId).stream()
+                .filter(h -> privileged || 
+                             (currentUser.getId().equals(h.getCreatedBy())) || 
+                             (!Boolean.TRUE.equals(h.getIsPrivate()) && (currentUser.getId().equals(h.getEmployee().getId()) || (h.getManager() != null && currentUser.getId().equals(h.getManager().getId())))))
                 .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
     }
@@ -42,9 +44,10 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     @Override
     public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryBySource(SourceType sourceType, Long sourceId) {
         Employee currentUser = authService.getCurrentUser();
+        boolean privileged = isPrivileged(currentUser);
 
         return historyRepository.findBySourceTypeAndSourceId(sourceType, sourceId).stream()
-                .filter(h -> (currentUser.getId().equals(h.getCreatedBy())) || 
+                .filter(h -> privileged || (currentUser.getId().equals(h.getCreatedBy())) || 
                              (!Boolean.TRUE.equals(h.getIsPrivate()) && currentUser.getId().equals(h.getEmployee().getId())))
                 .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
@@ -56,6 +59,9 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
                 .orElseThrow(() -> new NotFoundException("History not found"));
         
         Employee currentUser = authService.getCurrentUser();
+        if (isPrivileged(currentUser)) {
+            return historyMapper.toResponse(history);
+        }
         
         // If private, only Manager/Creator can see
         if (Boolean.TRUE.equals(history.getIsPrivate())) {

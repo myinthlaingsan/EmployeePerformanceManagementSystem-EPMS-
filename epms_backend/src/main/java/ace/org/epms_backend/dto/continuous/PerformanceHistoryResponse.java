@@ -18,7 +18,10 @@ public class PerformanceHistoryResponse {
     private String employeeName;
     private SourceType sourceType;
     private Long sourceId;
+    private Long managerId;
+    private String managerName;
     private String title;
     private String description;
+    private Boolean isPrivate;
     private Instant createdAt;
 }

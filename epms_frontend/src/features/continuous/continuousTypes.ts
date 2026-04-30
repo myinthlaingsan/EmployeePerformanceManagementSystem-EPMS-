@@ -106,3 +106,17 @@ export interface MeetingCommentRequest {
   comment: string;
   commentType: CommentType;
 }
+
+export interface PerformanceHistoryResponse {
+  historyId: number;
+  employeeId: number;
+  employeeName: string;
+  managerId: number;
+  managerName: string;
+  sourceType: 'FEEDBACK' | 'MEETING';
+  sourceId: number;
+  title: string;
+  description: string;
+  isPrivate: boolean;
+  createdAt: string;
+}

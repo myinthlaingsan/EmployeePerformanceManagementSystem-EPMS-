@@ -77,6 +77,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .description("Manager " + manager.getStaffName() + " created feedback: " + feedback.getDescription())
                 .isPrivate(feedback.getIsPrivate())
                 .createdBy(manager.getId())
+                .manager(manager)
                 .build();
         historyRepository.save(history);
 
@@ -152,15 +153,17 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         feedbackMapper.updateEntityFromRequest(request, feedback);
         feedback = feedbackRepository.save(feedback);
 
+        Employee currentUser = authService.getCurrentUser();
         // Update PerformanceHistory
         PerformanceHistory history = PerformanceHistory.builder()
                 .employee(feedback.getEmployee())
                 .sourceType(SourceType.FEEDBACK)
                 .sourceId(feedback.getFeedbackId())
                 .title("Updated Continuous Feedback")
-                .description("Feedback was updated. New description: " + feedback.getDescription())
+                .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Employee ") + currentUser.getStaffName() + " updated feedback. New details: " + feedback.getDescription())
                 .isPrivate(feedback.getIsPrivate())
-                .createdBy(feedback.getManager().getId())
+                .createdBy(currentUser.getId())
+                .manager(feedback.getManager())
                 .build();
         historyRepository.save(history);
 
@@ -175,6 +178,19 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         
         checkFeedbackModificationAccess(feedback);
         feedbackRepository.delete(feedback);
+
+        Employee currentUser = authService.getCurrentUser();
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(feedback.getEmployee())
+                .sourceType(SourceType.FEEDBACK)
+                .sourceId(feedbackId)
+                .title("Feedback Deleted")
+                .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Admin ") + currentUser.getStaffName() + " deleted the feedback.")
+                .isPrivate(feedback.getIsPrivate())
+                .createdBy(currentUser.getId())
+                .manager(feedback.getManager())
+                .build();
+        historyRepository.save(history);
     }
 
     @Override
@@ -207,6 +223,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Employee ") + currentUser.getStaffName() + " replied: " + reply.getReplyText())
                 .isPrivate(feedback.getIsPrivate())
                 .createdBy(currentUser.getId())
+                .manager(feedback.getManager())
                 .build();
         historyRepository.save(history);
 
@@ -268,12 +285,56 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
 
     @Override
     @Transactional
+    public FeedbackReplyResponse updateReply(Long replyId, FeedbackReplyRequest request) {
+        FeedbackReply reply = replyRepository.findById(replyId)
+                .orElseThrow(() -> new NotFoundException("Reply not found"));
+                
+        Employee currentUser = authService.getCurrentUser();
+        if (!currentUser.getId().equals(reply.getEmployee().getId()) && !isPrivileged(currentUser)) {
+            throw new AccessDeniedException("You can only edit your own replies.");
+        }
+
+        reply.setReplyText(request.getReplyText());
+        FeedbackReply updatedReply = replyRepository.save(reply);
+
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(reply.getFeedback().getEmployee())
+                .sourceType(SourceType.FEEDBACK)
+                .sourceId(reply.getFeedback().getFeedbackId())
+                .title("Feedback Reply Updated")
+                .description(currentUser.getStaffName() + " updated their reply: " + request.getReplyText())
+                .isPrivate(reply.getFeedback().getIsPrivate())
+                .createdBy(currentUser.getId())
+                .manager(reply.getFeedback().getManager())
+                .build();
+        historyRepository.save(history);
+
+        return replyMapper.toResponse(updatedReply);
+    }
+
+    @Override
+    @Transactional
     public void deleteReply(Long replyId) {
         FeedbackReply reply = replyRepository.findById(replyId)
                 .orElseThrow(() -> new NotFoundException("Reply not found"));
         
-        checkFeedbackAccess(reply.getFeedback());
+        Employee currentUser = authService.getCurrentUser();
+        if (!currentUser.getId().equals(reply.getEmployee().getId()) && !isPrivileged(currentUser)) {
+            throw new AccessDeniedException("You can only delete your own replies.");
+        }
         
         replyRepository.delete(reply);
+
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(reply.getFeedback().getEmployee())
+                .sourceType(SourceType.FEEDBACK)
+                .sourceId(reply.getFeedback().getFeedbackId())
+                .title("Feedback Reply Deleted")
+                .description(currentUser.getStaffName() + " deleted their reply.")
+                .isPrivate(reply.getFeedback().getIsPrivate())
+                .createdBy(currentUser.getId())
+                .manager(reply.getFeedback().getManager())
+                .build();
+        historyRepository.save(history);
     }
 }
