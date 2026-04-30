@@ -1,6 +1,13 @@
 import { useState, useCallback } from 'react';
-import { appraisalApi } from '../api/appraisalApi';
-import { formApi } from '../api/formApi';
+import { 
+  useLazyGetEmployeeAssessmentQuery, 
+  useCreateSelfAssessmentMutation,
+  useSubmitSelfAssessmentMutation, 
+  useCreateManagerEvaluationMutation,
+  useSubmitManagerEvaluationMutation,
+  useSaveDraftMutation
+} from '../features/appraisal/appraisalApi';
+import { useLazyGetFormByIdQuery } from '../features/appraisal/formApiSlice';
 import type { Appraisal, AssessmentResponse } from '../types/appraisal';
 import type { FormTemplate } from '../types/form';
 
@@ -12,12 +19,20 @@ export const useAppraisal = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [getAppraisal] = useLazyGetEmployeeAssessmentQuery();
+  const [getForm] = useLazyGetFormByIdQuery();
+  const [createSelf] = useCreateSelfAssessmentMutation();
+  const [submitSelf] = useSubmitSelfAssessmentMutation();
+  const [createManager] = useCreateManagerEvaluationMutation();
+  const [submitManager] = useSubmitManagerEvaluationMutation();
+  const [saveDraftMutation] = useSaveDraftMutation();
+
   const loadAppraisal = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      const appraisalData = await appraisalApi.getAppraisalById(id);
-      const formData = await formApi.getFormById(appraisalData.formId);
+      const appraisalData = await getAppraisal(id).unwrap();
+      const formData = await getForm(appraisalData.formId).unwrap();
       
       setAppraisal(appraisalData);
       setForm(formData);
@@ -41,7 +56,7 @@ export const useAppraisal = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getAppraisal, getForm]);
 
   const updateRating = (questionId: string, rating: number) => {
     setResponses(prev => prev.map(r => r.questionId === questionId ? { ...r, rating } : r));
@@ -51,15 +66,18 @@ export const useAppraisal = () => {
     setResponses(prev => prev.map(r => r.questionId === questionId ? { ...r, comment } : r));
   };
 
-  const saveDraft = async (type: 'self' | 'manager') => {
+  const saveDraft = useCallback(async (type: 'self' | 'manager') => {
     if (!appraisal) return;
     setSaving(true);
     try {
-      if (type === 'self') {
-        await appraisalApi.saveSelfAssessment(appraisal.id, { responses });
-      } else {
-        await appraisalApi.saveManagerEvaluation(appraisal.id, { responses });
-      }
+      const payload = {
+        appraisalId: appraisal.id,
+        responses: responses.reduce((acc, r) => {
+          acc[r.questionId] = { rating: r.rating, comment: r.comment };
+          return acc;
+        }, {} as any)
+      };
+      await saveDraftMutation({ appraisalId: appraisal.id, data: payload }).unwrap();
       return true;
     } catch (err) {
       setError('Failed to save draft');
@@ -67,16 +85,30 @@ export const useAppraisal = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [appraisal, responses, saveDraftMutation]);
 
-  const submitFinal = async (type: 'self' | 'manager') => {
+  const submitFinal = useCallback(async (type: 'self' | 'manager') => {
     if (!appraisal) return;
     setSaving(true);
     try {
+      const payload = {
+        appraisalId: appraisal.id,
+        responses: responses.reduce((acc, r) => {
+          acc[r.questionId] = { rating: r.rating, comment: r.comment };
+          return acc;
+        }, {} as any)
+      };
+
       if (type === 'self') {
-        await appraisalApi.submitSelfAssessment(appraisal.id, { responses });
+        // Step 1: Save
+        await createSelf(payload).unwrap();
+        // Step 2: Finalize
+        await submitSelf(appraisal.id).unwrap();
       } else {
-        await appraisalApi.submitManagerEvaluation(appraisal.id, { responses });
+        // Step 1: Save
+        await createManager(payload).unwrap();
+        // Step 2: Finalize
+        await submitManager(appraisal.id).unwrap();
       }
       return true;
     } catch (err) {
@@ -85,7 +117,7 @@ export const useAppraisal = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [appraisal, responses, createSelf, submitSelf, createManager, submitManager]);
 
   return {
     appraisal,

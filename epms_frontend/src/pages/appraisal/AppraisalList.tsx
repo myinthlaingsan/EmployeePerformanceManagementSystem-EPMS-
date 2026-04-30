@@ -1,27 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { appraisalApi } from '../../api/appraisalApi';
-import type { Appraisal } from '../../types/appraisal';
+import { useGetAppraisalsQuery } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
 
 const AppraisalList: React.FC = () => {
-  const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchAppraisals = async () => {
-      try {
-        const data = await appraisalApi.getAppraisals();
-        setAppraisals(data);
-      } catch (error) {
-        console.error('Failed to fetch appraisals:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAppraisals();
-  }, []);
+  const { data: appraisals = [], isLoading, error } = useGetAppraisalsQuery();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -33,10 +17,18 @@ const AppraisalList: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-red-500 font-bold bg-red-50 rounded-2xl border border-red-100">
+        Operation failed. Please try again.
       </div>
     );
   }

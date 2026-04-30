@@ -29,6 +29,7 @@ import ResultPage from "./pages/appraisal/ResultPage";
 import AppraisalFormList from "./pages/admin/AppraisalFormList";
 import AppraisalFormEditor from "./pages/admin/AppraisalFormEditor";
 import AppraisalAdminDashboard from "./pages/admin/AppraisalAdminDashboard";
+import CreateAppraisalCycle from "./pages/admin/CreateAppraisalCycle";
 
 // Mock Components for other specialized pages
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
@@ -69,6 +70,8 @@ const App = () => {
             <Route path="/appraisal/:id/self-assessment" element={<SelfAssessment />} />
             <Route path="/appraisal/:id/manager-evaluation" element={<ManagerEvaluation />} />
             <Route path="/appraisal/:id/results" element={<ResultPage />} />
+            <Route path="/appraisal/self" element={<SelfAssessment />} />
+            <Route path="/appraisal/manager" element={<ManagerEvaluation />} />
 
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
@@ -76,7 +79,7 @@ const App = () => {
               <Route path="/employees" element={<EmployeeList />} />
               <Route path="/employees/new" element={<EmployeeForm />} />
               <Route path="/employees/edit/:id" element={<EmployeeForm />} />
-              
+
               <Route path="/departments" element={<DepartmentList />} />
               <Route path="/roles" element={<RoleList />} />
               <Route path="/job-levels" element={<JobLevelList />} />
@@ -85,6 +88,7 @@ const App = () => {
               <Route path="/appraisal-forms/new" element={<AppraisalFormEditor />} />
               <Route path="/appraisal-forms/edit/:id" element={<AppraisalFormEditor />} />
               <Route path="/appraisal-management" element={<AppraisalAdminDashboard />} />
+              <Route path="/admin/create-cycle" element={<CreateAppraisalCycle />} />
             </Route>
 
             {/* Specialized Manager Routes (Level L01-L04 + Specific Permission) */}

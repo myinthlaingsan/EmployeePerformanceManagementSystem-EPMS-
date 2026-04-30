@@ -3,8 +3,9 @@ import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
 
 const Navbar = () => {
-  const { user, logout, isAdmin, isHR } = useAuth();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const { user, logout, isAdmin, isHR, isManager, isEmployee } = useAuth();
+  const [isManagementOpen, setIsManagementOpen] = useState(false);
+  const [isAppraisalOpen, setIsAppraisalOpen] = useState(false);
 
   return (
     <nav className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
@@ -29,12 +30,44 @@ const Navbar = () => {
               >
                 Profile
               </Link>
-              <Link
-                to={isAdmin || isHR ? "/appraisal-management" : "/appraisal"}
-                className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition"
-              >
-                Appraisals
-              </Link>
+              
+              {/* Appraisal Dropdown */}
+              <div className="relative flex items-center">
+                <button
+                  onClick={() => {
+                    setIsAppraisalOpen(!isAppraisalOpen);
+                    setIsManagementOpen(false);
+                  }}
+                  className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition flex items-center gap-1"
+                >
+                  Appraisal
+                  <svg className={`w-4 h-4 transition-transform ${isAppraisalOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {isAppraisalOpen && (
+                  <div className="absolute top-16 left-0 w-52 bg-white border border-gray-100 shadow-xl rounded-xl py-2 z-50">
+                    {/* Role-based links */}
+                    {(isEmployee || isAdmin || isHR) && (
+                      <Link to="/appraisal/self" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsAppraisalOpen(false)}>Self Assessment</Link>
+                    )}
+                    {(isManager || isAdmin || isHR) && (
+                      <Link to="/appraisal/manager" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsAppraisalOpen(false)}>Manager Evaluation</Link>
+                    )}
+                    <Link to="/appraisal" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsAppraisalOpen(false)}>Appraisal List</Link>
+                    
+                    {(isAdmin || isHR) && (
+                      <>
+                        <div className="border-t border-gray-100 my-1"></div>
+                        <Link to="/admin/create-cycle" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsAppraisalOpen(false)}>Appraisal Cycle</Link>
+                        <Link to="/appraisal-forms" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsAppraisalOpen(false)}>Form Templates</Link>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {(isAdmin || isHR) && (
                 <>
                   <Link
@@ -47,25 +80,28 @@ const Navbar = () => {
                   {/* Management Dropdown */}
                   <div className="relative flex items-center">
                     <button
-                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      onClick={() => {
+                        setIsManagementOpen(!isManagementOpen);
+                        setIsAppraisalOpen(false);
+                      }}
                       className="text-gray-500 hover:text-blue-600 px-1 pt-1 text-sm font-medium transition flex items-center gap-1"
                     >
                       Management
-                      <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-4 h-4 transition-transform ${isManagementOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
                     
-                    {isDropdownOpen && (
+                    {isManagementOpen && (
                       <div className="absolute top-16 left-0 w-48 bg-white border border-gray-100 shadow-xl rounded-xl py-2 z-50">
-                        <Link to="/employees" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Employees</Link>
-                        <Link to="/departments" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Departments</Link>
-                        <Link to="/roles" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Roles</Link>
-                        <Link to="/job-levels" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Job Levels</Link>
-                        <Link to="/positions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Positions</Link>
+                        <Link to="/employees" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsManagementOpen(false)}>Employees</Link>
+                        <Link to="/departments" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsManagementOpen(false)}>Departments</Link>
+                        <Link to="/roles" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsManagementOpen(false)}>Roles</Link>
+                        <Link to="/job-levels" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsManagementOpen(false)}>Job Levels</Link>
+                        <Link to="/positions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsManagementOpen(false)}>Positions</Link>
                         <div className="border-t border-gray-100 my-1"></div>
-                        <Link to="/permissions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsDropdownOpen(false)}>Permissions</Link>
-                        <Link to="/permissions/matrix" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold text-blue-600" onClick={() => setIsDropdownOpen(false)}>Access Matrix</Link>
+                        <Link to="/permissions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setIsManagementOpen(false)}>Permissions</Link>
+                        <Link to="/permissions/matrix" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold text-blue-600" onClick={() => setIsManagementOpen(false)}>Access Matrix</Link>
                       </div>
                     )}
                   </div>

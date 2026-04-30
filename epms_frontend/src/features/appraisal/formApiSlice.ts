@@ -49,6 +49,7 @@ export const formApiSlice = api.injectEndpoints({
 export const {
   useGetFormsQuery,
   useGetFormByIdQuery,
+  useLazyGetFormByIdQuery,
   useCreateFormMutation,
   useUpdateFormMutation,
   useDeleteFormMutation,

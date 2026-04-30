@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useGetFormsQuery, useDeleteFormMutation } from '../../features/appraisal/formApiSlice';
 import type { FormTemplate } from '../../types/form';
-import { Plus, Edit, Trash2, FileText, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, FileText, ChevronRight, AlertCircle } from 'lucide-react';
 
 const AppraisalFormList = () => {
-  const { data: forms = [], isLoading, error, refetch } = useGetFormsQuery();
+  const { data: forms = [], isLoading, error } = useGetFormsQuery();
   const [deleteForm] = useDeleteFormMutation();
 
   const handleDelete = async (id: string) => {
@@ -31,6 +31,9 @@ const AppraisalFormList = () => {
     );
   };
 
+  // Graceful Error Handling Logic
+  const hasNoForms = error || forms.length === 0;
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -51,78 +54,74 @@ const AppraisalFormList = () => {
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-      ) : error ? (
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100">
-          {'status' in error
-            ? `Error: ${error.status} - Failed to load forms`
-            : error.message || 'Failed to load appraisal forms'}
-        </div>
-      ) : forms.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center">
-          <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText className="w-8 h-8 text-gray-400" />
+      ) : hasNoForms ? (
+        /* Graceful handling for both errors and empty states */
+        <div className="bg-white rounded-3xl border border-dashed border-gray-200 p-16 text-center shadow-sm">
+          <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            {error ? <AlertCircle className="w-10 h-10 text-slate-400" /> : <FileText className="w-10 h-10 text-slate-400" />}
           </div>
-          <h3 className="text-lg font-bold text-gray-900">No forms found</h3>
-          <p className="text-gray-500 mt-1 max-w-sm mx-auto">
-            Get started by creating your first appraisal form template.
+          <h3 className="text-xl font-bold text-slate-900 italic">"There is no form available"</h3>
+          <p className="text-slate-500 mt-2 max-w-sm mx-auto font-medium">
+            {error ? "We encountered a problem loading the forms. Please try again later or create a new one." : "No templates have been created yet."}
           </p>
           <Link
             to="/appraisal-forms/new"
-            className="mt-6 inline-flex items-center text-blue-600 font-bold hover:underline gap-1"
+            className="mt-8 inline-flex items-center px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg gap-2"
           >
-            Create template <ChevronRight className="w-4 h-4" />
+            <Plus className="w-5 h-5" />
+            Create First Template
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50">
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Form Title</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Sections</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Total Weight</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Last Updated</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">Form Title</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Sections</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Total Weight</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Last Updated</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {forms.map((form) => (
-                <tr key={form.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-4">
+                <tr key={form.id} className="hover:bg-gray-50/80 transition-colors">
+                  <td className="px-6 py-5">
                     <div className="font-bold text-gray-900">{form.title}</div>
-                    <div className="text-sm text-gray-500 truncate max-w-xs">{form.description}</div>
+                    <div className="text-sm text-gray-500 truncate max-w-xs font-medium">{form.description}</div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-5 text-center">
                     {getStatusBadge(form.status)}
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-gray-700">
-                      {form.sections?.length || 0} sections
+                  <td className="px-6 py-5 text-center">
+                    <span className="text-sm font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">
+                      {form.sections?.length || 0}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-bold text-gray-900">
+                  <td className="px-6 py-5 text-center">
+                    <span className="text-sm font-black text-blue-600">
                       {form.totalWeightage}%
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-500">
+                  <td className="px-6 py-5 text-center">
+                    <span className="text-sm text-gray-500 font-medium">
                       {new Date(form.updatedAt).toLocaleDateString()}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-6 py-5 text-right">
+                    <div className="flex justify-end gap-3">
                       <Link
                         to={`/appraisal-forms/edit/${form.id}`}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                         title="Edit Form"
                       >
                         <Edit className="w-5 h-5" />
                       </Link>
                       <button
                         onClick={() => handleDelete(form.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                         title="Delete Form"
                       >
                         <Trash2 className="w-5 h-5" />

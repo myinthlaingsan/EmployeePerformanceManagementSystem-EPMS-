@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
-  useGetFormByIdQuery, 
-  useCreateFormMutation, 
-  useUpdateFormMutation 
-} from '../../features/appraisal/formApiSlice';
+  useGetAppraisalFormQuery, 
+  useCreateAppraisalFormMutation,
+  useUpdateAppraisalFormMutation 
+} from '../../features/appraisal/appraisalApi';
 import type { FormTemplate, FormSection, FormQuestion } from '../../types/form';
 
 const AppraisalFormEditor = () => {
@@ -20,19 +20,38 @@ const AppraisalFormEditor = () => {
     status: 'DRAFT',
   });
 
-  const { data: existingForm, isLoading: isFetching } = useGetFormByIdQuery(id!, {
+  const { data: existingForm, isLoading: isFetching } = useGetAppraisalFormQuery(id!, {
     skip: !isEditMode,
   });
   
-  const [createForm, { isLoading: isCreating }] = useCreateFormMutation();
-  const [updateForm, { isLoading: isUpdating }] = useUpdateFormMutation();
+  const [createForm, { isLoading: isCreating }] = useCreateAppraisalFormMutation();
+  const [updateForm, { isLoading: isUpdating }] = useUpdateAppraisalFormMutation();
 
   const isLoading = isFetching || isCreating || isUpdating;
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (existingForm) {
-      setForm(existingForm);
+      setForm({
+        id: existingForm.id,
+        title: existingForm.title,
+        description: existingForm.description || '',
+        sections: existingForm.sections?.map(s => ({
+          id: s.id,
+          title: s.title,
+          description: s.description || '',
+          weightage: s.weightage || 0,
+          questions: s.questions?.map(q => ({
+            id: q.id,
+            text: q.text,
+            type: q.type as any,
+            required: q.required,
+            weightage: q.weightage || 0
+          })) || []
+        })) || [],
+        totalWeightage: 0, // Will be calculated if needed
+        status: 'DRAFT'
+      });
     }
   }, [existingForm]);
 
@@ -42,15 +61,19 @@ const AppraisalFormEditor = () => {
       return;
     }
 
-    const payload = {
-      formName: form.title,
-      formType: 'SELF_ASSESSMENT',
-      categories: form.sections?.map(s => ({
-        categoryName: s.title,
+    const payload: Partial<FormTemplate> = {
+      title: form.title,
+      description: form.description || '',
+      sections: form.sections?.map(s => ({
+        id: s.id,
+        title: s.title,
+        weightage: s.weightage,
         questions: s.questions.map(q => ({
-          questionText: q.text,
-          questionType: q.type,
-          isRequired: q.required
+          id: q.id,
+          text: q.text,
+          type: q.type,
+          required: q.required,
+          weightage: q.weightage
         }))
       }))
     };
