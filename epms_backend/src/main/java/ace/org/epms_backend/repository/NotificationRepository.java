@@ -9,10 +9,10 @@ import java.util.Optional;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    List<Notification> findByRecipientIdAndIsDeletedFalseOrderByCreatedAtDesc(Long recipientId);
-
-    long countByRecipientIdAndReadAtIsNullAndIsDeletedFalse(Long recipientId);
-    List<Notification> findByRecipientIdAndReadAtIsNullAndIsDeletedFalse(Long recipientId);
-    Optional<Notification> findByIdAndRecipientId(Long id, Long recipientId);
+//    List<Notification> findByRecipientIdAndIsDeletedFalseOrderByCreatedAtDesc(Long employeeId);
+    List<Notification> findByRecipientAndIsDeletedFalseOrderByCreatedAtDesc(Employee recipient);
+    long countByRecipientIdAndReadAtIsNullAndIsDeletedFalse(Long employeeId);
+    List<Notification> findByRecipientIdAndReadAtIsNullAndIsDeletedFalse(Long employeeId);
+    Optional<Notification> findByIdAndRecipientId(Long id, Long employeeId);
 
 }

@@ -53,4 +53,11 @@ public class Notification extends BaseEntity {
     private Instant readAt;
 
     private Boolean isDeleted = false;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.isDeleted == null) {
+            this.isDeleted = false;
+        }
+    }
 }
