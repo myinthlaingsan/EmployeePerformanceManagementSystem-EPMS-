@@ -5,7 +5,6 @@ import { useGetMeQuery } from "./features/auth/authApi";
 import { setUser } from "./features/auth/authSlice";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
-
 // Routes
 import { 
   publicRoutes, 

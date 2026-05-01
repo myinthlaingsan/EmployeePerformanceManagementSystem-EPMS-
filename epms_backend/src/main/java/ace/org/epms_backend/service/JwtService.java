@@ -21,10 +21,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class JwtService {
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    private final String jwtSecret;
+
+    public JwtService(@Value("${jwt.secret:GmP9kLz0aQ7wXvVtHs4YpCqR1nT5mB8sZjF2dEhUdfe3DEse}") String jwtSecret) {
+        this.jwtSecret = jwtSecret;
+    }
+
 
     private Key getSignKey(){
         byte[] keyBytes = Decoders.BASE64URL.decode(jwtSecret);
