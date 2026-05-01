@@ -5,38 +5,17 @@ import { useGetMeQuery } from "./features/auth/authApi";
 import { setUser } from "./features/auth/authSlice";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
-import LoginPage from "./pages/LoginPage";
-import Dashboard from "./pages/Dashboard";
-import UnauthorizedPage from "./pages/UnauthorizedPage";
-import ProfilePage from "./pages/ProfilePage";
-import SetPasswordPage from "./pages/SetPasswordPage";
-import NotificationsPage from "./pages/NotificationsPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
 
-// Admin Pages
-import EmployeeList from "./pages/admin/EmployeeList";
-import EmployeeForm from "./pages/admin/EmployeeForm";
-import DepartmentList from "./pages/admin/DepartmentList";
-import RoleList from "./pages/admin/RoleList";
-import JobLevelList from "./pages/admin/JobLevelList";
-import PositionList from "./pages/admin/PositionList";
-import HRDashboard from "./pages/admin/HRDashboard";
-import AppraisalList from "./pages/appraisal/AppraisalList";
-import AppraisalDetail from "./pages/appraisal/AppraisalDetail";
-import SelfAssessment from "./pages/appraisal/SelfAssessment";
-import ManagerEvaluation from "./pages/appraisal/ManagerEvaluation";
-import ResultPage from "./pages/appraisal/ResultPage";
+// Routes
+import { 
+  publicRoutes, 
+  appraisalRoutes, 
+  adminRoutes, 
+  pipRoutes, 
+  generalRoutes 
+} from "./routes";
 
-// PIP Pages
-import PipListPage from "./pages/pip/PipListPage";
-import PipCreatePage from "./pages/pip/PipCreatePage";
-import PipDetailsPage from "./pages/pip/PipDetailsPage";
-
-
-
-
-// Mock Components for other specialized pages
+// Specialized Manager Component (Temporary here, can be moved later)
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
 
 const App = () => {
@@ -57,47 +36,41 @@ const App = () => {
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/unauthorized" element={<UnauthorizedPage />} />
-        <Route path="/set-password" element={<SetPasswordPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        {publicRoutes.map((route) => (
+          <Route key={route.path} path={route.path} element={route.element} />
+        ))}
 
         {/* Protected Routes Wrapper */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
+            {/* General Routes (Dashboard, Profile, etc.) */}
+            {generalRoutes.map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
 
             {/* Appraisal Workflow Routes */}
-            <Route path="/appraisal" element={<AppraisalList />} />
-            <Route path="/appraisal/:id" element={<AppraisalDetail />} />
-            <Route path="/appraisal/:id/self-assessment" element={<SelfAssessment />} />
-            <Route path="/appraisal/:id/manager-evaluation" element={<ManagerEvaluation />} />
-            <Route path="/appraisal/:id/results" element={<ResultPage />} />
+            {appraisalRoutes.map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* General PIP Routes (excluding new) */}
+            {pipRoutes.filter(r => !r.adminOnly).map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
 
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
-              <Route path="/hr" element={<HRDashboard />} />
-              <Route path="/employees" element={<EmployeeList />} />
-              <Route path="/employees/new" element={<EmployeeForm />} />
-              <Route path="/employees/edit/:id" element={<EmployeeForm />} />
-              
-              <Route path="/departments" element={<DepartmentList />} />
-              <Route path="/roles" element={<RoleList />} />
-              <Route path="/job-levels" element={<JobLevelList />} />
-              <Route path="/positions" element={<PositionList />} />
+              {adminRoutes.map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
               
               {/* PIP Creation Route (Restricted) */}
-              <Route path="/pip/new" element={<PipCreatePage />} />
+              {pipRoutes.filter(r => r.adminOnly).map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
             </Route>
 
-            {/* General PIP Routes */}
-            <Route path="/pip" element={<PipListPage />} />
-            <Route path="/pip/:id" element={<PipDetailsPage />} />
-
-            {/* Specialized Manager Routes (Level L01-L04 + Specific Permission) */}
+            {/* Specialized Manager Routes */}
             <Route
               element={
                 <ProtectedRoute
