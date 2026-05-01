@@ -6,6 +6,9 @@ import {
   useCreateFeedbackMutation,
   useUpdateFeedbackMutation,
   useDeleteFeedbackMutation,
+  useCreateFeedbackTagMutation,
+  useUpdateFeedbackTagMutation,
+  useDeleteFeedbackTagMutation,
   useGetFeedbackRepliesQuery,
   useReplyToFeedbackMutation,
   useDeleteReplyMutation,
@@ -17,7 +20,7 @@ import { format } from "date-fns";
 
 const FeedbackPage = () => {
   const { user, isManager, isAdmin, isHR } = useAuth();
-  const canCreate = isManager || isAdmin || isHR;
+  const canCreate = isManager; // Admins and HR are restricted to history only
 
   const { data: feedbacks, isLoading } = useGetAllFeedbacksQuery(undefined, { skip: !user });
   const { data: tags } = useGetFeedbackTagsQuery();
@@ -25,6 +28,15 @@ const FeedbackPage = () => {
   const [createFeedback, { isLoading: isCreating }] = useCreateFeedbackMutation();
   const [updateFeedback, { isLoading: isUpdating }] = useUpdateFeedbackMutation();
   const [deleteFeedback] = useDeleteFeedbackMutation();
+  const [createFeedbackTag, { isLoading: isCreatingTag }] = useCreateFeedbackTagMutation();
+  const [updateFeedbackTag, { isLoading: isUpdatingTag }] = useUpdateFeedbackTagMutation();
+  const [deleteFeedbackTag] = useDeleteFeedbackTagMutation();
+
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [editingTagId, setEditingTagId] = useState<number | null>(null);
+  const [newTagName, setNewTagName] = useState("");
+  const [tagToDelete, setTagToDelete] = useState<number | null>(null);
+  const [feedbackToDelete, setFeedbackToDelete] = useState<number | null>(null);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<number | null>(null);
@@ -84,13 +96,43 @@ const FeedbackPage = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this feedback?")) {
-      try {
-        await deleteFeedback(id).unwrap();
-      } catch (err: any) {
-        alert(err.data?.message || "Failed to delete feedback");
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return;
+    try {
+      if (editingTagId) {
+        await updateFeedbackTag({ id: editingTagId, body: { tagName: newTagName } }).unwrap();
+      } else {
+        const response = await createFeedbackTag({ tagName: newTagName }).unwrap();
+        setNewFeedback({ ...newFeedback, tagId: response.tagId });
       }
+      setIsAddingTag(false);
+      setEditingTagId(null);
+      setNewTagName("");
+    } catch (err: any) {
+      alert(err.data?.message || "Failed to save tag");
+    }
+  };
+
+  const handleDeleteTag = async () => {
+    if (!tagToDelete) return;
+    try {
+      await deleteFeedbackTag(tagToDelete).unwrap();
+      if (newFeedback.tagId === tagToDelete) {
+        setNewFeedback({ ...newFeedback, tagId: "" });
+      }
+      setTagToDelete(null);
+    } catch (err: any) {
+      alert(err.data?.message || "Failed to delete tag");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!feedbackToDelete) return;
+    try {
+      await deleteFeedback(feedbackToDelete).unwrap();
+      setFeedbackToDelete(null);
+    } catch (err: any) {
+      alert(err.data?.message || "Failed to delete feedback");
     }
   };
 
@@ -129,7 +171,15 @@ const FeedbackPage = () => {
       </header>
 
       <div className="grid gap-6">
-        {feedbacks?.length === 0 && (
+        {(isAdmin || isHR) && (
+          <div className="text-center py-20 bg-amber-50 rounded-3xl border-2 border-dashed border-amber-200">
+            <h3 className="text-amber-800 font-bold text-xl mb-2">Access Restricted</h3>
+            <p className="text-amber-600 font-medium">Admins are restricted to viewing performance history only. Feedback details are hidden.</p>
+            <a href="/performance-history" className="mt-4 inline-block px-6 py-2 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition">Go to Performance History</a>
+          </div>
+        )}
+
+        {!(isAdmin || isHR) && feedbacks?.length === 0 && (
           <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
             <p className="text-gray-400 font-medium">No feedback entries yet.</p>
           </div>
@@ -171,7 +221,7 @@ const FeedbackPage = () => {
                         </svg>
                       </button>
                       <button 
-                        onClick={() => handleDelete(fb.feedbackId)}
+                        onClick={() => setFeedbackToDelete(fb.feedbackId)}
                         className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
                         title="Delete Feedback"
                       >
@@ -240,18 +290,104 @@ const FeedbackPage = () => {
                       ))}
                     </select>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Feedback Category</label>
-                    <select
-                      required
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                      value={newFeedback.tagId}
-                      onChange={e => setNewFeedback({ ...newFeedback, tagId: e.target.value === "" ? "" : Number(e.target.value) })}
-                    >
-                      <option value="">Select a Tag</option>
-                      {tags?.map(tag => <option key={tag.tagId} value={tag.tagId}>{tag.tagName}</option>)}
-                    </select>
-                  </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Feedback Category</label>
+                      {!isAddingTag ? (
+                        <div className="flex gap-2">
+                          <select
+                            required
+                            className="flex-1 px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            value={newFeedback.tagId}
+                            onChange={e => {
+                              if (e.target.value === "NEW") {
+                                setIsAddingTag(true);
+                              } else {
+                                setNewFeedback({ ...newFeedback, tagId: e.target.value === "" ? "" : Number(e.target.value) });
+                              }
+                            }}
+                          >
+                            <option value="">Select a Tag</option>
+                            {tags?.map(tag => <option key={tag.tagId} value={tag.tagId}>{tag.tagName}</option>)}
+                            <option value="NEW" className="text-blue-600 font-bold">+ Add New Tag...</option>
+                          </select>
+                          {newFeedback.tagId && (
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const tag = tags?.find(t => t.tagId === newFeedback.tagId);
+                                  if (tag) {
+                                    setNewTagName(tag.tagName);
+                                    setEditingTagId(tag.tagId);
+                                    setIsAddingTag(true);
+                                  }
+                                }}
+                                className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition"
+                                title="Edit Tag"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setTagToDelete(newFeedback.tagId as number)}
+                                className="p-3 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition"
+                                title="Delete Tag"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            autoFocus
+                            placeholder="New tag name..."
+                            className="flex-1 px-4 py-3 bg-blue-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            value={newTagName}
+                            onChange={e => setNewTagName(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleCreateTag();
+                              }
+                              if (e.key === 'Escape') {
+                                setIsAddingTag(false);
+                                setNewTagName("");
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleCreateTag}
+                            disabled={isCreatingTag || isUpdatingTag}
+                            className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAddingTag(false);
+                              setEditingTagId(null);
+                              setNewTagName("");
+                            }}
+                            className="p-3 bg-gray-100 text-gray-400 rounded-xl hover:bg-gray-200 transition"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                 </div>
 
                 {selectedEmp && (
@@ -335,6 +471,68 @@ const FeedbackPage = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Tag Confirmation Modal */}
+      {tagToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 p-8 text-center">
+            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Tag?</h3>
+            <p className="text-gray-500 text-sm mb-8">
+              Are you sure you want to delete <span className="font-bold text-gray-900">"{tags?.find(t => t.tagId === tagToDelete)?.tagName}"</span>? This may affect historical data.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setTagToDelete(null)}
+                className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteTag}
+                className="flex-1 px-6 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition shadow-lg shadow-rose-200"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Feedback Confirmation Modal */}
+      {feedbackToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 p-8 text-center">
+            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Feedback?</h3>
+            <p className="text-gray-500 text-sm mb-8">
+              This action cannot be undone. All replies associated with this feedback will also be removed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setFeedbackToDelete(null)}
+                className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-6 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition shadow-lg shadow-rose-200"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -348,6 +546,7 @@ const FeedbackReplies = ({ feedbackId }: { feedbackId: number }) => {
   const [newReply, setNewReply] = useState("");
   const [editingReplyId, setEditingReplyId] = useState<number | null>(null);
   const [editReplyText, setEditReplyText] = useState("");
+  const [replyToDelete, setReplyToDelete] = useState<number | null>(null);
 
   const handleEditReply = (reply: any) => {
     setEditingReplyId(reply.replyId);
@@ -369,13 +568,13 @@ const FeedbackReplies = ({ feedbackId }: { feedbackId: number }) => {
     }
   };
 
-  const handleDeleteReply = async (replyId: number) => {
-    if (window.confirm("Are you sure you want to delete this reply?")) {
-      try {
-        await deleteReply({ replyId, feedbackId }).unwrap();
-      } catch (err) {
-        console.error("Failed to delete reply", err);
-      }
+  const handleDeleteReply = async () => {
+    if (!replyToDelete) return;
+    try {
+      await deleteReply({ replyId: replyToDelete, feedbackId }).unwrap();
+      setReplyToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete reply", err);
     }
   };
 
@@ -451,7 +650,7 @@ const FeedbackReplies = ({ feedbackId }: { feedbackId: number }) => {
                       </svg>
                     </button>
                     <button 
-                      onClick={() => handleDeleteReply(reply.replyId)}
+                      onClick={() => setReplyToDelete(reply.replyId)}
                       className="ml-1 text-gray-300 hover:text-rose-500 transition"
                       title="Delete Reply"
                     >
@@ -485,6 +684,37 @@ const FeedbackReplies = ({ feedbackId }: { feedbackId: number }) => {
           </svg>
         </button>
       </form>
+
+      {/* Delete Reply Confirmation Modal */}
+      {replyToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 p-8 text-center">
+            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Reply?</h3>
+            <p className="text-gray-500 text-sm mb-8">
+              Are you sure you want to remove this reply?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setReplyToDelete(null)}
+                className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteReply}
+                className="flex-1 px-6 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition shadow-lg shadow-rose-200"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

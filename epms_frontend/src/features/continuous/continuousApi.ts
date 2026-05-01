@@ -36,6 +36,22 @@ export const continuousApi = api.injectEndpoints({
       transformResponse: (response: ApiResponse<FeedbackTagResponse>) => response.data,
       invalidatesTags: ["FeedbackTag" as any],
     }),
+    updateFeedbackTag: builder.mutation<FeedbackTagResponse, { id: number; body: FeedbackTagRequest }>({
+      query: ({ id, body }) => ({
+        url: `/tags/${id}`,
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<FeedbackTagResponse>) => response.data,
+      invalidatesTags: ["FeedbackTag" as any],
+    }),
+    deleteFeedbackTag: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `/tags/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["FeedbackTag" as any],
+    }),
 
     // Continuous Feedback
     getFeedbacksByEmployee: builder.query<ContinuousFeedbackResponse[], number>({
@@ -196,6 +212,8 @@ export const {
   useGetAllFeedbacksQuery,
   useGetFeedbackTagsQuery,
   useCreateFeedbackTagMutation,
+  useUpdateFeedbackTagMutation,
+  useDeleteFeedbackTagMutation,
   useGetFeedbacksByEmployeeQuery,
   useGetFeedbacksByManagerQuery,
   useCreateFeedbackMutation,

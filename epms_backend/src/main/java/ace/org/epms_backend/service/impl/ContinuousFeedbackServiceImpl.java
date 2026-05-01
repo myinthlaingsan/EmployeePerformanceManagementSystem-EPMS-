@@ -179,6 +179,13 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
         checkFeedbackModificationAccess(feedback);
+        
+        // Delete all replies first to avoid foreign key constraint violations
+        List<FeedbackReply> replies = replyRepository.findByFeedback_FeedbackId(feedbackId);
+        if (!replies.isEmpty()) {
+            replyRepository.deleteAll(replies);
+        }
+        
         feedbackRepository.delete(feedback);
 
         Employee currentUser = authService.getCurrentUser();
@@ -267,9 +274,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
 
     private void checkFeedbackModificationAccess(ContinuousFeedback feedback) {
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivileged = isPrivileged(currentUser);
 
-        if (!isPrivileged && !currentUser.getId().equals(feedback.getManager().getId())) {
+        if (!currentUser.getId().equals(feedback.getManager().getId())) {
             throw new AccessDeniedException("You do not have permission to modify this feedback.");
         }
     }
@@ -280,8 +286,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         boolean isPrivilegedUser = isPrivileged(currentUser);
 
         return feedbackRepository.findAll().stream()
-                .filter(f -> isPrivilegedUser || 
-                             currentUser.getId().equals(f.getManager().getId()) ||
+                .filter(f -> currentUser.getId().equals(f.getManager().getId()) ||
                              (!Boolean.TRUE.equals(f.getIsPrivate()) && currentUser.getId().equals(f.getEmployee().getId())))
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());

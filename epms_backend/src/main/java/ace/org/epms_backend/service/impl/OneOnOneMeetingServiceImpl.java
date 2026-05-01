@@ -126,8 +126,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         boolean isPrivilegedUser = isPrivileged(currentUser);
 
         return meetingRepository.findAll().stream()
-                .filter(m -> isPrivilegedUser || 
-                             currentUser.getId().equals(m.getManager().getId()) ||
+                .filter(m -> currentUser.getId().equals(m.getManager().getId()) ||
                              (!Boolean.TRUE.equals(m.getIsPrivateNote()) && currentUser.getId().equals(m.getEmployee().getId())))
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
@@ -137,6 +136,13 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     public void deleteMeeting(Long meetingId) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
         checkMeetingModificationAccess(meeting);
+        
+        // Delete all comments first to avoid foreign key constraint violations
+        List<MeetingComment> comments = commentRepository.findByMeetingMeetingId(meetingId);
+        if (!comments.isEmpty()) {
+            commentRepository.deleteAll(comments);
+        }
+        
         meetingRepository.delete(meeting);
 
         Employee currentUser = authService.getCurrentUser();
@@ -307,9 +313,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
 
     private void checkMeetingModificationAccess(OneOnOneMeeting meeting) {
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivileged = isPrivileged(currentUser);
 
-        if (!isPrivileged && !currentUser.getId().equals(meeting.getManager().getId())) {
+        if (!currentUser.getId().equals(meeting.getManager().getId())) {
             throw new AccessDeniedException("You do not have permission to modify this meeting.");
         }
     }

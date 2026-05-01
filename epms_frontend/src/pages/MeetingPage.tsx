@@ -15,7 +15,7 @@ import { format } from "date-fns";
 
 const MeetingPage = () => {
   const { user, isManager, isAdmin, isHR } = useAuth();
-  const canSchedule = isManager || isAdmin || isHR;
+  const canSchedule = isManager; // Admins and HR are restricted to history only
 
   const { data: meetings, isLoading } = useGetAllMeetingsQuery(undefined, { skip: !user });
   const { data: employees } = useGetEmployeesQuery();
@@ -25,6 +25,7 @@ const MeetingPage = () => {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [expandedMeetingId, setExpandedMeetingId] = useState<number | null>(null);
+  const [meetingToDelete, setMeetingToDelete] = useState<number | null>(null);
 
   const filteredEmployees = (isAdmin || isHR)
     ? employees
@@ -83,13 +84,13 @@ const MeetingPage = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this meeting?")) {
-      try {
-        await deleteMeeting(id).unwrap();
-      } catch (err: any) {
-        alert(err.data?.message || "Failed to delete meeting");
-      }
+  const handleDelete = async () => {
+    if (!meetingToDelete) return;
+    try {
+      await deleteMeeting(meetingToDelete).unwrap();
+      setMeetingToDelete(null);
+    } catch (err: any) {
+      alert(err.data?.message || "Failed to delete meeting");
     }
   };
 
@@ -131,7 +132,21 @@ const MeetingPage = () => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {meetings?.map((meeting) => (
+        {(isAdmin || isHR) && (
+          <div className="col-span-full text-center py-20 bg-indigo-50 rounded-3xl border-2 border-dashed border-indigo-200">
+            <h3 className="text-indigo-800 font-bold text-xl mb-2">Access Restricted</h3>
+            <p className="text-indigo-600 font-medium">Admins are restricted to viewing performance history only. Meeting details are hidden.</p>
+            <a href="/performance-history" className="mt-4 inline-block px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition">Go to Performance History</a>
+          </div>
+        )}
+
+        {!(isAdmin || isHR) && meetings?.length === 0 && (
+          <div className="col-span-full text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+            <p className="text-gray-400 font-medium">No meetings scheduled yet.</p>
+          </div>
+        )}
+
+        {!(isAdmin || isHR) && meetings?.map((meeting) => (
           <div key={meeting.meetingId} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition group">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-4">
@@ -174,7 +189,7 @@ const MeetingPage = () => {
                       </svg>
                     </button>
                     <button 
-                      onClick={() => handleDelete(meeting.meetingId)}
+                      onClick={() => setMeetingToDelete(meeting.meetingId)}
                       className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
                       title="Delete Meeting"
                     >
@@ -370,6 +385,37 @@ const MeetingPage = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Meeting Confirmation Modal */}
+      {meetingToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 p-8 text-center">
+            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Meeting?</h3>
+            <p className="text-gray-500 text-sm mb-8">
+              This action cannot be undone. All discussion points and comments associated with this meeting will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setMeetingToDelete(null)}
+                className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-6 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition shadow-lg shadow-rose-200"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -383,6 +429,7 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
   const [newComment, setNewComment] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editCommentText, setEditCommentText] = useState("");
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
 
   const handleEditComment = (comment: any) => {
     setEditingCommentId(comment.id);
@@ -409,13 +456,13 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
     }
   };
 
-  const handleDeleteComment = async (commentId: number) => {
-    if (window.confirm("Are you sure you want to delete this comment?")) {
-      try {
-        await deleteComment({ commentId, meetingId }).unwrap();
-      } catch (err) {
-        console.error("Failed to delete comment", err);
-      }
+  const handleDeleteComment = async () => {
+    if (!commentToDelete) return;
+    try {
+      await deleteComment({ commentId: commentToDelete, meetingId }).unwrap();
+      setCommentToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete comment", err);
     }
   };
 
@@ -498,7 +545,7 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
                         </svg>
                       </button>
                       <button 
-                        onClick={() => handleDeleteComment(comment.id)}
+                        onClick={() => setCommentToDelete(comment.id)}
                         className="ml-1 text-gray-300 hover:text-rose-500 transition"
                         title="Delete Comment"
                       >
@@ -533,6 +580,37 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
           </svg>
         </button>
       </form>
+
+      {/* Delete Comment Confirmation Modal */}
+      {commentToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 p-8 text-center">
+            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Comment?</h3>
+            <p className="text-gray-500 text-sm mb-8">
+              Are you sure you want to remove this comment?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCommentToDelete(null)}
+                className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteComment}
+                className="flex-1 px-6 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition shadow-lg shadow-rose-200"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
