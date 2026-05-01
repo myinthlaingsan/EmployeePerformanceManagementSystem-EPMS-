@@ -113,6 +113,8 @@ export interface PerformanceHistoryResponse {
   employeeName: string;
   managerId: number;
   managerName: string;
+  performerId: number;
+  performerName: string;
   sourceType: 'FEEDBACK' | 'MEETING';
   sourceId: number;
   title: string;

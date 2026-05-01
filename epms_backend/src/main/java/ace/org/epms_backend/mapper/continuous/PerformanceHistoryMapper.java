@@ -12,5 +12,7 @@ public interface PerformanceHistoryMapper {
     @Mapping(source = "employee.staffName", target = "employeeName")
     @Mapping(source = "manager.id", target = "managerId")
     @Mapping(source = "manager.staffName", target = "managerName")
+    @Mapping(source = "performer.id", target = "performerId")
+    @Mapping(source = "performer.staffName", target = "performerName")
     PerformanceHistoryResponse toResponse(PerformanceHistory history);
 }

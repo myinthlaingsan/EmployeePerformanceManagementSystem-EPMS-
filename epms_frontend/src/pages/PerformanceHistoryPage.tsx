@@ -96,13 +96,13 @@ export const PerformanceHistoryPage = () => {
                         </div>
                         <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
                           {record.title}
-                          {record.employeeId !== Number(selectedEmpId) ? (
+                          {record.performerId !== Number(selectedEmpId) ? (
                             <span className="text-sm font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-lg">
-                              for {record.employeeName}
+                              by {record.performerName}
                             </span>
                           ) : (
                             <span className="text-sm font-normal text-gray-400 bg-indigo-50 px-2 py-0.5 rounded-lg">
-                              by {record.managerName}
+                              for {record.employeeId === Number(selectedEmpId) ? record.managerName : record.employeeName}
                             </span>
                           )}
                         </h3>

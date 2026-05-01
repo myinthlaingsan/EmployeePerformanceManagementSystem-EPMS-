@@ -23,5 +23,7 @@ public class PerformanceHistoryResponse {
     private String title;
     private String description;
     private Boolean isPrivate;
+    private Long performerId;
+    private String performerName;
     private Instant createdAt;
 }

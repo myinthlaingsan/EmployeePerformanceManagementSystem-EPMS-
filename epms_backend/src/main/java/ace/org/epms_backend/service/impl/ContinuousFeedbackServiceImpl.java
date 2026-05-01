@@ -78,6 +78,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .isPrivate(feedback.getIsPrivate())
                 .createdBy(manager.getId())
                 .manager(manager)
+                .performer(manager)
                 .build();
         historyRepository.save(history);
 
@@ -164,6 +165,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .isPrivate(feedback.getIsPrivate())
                 .createdBy(currentUser.getId())
                 .manager(feedback.getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
 
@@ -189,6 +191,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .isPrivate(feedback.getIsPrivate())
                 .createdBy(currentUser.getId())
                 .manager(feedback.getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
     }
@@ -224,6 +227,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .isPrivate(feedback.getIsPrivate())
                 .createdBy(currentUser.getId())
                 .manager(feedback.getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
 
@@ -306,6 +310,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .isPrivate(reply.getFeedback().getIsPrivate())
                 .createdBy(currentUser.getId())
                 .manager(reply.getFeedback().getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
 
@@ -334,6 +339,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .isPrivate(reply.getFeedback().getIsPrivate())
                 .createdBy(currentUser.getId())
                 .manager(reply.getFeedback().getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
     }

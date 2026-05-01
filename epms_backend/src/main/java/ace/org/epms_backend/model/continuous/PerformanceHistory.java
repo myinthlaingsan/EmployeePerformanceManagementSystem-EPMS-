@@ -41,5 +41,9 @@ public class PerformanceHistory extends BaseEntity {
     @Builder.Default
     private Boolean isPrivate = false;
 
+    @ManyToOne
+    @JoinColumn(name = "performer_id")
+    private Employee performer;
+
     private Long createdBy;
 }

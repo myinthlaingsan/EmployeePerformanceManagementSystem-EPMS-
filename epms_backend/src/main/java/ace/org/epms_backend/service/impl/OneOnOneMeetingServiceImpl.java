@@ -60,6 +60,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .isPrivate(savedMeeting.getIsPrivateNote())
                 .createdBy(savedMeeting.getManager().getId())
                 .manager(savedMeeting.getManager())
+                .performer(savedMeeting.getManager())
                 .build();
         historyRepository.save(history);
 
@@ -112,6 +113,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .isPrivate(updatedMeeting.getIsPrivateNote())
                 .createdBy(authService.getCurrentUser().getId())
                 .manager(updatedMeeting.getManager())
+                .performer(authService.getCurrentUser())
                 .build();
         historyRepository.save(history);
 
@@ -147,6 +149,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .isPrivate(meeting.getIsPrivateNote())
                 .createdBy(currentUser.getId())
                 .manager(meeting.getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
     }
@@ -199,6 +202,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .isPrivate(meeting.getIsPrivateNote())
                 .createdBy(currentUser.getId())
                 .manager(meeting.getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
 
@@ -242,6 +246,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .isPrivate(comment.getMeeting().getIsPrivateNote())
                 .createdBy(currentUser.getId())
                 .manager(comment.getMeeting().getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
 
@@ -274,6 +279,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .isPrivate(comment.getMeeting().getIsPrivateNote())
                 .createdBy(currentUser.getId())
                 .manager(comment.getMeeting().getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
     }
