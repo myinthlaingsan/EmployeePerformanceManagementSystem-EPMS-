@@ -80,8 +80,6 @@ public class Employee extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private EmployeeStatus status;
 
-
-
     private Boolean isActive = true;
 
     @Column(name = "failed_attempts", columnDefinition = "INT DEFAULT 0")
