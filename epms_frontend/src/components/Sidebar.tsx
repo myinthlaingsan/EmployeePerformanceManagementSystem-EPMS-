@@ -16,7 +16,9 @@ import {
   Building2,
   ShieldCheck,
   Briefcase,
-  Zap
+  Zap,
+  Target,
+  Library
 } from "lucide-react";
 
 interface NavItem {
@@ -34,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "360 Feedback", to: "/appraisal/360", icon: Users },
   { label: "1-on-1s", to: "/appraisal/1-on-1", icon: MessageSquare },
   { label: "PIP", to: "/pip", icon: TrendingUp },
+  { label: "Performance Hub", to: "/kpi", icon: Target },
   { label: "Analytics", to: "/hr", icon: BarChart3, adminOnly: true },
 ];
 
@@ -44,6 +47,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { label: "Job Levels", to: "/job-levels", icon: Zap },
   { label: "Positions", to: "/positions", icon: Briefcase },
   { label: "Teams", to: "/teams", icon: Users },
+  { label: "KPI Library", to: "/kpi/library", icon: Library },
   { label: "Permissions", to: "/permissions", icon: ShieldCheck },
   { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck },
 ];

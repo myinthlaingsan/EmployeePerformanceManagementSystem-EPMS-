@@ -11,7 +11,8 @@ import {
   appraisalRoutes,
   adminRoutes,
   pipRoutes,
-  generalRoutes
+  generalRoutes,
+  kpiRoutes
 } from "./routes";
 import TeamKpiDashboard from "./pages/kpi/TeamKpiDashboard";
 
@@ -53,8 +54,13 @@ const App = () => {
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
-            {/* General PIP Routes (excluding new) */}
+            {/* PIP Routes */}
             {pipRoutes.filter(r => !r.adminOnly).map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* KPI General Routes */}
+            {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id'].includes(r.path)).map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
@@ -66,6 +72,11 @@ const App = () => {
 
               {/* PIP Creation Route (Restricted) */}
               {pipRoutes.filter(r => r.adminOnly).map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+
+              {/* KPI Administrative Routes */}
+              {kpiRoutes.filter(r => ['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
             </Route>
@@ -81,7 +92,6 @@ const App = () => {
               }
             >
               <Route path="/approvals" element={<ApprovalPage />} />
-              <Route path="/kpi/team" element={<TeamKpiDashboard />} />
             </Route>
           </Route>
         </Route>
