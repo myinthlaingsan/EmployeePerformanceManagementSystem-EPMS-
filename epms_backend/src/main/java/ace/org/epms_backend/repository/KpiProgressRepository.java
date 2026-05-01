@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface KpiProgressRepository extends JpaRepository<KpiProgress, Long> {
     List<KpiProgress> findByGoalItemIdOrderByIdDesc(Long goalItemId);
+    List<KpiProgress> findByGoalItemGoalSetEmployeeIdOrderByIdDesc(Long employeeId);
 }

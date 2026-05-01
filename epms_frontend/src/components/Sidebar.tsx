@@ -46,7 +46,6 @@ const ADMIN_ITEMS: NavItem[] = [
   { label: "Job Levels", to: "/job-levels", icon: Zap },
   { label: "Positions", to: "/positions", icon: Briefcase },
   { label: "Teams", to: "/teams", icon: Users },
-  { label: "KPI Library", to: "/kpi/library", icon: Library },
   { label: "Permissions", to: "/permissions", icon: ShieldCheck },
   { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck },
 ];
@@ -89,7 +88,7 @@ const Sidebar = () => {
               {item.label}
             </NavLink>
           ))}
-          
+
           {/* Performance Hub Accordion */}
           <div>
             <button
@@ -102,7 +101,7 @@ const Sidebar = () => {
               </div>
               <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${perfOpen ? 'rotate-180' : ''}`} />
             </button>
-            
+
             {perfOpen && (
               <div className="bg-gray-50/50 py-1">
                 <NavLink
@@ -121,6 +120,24 @@ const Sidebar = () => {
                 >
                   My Goals
                 </NavLink>
+                <NavLink
+                  to="/kpi/update"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                  }
+                >
+                  Update Progress
+                </NavLink>
+                {(isAdmin || isHR) && (
+                  <NavLink
+                    to="/kpi/manage"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                    }
+                  >
+                    KPI Assignment
+                  </NavLink>
+                )}
                 {(isAdmin || isHR) && (
                   <NavLink
                     to="/kpi/library"

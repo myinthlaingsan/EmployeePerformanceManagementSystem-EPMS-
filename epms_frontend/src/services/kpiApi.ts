@@ -108,6 +108,11 @@ export const kpiApi = api.injectEndpoints({
       invalidatesTags: ['GoalSet', 'Progress'],
     }),
 
+    getProgressHistory: builder.query<ApiResponse<KpiProgressHistory[]>, { employeeId: number; limit?: number }>({
+      query: ({ employeeId, limit = 10 }) => `/kpi/progress/history?employeeId=${employeeId}&limit=${limit}`,
+      providesTags: ['Progress'],
+    }),
+
     // ==================== Revision ====================
     reviseKpi: builder.mutation<
       ApiResponse<GoalSetResponse>,
@@ -167,5 +172,6 @@ export const {
   useCalculateScoreMutation,
   useGetGoalSetByEmployeeQuery,
   useGetGoalSetByIdQuery,
+  useGetProgressHistoryQuery,
   useGetActiveCycleQuery,
 } = kpiApi;

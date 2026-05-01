@@ -42,4 +42,6 @@ public interface KpiService {
     GoalSetResponse getGoalSetByEmployee(Long employeeId, Long cycleId);
 
     GoalSetResponse getGoalSetById(Long id);
+
+    List<KpiProgressResponse> getRecentProgress(Long employeeId, int limit);
 }

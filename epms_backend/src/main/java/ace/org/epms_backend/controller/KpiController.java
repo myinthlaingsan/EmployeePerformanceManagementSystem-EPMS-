@@ -114,4 +114,9 @@ public class KpiController {
     public ResponseEntity<ApiResponse<GoalSetResponse>> getGoalSetById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(kpiService.getGoalSetById(id)));
     }
+
+    @GetMapping("/progress/history")
+    public ResponseEntity<ApiResponse<List<KpiProgressResponse>>> getRecentProgress(@RequestParam Long employeeId, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.getRecentProgress(employeeId, limit)));
+    }
 }
