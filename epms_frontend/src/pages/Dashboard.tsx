@@ -23,7 +23,7 @@ const Dashboard = () => {
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <p className="text-[10px] font-bold text-brand-primary uppercase tracking-[0.2em] mb-2">Performance Command Center</p>
-          <h1 className="text-4xl font-bold text-text-title tracking-tight">
+          <h1 className="text-4xl font-black text-brand-primary tracking-tight">
             Welcome back, <span className="text-brand-primary">{user.staffName.split(' ')[0]}</span>
           </h1>
           <p className="text-text-muted mt-2 font-medium">
@@ -44,15 +44,15 @@ const Dashboard = () => {
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {metrics.map((m) => (
-          <div key={m.label} className="bg-white p-6 rounded-3xl border border-surface-border shadow-premium flex items-center gap-5 hover:shadow-hover transition-all cursor-default group">
-            <div className={`w-14 h-14 rounded-2xl ${m.bg} flex items-center justify-center transition-transform group-hover:scale-110`}>
-              <svg className={`w-7 h-7 ${m.color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={m.icon} />
-              </svg>
-            </div>
+          <div key={m.label} className={`bg-white p-8 rounded-[2rem] border border-surface-border border-l-4 ${m.color.replace('text-', 'border-')} shadow-premium flex items-center justify-between hover:shadow-hover transition-all cursor-default group`}>
             <div>
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{m.label}</p>
-              <p className="text-2xl font-bold text-text-title">{m.value}</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">{m.label}</p>
+              <p className="text-3xl font-black text-brand-primary">{m.value}</p>
+            </div>
+            <div className={`w-14 h-14 rounded-2xl ${m.bg} flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm`}>
+              <svg className={`w-7 h-7 ${m.color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={m.icon} />
+              </svg>
             </div>
           </div>
         ))}
@@ -95,10 +95,10 @@ const Dashboard = () => {
           </div>
 
           {/* Activity/Task Section */}
-          <section className="bg-white p-8 rounded-[2.5rem] border border-surface-border shadow-premium">
+          <section className="bg-white p-10 rounded-[2.5rem] border border-surface-border shadow-premium">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold text-text-title tracking-tight">Pending Actions</h2>
-              <button className="text-brand-primary text-xs font-bold uppercase tracking-widest hover:underline">View All</button>
+              <h2 className="text-xl font-black text-brand-primary tracking-tight">Pending Actions</h2>
+              <button className="text-brand-primary text-[10px] font-bold uppercase tracking-widest hover:underline">See Ledger</button>
             </div>
             <div className="space-y-4">
                <div className="flex items-center justify-between p-5 bg-surface-base rounded-2xl border border-surface-border group hover:border-brand-secondary transition-colors">
