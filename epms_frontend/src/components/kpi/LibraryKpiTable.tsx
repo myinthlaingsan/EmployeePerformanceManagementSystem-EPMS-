@@ -9,19 +9,19 @@ interface LibraryKpiTableProps {
   totalWeight: number;
 }
 
-const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({ 
-  details, 
-  categories, 
-  onDetailChange, 
-  onAddRow, 
+const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
+  details,
+  categories,
+  onDetailChange,
+  onAddRow,
   onRemoveRow,
-  totalWeight 
+  totalWeight
 }) => {
   return (
     <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-900">KPI Items</h2>
-        <button 
+        <button
           onClick={onAddRow}
           className="text-blue-600 text-sm font-bold hover:text-blue-700 transition flex items-center gap-1"
         >

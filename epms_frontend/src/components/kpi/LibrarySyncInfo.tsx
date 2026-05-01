@@ -7,7 +7,7 @@ const LibrarySyncInfo: React.FC = () => {
       <div>
         <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-0.5">Validation Rules</h4>
         <p className="text-xs text-blue-700 leading-relaxed font-medium">
-          Weights must sum to 100% and individual goals cannot exceed 35%. 
+          Weights must sum to 100% and individual goals cannot exceed 35%.
           Use TAB to navigate cells quickly.
         </p>
       </div>

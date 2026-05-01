@@ -1,13 +1,13 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
-import { 
-  LayoutDashboard, 
-  ClipboardCheck, 
-  User, 
-  Users, 
-  MessageSquare, 
-  TrendingUp, 
+import {
+  LayoutDashboard,
+  ClipboardCheck,
+  User,
+  Users,
+  MessageSquare,
+  TrendingUp,
   BarChart3,
   ChevronDown,
   Plus,
@@ -36,7 +36,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: "360 Feedback", to: "/appraisal/360", icon: Users },
   { label: "1-on-1s", to: "/appraisal/1-on-1", icon: MessageSquare },
   { label: "PIP", to: "/pip", icon: TrendingUp },
-  { label: "Performance Hub", to: "/kpi", icon: Target },
   { label: "Analytics", to: "/hr", icon: BarChart3, adminOnly: true },
 ];
 
@@ -56,6 +55,7 @@ const Sidebar = () => {
   const { logout, isAdmin, isHR } = useAuth();
   const navigate = useNavigate();
   const [mgmtOpen, setMgmtOpen] = useState(false);
+  const [perfOpen, setPerfOpen] = useState(true);
 
   const activeClass = "bg-blue-50 text-blue-600 border-r-4 border-blue-600";
   const inactiveClass = "text-gray-500 hover:bg-gray-50 hover:text-gray-900";
@@ -81,8 +81,7 @@ const Sidebar = () => {
               key={item.label}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${
-                  isActive ? activeClass : inactiveClass
+                `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${isActive ? activeClass : inactiveClass
                 }`
               }
             >
@@ -90,6 +89,51 @@ const Sidebar = () => {
               {item.label}
             </NavLink>
           ))}
+          
+          {/* Performance Hub Accordion */}
+          <div>
+            <button
+              onClick={() => setPerfOpen(!perfOpen)}
+              className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Target className="w-5 h-5" strokeWidth={2} />
+                Performance Hub
+              </div>
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${perfOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {perfOpen && (
+              <div className="bg-gray-50/50 py-1">
+                <NavLink
+                  to="/kpi"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                  }
+                >
+                  Intelligence Hub
+                </NavLink>
+                <NavLink
+                  to="/kpi/my"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                  }
+                >
+                  My Goals
+                </NavLink>
+                {(isAdmin || isHR) && (
+                  <NavLink
+                    to="/kpi/library"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                    }
+                  >
+                    KPI Library
+                  </NavLink>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Management Accordion */}
           {(isAdmin || isHR) && (
@@ -111,8 +155,7 @@ const Sidebar = () => {
                       key={item.label}
                       to={item.to}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 pl-12 pr-6 py-2.5 text-xs font-medium transition-all ${
-                          isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
+                        `flex items-center gap-3 pl-12 pr-6 py-2.5 text-xs font-medium transition-all ${isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
                         }`
                       }
                     >

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useUpdateProgressMutation } from '../../../services/kpiApi';
-import type { GoalItemResponse } from '../../../features/kpi/kpiTypes';
+import { useUpdateProgressMutation } from '../../services/kpiApi';
+import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
 
 interface ProgressUpdateModalProps {
   item: GoalItemResponse;

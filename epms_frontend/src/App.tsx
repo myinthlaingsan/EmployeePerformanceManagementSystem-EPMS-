@@ -14,6 +14,7 @@ import {
   generalRoutes,
   kpiRoutes
 } from "./routes";
+import { ActiveCycleProvider } from "./context/ActiveCycleContext";
 import TeamKpiDashboard from "./pages/kpi/TeamKpiDashboard";
 
 // Specialized Manager Component (Temporary here, can be moved later)
@@ -43,7 +44,7 @@ const App = () => {
 
         {/* Protected Routes Wrapper */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
+          <Route element={<ActiveCycleProvider><MainLayout /></ActiveCycleProvider>}>
             {/* General Routes (Dashboard, Profile, etc.) */}
             {generalRoutes.map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
