@@ -1,32 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { appraisalApi } from '../../api/appraisalApi';
-import type { Appraisal } from '../../types/appraisal';
+import { useGetEmployeeAssessmentQuery } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
 
 const AppraisalDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [appraisal, setAppraisal] = useState<Appraisal | null>(null);
-  const [loading, setLoading] = useState(true);
+  
+  const { data: appraisal, isLoading } = useGetEmployeeAssessmentQuery(id || '', { skip: !id });
 
-  useEffect(() => {
-    const fetchDetail = async () => {
-      if (!id) return;
-      try {
-        const data = await appraisalApi.getAppraisalById(id);
-        setAppraisal(data);
-      } catch (error) {
-        console.error('Failed to fetch appraisal detail:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDetail();
-  }, [id]);
-
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
-  if (!appraisal) return <div className="p-8 text-center">Appraisal not found.</div>;
+  if (isLoading) return <div className="p-8 text-center text-slate-500 font-bold">Loading Details...</div>;
+  if (!appraisal) return <div className="p-8 text-center text-slate-500 font-bold">Appraisal not found.</div>;
 
   const steps = [
     { name: 'Self-Assessment', status: appraisal.selfAssessment.isSubmitted ? 'completed' : 'current' },
@@ -74,20 +58,20 @@ const AppraisalDetail: React.FC = () => {
             <h2 className="text-xl font-bold text-slate-800 mb-4">Summary</h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="p-4 bg-slate-50 rounded-xl">
-                <p className="text-slate-500 mb-1">Employee ID</p>
-                <p className="font-bold text-slate-800">{appraisal.employeeId}</p>
+                <p className="text-slate-500 mb-1">Employee Name</p>
+                <p className="font-bold text-slate-800">{appraisal.employeeInfo?.staffName || 'N/A'}</p>
               </div>
               <div className="p-4 bg-slate-50 rounded-xl">
-                <p className="text-slate-500 mb-1">Cycle</p>
-                <p className="font-bold text-slate-800">{appraisal.cycleId}</p>
+                <p className="text-slate-500 mb-1">Employee Code</p>
+                <p className="font-bold text-slate-800">{appraisal.employeeInfo?.employeeCode || 'N/A'}</p>
               </div>
               <div className="p-4 bg-slate-50 rounded-xl">
-                <p className="text-slate-500 mb-1">Assigned Date</p>
-                <p className="font-bold text-slate-800">{format(new Date(appraisal.createdAt), 'MMM dd, yyyy')}</p>
+                <p className="text-slate-500 mb-1">Cycle Name</p>
+                <p className="font-bold text-slate-800">{appraisal.cycleName || 'Annual Review 2024'}</p>
               </div>
               <div className="p-4 bg-slate-50 rounded-xl">
                 <p className="text-slate-500 mb-1">Last Updated</p>
-                <p className="font-bold text-slate-800">{format(new Date(appraisal.updatedAt), 'MMM dd, yyyy')}</p>
+                <p className="font-bold text-slate-800">{appraisal.updatedAt ? format(new Date(appraisal.updatedAt), 'MMM dd, yyyy') : 'N/A'}</p>
               </div>
             </div>
           </div>

@@ -13,21 +13,21 @@ export const store = configureStore({
         [api.reducerPath]: api.reducer,
         [kpiApi.reducerPath]: kpiApi.reducer,
     },
-    // devTools: {
-    //     trace: true,
-    //     traceLimit: 25,
-    //     actionSanitizer: (action) => {
-    //         if(action.type?.startsWith('api/')){
-    //             return{
-    //                 ...action,
-    //                 payload: 'RTK Query internal'
-    //             };
-    //         }
-    //         return action;
-    //     }
-    // },
-    middleware: (getDefaultMiddleware) => 
-        getDefaultMiddleware().concat(api.middleware, kpiApi.middleware),
+    devTools: {
+        trace: true,
+        traceLimit: 25,
+        actionSanitizer: (action) => {
+            if (action.type?.startsWith('api/')) {
+                return {
+                    ...action,
+                    payload: 'RTK Query internal'
+                };
+            }
+            return action;
+        }
+    },
+    middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware().concat(api.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

@@ -12,7 +12,7 @@ import {
 } from "../features/notification/notificationSlice";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { HiOutlineBell, HiOutlineMailOpen, HiOutlineInbox } from "react-icons/hi";
+import { Bell, MailOpen, Inbox } from "lucide-react";
 
 export const NotificationBell: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -63,12 +63,12 @@ export const NotificationBell: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-500 hover:bg-gray-50 hover:text-blue-600 rounded-lg transition-all duration-200 focus:outline-none"
       >
-        <HiOutlineBell className="w-6 h-6" />
+        <Bell className="w-5 h-5" strokeWidth={2} />
 
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 w-4">
+          <span className="absolute top-1.5 right-1.5 flex h-3.5 w-3.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] font-bold text-white items-center justify-center">
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 text-[9px] font-bold text-white items-center justify-center">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           </span>
@@ -91,7 +91,7 @@ export const NotificationBell: React.FC = () => {
                 onClick={handleMarkAllAsRead}
                 className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tight flex items-center gap-1"
               >
-                <HiOutlineMailOpen className="w-3 h-3" />
+                <MailOpen className="w-3 h-3" />
                 Mark all
               </button>
             )}
@@ -100,7 +100,7 @@ export const NotificationBell: React.FC = () => {
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 text-gray-400">
-                <HiOutlineInbox className="w-12 h-12 mb-3 opacity-20" />
+                <Inbox className="w-12 h-12 mb-3 opacity-20" strokeWidth={1.5} />
                 <p className="text-xs font-medium">All caught up!</p>
               </div>
             ) : (
@@ -131,7 +131,7 @@ export const NotificationBell: React.FC = () => {
                 setIsOpen(false);
                 navigate("/notifications");
               }}
-              className="text-xs font-bold text-gray-600 hover:text-blue-600 transition-colors uppercase tracking-widest"
+              className="text-sm font-bold text-gray-600 hover:text-blue-600 transition-colors uppercase tracking-widest text-[10px]"
             >
               View all
             </button>

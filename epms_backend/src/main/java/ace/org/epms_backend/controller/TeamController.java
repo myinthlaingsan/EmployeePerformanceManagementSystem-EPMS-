@@ -21,6 +21,11 @@ public class TeamController {
         return new ResponseEntity<>(teamService.createTeam(request), HttpStatus.CREATED);
     }
 
+    @GetMapping
+    public ResponseEntity<List<TeamResponse>> getAllTeams() {
+        return ResponseEntity.ok(teamService.getAllTeams());
+    }
+
     @PostMapping("/assign")
     public ResponseEntity<Void> assignEmployee(@RequestBody TeamAssignmentRequest request) {
         teamService.assignEmployeeToTeam(request);

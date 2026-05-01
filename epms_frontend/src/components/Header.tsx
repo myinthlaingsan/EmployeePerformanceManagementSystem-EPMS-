@@ -2,10 +2,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { NotificationBell } from "./NotificationBell";
 import { 
-  HiOutlineSearch, 
-  HiOutlineQuestionMarkCircle, 
-  HiOutlineCog 
-} from "react-icons/hi";
+  Search, 
+  HelpCircle, 
+  Settings 
+} from "lucide-react";
 
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard": "Performance Orchestrator",
@@ -37,7 +37,7 @@ const Header = () => {
       {/* Search Bar */}
       <div className="flex-1 max-w-md mx-8">
         <div className="relative group">
-          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" strokeWidth={2.5} />
           <input
             type="text"
             placeholder="Search performance records..."
@@ -54,7 +54,7 @@ const Header = () => {
           className="p-2 text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-all"
           title="Help"
         >
-          <HiOutlineQuestionMarkCircle className="w-6 h-6" />
+          <HelpCircle className="w-5 h-5" strokeWidth={2} />
         </button>
 
         <button 
@@ -62,7 +62,7 @@ const Header = () => {
           title="Settings"
           onClick={() => navigate("/profile")}
         >
-          <HiOutlineCog className="w-6 h-6" />
+          <Settings className="w-5 h-5" strokeWidth={2} />
         </button>
 
         {/* User Profile */}

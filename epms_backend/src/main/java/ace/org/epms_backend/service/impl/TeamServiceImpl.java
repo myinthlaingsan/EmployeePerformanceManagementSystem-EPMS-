@@ -81,4 +81,16 @@ public class TeamServiceImpl implements TeamService {
                     return res;
                 }).collect(Collectors.toList());
     }
+
+    @Override
+    public List<TeamResponse> getAllTeams() {
+        return teamRepository.findAll().stream()
+                .map(team -> {
+                    TeamResponse res = new TeamResponse();
+                    res.setTeamId(team.getTeamId());
+                    res.setTeamName(team.getTeamName());
+                    res.setDepartmentName(team.getDepartment().getDepartmentName());
+                    return res;
+                }).collect(Collectors.toList());
+    }
 }

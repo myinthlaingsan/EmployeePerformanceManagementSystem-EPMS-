@@ -91,3 +91,28 @@ export interface RoleLevelPermissionResponse {
   permissionName: string;
 }
 
+export interface TeamRequest {
+  teamName: string;
+  departmentId: number;
+}
+
+export interface TeamResponse {
+  teamId: number;
+  teamName: string;
+  departmentName: string;
+}
+
+export interface TeamAssignmentRequest {
+  employeeId: number;
+  teamId: number;
+  isPrimary: boolean;
+}
+
+export interface TeamMemberResponse {
+  employeeId: number;
+  staffName: string;
+  positionName: string | null;
+  isPrimary: boolean;
+}
+
+

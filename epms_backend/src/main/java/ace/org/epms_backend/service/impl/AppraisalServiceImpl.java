@@ -11,10 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import ace.org.epms_backend.model.*;
 import ace.org.epms_backend.model.appraisal.*;
-import ace.org.epms_backend.model.employee.*;
-
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.NotificationType;
@@ -39,7 +36,7 @@ public class AppraisalServiceImpl implements AppraisalService {
     private final AppraisalHistoryRepository historyRepo;
     private final AppraisalFormRepository formRepo;
     private final PerformanceCategoryRepository performanceCategoryRepo;
-    private final EmployeeDepartmentRepository employeeDeptRepo;
+    private final EmployeeDepartmentRepository employeeDepartmentRepo;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -332,14 +329,14 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = getAppraisalOrThrow(id);
 
         // Employee Info
-        String departmentName = employeeDeptRepo.findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
-                .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : null)
-                .orElse(null);
+        String deptName = employeeDepartmentRepo.findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
+                .map(ed -> ed.getCurrentDepartment().getDepartmentName())
+                .orElse("N/A");
 
         AppraisalDetailsResponse.EmployeeInfo empInfo = AppraisalDetailsResponse.EmployeeInfo.builder()
                 .staffName(appraisal.getEmployee().getStaffName())
                 .employeeCode(appraisal.getEmployee().getEmployeeCode())
-                .department(departmentName)
+                .department(deptName)
                 .position(appraisal.getEmployee().getPosition() != null
                         ? appraisal.getEmployee().getPosition().getPositionName()
                         : null)

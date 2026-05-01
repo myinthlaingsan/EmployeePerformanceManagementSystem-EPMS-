@@ -1,42 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { appraisalApi } from '../../api/appraisalApi';
-import type { Appraisal } from '../../types/appraisal';
-
+import { useGetEmployeeAssessmentQuery } from '../../features/appraisal/appraisalApi';
 import ScoreBadge from '../../components/appraisal/ScoreBadge';
 
 const ResultPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [appraisal, setAppraisal] = useState<Appraisal | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchDetail = async () => {
-      if (!id) return;
-      try {
-        const data = await appraisalApi.getAppraisalById(id);
-        setAppraisal(data);
-      } catch (error) {
-        console.error('Failed to fetch result detail:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDetail();
-  }, [id]);
+  const { data: appraisal, isLoading } = useGetEmployeeAssessmentQuery(id || '', { skip: !id });
 
-  if (loading) return <div className="p-8 text-center">Loading Results...</div>;
-  if (!appraisal) return <div className="p-8 text-center">Appraisal not found.</div>;
-
-  const calculateAverage = (responses: any[]) => {
-    if (!responses || responses.length === 0) return 0;
-    const sum = responses.reduce((acc, curr) => acc + (curr.rating || 0), 0);
-    return (sum / responses.length).toFixed(1);
+  const calculateAverage = (responses: any) => {
+    if (!responses) return 0;
+    const values = Object.values(responses).map((r: any) => r.rating || 0);
+    if (values.length === 0) return 0;
+    const sum = values.reduce((acc, curr) => acc + curr, 0);
+    return (sum / values.length).toFixed(1);
   };
 
-  const selfAvg = calculateAverage(appraisal.selfAssessment.responses);
-  const managerAvg = calculateAverage(appraisal.managerEvaluation.responses);
+  const selfAvg = useMemo(() => calculateAverage(appraisal?.selfAssessment?.responses), [appraisal]);
+  const managerAvg = useMemo(() => calculateAverage(appraisal?.managerEvaluation?.responses), [appraisal]);
+
+  if (isLoading) return <div className="p-8 text-center text-slate-500 font-bold">Loading Results...</div>;
+  if (!appraisal) return <div className="p-8 text-center text-slate-500 font-bold">Appraisal results not found.</div>;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -89,7 +74,7 @@ const ResultPage: React.FC = () => {
       </div>
 
       <div className="flex gap-4">
-        <button 
+        <button
           onClick={() => navigate('/appraisal')}
           className="flex-1 py-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-50 transition-all"
         >
