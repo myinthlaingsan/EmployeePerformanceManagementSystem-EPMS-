@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetGoalSetByEmployeeQuery } from '../../services/kpiApi';
-import ProgressUpdateModal from './components/ProgressUpdateModal';
+import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
 import {
   calculateProgressPercent,
   getStatusColor

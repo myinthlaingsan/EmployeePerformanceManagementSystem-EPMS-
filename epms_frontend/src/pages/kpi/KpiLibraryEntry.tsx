@@ -18,9 +18,9 @@ interface FormKpiDetail extends KpiLibraryDetailRequest {
 }
 
 // Sub-components
-import LibraryBasicInfo from './components/LibraryBasicInfo';
-import LibraryKpiTable from './components/LibraryKpiTable';
-import LibrarySyncInfo from './components/LibrarySyncInfo';
+import LibraryBasicInfo from '../../components/kpi/LibraryBasicInfo';
+import LibraryKpiTable from '../../components/kpi/LibraryKpiTable';
+import LibrarySyncInfo from '../../components/kpi/LibrarySyncInfo';
 
 const KpiLibraryEntry: React.FC = () => {
   const navigate = useNavigate();
