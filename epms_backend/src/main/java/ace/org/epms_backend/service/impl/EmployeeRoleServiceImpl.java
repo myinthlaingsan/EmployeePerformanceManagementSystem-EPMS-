@@ -12,6 +12,10 @@ import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.EmployeeRoleRepository;
 import ace.org.epms_backend.repository.RoleRepository;
 import ace.org.epms_backend.service.EmployeeRoleService;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +30,7 @@ public class EmployeeRoleServiceImpl implements EmployeeRoleService {
     private final EmployeeRoleRepository employeeRoleRepository;
     private final EmployeeRepository employeeRepository;
     private final RoleRepository roleRepository;
+    private final AuditService auditService;
 
     @Override
     @Transactional
@@ -43,8 +48,15 @@ public class EmployeeRoleServiceImpl implements EmployeeRoleService {
         EmployeeRole employeeRole = new EmployeeRole();
         employeeRole.setEmployee(employee);
         employeeRole.setRole(role);
+        EmployeeRole saved = employeeRoleRepository.save(employeeRole);
 
-        employeeRoleRepository.save(employeeRole);
+        auditService.log(AuditRequest.builder()
+                .tableName("employee_roles")
+                .recordId(saved.getEmployee().getId())
+                .action(AuditAction.INSERT)
+                .newState(saved)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 
     @Override
@@ -66,7 +78,12 @@ public class EmployeeRoleServiceImpl implements EmployeeRoleService {
         if (!employeeRoleRepository.existsByEmployee_IdAndRole_RoleId(employeeId, roleId)) {
             throw new NotFoundException("Employee does not have this role");
         }
+
         employeeRoleRepository.deleteByEmployee_IdAndRole_RoleId(employeeId, roleId);
+
+        auditService.log(AuditRequest.builder().tableName("employee_roles").recordId(null) // ID is gone
+                .action(AuditAction.DELETE).oldState("Employee: " + employeeId + ", Role: " + roleId)
+                .status(AuditStatus.SUCCESS).build());
     }
 
     @Override

@@ -112,6 +112,15 @@ public class EmployeeServiceImpl implements EmployeeService {
 
                 applicationEventPublisher.publishEvent(
                                 new EmployeeCreatedEvent(savedEmployee.getId(), token));
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(savedEmployee.getId())
+                                .action(AuditAction.INSERT)
+                                .newState(savedEmployee)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
+
                 return mapToResponse(savedEmployee);
         }
 
@@ -128,7 +137,15 @@ public class EmployeeServiceImpl implements EmployeeService {
 
                 emp.setPassword(passwordEncoder.encode(newPassword));
                 emp.setStatus(EmployeeStatus.ACTIVE);
-                employeeRepository.save(emp);
+                Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
 
                 // Notify Account Activated
                 applicationEventPublisher.publishEvent(NotificationEvent.builder()
@@ -170,7 +187,16 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
                 emp.setPosition(position);
                 emp.setLevel(position.getLevel()); // Set level from position
+
                 Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
 
                 // Update Manager (Reporting Line)
                 if (request.getDirectManagerId() != null) {
@@ -207,7 +233,15 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
 
                 emp.setIsActive(false);
-                employeeRepository.save(emp);
+                Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
         }
 
         @Override
@@ -215,6 +249,15 @@ public class EmployeeServiceImpl implements EmployeeService {
                 Employee emp = employeeRepository.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
                 emp.setStatus(EmployeeStatus.ACTIVE);
+                Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
         }
 
         @Override
@@ -222,6 +265,15 @@ public class EmployeeServiceImpl implements EmployeeService {
                 Employee emp = employeeRepository.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
                 emp.setStatus(EmployeeStatus.INACTIVE);
+                Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
         }
 
         @Override
@@ -285,7 +337,15 @@ public class EmployeeServiceImpl implements EmployeeService {
                         throw new PasswordIncorrectException("Old password incorrect");
                 }
                 emp.setPassword(passwordEncoder.encode(request.getNewPassword()));
-                employeeRepository.save(emp);
+                Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
 
                 // Notify Password Changed
                 applicationEventPublisher.publishEvent(NotificationEvent.builder()

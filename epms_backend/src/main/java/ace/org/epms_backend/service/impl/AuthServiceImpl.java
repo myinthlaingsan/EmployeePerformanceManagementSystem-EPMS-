@@ -21,6 +21,10 @@ import ace.org.epms_backend.service.JwtService;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -53,6 +57,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final AuditService auditService;
 
     @Override
     public AuthResponse login(AuthRequest authDto) {
@@ -123,7 +128,17 @@ public class AuthServiceImpl implements AuthService {
         employee.setAccountLocked(false);
         employee.setFailedLoginAttempts(0);
         employee.setLockTime(null);
-        return employeeRepository.save(employee);
+        Employee unlocked = employeeRepository.save(employee);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("employees")
+                .recordId(unlocked.getId())
+                .action(AuditAction.UPDATE)
+                .newState(unlocked)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        return unlocked;
     }
 
     @Override
@@ -185,6 +200,14 @@ public class AuthServiceImpl implements AuthService {
         emp.setLockTime(null);
 
         employeeRepository.save(emp);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("employees")
+                .recordId(emp.getId())
+                .action(AuditAction.UPDATE)
+                .newState(emp)
+                .status(AuditStatus.SUCCESS)
+                .build());
 
         // Notify Password Reset
         applicationEventPublisher.publishEvent(NotificationEvent.builder()
