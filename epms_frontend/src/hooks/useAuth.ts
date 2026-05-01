@@ -1,7 +1,7 @@
 import type { RootState } from "../app/store";
 import { logout } from "../features/auth/authSlice";
 import { useAppDispatch, useAppSelector } from "./reduxHooks";
-import { useLogoutUserApiMutation } from "../features/auth/authApi";
+import { useLogoutUserApiMutation, useGetMeQuery } from "../features/auth/authApi";
 
 const normalizeRole = (role: string) => role.replace("ROLE_", "");
 
@@ -12,6 +12,10 @@ export const useAuth = () => {
   const { user, isAuthenticated, accessToken, refreshToken } = useAppSelector(
     (state: RootState) => state.auth,
   );
+
+  const { isLoading } = useGetMeQuery(undefined, {
+    skip: !accessToken || !!user,
+  });
 
   const logoutUser = async () => {
     try {
@@ -43,6 +47,7 @@ export const useAuth = () => {
   return {
     user,
     isAuthenticated,
+    isLoading,
     accessToken,
     refreshToken,
     logout: logoutUser,
