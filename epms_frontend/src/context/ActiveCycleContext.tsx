@@ -1,5 +1,5 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useGetActiveCycleQuery } from '../features/kpi/kpiApi';
+import { useGetActiveCycleQuery } from '../services/kpiApi';
 
 interface ActiveCycleContextType {
   activeCycleId: number;
@@ -11,7 +11,7 @@ const ActiveCycleContext = createContext<ActiveCycleContextType | undefined>(und
 
 export const ActiveCycleProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { data: cycleResponse, isLoading } = useGetActiveCycleQuery();
-  
+
   // Default to 1 if no active cycle is found (backward compatibility)
   const activeCycleId = cycleResponse?.data?.cycleId || 1;
   const activeCycleName = cycleResponse?.data?.cycleName || 'Current Appraisal Cycle';

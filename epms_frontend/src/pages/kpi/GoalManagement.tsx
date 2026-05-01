@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  useGetEmployeesQuery 
+import {
+  useGetEmployeesQuery
 } from '../../features/employee/employeeapi';
-import { 
-  useGetAllLibrariesQuery, 
-  useAssignKpiToEmployeeMutation 
-} from '../../features/kpi/kpiApi';
+import {
+  useGetAllLibrariesQuery,
+  useAssignKpiToEmployeeMutation
+} from '../../services/kpiApi';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ const GoalManagement: React.FC = () => {
 
   const handleAssign = async () => {
     if (!selectedEmployeeId || selectedLibraryId === 0) return;
-    
+
     try {
       await assignKpi({
         employeeId: selectedEmployeeId,
@@ -97,7 +97,7 @@ const GoalManagement: React.FC = () => {
               <h3 className="text-lg font-bold text-gray-900">Assign KPI Library</h3>
               <p className="text-sm text-gray-500 mt-1">Select a template to assign to the employee.</p>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Select KPI Template</label>

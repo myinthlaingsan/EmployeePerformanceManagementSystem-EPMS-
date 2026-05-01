@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useUpdateProgressMutation } from '../../../features/kpi/kpiApi';
+import { useUpdateProgressMutation } from '../../../services/kpiApi';
 import type { GoalItemResponse } from '../../../features/kpi/kpiTypes';
 
 interface ProgressUpdateModalProps {
@@ -67,18 +67,18 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
             </div>
 
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <div className="flex justify-between text-xs font-bold mb-1.5">
-                    <span className="text-blue-700">Calculated Completion</span>
-                    <span className="text-blue-700">
-                        {Math.round((actualValue / item.targetValue) * 100)}%
-                    </span>
-                </div>
-                <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
-                    <div 
-                        className="bg-blue-600 h-full transition-all duration-500" 
-                        style={{ width: `${Math.min((actualValue / item.targetValue) * 100, 100)}%` }}
-                    />
-                </div>
+              <div className="flex justify-between text-xs font-bold mb-1.5">
+                <span className="text-blue-700">Calculated Completion</span>
+                <span className="text-blue-700">
+                  {Math.round((actualValue / item.targetValue) * 100)}%
+                </span>
+              </div>
+              <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-full transition-all duration-500"
+                  style={{ width: `${Math.min((actualValue / item.targetValue) * 100, 100)}%` }}
+                />
+              </div>
             </div>
           </div>
 

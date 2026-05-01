@@ -1,6 +1,5 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import type { ApiResponse } from '../../services/ApiResponse';
-import { baseQueryWithReauth } from '../../services/baseQueryWithReauth';
+import { api } from './api';
+import type { ApiResponse } from './ApiResponse';
 import type {
   KpiLibraryRequest,
   KpiLibraryResponse,
@@ -11,15 +10,10 @@ import type {
   ProgressRequest,
   KpiRevisionRequest,
   KpiScoreResponse,
-  KpiHistoryLog,
-} from './kpiTypes';
+} from '../features/kpi/kpiTypes';
 
-export const kpiApi = createApi({
-  reducerPath: 'kpiApi',
-  baseQuery: baseQueryWithReauth,
-  tagTypes: ['Library', 'GoalSet', 'Progress', 'Score', 'Category'],
+export const kpiApi = api.injectEndpoints({
   endpoints: (builder) => ({
-
     // ==================== Categories ====================
     getCategories: builder.query<ApiResponse<KpiCategory[]>, void>({
       query: () => '/kpi/categories',

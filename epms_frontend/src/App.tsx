@@ -13,6 +13,7 @@ import {
   pipRoutes,
   generalRoutes
 } from "./routes";
+import TeamKpiDashboard from "./pages/kpi/TeamKpiDashboard";
 
 // Specialized Manager Component (Temporary here, can be moved later)
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;

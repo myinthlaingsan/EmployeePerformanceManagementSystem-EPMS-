@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { useGetGoalSetByEmployeeQuery } from '../../features/kpi/kpiApi';
+import { useGetGoalSetByEmployeeQuery } from '../../services/kpiApi';
 import ProgressUpdateModal from './components/ProgressUpdateModal';
-import { 
-  calculateProgressPercent, 
-  getStatusColor 
+import {
+  calculateProgressPercent,
+  getStatusColor
 } from '../../utils/kpiCalculations';
 
 import { useActiveCycle } from '../../context/ActiveCycleContext';
@@ -12,10 +12,10 @@ import { useActiveCycle } from '../../context/ActiveCycleContext';
 const MyKpiDashboard: React.FC = () => {
   const { user } = useAuth();
   const { activeCycleId } = useActiveCycle();
-  
-  const { data: goalSetResponse, isLoading } = useGetGoalSetByEmployeeQuery({ 
-    employeeId: user?.id || 0, 
-    cycleId: activeCycleId 
+
+  const { data: goalSetResponse, isLoading } = useGetGoalSetByEmployeeQuery({
+    employeeId: user?.id || 0,
+    cycleId: activeCycleId
   }, { skip: !user });
 
   const [selectedKpi, setSelectedKpi] = useState<any>(null);
@@ -67,8 +67,8 @@ const MyKpiDashboard: React.FC = () => {
         {kpis.map((kpi) => {
           const progress = Math.min(Math.round((kpi.currentProgress / kpi.targetValue) * 100), 100);
           return (
-            <div 
-              key={kpi.id} 
+            <div
+              key={kpi.id}
               className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col"
             >
               <div className="flex justify-between items-start mb-4">
@@ -97,16 +97,15 @@ const MyKpiDashboard: React.FC = () => {
                 </div>
 
                 <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      progress >= 100 ? 'bg-green-500' : 'bg-blue-600'
-                    }`}
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${progress >= 100 ? 'bg-green-500' : 'bg-blue-600'
+                      }`}
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => { setSelectedKpi(kpi); setIsUpdateModalOpen(true); }}
                 className="w-full mt-6 py-2.5 bg-gray-900 text-white rounded-lg font-bold text-sm hover:bg-blue-600 transition-colors"
               >
@@ -118,7 +117,7 @@ const MyKpiDashboard: React.FC = () => {
       </div>
 
       {isUpdateModalOpen && selectedKpi && (
-        <ProgressUpdateModal 
+        <ProgressUpdateModal
           item={selectedKpi}
           onClose={() => setIsUpdateModalOpen(false)}
         />

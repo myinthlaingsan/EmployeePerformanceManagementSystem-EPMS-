@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  useGetGoalSetByEmployeeQuery, 
-  useApproveGoalSetMutation, 
-  useCalculateScoreMutation 
-} from '../../features/kpi/kpiApi';
+import {
+  useGetGoalSetByEmployeeQuery,
+  useApproveGoalSetMutation,
+  useCalculateScoreMutation
+} from '../../services/kpiApi';
 import { useAuth } from '../../hooks/useAuth';
 import ProgressUpdateModal from './components/ProgressUpdateModal';
 import KpiRevisionModal from './components/KpiRevisionModal';
@@ -14,12 +14,12 @@ const GoalDetail: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  
-  const { data: goalSetResponse, isLoading, error } = useGetGoalSetByEmployeeQuery({ 
-    employeeId: parseInt(employeeId!), 
-    cycleId: 1 
+
+  const { data: goalSetResponse, isLoading, error } = useGetGoalSetByEmployeeQuery({
+    employeeId: parseInt(employeeId!),
+    cycleId: 1
   });
-  
+
   const [approveGoal] = useApproveGoalSetMutation();
   const [calculateScore] = useCalculateScoreMutation();
 
@@ -63,7 +63,7 @@ const GoalDetail: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="text-xs font-bold text-gray-400 hover:text-blue-600 mb-2 flex items-center gap-1 uppercase tracking-wider"
           >
@@ -72,16 +72,15 @@ const GoalDetail: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">{goalSet.employeeName}'s Performance Goals</h1>
           <p className="text-sm text-gray-500">Cycle: {goalSet.appraisalCycleId} | Manager: {goalSet.managerName}</p>
         </div>
-        
+
         <div className="flex items-center gap-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-            goalSet.status === 'APPROVED' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-amber-50 text-amber-700 border-amber-100'
-          }`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold border ${goalSet.status === 'APPROVED' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+            }`}>
             {goalSet.status}
           </span>
-          
+
           {isManager && goalSet.status === 'DRAFT' && (
-            <button 
+            <button
               onClick={handleApprove}
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold text-sm shadow-sm transition"
             >
@@ -90,7 +89,7 @@ const GoalDetail: React.FC = () => {
           )}
 
           {isManager && goalSet.status === 'APPROVED' && (
-             <button 
+            <button
               onClick={handleCalculate}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold text-sm shadow-sm transition"
             >
@@ -149,8 +148,8 @@ const GoalDetail: React.FC = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3 min-w-[150px]">
                       <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className="bg-blue-600 h-full transition-all duration-500" 
+                        <div
+                          className="bg-blue-600 h-full transition-all duration-500"
                           style={{ width: `${Math.min(((item.currentProgress || 0) / item.targetValue) * 100, 100)}%` }}
                         />
                       </div>
@@ -162,7 +161,7 @@ const GoalDetail: React.FC = () => {
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       {isOwner && goalSet.status === 'APPROVED' && (
-                        <button 
+                        <button
                           onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
                           className="text-[10px] bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition border border-blue-100"
                         >
@@ -170,7 +169,7 @@ const GoalDetail: React.FC = () => {
                         </button>
                       )}
                       {isManager && (
-                        <button 
+                        <button
                           onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
                           className="text-[10px] bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg font-bold hover:bg-gray-100 transition border border-gray-200"
                         >
@@ -187,15 +186,15 @@ const GoalDetail: React.FC = () => {
       </div>
 
       {showProgressModal && selectedItem && (
-        <ProgressUpdateModal 
-          item={selectedItem} 
-          onClose={() => { setShowProgressModal(false); setSelectedItem(null); }} 
+        <ProgressUpdateModal
+          item={selectedItem}
+          onClose={() => { setShowProgressModal(false); setSelectedItem(null); }}
         />
       )}
       {showRevisionModal && selectedItem && (
-        <KpiRevisionModal 
-          item={selectedItem} 
-          onClose={() => { setShowRevisionModal(false); setSelectedItem(null); }} 
+        <KpiRevisionModal
+          item={selectedItem}
+          onClose={() => { setShowRevisionModal(false); setSelectedItem(null); }}
         />
       )}
     </div>

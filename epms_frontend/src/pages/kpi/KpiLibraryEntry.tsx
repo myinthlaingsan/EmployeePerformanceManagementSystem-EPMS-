@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCreateLibraryMutation, useGetCategoriesQuery } from '../../features/kpi/kpiApi';
+import { useCreateLibraryMutation, useGetCategoriesQuery } from '../../services/kpiApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useGetJobLevelsQuery } from '../../features/org/jobLevelApi';
 import { validateKpiWeights } from '../../utils/kpiCalculations';
@@ -103,13 +103,13 @@ const KpiLibraryEntry: React.FC = () => {
           <p className="text-gray-600 mt-1">Configure a new KPI performance template.</p>
         </div>
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg border border-gray-200"
           >
             Cancel
           </button>
-          <button 
+          <button
             onClick={handleSave}
             disabled={isSubmitting}
             className="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
@@ -120,14 +120,14 @@ const KpiLibraryEntry: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <LibraryBasicInfo 
-          formData={formData} 
-          positions={positions} 
-          jobLevels={jobLevels} 
-          onChange={handleInputChange} 
+        <LibraryBasicInfo
+          formData={formData}
+          positions={positions}
+          jobLevels={jobLevels}
+          onChange={handleInputChange}
         />
 
-        <LibraryKpiTable 
+        <LibraryKpiTable
           details={details}
           categories={categories}
           onDetailChange={handleDetailChange}

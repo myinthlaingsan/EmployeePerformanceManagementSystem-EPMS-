@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useReviseKpiMutation, useGetCategoriesQuery } from '../../../features/kpi/kpiApi';
+import { useReviseKpiMutation, useGetCategoriesQuery } from '../../../services/kpiApi';
 import type { GoalItemResponse, Priority } from '../../../features/kpi/kpiTypes';
 
 const PRIORITY_WEIGHTS: Record<Priority, number> = {
@@ -47,7 +47,7 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
 
     try {
       const { priority, ...updatedDetails } = formData;
-      
+
       await reviseKpi({
         itemId: item.id,
         data: {
