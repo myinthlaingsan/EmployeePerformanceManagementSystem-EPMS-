@@ -43,7 +43,9 @@ const ADMIN_ITEMS: NavItem[] = [
   { label: "Roles", to: "/roles", icon: ShieldCheck },
   { label: "Job Levels", to: "/job-levels", icon: Zap },
   { label: "Positions", to: "/positions", icon: Briefcase },
+  { label: "Teams", to: "/teams", icon: Users },
   { label: "Permissions", to: "/permissions", icon: ShieldCheck },
+  { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck },
 ];
 
 const Sidebar = () => {

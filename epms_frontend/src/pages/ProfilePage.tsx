@@ -82,7 +82,7 @@ const ProfilePage = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{profile?.staffName}</h1>
           <p className="text-blue-600 font-bold tracking-widest text-xs uppercase mt-1">
-            {profile?.positionName} • {profile?.departmentName}
+            {profile?.positionName} • {profile?.currentDepartmentName}
           </p>
         </div>
       </header>
