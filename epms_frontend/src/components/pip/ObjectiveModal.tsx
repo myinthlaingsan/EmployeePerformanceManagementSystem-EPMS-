@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { PipObjectiveRequest } from '../../features/pip/types';
 
 interface ObjectiveModalProps {
+    pipStartDate?: string;
+    initialData?: {
+        title: string;
+        description: string;
+        successCriteria: string;
+        targetDate: string;
+    };
     onClose: () => void;
     onSave: (data: Omit<PipObjectiveRequest, 'pipId'>) => Promise<void>;
 }
 
-const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ onClose, onSave }) => {
+const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ pipStartDate, initialData, onClose, onSave }) => {
     const [data, setData] = useState({ 
         title: '', 
         description: '', 
@@ -15,8 +22,14 @@ const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ onClose, onSave }) => {
     });
     const [isSaving, setIsSaving] = useState(false);
 
+    useEffect(() => {
+        if (initialData) {
+            setData(initialData);
+        }
+    }, [initialData]);
+
     const handleSubmit = async () => {
-        if (!data.title || !data.targetDate) return;
+        if (!data.title || (!initialData && !data.targetDate)) return;
         setIsSaving(true);
         try {
             await onSave(data);
@@ -28,11 +41,12 @@ const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ onClose, onSave }) => {
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-in fade-in zoom-in duration-200">
-                <h3 className="text-2xl font-bold mb-6">Add New Objective</h3>
+                <h3 className="text-2xl font-bold mb-6">{initialData ? 'Edit Objective' : 'Add New Objective'}</h3>
                 <div className="space-y-4">
                     <div>
                         <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Title</label>
                         <input 
+                            value={data.title}
                             placeholder="e.g., Improve Code Quality" 
                             className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition" 
                             onChange={e => setData({ ...data, title: e.target.value })} 
@@ -41,27 +55,32 @@ const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ onClose, onSave }) => {
                     <div>
                         <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Description</label>
                         <textarea 
+                            value={data.description}
                             placeholder="What needs to be achieved?" 
-                            className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition" 
+                            className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition h-24" 
                             onChange={e => setData({ ...data, description: e.target.value })} 
                         />
                     </div>
                     <div>
                         <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Success Criteria</label>
                         <textarea 
+                            value={data.successCriteria}
                             placeholder="How will we measure success?" 
-                            className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition" 
+                            className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition h-24" 
                             onChange={e => setData({ ...data, successCriteria: e.target.value })} 
                         />
                     </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Target Completion Date</label>
-                        <input 
-                            type="date" 
-                            className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition" 
-                            onChange={e => setData({ ...data, targetDate: e.target.value })} 
-                        />
-                    </div>
+                    {!initialData && (
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Target Completion Date</label>
+                            <input 
+                                type="date" 
+                                min={pipStartDate}
+                                className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition" 
+                                onChange={e => setData({ ...data, targetDate: e.target.value })} 
+                            />
+                        </div>
+                    )}
                     <div className="flex gap-4 pt-4">
                         <button 
                             onClick={onClose} 

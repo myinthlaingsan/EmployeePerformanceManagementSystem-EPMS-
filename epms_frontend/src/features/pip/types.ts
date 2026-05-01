@@ -96,6 +96,17 @@ export interface PipReviewRequest {
     nextAction: string;
 }
 
+export interface PipUpdateRequest {
+    managerId?: number;
+    reason?: string;
+}
+
+export interface PipObjectiveUpdateRequest {
+    title?: string;
+    description?: string;
+    successCriteria?: string;
+}
+
 export interface PipFinalizeRequest {
     outcome: PipOutcome;
     comment: string;

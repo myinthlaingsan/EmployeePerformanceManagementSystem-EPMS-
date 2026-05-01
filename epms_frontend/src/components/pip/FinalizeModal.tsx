@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { PipOutcome } from '../../features/pip/types';
 
 interface FinalizeModalProps {
+    currentEndDate: string;
     onClose: () => void;
     onSave: (data: { outcome: PipOutcome; comment: string; newEndDate?: string }) => Promise<void>;
 }
 
-const FinalizeModal: React.FC<FinalizeModalProps> = ({ onClose, onSave }) => {
+const FinalizeModal: React.FC<FinalizeModalProps> = ({ currentEndDate, onClose, onSave }) => {
     const [data, setData] = useState<{ outcome: PipOutcome; comment: string; newEndDate?: string }>({ 
         outcome: PipOutcome.PASS, 
         comment: '' 
@@ -16,6 +17,12 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ onClose, onSave }) => {
     const handleSubmit = async () => {
         if (!data.comment) return;
         if (data.outcome === PipOutcome.EXTEND && !data.newEndDate) return;
+
+        if (data.outcome !== PipOutcome.EXTEND) {
+            if (!window.confirm("Warning: Once the PIP is finalized, it cannot be reopened. Are you sure you want to proceed?")) {
+                return;
+            }
+        }
         
         setIsSaving(true);
         try {
@@ -50,7 +57,7 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ onClose, onSave }) => {
                                 type="date" 
                                 className="w-full px-4 py-2 border rounded-xl border-yellow-200 bg-yellow-50/30 outline-none focus:ring-2 focus:ring-yellow-500 transition" 
                                 onChange={e => setData({ ...data, newEndDate: e.target.value })} 
-                                min={new Date().toISOString().split('T')[0]}
+                                min={currentEndDate}
                             />
                             <p className="text-[10px] text-yellow-600 mt-1 font-medium italic">Selecting EXTEND will allow the employee more time to meet objectives.</p>
                         </div>
