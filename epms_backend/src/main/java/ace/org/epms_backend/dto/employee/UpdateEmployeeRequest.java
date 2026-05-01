@@ -64,4 +64,6 @@ public class UpdateEmployeeRequest {
 
     //IMPORTANT (RBAC)
     private List<Long> roleIds;
+
+    private Long directManagerId;
 }

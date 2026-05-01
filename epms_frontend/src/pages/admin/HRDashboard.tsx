@@ -1,5 +1,6 @@
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { useGetDepartmentsQuery } from "../../features/org/departmentApi";
+import { Link } from "react-router-dom";
 
 const HRDashboard = () => {
   const { data: employees } = useGetEmployeesQuery();
@@ -81,6 +82,34 @@ const HRDashboard = () => {
           </div>
         </section>
       </div>
+
+      {/* Appraisal Management Section */}
+      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Appraisal Management</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-5 border border-gray-100 rounded-xl bg-gray-50 flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg mb-1">Form Templates</h3>
+              <p className="text-sm text-gray-500 mb-4">Create and manage appraisal form templates, questions, and weights.</p>
+            </div>
+            <Link to="/appraisal-forms" className="text-blue-600 font-bold hover:underline self-start">Manage Forms &rarr;</Link>
+          </div>
+          <div className="p-5 border border-gray-100 rounded-xl bg-gray-50 flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg mb-1">Active Appraisals</h3>
+              <p className="text-sm text-gray-500 mb-4">Monitor ongoing appraisal cycles and check completion statuses.</p>
+            </div>
+            <Link to="/appraisal-management" className="text-blue-600 font-bold hover:underline self-start">View Appraisals &rarr;</Link>
+          </div>
+          <div className="p-5 border border-gray-100 rounded-xl bg-gray-50 flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg mb-1">Appraisal Results</h3>
+              <p className="text-sm text-gray-500 mb-4">Review finalized performance scores and reports for all employees.</p>
+            </div>
+            <button className="text-gray-400 font-bold cursor-not-allowed self-start" title="Feature coming soon">Reports &rarr;</button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

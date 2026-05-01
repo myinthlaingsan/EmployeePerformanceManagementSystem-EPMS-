@@ -18,6 +18,9 @@ import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.JwtService;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,6 +32,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -128,8 +132,8 @@ public class AuthServiceImpl implements AuthService {
                 .getContext()
                 .getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new InvalidTokenException("No user Logged in");
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new InvalidTokenException("No user logged in or session expired. Please provide a valid authentication token.");
         }
 
         Object principal = authentication.getPrincipal();
@@ -146,6 +150,7 @@ public class AuthServiceImpl implements AuthService {
         return mapToResponse(getCurrentUser());
     }
 
+    @Transactional
     @Override
     public void forgotPassword(ForgotPasswordRequest request) {
         Employee emp = employeeRepository.findByEmail(request.getEmail())
@@ -180,6 +185,17 @@ public class AuthServiceImpl implements AuthService {
         emp.setLockTime(null);
 
         employeeRepository.save(emp);
+
+        // Notify Password Reset
+        applicationEventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(emp.getId())
+                .type(NotificationType.PASSWORD_CHANGED)
+                .title("Password Reset Successful")
+                .message("Your password has been successfully reset. You can now login with your new password.")
+                .referenceType(ReferenceType.ACCOUNT)
+                        .referenceId(emp.getId())
+                .actionUrl("/login")
+                .build());
 
         resetTokenRepository.delete(resetToken);
     }

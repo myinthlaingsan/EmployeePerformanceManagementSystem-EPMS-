@@ -7,17 +7,24 @@ import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.employee.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuthService;
-import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.EmployeeService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import ace.org.epms_backend.repository.employee.ReportingLineRepository;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.service.AuditService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -33,8 +40,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
+    private final ReportingLineRepository reportingLineRepository;
     private final AuthService authService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final AuditService auditService;
     @Override
     @Transactional
     public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
@@ -60,11 +69,12 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setEmail(email);
         employee.setPosition(position);
         employee.setLevel(position.getLevel()); // Set level from position
+        // ...
         employee.setStatus(EmployeeStatus.INACTIVE);
         employee.setPassword(null); // user will set later
         employee.setEmployeeCode(generateEmployeeCode());
         Employee savedEmployee = employeeRepository.save(employee);
-         //Assign initial department
+        //Assign initial department
         EmployeeDepartment empDept = new EmployeeDepartment();
         empDept.setEmployee(savedEmployee);
         empDept.setParentDepartment(parentDept);     //Banking
@@ -86,6 +96,19 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         tokenRepository.save(resetToken);
 
+        // Assign Manager (Reporting Line)
+//        if (request.getDirectManagerId() != null) {
+//            Employee manager = employeeRepository.findById(request.getDirectManagerId())
+//                    .orElseThrow(() -> new NotFoundException("Manager not found"));
+//
+//            ReportingLine reportingLine = ReportingLine.builder()
+//                    .employee(savedEmployee)
+//                    .manager(manager)
+//                    .isActive(true)
+//                    .build();
+//            reportingLineRepository.save(reportingLine);
+//        }
+
         applicationEventPublisher.publishEvent(
                 new EmployeeCreatedEvent(savedEmployee.getId(),token)
         );
@@ -106,6 +129,16 @@ public class EmployeeServiceImpl implements EmployeeService {
         emp.setPassword(passwordEncoder.encode(newPassword));
         emp.setStatus(EmployeeStatus.ACTIVE);
         employeeRepository.save(emp);
+
+        // Notify Account Activated
+        applicationEventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(emp.getId())
+                .type(NotificationType.ACCOUNT_ACTIVATED)
+                .title("Account Activated")
+                .message("Your EPMS account has been successfully activated.")
+                .referenceType(ReferenceType.ACCOUNT)
+                .actionUrl("/profile")
+                .build());
         // OPTIONAL (recommended): delete token after use
         tokenRepository.delete(resetToken);
     }
@@ -138,6 +171,31 @@ public class EmployeeServiceImpl implements EmployeeService {
         emp.setPosition(position);
         emp.setLevel(position.getLevel()); // Set level from position
         Employee updated = employeeRepository.save(emp);
+
+        // Update Manager (Reporting Line)
+        if (request.getDirectManagerId() != null) {
+            Optional<ReportingLine> existingLine = reportingLineRepository.findByEmployeeAndIsActiveTrue(updated);
+            
+            if (existingLine.isEmpty() || !existingLine.get().getManager().getId().equals(request.getDirectManagerId())) {
+                // Deactivate old one
+                existingLine.ifPresent(line -> {
+                    line.setIsActive(false);
+                    reportingLineRepository.save(line);
+                });
+
+                // Create new one
+                Employee newManager = employeeRepository.findById(request.getDirectManagerId())
+                        .orElseThrow(() -> new NotFoundException("Manager not found"));
+
+                ReportingLine newLine = ReportingLine.builder()
+                        .employee(updated)
+                        .manager(newManager)
+                        .isActive(true)
+                        .build();
+                reportingLineRepository.save(newLine);
+            }
+        }
+
         return mapToResponse(updated);
     }
 
@@ -182,10 +240,37 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             throw new EmailExistException("Email already exists");
         }
+        // Capture old state for audit
+        Employee oldState = Employee.builder()
+                .staffName(emp.getStaffName())
+                .email(emp.getEmail())
+                .phoneNo(emp.getPhoneNo())
+                .build();
+
         //useMapstruct
         employeeMapper.updateProfileFromDto(request, emp);
 
         Employee updated = employeeRepository.save(emp);
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("employees")
+                .recordId(updated.getId())
+                .action(AuditAction.UPDATE)
+                .oldState(oldState)
+                .newState(updated)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        // Notify Profile Updated
+        applicationEventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(updated.getId())
+                .type(NotificationType.PROFILE_UPDATED)
+                .title("Profile Updated")
+                .message("Your profile information has been updated.")
+                .referenceType(ReferenceType.ACCOUNT)
+                .actionUrl("/profile")
+                .build());
 
         return mapToResponse(updated);
     }
@@ -194,12 +279,21 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void changePassword(Long id, ChangePasswordRequest request) {
         Employee emp = employeeRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
-
         if (!passwordEncoder.matches(request.getOldPassword(), emp.getPassword())) {
             throw new PasswordIncorrectException("Old password incorrect");
         }
-
         emp.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        employeeRepository.save(emp);
+
+        // Notify Password Changed
+        applicationEventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(emp.getId())
+                .type(NotificationType.PASSWORD_CHANGED)
+                .title("Password Changed")
+                .message("Your account password has been successfully changed.")
+                .referenceType(ReferenceType.ACCOUNT)
+                .actionUrl("/profile")
+                .build());
     }
 
     private String generateEmployeeCode() {
@@ -221,24 +315,17 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .map(Permission::getPermissionName)
                 .toList();
         response.setPermissions(permissions);
-        
-        // Set Department Name and ID
+
+        // Set Department Name
         employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
                 .ifPresent(ed -> {
                     response.setCurrentDepartmentName(
                             ed.getCurrentDepartment().getDepartmentName()
                     );
-                    response.setCurrentDepartmentId(
-                            ed.getCurrentDepartment().getId()
-                    );
                     response.setParentDepartmentName(
                             ed.getParentDepartment().getDepartmentName()
                     );
-                    response.setParentDepartmentId(
-                            ed.getParentDepartment().getId()
-                    );
                 });
-
         return response;
     }
 }

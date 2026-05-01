@@ -36,5 +36,5 @@ public class CreateEmployeeRequest {
     private Long roleId;
     private Long parentDepartmentId;   //Banking
     private Long currentDepartmentId;  // ERP or banking
-
+//    private Long directManagerId;
 }

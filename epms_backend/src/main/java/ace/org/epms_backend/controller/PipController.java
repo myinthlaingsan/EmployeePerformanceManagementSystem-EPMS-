@@ -4,8 +4,8 @@ import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.pip.PipCreateRequest;
 import ace.org.epms_backend.dto.pip.PipExtendRequest;
 import ace.org.epms_backend.dto.pip.PipResponse;
-import ace.org.epms_backend.dto.pip.PipUpdateRequest;
 import ace.org.epms_backend.service.PipService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,14 +22,8 @@ public class PipController {
 
     @PreAuthorize("hasRole('HR')")
     @PostMapping
-    public ResponseEntity<ApiResponse<PipResponse>> createPip(@RequestBody PipCreateRequest request) {
+    public ResponseEntity<ApiResponse<PipResponse>> createPip(@Valid @RequestBody PipCreateRequest request) {
         return ResponseEntity.ok(ApiResponse.success(pipService.createPip(request)));
-    }
-
-    @PreAuthorize("hasRole('HR')")
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<PipResponse>> updatePip(@PathVariable Long id, @RequestBody PipUpdateRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(pipService.updatePip(id, request)));
     }
 
     @GetMapping("/{id}")
@@ -52,23 +46,16 @@ public class PipController {
         return ResponseEntity.ok(ApiResponse.success(pipService.getPipsByInvolvedUser(userId)));
     }
 
-    @PreAuthorize("hasAnyRole('HR', 'MANAGER')")
+    @PreAuthorize("hasRole('HR')")
     @PutMapping("/{id}/activate")
     public ResponseEntity<ApiResponse<Void>> activatePip(@PathVariable Long id) {
         pipService.activatePip(id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @PreAuthorize("hasAnyRole('HR', 'MANAGER')")
-    @PutMapping("/{id}/extend")
-    public ResponseEntity<ApiResponse<PipResponse>> extendPip(@PathVariable Long id, @RequestBody PipExtendRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(pipService.extendPip(id, request.getNewEndDate())));
-    }
-
     @PreAuthorize("hasRole('HR')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePip(@PathVariable Long id) {
-        pipService.deletePip(id);
-        return ResponseEntity.ok().build();
+    @PutMapping("/{id}/extend")
+    public ResponseEntity<ApiResponse<PipResponse>> extendPip(@PathVariable Long id, @Valid @RequestBody PipExtendRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(pipService.extendPip(id, request.getNewEndDate())));
     }
 }

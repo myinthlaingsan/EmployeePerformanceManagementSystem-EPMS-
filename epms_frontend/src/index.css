@@ -1,37 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  /* Tonal Architecture Palette */
-  --color-brand-primary: #1e40af;
-  --color-brand-secondary: #3b82f6;
-  --color-brand-accent: #6366f1;
-  
-  --color-surface-base: #f8fafc;
-  --color-surface-card: #ffffff;
-  --color-surface-border: #e2e8f0;
-  
-  --color-text-title: #0f172a;
-  --color-text-body: #334155;
-  --color-text-muted: #64748b;
-
-  --shadow-premium: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
-
-  --font-editorial: "Outfit", "Inter", sans-serif;
-  
   /* Enable class-based dark mode */
   --dark-mode: class;
 }
 
-/* Base resets and editorial typography */
-@layer base {
-  body {
-    @apply bg-surface-base text-text-body font-sans antialiased;
-  }
-  
-  h1, h2, h3, h4 {
-    @apply font-editorial text-text-title tracking-tight;
-  }
+/* Or explicitly specify the selector */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Global Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
 }
 
-@custom-variant dark (&:where(.dark, .dark *));
+/* Custom Scrollbar for better UI */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
