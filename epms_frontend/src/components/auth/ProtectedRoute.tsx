@@ -15,7 +15,7 @@ const ProtectedRoute = ({
   maxLevel,
   requiredPermissions,
 }: ProtectedRouteProps) => {
-  const { isAuthenticated, hasAnyRole, user, hasPermission, accessToken, isLoading } = useAuth();
+  const { isAuthenticated, hasAnyRole, user, hasPermission, accessToken} = useAuth();
   const location = useLocation();
 
   // Track if the profile fetch failed
