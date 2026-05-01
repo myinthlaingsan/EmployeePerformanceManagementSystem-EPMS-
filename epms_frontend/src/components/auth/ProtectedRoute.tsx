@@ -27,8 +27,6 @@ const ProtectedRoute = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If we have a token but no user yet, wait for the user data to be populated.
-  // We only stop waiting if the query fails (isError).
   if (accessToken && !user) {
     if (isError) {
       return <Navigate to="/login" replace />;
