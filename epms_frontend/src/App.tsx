@@ -61,7 +61,7 @@ const App = () => {
             ))}
 
             {/* KPI General Routes */}
-            {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id'].includes(r.path)).map((route) => (
+            {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId'].includes(r.path)).map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
@@ -77,7 +77,7 @@ const App = () => {
               ))}
 
               {/* KPI Administrative Routes */}
-              {kpiRoutes.filter(r => ['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id'].includes(r.path)).map((route) => (
+              {kpiRoutes.filter(r => ['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
             </Route>

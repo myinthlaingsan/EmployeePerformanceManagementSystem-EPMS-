@@ -6,10 +6,12 @@ import KpiLibraryEntry from "../pages/kpi/KpiLibraryEntry";
 import GoalManagement from "../pages/kpi/GoalManagement";
 import GoalDetail from "../pages/kpi/GoalDetail";
 import GoalAssignmentWorkspace from "../pages/kpi/GoalAssignmentWorkspace";
+import ProgressUpdateWorkspace from "../pages/kpi/ProgressUpdateWorkspace";
 
 export const kpiRoutes = [
   { path: "/kpi", element: <KpiHub /> },
   { path: "/kpi/my", element: <MyKpiDashboard /> },
+  { path: "/kpi/update", element: <ProgressUpdateWorkspace /> },
   { path: "/kpi/team", element: <TeamKpiDashboard /> },
   { path: "/kpi/library", element: <KpiLibraryDashboard /> },
   { path: "/kpi/library/new", element: <KpiLibraryEntry /> },

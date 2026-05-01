@@ -7,6 +7,7 @@ import type {
   GoalAssignmentRequest,
   GoalSetResponse,
   KpiGoalItemRequest,
+  KpiProgressHistory,
   ProgressRequest,
   KpiRevisionRequest,
   KpiScoreResponse,
