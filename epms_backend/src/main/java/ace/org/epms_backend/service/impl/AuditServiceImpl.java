@@ -22,7 +22,7 @@ public class AuditServiceImpl implements AuditService {
     private final AuthService authService;
 
     @Override
-    @Async
+//    @Async
     public void log(AuditRequest auditRequest) {
         try {
             String oldValues = auditRequest.getOldState() != null 
@@ -47,4 +47,6 @@ public class AuditServiceImpl implements AuditService {
             System.err.println("Audit Logging Failed: " + e.getMessage());
         }
     }
+
+
 }
