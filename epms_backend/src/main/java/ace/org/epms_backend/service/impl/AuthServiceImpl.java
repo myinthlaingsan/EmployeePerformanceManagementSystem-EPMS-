@@ -18,6 +18,7 @@ import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.JwtService;
+import ace.org.epms_backend.service.TokenBlacklistService;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
@@ -58,6 +59,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final AuditService auditService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     public AuthResponse login(AuthRequest authDto) {
@@ -253,5 +255,25 @@ public class AuthServiceImpl implements AuthService {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean validateToken(String token) {
+        try {
+            String username = jwtService.extractUsername(token);
+            UserPrincipal userPrincipal = (UserPrincipal) userDetailsService.loadUserByUsername(username);
+            return jwtService.isTokenValid(token, userPrincipal);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    @Transactional
+    public void revokeUserSessions(Long employeeId) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+        employee.setLastLogoutTime(LocalDateTime.now());
+        employeeRepository.save(employee);
     }
 }

@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface BlacklistedTokenRepository extends JpaRepository<BlacklistedToken, String> {
+    void deleteByExpiryDateBefore(java.time.LocalDateTime now);
 }

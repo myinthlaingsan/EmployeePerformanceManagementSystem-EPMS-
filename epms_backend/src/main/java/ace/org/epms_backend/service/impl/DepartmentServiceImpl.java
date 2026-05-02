@@ -77,4 +77,18 @@ public class DepartmentServiceImpl implements DepartmentService {
         department.setIsActive(false);
         departmentRepository.save(department);
     }
+
+    @Override
+    public List<DepartmentResponse> getActiveDepartments() {
+        return departmentRepository.findByIsActiveTrue().stream()
+                .map(departmentMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+    @Override
+    public long getHeadcount(Long departmentId) {
+        if (!departmentRepository.existsById(departmentId)) {
+            throw new NotFoundException("Department not found");
+        }
+        return employeeDepartmentRepository.countByCurrentDepartmentIdAndIsCurrentTrue(departmentId);
+    }
 }

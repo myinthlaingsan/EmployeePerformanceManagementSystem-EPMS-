@@ -11,4 +11,5 @@ public interface PositionRepository extends JpaRepository<Position, Long> {
     boolean existsByPositionCode(String positionCode);
 
     List<Position> findByLevel_LevelId(Long levelId);
+    List<Position> findByDepartment_Id(Long departmentId);
 }

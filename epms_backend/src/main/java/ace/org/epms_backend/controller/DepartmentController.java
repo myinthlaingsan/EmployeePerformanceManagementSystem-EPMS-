@@ -46,4 +46,14 @@ public class DepartmentController {
         departmentService.deleteDepartment(id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
+
+    @GetMapping("/active")
+    public ResponseEntity<ApiResponse<List<DepartmentResponse>>> getActiveDepartments() {
+        return ResponseEntity.ok(ApiResponse.success(departmentService.getActiveDepartments()));
+    }
+
+    @GetMapping("/{id}/headcount")
+    public ResponseEntity<ApiResponse<Long>> getHeadcount(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(departmentService.getHeadcount(id)));
+    }
 }

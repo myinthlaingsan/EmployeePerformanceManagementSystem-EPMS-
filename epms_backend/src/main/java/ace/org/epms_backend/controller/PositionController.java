@@ -49,4 +49,10 @@ public class PositionController {
         positionService.deletePosition(id);
         return ResponseEntity.ok(ApiResponse.success());
     }
+
+    @GetMapping("/department/{departmentId}")
+    public ResponseEntity<ApiResponse<List<PositionResponse>>> getPositionsByDepartment(
+            @PathVariable Long departmentId) {
+        return ResponseEntity.ok(ApiResponse.success(positionService.getPositionsByDepartment(departmentId)));
+    }
 }
