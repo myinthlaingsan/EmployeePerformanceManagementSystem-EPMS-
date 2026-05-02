@@ -62,8 +62,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredLibraries = libraries.filter(lib => 
-    lib.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lib.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (lib.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (lib.description || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddKpi = async (libDetail: any) => {
