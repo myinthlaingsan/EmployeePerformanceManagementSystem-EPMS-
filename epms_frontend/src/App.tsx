@@ -15,7 +15,6 @@ import {
   kpiRoutes
 } from "./routes";
 import { ActiveCycleProvider } from "./context/ActiveCycleContext";
-import TeamKpiDashboard from "./pages/kpi/TeamKpiDashboard";
 import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
 
 // Specialized Manager Component (Temporary here, can be moved later)

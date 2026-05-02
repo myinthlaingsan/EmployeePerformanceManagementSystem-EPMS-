@@ -326,7 +326,7 @@ const ProgressUpdateWorkspace: React.FC = () => {
                   </h4>
                </div>
                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 blur-[60px] rounded-full"></div>
-               <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-600/10 blur-[40px] rounded-full"></div>
+               <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-600/10 blur-2xl rounded-full"></div>
             </section>
           </div>
         </div>

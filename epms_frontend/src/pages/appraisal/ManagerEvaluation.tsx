@@ -233,7 +233,7 @@ const ManagerEvaluation = () => {
             Final Manager Summary
           </h2>
           <textarea
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-6 text-slate-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all min-h-[160px]"
+            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-6 text-slate-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all min-h-40"
             placeholder="Provide a final summary of performance, areas of improvement, and promotion eligibility..."
             value={managerComment}
             onChange={(e) => setManagerComment(e.target.value)}

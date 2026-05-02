@@ -86,7 +86,7 @@ const AppraisalAdminDashboard = () => {
   };
 
   return (
-    <div className="p-8 max-w-[1400px] mx-auto bg-[#fafafa] min-h-screen">
+    <div className="p-8 max-w-350 mx-auto bg-[#fafafa] min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-start mb-8">
         <div>

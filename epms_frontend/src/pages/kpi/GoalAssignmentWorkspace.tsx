@@ -134,7 +134,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50/50">
 
-      <div className="p-8 max-w-[1600px] mx-auto">
+      <div className="p-8 max-w-400 mx-auto">
         {/* Profile Section */}
         <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8 mb-10">
           <div className="flex items-center gap-6">
@@ -184,7 +184,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
               </div>
             </div>
             
-            <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-6 max-h-150 overflow-y-auto pr-2 custom-scrollbar">
               {libraries.map(lib => (
                 <div key={lib.id} className="group border-b border-gray-50 pb-6 last:border-0 hover:bg-gray-50/50 p-2 rounded-xl transition">
                    <div className="flex justify-between items-start mb-3">
@@ -334,7 +334,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                   </div>
                </div>
                <div className="relative w-40 h-40">
-                  <div className="absolute inset-0 border-[16px] border-blue-700 rounded-full shadow-inner shadow-blue-900/20"></div>
+                  <div className="absolute inset-0 border-16 border-blue-700 rounded-full shadow-inner shadow-blue-900/20"></div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                      <span className="text-4xl font-black text-gray-900 tracking-tighter">3/3</span>
                   </div>

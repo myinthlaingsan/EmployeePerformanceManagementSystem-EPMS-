@@ -50,14 +50,14 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                     value={detail.goalTitle}
                     onChange={(e) => onDetailChange(index, 'goalTitle', e.target.value)}
                     placeholder="Enter KPI description"
-                    className="w-full h-full min-h-[40px] bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900"
+                    className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900"
                   />
                 </td>
                 <td className="border-r border-gray-200 p-0">
                   <select
                     value={detail.categoryId}
                     onChange={(e) => onDetailChange(index, 'categoryId', e.target.value)}
-                    className="w-full h-full min-h-[40px] bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 cursor-pointer appearance-none"
+                    className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 cursor-pointer appearance-none"
                   >
                     <option value={0}>Select Category...</option>
                     {categories.map(c => (
@@ -70,7 +70,7 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                     type="number"
                     value={detail.targetValue}
                     onChange={(e) => onDetailChange(index, 'targetValue', e.target.value)}
-                    className="w-full h-full min-h-[40px] bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-medium"
+                    className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-medium"
                   />
                 </td>
                 <td className="border-r border-gray-200 p-0">
@@ -79,7 +79,7 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                     value={detail.unit}
                     onChange={(e) => onDetailChange(index, 'unit', e.target.value)}
                     placeholder="e.g., %, Days"
-                    className="w-full h-full min-h-[40px] bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900"
+                    className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900"
                   />
                 </td>
                 <td className="border-r border-gray-200 p-0">
@@ -87,14 +87,14 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                     type="number"
                     value={detail.weightPercent}
                     onChange={(e) => onDetailChange(index, 'weightPercent', e.target.value)}
-                    className="w-full h-full min-h-[40px] bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-bold"
+                    className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-bold"
                   />
                 </td>
                 <td className="p-0 text-center">
                   {details.length > 1 && (
                     <button 
                       onClick={() => onRemoveRow(index)} 
-                      className="w-full h-full min-h-[40px] text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
+                      className="w-full h-full min-h-10 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
                       title="Remove Row"
                     >
                       ✕
