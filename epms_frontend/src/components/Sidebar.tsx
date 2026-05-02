@@ -51,7 +51,7 @@ const ADMIN_ITEMS: NavItem[] = [
 ];
 
 const Sidebar = () => {
-  const { logout, isAdmin, isHR } = useAuth();
+  const { logout, isAdmin, isHR, isManager } = useAuth();
   const navigate = useNavigate();
   const [mgmtOpen, setMgmtOpen] = useState(false);
   const [perfOpen, setPerfOpen] = useState(true);
@@ -120,6 +120,16 @@ const Sidebar = () => {
                 >
                   My Goals
                 </NavLink>
+                {isManager && (
+                  <NavLink
+                    to="/kpi/team"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                    }
+                  >
+                    Team Performance
+                  </NavLink>
+                )}
                 <NavLink
                   to="/kpi/update"
                   className={({ isActive }) =>

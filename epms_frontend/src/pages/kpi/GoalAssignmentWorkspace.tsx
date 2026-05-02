@@ -22,6 +22,11 @@ import {
   MoreVertical,
   ChevronRight
 } from 'lucide-react';
+import { 
+  getStatusColor, 
+  getPriorityFromWeight,
+  PRIORITY_MAP
+} from '../../utils/kpiCalculations';
 
 const GoalAssignmentWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -267,12 +272,20 @@ const GoalAssignmentWorkspace: React.FC = () => {
                             </select>
                          </td>
                          <td className="px-8 py-8 text-right">
-                            <input 
-                              type="number"
-                              className="w-20 bg-blue-50 border-none rounded-lg py-3 px-4 text-right font-black text-blue-700 focus:ring-2 focus:ring-blue-100 shadow-inner"
-                              value={item.weightPercent}
-                              onChange={(e) => handleUpdateItem(item, { weightPercent: Number(e.target.value) })}
-                            />
+                            <select 
+                              className="bg-blue-50 border-none rounded-lg py-3 px-4 text-right font-black text-blue-700 focus:ring-2 focus:ring-blue-100 shadow-inner cursor-pointer"
+                              value={Object.keys(PRIORITY_MAP).find(key => PRIORITY_MAP[key as keyof typeof PRIORITY_MAP].weight === item.weightPercent) || 'MEDIUM'}
+                              onChange={(e) => {
+                                const key = e.target.value as keyof typeof PRIORITY_MAP;
+                                handleUpdateItem(item, { weightPercent: PRIORITY_MAP[key].weight });
+                              }}
+                            >
+                               {Object.keys(PRIORITY_MAP).map(key => (
+                                 <option key={key} value={key}>
+                                   {PRIORITY_MAP[key as keyof typeof PRIORITY_MAP].label} ({PRIORITY_MAP[key as keyof typeof PRIORITY_MAP].weight}%)
+                                 </option>
+                               ))}
+                            </select>
                          </td>
                          <td className="px-8 py-8 text-center">
                             <button 

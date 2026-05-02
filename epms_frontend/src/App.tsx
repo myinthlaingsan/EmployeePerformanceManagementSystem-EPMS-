@@ -61,9 +61,16 @@ const App = () => {
             ))}
 
             {/* KPI General Routes */}
-            {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId'].includes(r.path)).map((route) => (
+            {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId', '/kpi/team'].includes(r.path)).map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
+
+            {/* Manager Only KPI Routes */}
+            <Route element={<ProtectedRoute allowedRoles={["MANAGER"]} />}>
+              {kpiRoutes.filter(r => r.path === '/kpi/team').map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+            </Route>
 
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
