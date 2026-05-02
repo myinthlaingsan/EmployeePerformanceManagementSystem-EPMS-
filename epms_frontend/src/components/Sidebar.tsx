@@ -149,14 +149,24 @@ const Sidebar = () => {
                   </NavLink>
                 )}
                 {(isAdmin || isHR) && (
-                  <NavLink
-                    to="/kpi/library"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                    }
-                  >
-                    KPI Library
-                  </NavLink>
+                  <>
+                    <NavLink
+                      to="/kpi/library"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                      }
+                    >
+                      KPI Library
+                    </NavLink>
+                    <NavLink
+                      to="/kpi/categories"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                      }
+                    >
+                      KPI Categories
+                    </NavLink>
+                  </>
                 )}
               </div>
             )}

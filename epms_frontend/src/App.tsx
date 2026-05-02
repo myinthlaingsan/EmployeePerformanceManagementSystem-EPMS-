@@ -16,6 +16,7 @@ import {
 } from "./routes";
 import { ActiveCycleProvider } from "./context/ActiveCycleContext";
 import TeamKpiDashboard from "./pages/kpi/TeamKpiDashboard";
+import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
 
 // Specialized Manager Component (Temporary here, can be moved later)
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
@@ -87,6 +88,7 @@ const App = () => {
               {kpiRoutes.filter(r => ['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
+              <Route path="/kpi/categories" element={<KpiCategoryManager />} />
             </Route>
 
             {/* Specialized Manager Routes */}

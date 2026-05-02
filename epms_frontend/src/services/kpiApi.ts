@@ -16,9 +16,32 @@ import type {
 export const kpiApi = api.injectEndpoints({
   endpoints: (builder) => ({
     // ==================== Categories ====================
-    getCategories: builder.query<ApiResponse<KpiCategory[]>, void>({
+    getKpiCategories: builder.query<ApiResponse<KpiCategory[]>, void>({
       query: () => '/kpi/categories',
       providesTags: ['Category'],
+    }),
+    createKpiCategory: builder.mutation<ApiResponse<KpiCategory>, { name: string }>({
+      query: (body) => ({
+        url: '/kpi/categories',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Category'],
+    }),
+    updateKpiCategory: builder.mutation<ApiResponse<KpiCategory>, { id: number; name: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/kpi/categories/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Category'],
+    }),
+    deleteKpiCategory: builder.mutation<ApiResponse<string>, number>({
+      query: (id) => ({
+        url: `/kpi/categories/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Category'],
     }),
 
     // ==================== KPI Library ====================
@@ -159,7 +182,10 @@ export const kpiApi = api.injectEndpoints({
 });
 
 export const {
-  useGetCategoriesQuery,
+  useGetKpiCategoriesQuery,
+  useCreateKpiCategoryMutation,
+  useUpdateKpiCategoryMutation,
+  useDeleteKpiCategoryMutation,
   useCreateLibraryMutation,
   useGetAllLibrariesQuery,
   useToggleLibraryStatusMutation,

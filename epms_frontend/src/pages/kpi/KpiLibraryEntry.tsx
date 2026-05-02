@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCreateLibraryMutation, useGetCategoriesQuery } from '../../services/kpiApi';
+import { useCreateLibraryMutation, useGetKpiCategoriesQuery } from '../../services/kpiApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useGetJobLevelsQuery } from '../../features/org/jobLevelApi';
 import { validateKpiWeights } from '../../utils/kpiCalculations';
@@ -18,7 +18,7 @@ const KpiLibraryEntry: React.FC = () => {
   const [createLibrary, { isLoading: isSubmitting }] = useCreateLibraryMutation();
   const { data: positions = [] } = useGetPositionsQuery();
   const { data: jobLevels = [] } = useGetJobLevelsQuery();
-  const { data: categoriesResponse } = useGetCategoriesQuery();
+  const { data: categoriesResponse, isLoading: categoriesLoading } = useGetKpiCategoriesQuery();
   const categories = categoriesResponse?.data || [];
 
   const [formData, setFormData] = useState({
@@ -29,7 +29,7 @@ const KpiLibraryEntry: React.FC = () => {
   });
 
   const [details, setDetails] = useState<FormKpiDetail[]>([
-    { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, categoryId: 0 }
+        { goalTitle: '', unit: '', targetValue: 0, weightPercent: 5, categoryId: 0 }
   ]);
 
   const { totalWeight, isValid, errors } = validateKpiWeights(details);
@@ -43,7 +43,7 @@ const KpiLibraryEntry: React.FC = () => {
     const newDetails = [...details];
     let updatedItem = {
       ...newDetails[index],
-      [field]: ['targetValue', 'weightPercent', 'categoryId'].includes(field as string) ? parseFloat(value) || 0 : value
+      [field]: field === 'categoryId' ? parseInt(value) || 0 : ['targetValue', 'weightPercent'].includes(field as string) ? parseFloat(value) || 0 : value
     };
 
     newDetails[index] = updatedItem;

@@ -34,6 +34,11 @@ export const validateKpiWeights = (items: { weightPercent: number }[]): WeightVa
     errors.push('No single KPI item can exceed 35% weight.');
   }
 
+  const belowMinItem = items.find(item => item.weightPercent < 5);
+  if (belowMinItem) {
+    errors.push('Each KPI item must have at least 5% weight.');
+  }
+
   return {
     totalWeight,
     isValid: errors.length === 0,
