@@ -47,11 +47,18 @@ export const positionApi = api.injectEndpoints({
       }),
       invalidatesTags: ["Position"],
     }),
+
+    getPositionsByDepartment: builder.query<PositionResponse[], number>({
+      query: (departmentId) => `/positions/department/${departmentId}`,
+      transformResponse: (res: ApiResponse<PositionResponse[]>) => res.data,
+      providesTags: ["Position"],
+    }),
   }),
 });
 
 export const {
   useGetPositionsQuery,
+  useGetPositionsByDepartmentQuery,
   useGetPositionByIdQuery,
   useCreatePositionMutation,
   useUpdatePositionMutation,

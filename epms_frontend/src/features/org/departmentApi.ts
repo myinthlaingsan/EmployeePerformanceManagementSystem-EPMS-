@@ -47,11 +47,24 @@ export const departmentApi = api.injectEndpoints({
       }),
       invalidatesTags: ["Department"],
     }),
+
+    getActiveDepartments: builder.query<DepartmentResponse[], void>({
+      query: () => "/departments/active",
+      transformResponse: (res: ApiResponse<DepartmentResponse[]>) => res.data,
+      providesTags: ["Department"],
+    }),
+
+    getDepartmentHeadcount: builder.query<number, number>({
+      query: (id) => `/departments/${id}/headcount`,
+      transformResponse: (res: ApiResponse<number>) => res.data,
+    }),
   }),
 });
 
 export const {
   useGetDepartmentsQuery,
+  useGetActiveDepartmentsQuery,
+  useGetDepartmentHeadcountQuery,
   useGetDepartmentByIdQuery,
   useCreateDepartmentMutation,
   useUpdateDepartmentMutation,

@@ -1,9 +1,21 @@
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { useGetActiveDepartmentsQuery, useGetDepartmentHeadcountQuery } from "../features/org/departmentApi";
+
+const HeadcountCard = ({ departmentId, departmentName }: { departmentId: number; departmentName: string }) => {
+  const { data: count, isLoading } = useGetDepartmentHeadcountQuery(departmentId);
+  return (
+    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex justify-between items-center group hover:bg-white hover:shadow-md transition-all">
+      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{departmentName}</span>
+      <span className="text-sm font-bold text-brand-primary">{isLoading ? "..." : count}</span>
+    </div>
+  );
+};
 
 const Dashboard = () => {
-  const { user, isAdmin, isHR, isManager, isSenior } = useAuth();
+  const { user, isAdmin, isHR, isManager} = useAuth();
   const navigate = useNavigate();
+  const { data: departments } = useGetActiveDepartmentsQuery(undefined, { skip: !isAdmin && !isHR });
 
   if (!user) return (
     <div className="flex justify-center items-center h-64">
@@ -64,7 +76,7 @@ const Dashboard = () => {
           {/* Role-Specific Action Centers */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {(isAdmin || isHR) && (
-              <section className="bg-blue-50/50 p-8 rounded-[2rem] border border-blue-100 relative overflow-hidden group cursor-pointer" onClick={() => navigate("/hr")}>
+              <section className="bg-blue-50/50 p-8 rounded-4xl border border-blue-100 relative overflow-hidden group cursor-pointer" onClick={() => navigate("/hr")}>
                 <div className="absolute top-0 right-0 p-4 opacity-10 transition-opacity group-hover:opacity-20">
                   <svg className="w-24 h-24 text-blue-900" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
@@ -79,7 +91,7 @@ const Dashboard = () => {
             )}
 
             {isManager && (
-              <section className="bg-emerald-50/50 p-8 rounded-[2rem] border border-emerald-100 relative overflow-hidden group cursor-pointer" onClick={() => navigate("/pip")}>
+              <section className="bg-emerald-50/50 p-8 rounded-4xl border border-emerald-100 relative overflow-hidden group cursor-pointer" onClick={() => navigate("/pip")}>
                  <div className="absolute top-0 right-0 p-4 opacity-10 transition-opacity group-hover:opacity-20">
                   <svg className="w-24 h-24 text-emerald-900" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm-3 1a1 1 0 10-2 0v3a1 1 0 102 0V8zM8 9a1 1 0 00-2 0v2a1 1 0 102 0V9z" clipRule="evenodd" />
@@ -135,7 +147,7 @@ const Dashboard = () => {
           {/* Profile Quick Card */}
           <section className="bg-white p-8 rounded-[2.5rem] border border-surface-border shadow-premium text-center">
             <div className="relative inline-block mb-6">
-               <div className="w-24 h-24 rounded-[2rem] bg-brand-primary flex items-center justify-center text-white text-3xl font-bold shadow-2xl shadow-brand-primary/40 mx-auto">
+               <div className="w-24 h-24 rounded-4xl bg-brand-primary flex items-center justify-center text-white text-3xl font-bold shadow-2xl shadow-brand-primary/40 mx-auto">
                 {user.staffName.charAt(0)}
                </div>
                <div className="absolute -bottom-2 -right-2 bg-emerald-500 w-8 h-8 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
@@ -175,6 +187,18 @@ const Dashboard = () => {
                 <svg className="w-40 h-40" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
              </div>
           </section>
+
+          {/* Department Headcounts (Admin/HR only) */}
+          {(isAdmin || isHR) && departments && (
+            <section className="bg-white p-8 rounded-[2.5rem] border border-surface-border shadow-premium">
+              <h3 className="text-lg font-bold text-text-title mb-6 tracking-tight">Department Headcount</h3>
+              <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                {departments.map(dept => (
+                  <HeadcountCard key={dept.id} departmentId={dept.id} departmentName={dept.departmentName} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </div>

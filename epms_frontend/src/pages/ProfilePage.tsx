@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
-import { useGetCurrentUserQuery, useUpdateProfileMutation, useChangePasswordMutation } from "../features/employee/employeeapi";
-import { useAuth } from "../hooks/useAuth";
+import { useGetCurrentUserQuery, useUpdateProfileMutation, useChangePasswordMutation, useGetManagerQuery, useGetDirectReportsQuery } from "../features/employee/employeeapi";
+//import { useAuth } from "../hooks/useAuth";
 import type { UpdateProfileRequest, MaritalStatus } from "../features/employee/employeeTypes";
 
 const ProfilePage = () => {
-  const { user: authUser } = useAuth();
+  // const { user: authUser } = useAuth();
   const { data: profile, isLoading } = useGetCurrentUserQuery();
   const [updateProfile] = useUpdateProfileMutation();
   const [changePassword] = useChangePasswordMutation();
+
+  const { data: manager } = useGetManagerQuery(profile?.id ?? 0, { skip: !profile?.id });
+  const { data: directReports } = useGetDirectReportsQuery(profile?.id ?? 0, { skip: !profile?.id });
 
   const [formData, setFormData] = useState<UpdateProfileRequest>({
     staffName: "",
@@ -76,7 +79,7 @@ const ProfilePage = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <header className="flex items-center space-x-6">
-        <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-xl">
+        <div className="w-24 h-24 rounded-3xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-xl">
           {profile?.staffName.charAt(0)}
         </div>
         <div>
@@ -195,7 +198,7 @@ const ProfilePage = () => {
 
         {/* Sidebar Stats / Info */}
         <div className="space-y-8">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-3xl text-white shadow-xl">
+          <div className="bg-linear-to-br from-blue-600 to-indigo-700 p-8 rounded-3xl text-white shadow-xl">
             <h3 className="font-bold text-lg mb-4">Organizational Info</h3>
             <div className="space-y-4">
               <div>
@@ -216,17 +219,57 @@ const ProfilePage = () => {
               </div>
             </div>
           </div>
+        </div>
 
+        {(manager || (directReports && directReports.length > 0)) && (
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-900 mb-4">System Permissions</h3>
-            <div className="space-y-2">
-              {profile?.permissions.map(p => (
-                <div key={p} className="flex items-center gap-2 text-xs text-gray-600">
-                  <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
-                  {p}
+            <h3 className="font-bold text-gray-900 mb-6">Reporting Structure</h3>
+
+            {manager && (
+              <div className="mb-6">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Reports To</p>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                    {manager.staffName.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">{manager.staffName}</p>
+                    <p className="text-[10px] text-gray-500 font-medium">{manager.positionName}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {directReports && directReports.length > 0 && (
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Direct Reports ({directReports.length})</p>
+                <div className="space-y-2">
+                  {directReports.map(report => (
+                    <div key={report.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-xl transition cursor-default">
+                      <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs">
+                        {report.staffName.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-gray-900">{report.staffName}</p>
+                        <p className="text-[9px] text-gray-400 uppercase font-bold">{report.positionName}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+          <h3 className="font-bold text-gray-900 mb-4">System Permissions</h3>
+          <div className="space-y-2">
+            {profile?.permissions.map(p => (
+              <div key={p} className="flex items-center gap-2 text-xs text-gray-600">
+                <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
+                {p}
+              </div>
+            ))}
           </div>
         </div>
       </div>
