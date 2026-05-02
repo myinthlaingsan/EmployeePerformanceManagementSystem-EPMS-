@@ -87,4 +87,5 @@ public class Employee extends BaseEntity {
     private boolean accountLocked = false;
     private LocalDateTime lockTime;
     private LocalDateTime lastLogoutTime;
+
 }
