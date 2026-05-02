@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useReviseKpiMutation, useGetCategoriesQuery } from '../../../services/kpiApi';
-import type { GoalItemResponse, Priority } from '../../../features/kpi/kpiTypes';
+import { useReviseKpiMutation, useGetCategoriesQuery } from '../../services/kpiApi';
+import type { GoalItemResponse, Priority } from '../../features/kpi/kpiTypes';
 
 const PRIORITY_WEIGHTS: Record<Priority, number> = {
   CRITICAL: 25,

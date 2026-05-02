@@ -532,6 +532,22 @@ public class KpiServiceImpl implements KpiService {
                                 .orElseThrow(() -> new NotFoundException("Goal set not found with ID: " + id));
         }
 
+        @Override
+        public List<KpiProgressResponse> getRecentProgress(Long employeeId, int limit) {
+                return progressRepository.findByGoalItemGoalSetEmployeeIdOrderByIdDesc(employeeId).stream()
+                                .limit(limit)
+                                .map(p -> KpiProgressResponse.builder()
+                                                .id(p.getId())
+                                                .goalItemId(p.getGoalItem().getId())
+                                                .goalTitle(p.getGoalItem().getTitle())
+                                                .actualValue(p.getActualValue())
+                                                .progressPercent(p.getProgressPercent())
+                                                .evidenceNote(p.getEvidenceNote())
+                                                .updatedAt(p.getCreatedAt().toString())
+                                                .build())
+                                .collect(Collectors.toList());
+        }
+
         private Employee getCurrentEmployee() {
                 String email = SecurityContextHolder.getContext().getAuthentication().getName();
                 return employeeRepository.findByEmail(email)

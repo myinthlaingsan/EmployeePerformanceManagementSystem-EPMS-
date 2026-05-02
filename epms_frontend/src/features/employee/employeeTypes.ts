@@ -110,6 +110,8 @@ export interface EmployeeResponse {
   currentDepartmentId?: number;
   parentDepartmentName?: string;
   parentDepartmentId?: number;
+  directManagerId?: number;
+  directManagerName?: string;
   roles: string[];
   permissions: string[];
 }

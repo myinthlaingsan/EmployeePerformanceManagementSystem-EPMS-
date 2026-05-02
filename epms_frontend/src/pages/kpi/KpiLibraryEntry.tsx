@@ -1,33 +1,24 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCreateLibraryMutation, useGetCategoriesQuery } from '../../services/kpiApi';
+import { useCreateLibraryMutation, useGetKpiCategoriesQuery } from '../../services/kpiApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useGetJobLevelsQuery } from '../../features/org/jobLevelApi';
 import { validateKpiWeights } from '../../utils/kpiCalculations';
-import type { Priority, KpiLibraryDetailRequest } from '../../features/kpi/kpiTypes';
+import type { KpiLibraryDetailRequest } from '../../features/kpi/kpiTypes';
 
-const PRIORITY_WEIGHTS: Record<Priority, number> = {
-  CRITICAL: 25,
-  HIGH: 15,
-  MEDIUM: 10,
-  LOW: 5
-};
-
-interface FormKpiDetail extends KpiLibraryDetailRequest {
-  priority: Priority;
-}
+interface FormKpiDetail extends KpiLibraryDetailRequest {}
 
 // Sub-components
-import LibraryBasicInfo from './components/LibraryBasicInfo';
-import LibraryKpiTable from './components/LibraryKpiTable';
-import LibrarySyncInfo from './components/LibrarySyncInfo';
+import LibraryBasicInfo from '../../components/kpi/LibraryBasicInfo';
+import LibraryKpiTable from '../../components/kpi/LibraryKpiTable';
+import LibrarySyncInfo from '../../components/kpi/LibrarySyncInfo';
 
 const KpiLibraryEntry: React.FC = () => {
   const navigate = useNavigate();
   const [createLibrary, { isLoading: isSubmitting }] = useCreateLibraryMutation();
   const { data: positions = [] } = useGetPositionsQuery();
   const { data: jobLevels = [] } = useGetJobLevelsQuery();
-  const { data: categoriesResponse } = useGetCategoriesQuery();
+  const { data: categoriesResponse, isLoading: categoriesLoading } = useGetKpiCategoriesQuery();
   const categories = categoriesResponse?.data || [];
 
   const [formData, setFormData] = useState({
@@ -38,7 +29,7 @@ const KpiLibraryEntry: React.FC = () => {
   });
 
   const [details, setDetails] = useState<FormKpiDetail[]>([
-    { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, priority: 'MEDIUM', categoryId: 0 }
+        { goalTitle: '', unit: '', targetValue: 0, weightPercent: 5, categoryId: 0 }
   ]);
 
   const { totalWeight, isValid, errors } = validateKpiWeights(details);
@@ -52,20 +43,15 @@ const KpiLibraryEntry: React.FC = () => {
     const newDetails = [...details];
     let updatedItem = {
       ...newDetails[index],
-      [field]: ['targetValue', 'weightPercent', 'categoryId'].includes(field as string) ? parseFloat(value) || 0 : value
+      [field]: field === 'categoryId' ? parseInt(value) || 0 : ['targetValue', 'weightPercent'].includes(field as string) ? parseFloat(value) || 0 : value
     };
-
-    // If priority changed, update weight automatically
-    if (field === 'priority') {
-      updatedItem.weightPercent = PRIORITY_WEIGHTS[value as Priority];
-    }
 
     newDetails[index] = updatedItem;
     setDetails(newDetails);
   };
 
   const addRow = () => {
-    setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, priority: 'MEDIUM', categoryId: 0 }]);
+    setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, categoryId: 0 }]);
   };
 
   const removeRow = (index: number) => {
@@ -75,22 +61,49 @@ const KpiLibraryEntry: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (!formData.title.trim()) {
+      alert("Please enter a Template Title.");
+      return;
+    }
+    if (formData.positionId === 0) {
+      alert("Please select a Target Position.");
+      return;
+    }
+    
+    for (let i = 0; i < details.length; i++) {
+      const d = details[i];
+      if (!d.goalTitle.trim()) {
+        alert(`KPI row ${i + 1}: Please enter a KPI description.`);
+        return;
+      }
+      if (d.categoryId === 0) {
+        alert(`KPI row ${i + 1}: Please select a Category.`);
+        return;
+      }
+      if (d.targetValue <= 0) {
+        alert(`KPI row ${i + 1}: Target value must be greater than 0.`);
+        return;
+      }
+      if (!d.unit.trim()) {
+        alert(`KPI row ${i + 1}: Please enter a Unit.`);
+        return;
+      }
+    }
+
     if (!isValid) {
       alert(errors.join('\n'));
       return;
     }
 
     try {
-      // Remove priority field before sending to backend
-      const backendDetails = details.map(({ priority, ...rest }) => rest);
-
       await createLibrary({
         ...formData,
-        details: backendDetails,
+        details: details,
       }).unwrap();
       navigate('/kpi/library');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Save failed:', err);
+      alert(err?.data?.message || err?.data?.error || 'Failed to save template. Please check your inputs.');
     }
   };
 

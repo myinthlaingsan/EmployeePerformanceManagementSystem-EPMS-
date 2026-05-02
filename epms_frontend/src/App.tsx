@@ -11,9 +11,12 @@ import {
   appraisalRoutes,
   adminRoutes,
   pipRoutes,
-  generalRoutes
+  generalRoutes,
+  kpiRoutes
 } from "./routes";
+import { ActiveCycleProvider } from "./context/ActiveCycleContext";
 import TeamKpiDashboard from "./pages/kpi/TeamKpiDashboard";
+import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
 
 // Specialized Manager Component (Temporary here, can be moved later)
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
@@ -42,7 +45,7 @@ const App = () => {
 
         {/* Protected Routes Wrapper */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
+          <Route element={<ActiveCycleProvider><MainLayout /></ActiveCycleProvider>}>
             {/* General Routes (Dashboard, Profile, etc.) */}
             {generalRoutes.map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
@@ -53,10 +56,22 @@ const App = () => {
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
-            {/* General PIP Routes (excluding new) */}
+            {/* PIP Routes */}
             {pipRoutes.filter(r => !r.adminOnly).map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
+
+            {/* KPI General Routes */}
+            {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId', '/kpi/team'].includes(r.path)).map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* Manager Only KPI Routes */}
+            <Route element={<ProtectedRoute allowedRoles={["MANAGER"]} />}>
+              {kpiRoutes.filter(r => r.path === '/kpi/team').map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+            </Route>
 
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
@@ -68,6 +83,12 @@ const App = () => {
               {pipRoutes.filter(r => r.adminOnly).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
+
+              {/* KPI Administrative Routes */}
+              {kpiRoutes.filter(r => ['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId'].includes(r.path)).map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+              <Route path="/kpi/categories" element={<KpiCategoryManager />} />
             </Route>
 
             {/* Specialized Manager Routes */}
@@ -81,7 +102,6 @@ const App = () => {
               }
             >
               <Route path="/approvals" element={<ApprovalPage />} />
-              <Route path="/kpi/team" element={<TeamKpiDashboard />} />
             </Route>
           </Route>
         </Route>

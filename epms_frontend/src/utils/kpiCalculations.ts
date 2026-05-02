@@ -34,11 +34,32 @@ export const validateKpiWeights = (items: { weightPercent: number }[]): WeightVa
     errors.push('No single KPI item can exceed 35% weight.');
   }
 
+  const belowMinItem = items.find(item => item.weightPercent < 5);
+  if (belowMinItem) {
+    errors.push('Each KPI item must have at least 5% weight.');
+  }
+
   return {
     totalWeight,
     isValid: errors.length === 0,
     errors
   };
+};
+
+export const PRIORITY_MAP = {
+  CRITICAL: { label: 'Critical', weight: 35, color: 'text-red-600 bg-red-50 border-red-200' },
+  HIGH: { label: 'High', weight: 25, color: 'text-orange-600 bg-orange-50 border-orange-200' },
+  MEDIUM: { label: 'Medium', weight: 20, color: 'text-blue-600 bg-blue-50 border-blue-200' },
+  LOW: { label: 'Low', weight: 15, color: 'text-gray-600 bg-gray-50 border-gray-200' },
+  MINIMAL: { label: 'Minimal', weight: 5, color: 'text-gray-400 bg-gray-50 border-gray-100' },
+};
+
+export const getPriorityFromWeight = (weight: number) => {
+  if (weight >= 35) return PRIORITY_MAP.CRITICAL;
+  if (weight >= 25) return PRIORITY_MAP.HIGH;
+  if (weight >= 20) return PRIORITY_MAP.MEDIUM;
+  if (weight >= 15) return PRIORITY_MAP.LOW;
+  return PRIORITY_MAP.MINIMAL;
 };
 
 export const getStatusColor = (progress: number): string => {

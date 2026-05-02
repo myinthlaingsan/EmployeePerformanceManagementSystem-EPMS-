@@ -6,8 +6,8 @@ import {
   useCalculateScoreMutation
 } from '../../services/kpiApi';
 import { useAuth } from '../../hooks/useAuth';
-import ProgressUpdateModal from './components/ProgressUpdateModal';
-import KpiRevisionModal from './components/KpiRevisionModal';
+import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
+import KpiRevisionModal from '../../components/kpi/KpiRevisionModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
 
 const GoalDetail: React.FC = () => {

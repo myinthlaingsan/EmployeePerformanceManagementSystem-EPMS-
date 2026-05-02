@@ -16,7 +16,7 @@ const LibraryBasicInfo: React.FC<LibraryBasicInfoProps> = ({ formData, positions
   return (
     <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
       <h2 className="text-xl font-semibold text-gray-900 mb-6">General Information</h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1">
           <label className="text-sm font-semibold text-gray-700">Template Title</label>

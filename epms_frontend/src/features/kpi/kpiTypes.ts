@@ -102,6 +102,16 @@ export interface ProgressRequest {
   evidenceNote?: string;
 }
 
+export interface KpiProgressHistory {
+  id: number;
+  goalItemId: number;
+  goalTitle: string;
+  actualValue: number;
+  progressPercent: number;
+  evidenceNote?: string;
+  updatedAt: string;
+}
+
 // ==================== Revision ====================
 export interface KpiRevisionRequest {
   changeReason: string;
