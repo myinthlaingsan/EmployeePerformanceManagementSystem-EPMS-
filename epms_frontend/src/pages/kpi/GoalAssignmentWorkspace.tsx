@@ -7,7 +7,7 @@ import {
   useUpdateGoalItemMutation,
   useDeleteGoalItemMutation,
   useApproveGoalSetMutation,
-  useGetCategoriesQuery
+  useGetKpiCategoriesQuery
 } from '../../services/kpiApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
@@ -44,7 +44,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const { data: librariesResponse } = useGetAllLibrariesQuery();
   const libraries = librariesResponse?.data || [];
   
-  const { data: categories = [] } = useGetCategoriesQuery();
+  const { data: categories = [] } = useGetKpiCategoriesQuery();
 
   const [addGoalItem] = useAddGoalItemMutation();
   const [updateGoalItem] = useUpdateGoalItemMutation();
