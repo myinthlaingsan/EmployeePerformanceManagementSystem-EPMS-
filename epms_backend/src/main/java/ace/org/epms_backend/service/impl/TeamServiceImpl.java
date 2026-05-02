@@ -85,6 +85,7 @@ public class TeamServiceImpl implements TeamService {
     @Override
     public List<TeamResponse> getAllTeams() {
         return teamRepository.findAll().stream()
+                .filter(Team::getIsActive)
                 .map(team -> {
                     TeamResponse res = new TeamResponse();
                     res.setTeamId(team.getTeamId());
@@ -92,5 +93,40 @@ public class TeamServiceImpl implements TeamService {
                     res.setDepartmentName(team.getDepartment().getDepartmentName());
                     return res;
                 }).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void updateTeam(Long id, TeamRequest request) {
+        Team team = teamRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Team not found"));
+        
+        Department dept = departmentRepository.findById(request.getDepartmentId())
+                .orElseThrow(() -> new NotFoundException("Department not found"));
+        
+        team.setTeamName(request.getTeamName());
+        team.setDepartment(dept);
+        teamRepository.save(team);
+    }
+
+    @Override
+    @Transactional
+    public void deleteTeam(Long id) {
+        Team team = teamRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Team not found"));
+        team.setIsActive(false);
+        teamRepository.save(team);
+    }
+
+    @Override
+    @Transactional
+    public void removeMemberFromTeam(Long teamId, Long employeeId) {
+        if (!teamRepository.existsById(teamId)) {
+            throw new NotFoundException("Team not found");
+        }
+        if (!employeeRepository.existsById(employeeId)) {
+            throw new NotFoundException("Employee not found");
+        }
+        employeeTeamRepository.deleteByEmployeeIdAndTeamTeamId(employeeId, teamId);
     }
 }
