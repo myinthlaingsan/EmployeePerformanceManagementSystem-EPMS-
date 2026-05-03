@@ -33,8 +33,13 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const navigate = useNavigate();
   const { activeCycleId, activeCycleName } = useActiveCycle();
   
-  const { data: employees = [] } = useGetEmployeesQuery();
-  const employee = employees.find(e => e.id === Number(employeeId));
+  const { data } = useGetEmployeesQuery({ page: 0, size: 10 });
+
+  const employees = data?.content ?? [];
+
+  const employee = employees.find(
+    e => e.id === Number(employeeId)
+  );
   
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
     employeeId: Number(employeeId),
@@ -62,8 +67,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredLibraries = libraries.filter(lib => 
-    lib.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lib.description.toLowerCase().includes(searchTerm.toLowerCase())
+    lib.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddKpi = async (libDetail: any) => {
