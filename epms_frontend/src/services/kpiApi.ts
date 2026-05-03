@@ -70,6 +70,20 @@ export const kpiApi = api.injectEndpoints({
       invalidatesTags: ['Library'],
     }),
 
+    getLibraryById: builder.query<ApiResponse<KpiLibraryResponse>, number>({
+      query: (id) => `/kpi/library/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Library', id }],
+    }),
+
+    updateLibrary: builder.mutation<ApiResponse<KpiLibraryResponse>, { id: number; data: KpiLibraryRequest }>({
+      query: ({ id, data }) => ({
+        url: `/kpi/library/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Library', id }, 'Library'],
+    }),
+
     // ==================== Assignment ====================
     assignKpiToEmployee: builder.mutation<ApiResponse<GoalSetResponse>, GoalAssignmentRequest>({
       query: (body) => ({
@@ -201,4 +215,6 @@ export const {
   useGetGoalSetByIdQuery,
   useGetProgressHistoryQuery,
   useGetActiveCycleQuery,
+  useGetLibraryByIdQuery,
+  useUpdateLibraryMutation,
 } = kpiApi;

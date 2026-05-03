@@ -15,6 +15,7 @@ public interface KpiMapper {
     @Mapping(target = "isActive", expression = "java(true)")
     KpiLibrary toLibraryEntity(KpiLibraryRequest request);
 
+    @Mapping(target = "positionId", source = "position.positionId")
     @Mapping(target = "positionName", source = "position.positionName")
     @Mapping(target = "details", source = "details")
     KpiLibraryResponse toLibraryResponse(KpiLibrary library);

@@ -555,7 +555,11 @@ public class KpiServiceImpl implements KpiService {
         public KpiLibraryResponse getLibraryById(Long id) {
                 KpiLibrary library = libraryRepository.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Library not found"));
-                return kpiMapper.toLibraryResponse(library);
+                KpiLibraryResponse response = kpiMapper.toLibraryResponse(library);
+                if (library.getPosition() != null) {
+                        response.setPositionId(library.getPosition().getPositionId());
+                }
+                return response;
         }
 
         @Override

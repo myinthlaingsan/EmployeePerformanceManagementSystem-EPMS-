@@ -10,6 +10,8 @@ public class KpiLibraryResponse {
     private String title;
     private String description;
     private String positionName;
+    private Long positionId;
+    private Long targetLevelId;
     private Boolean isActive;
     private List<KpiLibraryDetailResponse> details;
 }
