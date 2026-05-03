@@ -13,7 +13,8 @@ import {
     ChevronRight,
     Users,
     Activity,
-    Target
+    Target,
+    User
 } from 'lucide-react';
 
 const PipListPage: React.FC = () => {
@@ -26,6 +27,7 @@ const PipListPage: React.FC = () => {
     // Filters State
     const [deptFilter, setDeptFilter] = useState('All Departments');
     const [statusFilter, setStatusFilter] = useState('All Status');
+    const [severityFilter, setSeverityFilter] = useState('All Severities');
 
     // Correct Hook usage with skip logic
     const { data: allPipsResponse, isLoading: isLoadingAll } = useGetPipsQuery(undefined, {
@@ -61,7 +63,9 @@ const PipListPage: React.FC = () => {
             else if (statusFilter === 'Completed') matchesStatus = pip.status === 'COMPLETED';
         }
 
-        return matchesDept && matchesStatus;
+        const matchesSeverity = severityFilter === 'All Severities' || pip.severity === severityFilter.toUpperCase();
+
+        return matchesDept && matchesStatus && matchesSeverity;
     });
 
     // Insights Calculations
@@ -173,6 +177,21 @@ const PipListPage: React.FC = () => {
                                 <option>Closed</option>
                             </select>
                         </div>
+                        
+                        {/* Severity Filter */}
+                        <div className="bg-white border border-surface-border rounded-2xl px-6 py-3 flex items-center gap-4 shadow-sm">
+                            <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Severity:</span>
+                            <select
+                                value={severityFilter}
+                                onChange={(e) => setSeverityFilter(e.target.value)}
+                                className="text-sm font-bold text-[#0f172a] bg-transparent outline-none cursor-pointer"
+                            >
+                                <option>All Severities</option>
+                                <option>Standard</option>
+                                <option>Urgent</option>
+                                <option>Critical</option>
+                            </select>
+                        </div>
                     </div>
 
                     {isHR && (
@@ -207,12 +226,7 @@ const PipListPage: React.FC = () => {
                             {pips.length > 0 ? pips.map((pip) => {
                                 const employee = getEmployee(pip.employeeId);
                                 const start = parseISO(pip.startDate);
-                                const end = parseISO(pip.endDate);
                                 const today = new Date();
-
-                                const totalDays = Math.max(1, differenceInDays(end, start));
-                                const elapsedDays = Math.max(0, Math.min(totalDays, differenceInDays(today, start)));
-                                const timeProgress = Math.round((elapsedDays / totalDays) * 100);
 
                                 // Get next review if exists
                                 const nextReview = pip.scheduledReviewDates?.find(d => isAfter(parseISO(d), today));
@@ -245,21 +259,28 @@ const PipListPage: React.FC = () => {
                                         <td className="px-10 py-8">
                                             <div className="w-56">
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Day {elapsedDays} of {totalDays}</span>
-                                                    <span className="text-[10px] font-bold text-[#0f172a]">{timeProgress}%</span>
+                                                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Performance Score</span>
+                                                    <span className="text-[10px] font-bold text-[#0f172a]">{pip.overallProgress || 0}%</span>
                                                 </div>
                                                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
                                                     <div
                                                         className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                                                        style={{ width: `${timeProgress}%` }}
+                                                        style={{ width: `${pip.overallProgress || 0}%` }}
                                                     ></div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-10 py-8">
-                                            <span className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-[0.15em] border ${getStatusStyle(pip.status)}`}>
-                                                {pip.status}
-                                            </span>
+                                            <div className="flex flex-col gap-2">
+                                                <span className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-[0.15em] border ${getStatusStyle(pip.status)} w-fit`}>
+                                                    {pip.status}
+                                                </span>
+                                                {((pip.status === 'ACTIVE' || pip.status === 'EXTENDED') && parseISO(pip.endDate) < new Date()) && (
+                                                    <span className="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1 rounded text-[8px] font-black uppercase tracking-widest animate-pulse w-fit">
+                                                        Awaiting Determination
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-10 py-8">
                                             {pip.severity ? (

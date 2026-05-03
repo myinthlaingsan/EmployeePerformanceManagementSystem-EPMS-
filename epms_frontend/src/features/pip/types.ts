@@ -42,6 +42,7 @@ export interface PipResponse {
     managerPrivateNote?: string;
     employeePrivateNote?: string;
     scheduledReviewDates?: string[];
+    overallProgress?: number;
 }
 
 export interface PipCreateRequest {
@@ -56,6 +57,7 @@ export interface PipCreateRequest {
 
 export interface PipExtendRequest {
     newEndDate: string;
+    scheduledReviewDates?: string[];
 }
 
 export interface PipObjectiveResponse {

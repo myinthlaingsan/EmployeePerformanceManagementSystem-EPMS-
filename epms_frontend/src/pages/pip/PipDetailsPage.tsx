@@ -104,7 +104,7 @@ const PipDetailsPage: React.FC = () => {
     const totalObjectives = objectives.length;
     const achievedObjectives = objectives.filter(o => o.status === 'COMPLETED').length;
     const avgProgress = totalObjectives > 0
-        ? Math.round(objectives.reduce((acc, obj) => acc + (obj.status === 'COMPLETED' ? 100 : obj.status === 'IN_PROGRESS' ? 50 : 0), 0) / totalObjectives)
+        ? Math.round(objectives.reduce((acc, obj) => acc + (obj.currentProgress || 0), 0) / totalObjectives)
         : 0;
 
     const daysElapsed = differenceInDays(new Date(), parseISO(pip.startDate));
@@ -188,6 +188,16 @@ const PipDetailsPage: React.FC = () => {
     const handleAddProgress = async (data: any) => {
         try {
             await addProgress({ ...data, objectiveId: selectedObjectiveId }).unwrap();
+
+            // Intelligent Progress Syncing:
+            // If progress reaches 100%, automatically flip status to COMPLETED
+            const objective = objectives.find(o => o.objectiveId === selectedObjectiveId);
+            if (data.progressPercent === 100 && objective?.status !== 'COMPLETED') {
+                await updateObjectiveStatus({ id: selectedObjectiveId, status: ObjectiveStatus.COMPLETED }).unwrap();
+            } else if (data.progressPercent < 100 && objective?.status === 'COMPLETED') {
+                await updateObjectiveStatus({ id: selectedObjectiveId, status: ObjectiveStatus.IN_PROGRESS }).unwrap();
+            }
+
             setIsProgressModalOpen(false);
             alert("Progress logged successfully!");
         } catch (err: any) {
@@ -196,10 +206,16 @@ const PipDetailsPage: React.FC = () => {
         }
     };
 
-    const handleFinalize = async (data: { outcome: PipOutcome; comment: string; newEndDate?: string }) => {
+    const handleFinalize = async (data: { outcome: PipOutcome; comment: string; newEndDate?: string; scheduledReviewDates?: string[] }) => {
         try {
             if (data.outcome === PipOutcome.EXTEND && data.newEndDate) {
-                await extendPip({ id: pipId, body: { newEndDate: data.newEndDate } }).unwrap();
+                await extendPip({ 
+                    id: pipId, 
+                    body: { 
+                        newEndDate: data.newEndDate,
+                        scheduledReviewDates: data.scheduledReviewDates 
+                    } 
+                }).unwrap();
             }
             await finalizePip({
                 pipId,
@@ -487,8 +503,15 @@ const PipDetailsPage: React.FC = () => {
 
                             {/* Scheduled Reviews */}
                             {pip.scheduledReviewDates?.map((date, i) => {
-                                const isPast = parseISO(date) < new Date();
-                                const isDone = reviews.some(r => format(parseISO(r.reviewDate), 'yyyy-MM-dd') === format(parseISO(date), 'yyyy-MM-dd'));
+                                const mDate = parseISO(date);
+                                const isPast = mDate < new Date();
+                                // Milestone "Check-off" Logic:
+                                // Flexible matching - count as done if a review exists within +/- 3 days of the scheduled milestone
+                                const isDone = reviews.some(r => {
+                                    const rDate = parseISO(r.reviewDate);
+                                    const diff = Math.abs(differenceInDays(rDate, mDate));
+                                    return diff <= 3;
+                                });
                                 return (
                                     <div key={i} className="relative">
                                         <div className={`absolute -left-[35px] top-0.5 w-[22px] h-[22px] rounded-full border-4 border-[#ffffff] shadow-sm flex items-center justify-center ${isDone ? 'bg-[#10b981]' : isPast ? 'bg-[#ef4444]' : 'bg-[#005db5]'
@@ -640,11 +663,13 @@ const PipDetailsPage: React.FC = () => {
                 <ProgressModal
                     onClose={() => setIsProgressModalOpen(false)}
                     onSave={handleAddProgress}
+                    initialProgress={objectives.find(o => o.objectiveId === selectedObjectiveId)?.currentProgress || 0}
                 />
             )}
             {isFinalizeModalOpen && (
                 <FinalizeModal
                     currentEndDate={pip.endDate}
+                    existingReviewDates={pip.scheduledReviewDates}
                     onClose={() => setIsFinalizeModalOpen(false)}
                     onSave={handleFinalize}
                 />
