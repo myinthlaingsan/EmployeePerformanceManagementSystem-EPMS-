@@ -28,9 +28,9 @@ import ObjectiveModal from '../../components/pip/ObjectiveModal';
 import ProgressModal from '../../components/pip/ProgressModal';
 import FinalizeModal from '../../components/pip/FinalizeModal';
 import ObjectiveProgressList from '../../components/pip/ObjectiveProgressList';
-import { 
-    useActivatePipMutation, 
-    useDeletePipMutation, 
+import {
+    useActivatePipMutation,
+    useDeletePipMutation,
     useExtendPipMutation,
     useUpdatePipMutation,
     useCreateReviewMutation,
@@ -55,10 +55,10 @@ const PipDetailsPage: React.FC = () => {
     const objectives = objectivesResponse?.data ?? [];
     const reviews = reviewsResponse?.data ?? [];
     const { user, isHR, isManager: hasManagerRole, isEmployee: hasEmployeeRole } = useAuth();
-    
+
     const isCurrentEmployee = user?.id === pip?.employeeId;
     const isCurrentManager = user?.id === pip?.managerId;
-    
+
     const [activatePip] = useActivatePipMutation();
     const [deletePip] = useDeletePipMutation();
     const [extendPip] = useExtendPipMutation();
@@ -84,11 +84,8 @@ const PipDetailsPage: React.FC = () => {
     const [privateNote, setPrivateNote] = useState('');
     const [isEditingReason, setIsEditingReason] = useState(false);
     const [editedReason, setEditedReason] = useState('');
-    
-    // New state for quick progress form
-    const [selectedObjectiveForLog, setSelectedObjectiveForLog] = useState<number | null>(null);
-    const [newProgressPercent, setNewProgressPercent] = useState(0);
-    const [newProgressNote, setNewProgressNote] = useState('');
+
+
 
     useEffect(() => {
         if (pip) {
@@ -141,8 +138,10 @@ const PipDetailsPage: React.FC = () => {
         try {
             await createReview({ ...data, pipId }).unwrap();
             setIsReviewModalOpen(false);
-        } catch (err) {
+            alert("Review added successfully!");
+        } catch (err: any) {
             console.error('Failed to create review:', err);
+            alert("Failed to add review: " + (err?.data?.message || "Check permissions."));
         }
     };
 
@@ -170,8 +169,10 @@ const PipDetailsPage: React.FC = () => {
         try {
             await updatePip({ id: pipId, body: { reason: editedReason } }).unwrap();
             setIsEditingReason(false);
-        } catch (err) {
+            alert("PIP Reason updated successfully!");
+        } catch (err: any) {
             console.error('Failed to save reason:', err);
+            alert("Failed to update reason: " + (err?.data?.message || "Check permissions."));
         }
     };
 
@@ -188,8 +189,10 @@ const PipDetailsPage: React.FC = () => {
         try {
             await addProgress({ ...data, objectiveId: selectedObjectiveId }).unwrap();
             setIsProgressModalOpen(false);
-        } catch (err) {
+            alert("Progress logged successfully!");
+        } catch (err: any) {
             console.error('Failed to add progress:', err);
+            alert("Failed to log progress: " + (err?.data?.message || "Check permissions."));
         }
     };
 
@@ -198,12 +201,12 @@ const PipDetailsPage: React.FC = () => {
             if (data.outcome === PipOutcome.EXTEND && data.newEndDate) {
                 await extendPip({ id: pipId, body: { newEndDate: data.newEndDate } }).unwrap();
             }
-            await finalizePip({ 
-                pipId, 
-                outcome: data.outcome, 
-                comment: data.comment 
+            await finalizePip({
+                pipId,
+                outcome: data.outcome,
+                comment: data.comment
             }).unwrap();
-            
+
             setIsFinalizeModalOpen(false);
             alert(`PIP Finalized as ${data.outcome}`);
         } catch (err: any) {
@@ -214,33 +217,19 @@ const PipDetailsPage: React.FC = () => {
 
     const handleSavePrivateNote = async () => {
         try {
-            const body = isCurrentEmployee 
+            const body = isCurrentEmployee
                 ? { employeePrivateNote: privateNote }
                 : { managerPrivateNote: privateNote };
             await updatePip({ id: pipId, body }).unwrap();
-        } catch (err) {
+            alert("Private note saved successfully!");
+        } catch (err: any) {
             console.error('Failed to save private note:', err);
-        }
-    };
-
-    const handleQuickProgressSubmit = async () => {
-        if (!selectedObjectiveForLog) return;
-        try {
-            await addProgress({
-                objectiveId: selectedObjectiveForLog,
-                progressNote: newProgressNote,
-                progressPercent: newProgressPercent
-            }).unwrap();
-            setNewProgressNote('');
-            setNewProgressPercent(0);
-            setSelectedObjectiveForLog(null);
-        } catch (err) {
-            console.error('Failed to log progress:', err);
+            alert("Failed to save private note: " + (err?.data?.message || "Check permissions."));
         }
     };
 
     const toggleObjectiveHistory = (id: number) => {
-        setExpandedObjectives(prev => 
+        setExpandedObjectives(prev =>
             prev.includes(id) ? prev.filter(oid => oid !== id) : [...prev, id]
         );
     };
@@ -262,8 +251,8 @@ const PipDetailsPage: React.FC = () => {
                     <div>
                         {isEditingReason ? (
                             <div className="flex items-center gap-2 mb-2">
-                                <input 
-                                    value={editedReason} 
+                                <input
+                                    value={editedReason}
                                     onChange={e => setEditedReason(e.target.value)}
                                     className="text-[20px] font-black tracking-[-0.02em] text-[#2b3437] leading-tight bg-[#ffffff] rounded-xl px-4 py-2 border-2 border-[#005db5]/20 focus:border-[#005db5] outline-none w-[400px] shadow-sm"
                                 />
@@ -281,9 +270,9 @@ const PipDetailsPage: React.FC = () => {
                             </div>
                         )}
                         <p className="text-[12px] font-medium text-[#586064] mt-2">
-                            Started: {format(parseISO(pip.startDate), 'MMM dd, yyyy')} &nbsp;•&nbsp; Duration: {totalDuration} Days &nbsp;•&nbsp; 
-                            Employee: <span className="text-[#2b3437] font-bold">{allEmployees.find(e => e.id === pip.employeeId)?.staffName || `ID ${pip.employeeId}`}</span> &nbsp;•&nbsp; 
-                            Manager: <span className="text-[#2b3437] font-bold">{allEmployees.find(e => e.id === pip.managerId)?.staffName || `ID ${pip.managerId}`}</span>
+                            Started: {format(parseISO(pip.startDate), 'MMM dd, yyyy')} &nbsp;•&nbsp; Duration: {totalDuration} Days &nbsp;•&nbsp;
+                            Subject: <span className="text-[#2b3437] font-bold">{allEmployees.find(e => e.id === pip.employeeId)?.staffName || `ID ${pip.employeeId}`}</span> &nbsp;•&nbsp;
+                            Orchestrated by: <span className="text-[#005db5] font-bold">{allEmployees.find(e => e.id === pip.managerId)?.staffName || `ID ${pip.managerId}`}</span>
                         </p>
                     </div>
 
@@ -299,7 +288,7 @@ const PipDetailsPage: React.FC = () => {
                             </button>
                         )}
 
-                        {canManage && pip.status !== PipStatus.COMPLETED && (
+                        {canManage && pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED && (
                             <button
                                 onClick={() => setIsFinalizeModalOpen(true)}
                                 className="bg-white text-[#005db5] px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.05rem] hover:bg-[#f1f4f6] transition-all ring-1 ring-[#005db5]/30 shadow-sm"
@@ -365,7 +354,7 @@ const PipDetailsPage: React.FC = () => {
                     <div className="bg-[#ffffff] rounded-2xl overflow-hidden ring-1 ring-[#abb3b7]/15 shadow-sm">
                         <div className="bg-[#e3e9ec] px-8 py-4 border-b border-[#005db5]/5 flex justify-between items-center">
                             <h3 className="text-[10px] font-black text-[#2b3437] uppercase tracking-[0.1rem]">IMPROVEMENT OBJECTIVES</h3>
-                            {canManage && (
+                            {canManage && pip.status !== PipStatus.CLOSED && pip.status !== PipStatus.COMPLETED && (
                                 <button
                                     onClick={() => setIsObjectiveModalOpen(true)}
                                     className="flex items-center gap-1.5 text-[10px] font-black text-[#005db5] uppercase tracking-[0.05rem]"
@@ -379,15 +368,15 @@ const PipDetailsPage: React.FC = () => {
                                 objectives.map((objective) => (
                                     <div key={objective.objectiveId} className="flex gap-8 group">
                                         <div className={`w-1 rounded-full shrink-0 transition-all duration-300 ${objective.status === 'COMPLETED' ? 'bg-[#10b981]' :
-                                                objective.status === 'IN_PROGRESS' ? 'bg-[#005db5]' :
-                                                    'bg-[#abb3b7]'
+                                            objective.status === 'IN_PROGRESS' ? 'bg-[#005db5]' :
+                                                'bg-[#abb3b7]'
                                             }`}></div>
                                         <div className="flex-1">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-3">
                                                     <h4 className="text-[17px] font-black text-[#2b3437] tracking-tight leading-snug">{objective.title}</h4>
                                                     {canManage && pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED && (
-                                                        <button 
+                                                        <button
                                                             onClick={() => setEditingObjective(objective)}
                                                             className="text-[9px] font-black text-[#abb3b7] uppercase tracking-widest hover:text-[#005db5] transition-colors"
                                                         >
@@ -423,7 +412,7 @@ const PipDetailsPage: React.FC = () => {
                                                 <span className="bg-[#f1f4f6] px-2 py-0.5 rounded text-[9px] uppercase tracking-wider">
                                                     {objective.successCriteria}
                                                 </span>
-                                                {isCurrentEmployee && (
+                                                {isCurrentEmployee && pip.status !== PipStatus.CLOSED && pip.status !== PipStatus.COMPLETED && (
                                                     <button
                                                         onClick={() => {
                                                             setSelectedObjectiveId(objective.objectiveId);
@@ -443,7 +432,7 @@ const PipDetailsPage: React.FC = () => {
                                                     <span className="text-[12px] font-black text-[#005db5]">{objective.currentProgress || 0}%</span>
                                                 </div>
                                                 <div className="h-2 w-full bg-white rounded-full overflow-hidden shadow-inner">
-                                                    <div 
+                                                    <div
                                                         className="h-full bg-gradient-to-r from-[#005db5] to-[#0052a0] rounded-full transition-all duration-1000 ease-out"
                                                         style={{ width: `${objective.currentProgress || 0}%` }}
                                                     />
@@ -452,14 +441,14 @@ const PipDetailsPage: React.FC = () => {
 
                                             {/* Collapsible Progress History */}
                                             <div className="mt-8">
-                                                <button 
+                                                <button
                                                     onClick={() => toggleObjectiveHistory(objective.objectiveId)}
                                                     className="flex items-center gap-2 text-[10px] font-black text-[#abb3b7] uppercase tracking-[0.15rem] hover:text-[#005db5] transition-colors"
                                                 >
-                                                    PROGRESS HISTORY 
+                                                    PROGRESS HISTORY
                                                     <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${expandedObjectives.includes(objective.objectiveId) ? 'rotate-90 text-[#005db5]' : ''}`} strokeWidth={4} />
                                                 </button>
-                                                
+
                                                 {expandedObjectives.includes(objective.objectiveId) && (
                                                     <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                                                         <ObjectiveProgressList objectiveId={objective.objectiveId} hideTitle />
@@ -535,15 +524,15 @@ const PipDetailsPage: React.FC = () => {
                                     {isCurrentEmployee ? 'EMPLOYEE PRIVATE NOTES' : "MANAGER'S PRIVATE NOTES"}
                                 </h3>
                             </div>
-                            
+
                             <textarea
                                 value={privateNote}
                                 onChange={e => setPrivateNote(e.target.value)}
                                 className="w-full bg-white rounded-xl p-5 text-[13px] text-[#005db5] outline-none border border-transparent focus:border-[#005db5]/10 transition-all placeholder:text-[#abb3b7] min-h-[120px] shadow-sm mb-4"
                                 placeholder={isCurrentEmployee ? "Your private thoughts (only visible to you)..." : "Private manager notes (not visible to employee)..."}
                             />
-                            
-                            <button 
+
+                            <button
                                 onClick={handleSavePrivateNote}
                                 className="w-full bg-[#005db5] text-white py-3.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15rem] hover:bg-[#0052a0] transition-all shadow-sm shadow-blue-100/50"
                             >
@@ -555,159 +544,108 @@ const PipDetailsPage: React.FC = () => {
             </div>
 
             {/* ── BOTTOM SECTIONS ─────────────────────────────── */}
-            <div className={`px-6 mt-10 grid gap-6 ${isCurrentEmployee ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
-                {/* Meeting Logs */}
-                <div className="bg-[#ffffff] rounded-2xl overflow-hidden ring-1 ring-[#abb3b7]/15 shadow-sm">
-                    <div className="bg-[#e3e9ec] px-8 py-4 border-b border-[#005db5]/5 flex justify-between items-center">
-                        <h3 className="text-[10px] font-black text-[#2b3437] uppercase tracking-[0.1rem]">PROGRESS REVIEWS</h3>
-                        {canManage && (
+            <div className="px-6 mt-10">
+                {/* Minimalist Progress Reviews */}
+                <div className="bg-white rounded-3xl overflow-hidden ring-1 ring-[#abb3b7]/15 shadow-sm">
+                    <div className="px-10 py-6 border-b border-[#f1f4f6] flex justify-between items-center bg-[#fcfdfe]">
+                        <div className="flex items-center gap-3">
+                            <div className="w-1.5 h-6 bg-[#005db5] rounded-full" />
+                            <h3 className="text-[11px] font-black text-[#2b3437] uppercase tracking-[0.2rem]">PROGRESS LEDGER</h3>
+                        </div>
+                        {canManage && pip.status !== PipStatus.CLOSED && pip.status !== PipStatus.COMPLETED && (
                             <button
                                 onClick={() => setIsReviewModalOpen(true)}
-                                className="flex items-center gap-1.5 text-[10px] font-black text-[#005db5] uppercase tracking-[0.05rem] hover:underline"
+                                className="flex items-center gap-1.5 text-[9px] font-black text-[#005db5] bg-blue-50 px-4 py-2 rounded-full uppercase tracking-widest hover:bg-blue-100 transition-all"
                             >
-                                <Plus className="w-3.5 h-3.5" strokeWidth={3} /> NEW ENTRY
+                                <Plus className="w-3 h-3" /> ADD ENTRY
                             </button>
                         )}
                     </div>
-                    <div className="p-0 divide-y divide-[#abb3b7]/10">
+
+                    <div className="divide-y divide-[#f1f4f6]">
                         {reviews.length > 0 ? (
                             reviews.map((log) => (
-                                <div key={log.reviewId} className="flex flex-col md:flex-row p-8 hover:bg-[#f8fafb] transition-colors group">
-                                    <div className="md:w-48 shrink-0 mb-4 md:mb-0">
-                                        <div className="text-[10px] font-black text-[#abb3b7] uppercase tracking-widest mb-1">{format(parseISO(log.reviewDate), 'MMM dd, yyyy')}</div>
-                                        <div className="text-[13px] font-bold text-[#005db5] flex items-center gap-2">
-                                            <MessageSquare className="w-4 h-4" /> Manager Review
+                                <div key={log.reviewId} className="p-8 hover:bg-[#fafbfc]/50 transition-colors">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-[10px] font-black text-[#005db5] bg-blue-50 px-3 py-1 rounded-md tracking-wider uppercase">
+                                                {format(parseISO(log.reviewDate), 'MMM dd, yyyy')}
+                                            </div>
+                                            <div className="text-[11px] font-bold text-[#586064] flex items-center gap-2">
+                                                <MessageSquare className="w-3.5 h-3.5" />
+                                                Formal Review by <span className="text-[#005db5]">{allEmployees.find(e => e.id === log.createdBy)?.staffName || 'Manager'}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex-1 space-y-5">
-                                        <div>
-                                            <h5 className="text-[9px] font-black text-[#abb3b7] uppercase tracking-widest mb-2">SUMMARY</h5>
-                                            <p className="text-[14px] text-[#2b3437] leading-relaxed font-medium">{log.progressSummary}</p>
-                                        </div>
-                                        
-                                        {log.managerFeedback && (
-                                            <div className="bg-[#ffffff] p-5 rounded-xl ring-1 ring-[#005db5]/10 shadow-sm border-l-4 border-[#005db5]">
-                                                <h5 className="text-[9px] font-black text-[#005db5] uppercase tracking-widest mb-2 flex items-center gap-2">MANAGER FEEDBACK</h5>
-                                                <p className="text-[13px] text-[#2b3437] leading-relaxed">
-                                                    {log.managerFeedback}
-                                                </p>
-                                            </div>
-                                        )}
 
-                                        {log.nextAction && (
-                                            <div className="flex items-start gap-3 bg-[#f1f4f6] p-4 rounded-xl">
-                                                <TrendingUp className="w-4 h-4 text-[#586064] shrink-0 mt-0.5" />
-                                                <div>
-                                                    <h5 className="text-[9px] font-black text-[#586064] uppercase tracking-widest mb-1">NEXT ACTIONS</h5>
-                                                    <p className="text-[12px] text-[#2b3437] font-bold">
-                                                        {log.nextAction}
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        <div className="lg:col-span-2">
+                                            <p className="text-[14px] text-[#2b3437] leading-relaxed font-medium">
+                                                {log.progressSummary}
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {log.managerFeedback && (
+                                                <div className="p-4 bg-[#f8fafb] rounded-2xl border border-[#f1f4f6]">
+                                                    <h5 className="text-[8px] font-black text-[#abb3b7] uppercase tracking-widest mb-2">FEEDBACK</h5>
+                                                    <p className="text-[12px] text-[#586064] leading-relaxed">
+                                                        {log.managerFeedback}
                                                     </p>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+
+                                            {log.nextAction && (
+                                                <div className="flex items-center gap-3 px-4 py-3 bg-[#f1f4f6]/50 rounded-xl">
+                                                    <TrendingUp className="w-3.5 h-3.5 text-[#005db5]" />
+                                                    <span className="text-[11px] text-[#2b3437] font-bold truncate">
+                                                        {log.nextAction}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))
                         ) : (
                             <div className="text-center py-16">
-                                <p className="text-[#abb3b7] text-[11px] font-black uppercase tracking-widest">No review entries yet</p>
+                                <p className="text-[#abb3b7] text-[11px] font-black uppercase tracking-widest">No entries in ledger</p>
                             </div>
                         )}
                     </div>
                 </div>
-
-                {/* Progress Fill Form (Employee Only) */}
-                {isCurrentEmployee && (
-                    <div className="bg-[#ffffff] rounded-2xl p-8 ring-1 ring-[#005db5]/10 shadow-sm border-t-4 border-[#005db5]">
-                        <div className="flex items-center gap-3 mb-8">
-                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                                <TrendingUp className="w-4 h-4 text-[#005db5]" />
-                            </div>
-                            <h3 className="text-[10px] font-black text-[#005db5] uppercase tracking-[0.1rem]">QUICK PROGRESS UPDATE</h3>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div>
-                                <label className="text-[9px] font-black text-[#abb3b7] uppercase tracking-widest mb-2 block">SELECT OBJECTIVE</label>
-                                <select 
-                                    value={selectedObjectiveForLog || ''}
-                                    onChange={e => setSelectedObjectiveForLog(Number(e.target.value))}
-                                    className="w-full bg-[#f1f4f6] rounded-xl px-4 py-3.5 text-[13px] text-[#2b3437] font-bold outline-none border-2 border-transparent focus:border-[#005db5]/10 transition-all appearance-none"
-                                >
-                                    <option value="">Choose an objective...</option>
-                                    {objectives.map(obj => (
-                                        <option key={obj.objectiveId} value={obj.objectiveId}>{obj.title}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <div className="flex justify-between items-center mb-3">
-                                    <label className="text-[9px] font-black text-[#abb3b7] uppercase tracking-widest block">COMPLETION PERCENTAGE</label>
-                                    <span className="bg-[#005db5] text-white text-[11px] font-black px-2.5 py-1 rounded-md">{newProgressPercent}%</span>
-                                </div>
-                                <input 
-                                    type="range" 
-                                    min="0" 
-                                    max="100" 
-                                    value={newProgressPercent}
-                                    onChange={e => setNewProgressPercent(Number(e.target.value))}
-                                    className="w-full h-1.5 bg-[#f1f4f6] rounded-full appearance-none cursor-pointer accent-[#005db5] transition-all"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-[9px] font-black text-[#abb3b7] uppercase tracking-widest mb-2 block">PROGRESS NOTES</label>
-                                <textarea 
-                                    value={newProgressNote}
-                                    onChange={e => setNewProgressNote(e.target.value)}
-                                    placeholder="Briefly describe what you've achieved..."
-                                    className="w-full bg-[#f1f4f6] rounded-xl px-4 py-3.5 text-[13px] text-[#2b3437] outline-none min-h-[100px] resize-none border-2 border-transparent focus:border-[#005db5]/10 transition-all"
-                                />
-                            </div>
-
-                            <button 
-                                onClick={handleQuickProgressSubmit}
-                                disabled={!selectedObjectiveForLog || !newProgressNote}
-                                className="w-full bg-[#005db5] text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2rem] shadow-lg shadow-blue-200 hover:bg-[#0052a0] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                            >
-                                UPDATE PROGRESS
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
             {/* Modals */}
             {isReviewModalOpen && (
-                <ReviewModal 
-                    onClose={() => setIsReviewModalOpen(false)} 
+                <ReviewModal
+                    onClose={() => setIsReviewModalOpen(false)}
                     onSave={handleCreateReview}
                 />
             )}
             {isObjectiveModalOpen && (
-                <ObjectiveModal 
+                <ObjectiveModal
                     pipStartDate={pip.startDate}
-                    onClose={() => setIsObjectiveModalOpen(false)} 
+                    onClose={() => setIsObjectiveModalOpen(false)}
                     onSave={handleCreateObjective}
                 />
             )}
             {editingObjective && (
-                <ObjectiveModal 
+                <ObjectiveModal
                     initialData={editingObjective}
-                    onClose={() => setEditingObjective(null)} 
+                    onClose={() => setEditingObjective(null)}
                     onSave={handleEditObjective}
                 />
             )}
             {isProgressModalOpen && selectedObjectiveId && (
-                <ProgressModal 
-                    onClose={() => setIsProgressModalOpen(false)} 
+                <ProgressModal
+                    onClose={() => setIsProgressModalOpen(false)}
                     onSave={handleAddProgress}
                 />
             )}
             {isFinalizeModalOpen && (
-                <FinalizeModal 
+                <FinalizeModal
                     currentEndDate={pip.endDate}
-                    onClose={() => setIsFinalizeModalOpen(false)} 
+                    onClose={() => setIsFinalizeModalOpen(false)}
                     onSave={handleFinalize}
                 />
             )}
