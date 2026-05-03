@@ -98,17 +98,17 @@ public class EmployeeServiceImpl implements EmployeeService {
                 tokenRepository.save(resetToken);
 
                 // Assign Manager (Reporting Line)
-                // if (request.getDirectManagerId() != null) {
-                // Employee manager = employeeRepository.findById(request.getDirectManagerId())
-                // .orElseThrow(() -> new NotFoundException("Manager not found"));
-                //
-                // ReportingLine reportingLine = ReportingLine.builder()
-                // .employee(savedEmployee)
-                // .manager(manager)
-                // .isActive(true)
-                // .build();
-                // reportingLineRepository.save(reportingLine);
-                // }
+                if (request.getDirectManagerId() != null) {
+                        Employee manager = employeeRepository.findById(request.getDirectManagerId())
+                                        .orElseThrow(() -> new NotFoundException("Manager not found"));
+
+                        ReportingLine reportingLine = ReportingLine.builder()
+                                        .employee(savedEmployee)
+                                        .manager(manager)
+                                        .isActive(true)
+                                        .build();
+                        reportingLineRepository.save(reportingLine);
+                }
 
                 applicationEventPublisher.publishEvent(
                                 new EmployeeCreatedEvent(savedEmployee.getId(), token));
@@ -326,6 +326,13 @@ public class EmployeeServiceImpl implements EmployeeService {
                                                         ed.getCurrentDepartment().getDepartmentName());
                                         response.setParentDepartmentName(
                                                         ed.getParentDepartment().getDepartmentName());
+                                });
+
+                // Set Manager Info
+                reportingLineRepository.findByEmployeeAndIsActiveTrue(emp)
+                                .ifPresent(line -> {
+                                        response.setDirectManagerId(line.getManager().getId());
+                                        response.setDirectManagerName(line.getManager().getStaffName());
                                 });
                 return response;
         }
