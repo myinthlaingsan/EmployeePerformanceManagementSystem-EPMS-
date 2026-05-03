@@ -8,7 +8,6 @@ import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
-import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.kpi.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.KpiService;
@@ -25,6 +24,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ace.org.epms_backend.dto.PagedResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -278,8 +281,8 @@ public class KpiServiceImpl implements KpiService {
                         throw new SecurityException("Only the assigned manager can approve this goal set");
                 }
 
-                if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
-                        throw new IllegalStateException("Only DRAFT goals can be approved");
+                if (!goalSet.getStatus().equals(KpiGoalStatus.SUBMITTED)) {
+                        throw new IllegalStateException("Only SUBMITTED goals can be approved");
                 }
 
                 BigDecimal totalWeight = goalSet.getItems().stream()
@@ -546,6 +549,178 @@ public class KpiServiceImpl implements KpiService {
                                                 .updatedAt(p.getCreatedAt().toString())
                                                 .build())
                                 .collect(Collectors.toList());
+        }
+
+        @Override
+        public KpiLibraryResponse getLibraryById(Long id) {
+                KpiLibrary library = libraryRepository.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Library not found"));
+                return kpiMapper.toLibraryResponse(library);
+        }
+
+        @Override
+        @Transactional
+        public KpiLibraryResponse updateLibrary(Long id, KpiLibraryRequest request) {
+                KpiLibrary library = libraryRepository.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Library not found"));
+
+                library.setTitle(request.getTitle());
+                library.setDescription(request.getDescription());
+                if (request.getPositionId() != null) {
+                        library.setPosition(positionRepository.findById(request.getPositionId())
+                                        .orElseThrow(() -> new NotFoundException("Position not found")));
+                }
+
+                // Sync details (clear and add new)
+                library.getDetails().clear();
+                List<KpiLibraryDetails> details = request.getDetails().stream().map(d -> {
+                        KpiLibraryDetails detail = kpiMapper.toLibraryDetailEntity(d);
+                        detail.setLibrary(library);
+                        detail.setCategory(categoryRepository.findById(d.getCategoryId())
+                                        .orElseThrow(() -> new NotFoundException("Category not found")));
+                        return detail;
+                }).collect(Collectors.toList());
+                library.getDetails().addAll(details);
+
+                KpiLibrary savedLibrary = libraryRepository.save(library);
+                return kpiMapper.toLibraryResponse(savedLibrary);
+        }
+
+        @Override
+        @Transactional
+        public KpiLibraryResponse cloneLibrary(Long id, String newTitle) {
+                KpiLibrary source = libraryRepository.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Library not found"));
+
+                KpiLibrary cloned = KpiLibrary.builder()
+                                .title(newTitle)
+                                .description(source.getDescription())
+                                .position(source.getPosition())
+                                .isActive(true)
+                                .build();
+
+                KpiLibrary savedLibrary = libraryRepository.save(cloned);
+
+                List<KpiLibraryDetails> clonedDetails = source.getDetails().stream().map(d -> {
+                        return KpiLibraryDetails.builder()
+                                        .library(savedLibrary)
+                                        .goalTitle(d.getGoalTitle())
+                                        .targetValue(d.getTargetValue())
+                                        .weightPercent(d.getWeightPercent())
+                                        .category(d.getCategory())
+                                        .build();
+                }).collect(Collectors.toList());
+
+                savedLibrary.setDetails(clonedDetails);
+                return kpiMapper.toLibraryResponse(savedLibrary);
+        }
+
+        @Override
+        public PagedResponse<KpiLibraryResponse> searchLibraries(String keyword, int page, int size) {
+                Pageable pageable = PageRequest.of(page, size);
+                Page<KpiLibrary> libraryPage = libraryRepository.findByTitleContainingIgnoreCase(keyword, pageable);
+                Page<KpiLibraryResponse> responsePage = libraryPage.map(kpiMapper::toLibraryResponse);
+                return PagedResponse.of(responsePage);
+        }
+
+        @Override
+        @Transactional
+        public GoalSetResponse submitGoalSet(Long goalSetId) {
+                KpiGoals goalSet = goalsRepository.findById(goalSetId)
+                                .orElseThrow(() -> new NotFoundException("Goal set not found"));
+
+                Employee currentUser = getCurrentEmployee();
+                if (!goalSet.getEmployee().getId().equals(currentUser.getId())) {
+                        throw new SecurityException("Only the employee can submit their goal set");
+                }
+
+                if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT) && !goalSet.getStatus().equals(KpiGoalStatus.REJECTED)) {
+                        throw new IllegalStateException("Only DRAFT or REJECTED goals can be submitted");
+                }
+
+                goalSet.setStatus(KpiGoalStatus.SUBMITTED);
+                KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+                eventPublisher.publishEvent(NotificationEvent.builder()
+                                .recipientId(goalSet.getManager().getId())
+                                .senderId(currentUser.getId())
+                                .type(NotificationType.KPI_SUBMITTED)
+                                .title("KPI Goals Submitted")
+                                .message("An employee has submitted their KPI goals for approval.")
+                                .referenceType(ReferenceType.KPI)
+                                .referenceId(goalSet.getId())
+                                .actionUrl("/kpis/team-goals")
+                                .build());
+
+                return kpiMapper.toGoalSetResponse(savedGoalSet);
+        }
+
+        @Override
+        @Transactional
+        public GoalSetResponse rejectGoalSet(Long goalSetId, String reason) {
+                KpiGoals goalSet = goalsRepository.findById(goalSetId)
+                                .orElseThrow(() -> new NotFoundException("Goal set not found"));
+
+                Employee currentUser = getCurrentEmployee();
+                if (!goalSet.getManager().getId().equals(currentUser.getId())) {
+                        throw new SecurityException("Only the manager can reject this goal set");
+                }
+
+                if (!goalSet.getStatus().equals(KpiGoalStatus.SUBMITTED)) {
+                        throw new IllegalStateException("Only SUBMITTED goals can be rejected");
+                }
+
+                goalSet.setStatus(KpiGoalStatus.REJECTED);
+                KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+                eventPublisher.publishEvent(NotificationEvent.builder()
+                                .recipientId(goalSet.getEmployee().getId())
+                                .senderId(currentUser.getId())
+                                .type(NotificationType.KPI_REJECTED)
+                                .title("KPI Goals Rejected")
+                                .message("Your KPI goals were rejected. Reason: " + reason)
+                                .referenceType(ReferenceType.KPI)
+                                .referenceId(goalSet.getId())
+                                .actionUrl("/kpis/my-goals")
+                                .build());
+
+                return kpiMapper.toGoalSetResponse(savedGoalSet);
+        }
+
+        @Override
+        public List<GoalSetResponse> getEmployeeGoalSets(Long employeeId) {
+                return goalsRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId).stream()
+                                .map(kpiMapper::toGoalSetResponse)
+                                .collect(Collectors.toList());
+        }
+
+        @Override
+        public List<GoalSetResponse> getTeamGoalSets(Long managerId, Long cycleId) {
+                return goalsRepository.findByManagerIdAndCycleCycleId(managerId, cycleId).stream()
+                                .map(kpiMapper::toGoalSetResponse)
+                                .collect(Collectors.toList());
+        }
+
+        @Override
+        public List<GoalSetResponse> getDepartmentGoalSets(Long departmentId, Long cycleId) {
+                return goalsRepository.findByDepartmentIdAndCycleId(departmentId, cycleId).stream()
+                                .map(kpiMapper::toGoalSetResponse)
+                                .collect(Collectors.toList());
+        }
+
+        @Override
+        @Transactional
+        public GoalSetResponse lockGoalSet(Long goalSetId) {
+                KpiGoals goalSet = goalsRepository.findById(goalSetId)
+                                .orElseThrow(() -> new NotFoundException("Goal set not found"));
+
+                if (!goalSet.getStatus().equals(KpiGoalStatus.APPROVED)) {
+                        throw new IllegalStateException("Only APPROVED goals can be locked");
+                }
+
+                goalSet.setStatus(KpiGoalStatus.LOCKED);
+                KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+                return kpiMapper.toGoalSetResponse(savedGoalSet);
         }
 
         private Employee getCurrentEmployee() {

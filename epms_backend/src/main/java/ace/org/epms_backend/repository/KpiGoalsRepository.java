@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -15,4 +17,13 @@ Optional<KpiGoals> findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
         @Param("employeeId") Long employeeId,
         @Param("cycleId") Long cycleId
 );
+
+    List<KpiGoals> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
+
+    List<KpiGoals> findByManagerIdAndCycleCycleId(Long managerId, Long cycleId);
+
+    @Query("SELECT k FROM KpiGoals k WHERE k.employee.id IN " +
+           "(SELECT ed.employee.id FROM EmployeeDepartment ed WHERE ed.currentDepartment.id = :departmentId AND ed.isCurrent = true) " +
+           "AND k.cycle.cycleId = :cycleId")
+    List<KpiGoals> findByDepartmentIdAndCycleId(@Param("departmentId") Long departmentId, @Param("cycleId") Long cycleId);
 }
