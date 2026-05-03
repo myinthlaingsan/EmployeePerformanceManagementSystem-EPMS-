@@ -4,6 +4,7 @@ import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.pip.PipCreateRequest;
 import ace.org.epms_backend.dto.pip.PipExtendRequest;
 import ace.org.epms_backend.dto.pip.PipResponse;
+import ace.org.epms_backend.dto.pip.PipUpdateRequest;
 import ace.org.epms_backend.service.PipService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -46,16 +47,29 @@ public class PipController {
         return ResponseEntity.ok(ApiResponse.success(pipService.getPipsByInvolvedUser(userId)));
     }
 
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("isAuthenticated()")
     @PutMapping("/{id}/activate")
     public ResponseEntity<ApiResponse<Void>> activatePip(@PathVariable Long id) {
         pipService.activatePip(id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'MANAGER')")
     @PutMapping("/{id}/extend")
     public ResponseEntity<ApiResponse<PipResponse>> extendPip(@PathVariable Long id, @Valid @RequestBody PipExtendRequest request) {
         return ResponseEntity.ok(ApiResponse.success(pipService.extendPip(id, request.getNewEndDate())));
+    }
+
+    @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'EMPLOYEE')")
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<PipResponse>> updatePip(@PathVariable Long id, @Valid @RequestBody PipUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(pipService.updatePip(id, request)));
+    }
+
+    @PreAuthorize("hasRole('HR')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deletePip(@PathVariable Long id) {
+        pipService.deletePip(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

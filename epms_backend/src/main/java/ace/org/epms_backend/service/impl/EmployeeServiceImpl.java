@@ -322,8 +322,14 @@ public class EmployeeServiceImpl implements EmployeeService {
                     response.setCurrentDepartmentName(
                             ed.getCurrentDepartment().getDepartmentName()
                     );
+                    response.setCurrentDepartmentId(
+                            ed.getCurrentDepartment().getId()
+                    );
                     response.setParentDepartmentName(
                             ed.getParentDepartment().getDepartmentName()
+                    );
+                    response.setParentDepartmentId(
+                            ed.getParentDepartment().getId()
                     );
                 });
         return response;

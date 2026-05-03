@@ -109,7 +109,12 @@ public class PipReviewServiceImpl implements PipReviewService {
 
         pip.setFinalOutcome(outcome);
         pip.setOverallComment(comment);
-        pip.setStatus(PipStatus.CLOSED);
+        
+        if (outcome == PipOutcome.EXTEND) {
+            pip.setStatus(PipStatus.EXTENDED);
+        } else {
+            pip.setStatus(PipStatus.CLOSED);
+        }
 
         pipRepository.save(pip);
     }

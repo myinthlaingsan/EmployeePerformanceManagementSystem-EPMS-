@@ -4,6 +4,7 @@ import ace.org.epms_backend.dto.pip.PipCreateRequest;
 import ace.org.epms_backend.dto.pip.PipResponse;
 import ace.org.epms_backend.dto.pip.PipUpdateRequest;
 import ace.org.epms_backend.enums.PipStatus;
+import ace.org.epms_backend.exception.AccessDeniedException;
 import ace.org.epms_backend.exception.InvalidStateException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.exception.UserNotFoundException;
@@ -12,6 +13,8 @@ import ace.org.epms_backend.model.pip.PipRecord;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.PipRecordRepository;
 import ace.org.epms_backend.service.PipService;
+import ace.org.epms_backend.service.AuthService;
+import ace.org.epms_backend.service.EmployeeRoleService;
 import ace.org.epms_backend.mapper.PipMapper;
 import ace.org.epms_backend.enums.ObjectiveStatus;
 import ace.org.epms_backend.model.pip.PipObjective;
@@ -42,6 +45,8 @@ public class PipServiceImpl implements PipService {
     private final PipMapper pipMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
+    private final AuthService authService;
+    private final EmployeeRoleService employeeRoleService;
 
     @Override
     public PipResponse createPip(PipCreateRequest request) {
@@ -106,6 +111,14 @@ public class PipServiceImpl implements PipService {
             pip.setReason(request.getReason());
         }
 
+        if (request.getManagerPrivateNote() != null) {
+            pip.setManagerPrivateNote(request.getManagerPrivateNote());
+        }
+
+        if (request.getEmployeePrivateNote() != null) {
+            pip.setEmployeePrivateNote(request.getEmployeePrivateNote());
+        }
+
         pip = pipRecordRepository.save(pip);
         return pipMapper.toResponse(pip);
     }
@@ -152,6 +165,16 @@ public class PipServiceImpl implements PipService {
         PipRecord pip = pipRecordRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("PIP not found"));
 
+        Employee current = authService.getCurrentUser();
+        boolean isHR = employeeRoleService.getRolesByEmployeeId(current.getId())
+                .stream()
+                .anyMatch(r -> r.getRoleName().equalsIgnoreCase("HR"));
+        boolean isAssignedManager = pip.getManager().getId().equals(current.getId());
+
+        if (!isHR && !isAssignedManager) {
+            throw new AccessDeniedException("Only HR or the assigned Manager can activate this PIP");
+        }
+
         if (pip.getStatus() != PipStatus.DRAFT) {
             throw new InvalidStateException("Only DRAFT PIP can be activated");
         }
@@ -184,6 +207,16 @@ public class PipServiceImpl implements PipService {
     public PipResponse extendPip(Long id, LocalDate newEndDate) {
         PipRecord pip = pipRecordRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("PIP not found"));
+
+        Employee current = authService.getCurrentUser();
+        boolean isHR = employeeRoleService.getRolesByEmployeeId(current.getId())
+                .stream()
+                .anyMatch(r -> r.getRoleName().equalsIgnoreCase("HR"));
+        boolean isAssignedManager = pip.getManager().getId().equals(current.getId());
+
+        if (!isHR && !isAssignedManager) {
+            throw new AccessDeniedException("Only HR or the assigned Manager can extend this PIP");
+        }
 
         if (pip.getStatus() != PipStatus.ACTIVE && pip.getStatus() != PipStatus.EXTENDED) {
             throw new InvalidStateException("Only ACTIVE or EXTENDED PIP can be extended");
