@@ -15,8 +15,6 @@ public interface KpiService {
 
     KpiLibraryResponse toggleLibraryStatus(Long id, boolean status);
 
-    List<KpiCategoryResponse> getAllCategories();
-
     // KPI Assignment
     GoalSetResponse assignKpiToEmployee(GoalAssignmentRequest request);
 

@@ -29,7 +29,7 @@ public class SelfAssessmentAnswer extends BaseEntity {
 
     private Boolean isCompleted;
 
-    private String answerValue;
+    private String answerValue; //(or) ratingValue
 
     @Column(columnDefinition = "TEXT")
     private String comment;

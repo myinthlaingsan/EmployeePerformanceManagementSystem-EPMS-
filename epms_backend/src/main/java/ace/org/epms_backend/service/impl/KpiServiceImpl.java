@@ -121,16 +121,6 @@ public class KpiServiceImpl implements KpiService {
         }
 
         @Override
-        public List<KpiCategoryResponse> getAllCategories() {
-                return categoryRepository.findAll().stream()
-                                .map(cat -> KpiCategoryResponse.builder()
-                                                .id(cat.getId())
-                                                .name(cat.getName())
-                                                .build())
-                                .collect(Collectors.toList());
-        }
-
-        @Override
         @Transactional
         public GoalSetResponse assignKpiToEmployee(GoalAssignmentRequest request) {
                 Employee employee = employeeRepository.findById(request.getEmployeeId())
