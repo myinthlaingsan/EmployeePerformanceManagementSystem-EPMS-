@@ -28,4 +28,5 @@ public class PipResponse {
     private String employeePrivateNote;
     
     private List<LocalDate> scheduledReviewDates;
+    private Integer overallProgress;
 }

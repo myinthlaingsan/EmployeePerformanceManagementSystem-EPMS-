@@ -68,6 +68,10 @@ public class PipRecord extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String employeePrivateNote;
 
+    @OneToMany(mappedBy = "pip", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<PipObjective> objectives = new ArrayList<>();
+
     private Boolean isActive = true;
 
     private Long createdBy;

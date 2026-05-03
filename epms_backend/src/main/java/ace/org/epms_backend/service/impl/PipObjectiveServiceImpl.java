@@ -55,7 +55,7 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
         objective.setPip(pip);
         objective.setStatus(ObjectiveStatus.NOT_STARTED);
 
-        return mapper.toResponse(objectiveRepository.save(objective));
+        return enrichObjectiveResponse(objectiveRepository.save(objective));
     }
 
     @Override
@@ -72,7 +72,7 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
         if (request.getDescription() != null) objective.setDescription(request.getDescription());
         if (request.getSuccessCriteria() != null) objective.setSuccessCriteria(request.getSuccessCriteria());
 
-        return mapper.toResponse(objectiveRepository.save(objective));
+        return enrichObjectiveResponse(objectiveRepository.save(objective));
     }
 
     // =========================
@@ -97,12 +97,7 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
 
         return objectiveRepository.findByPip_PipId(pipId)
                 .stream()
-                .map(objective -> {
-                    PipObjectiveResponse response = mapper.toResponse(objective);
-                    progressLogRepository.findFirstByObjective_ObjectiveIdOrderByCreatedAtDesc(objective.getObjectiveId())
-                            .ifPresent(log -> response.setCurrentProgress(log.getProgressPercent().intValue()));
-                    return response;
-                })
+                .map(this::enrichObjectiveResponse)
                 .toList();
     }
 
@@ -135,12 +130,16 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
         objective.setIsAchieved(status == ObjectiveStatus.COMPLETED);
         objective.setUpdatedBy(authService.getCurrentUser().getId());
 
-        return mapper.toResponse(objectiveRepository.save(objective));
+        return enrichObjectiveResponse(objectiveRepository.save(objective));
     }
 
-    // =========================
-    // HELPER METHODS
-    // =========================
+    private PipObjectiveResponse enrichObjectiveResponse(PipObjective objective) {
+        PipObjectiveResponse response = mapper.toResponse(objective);
+        progressLogRepository.findFirstByObjective_ObjectiveIdOrderByCreatedAtDesc(objective.getObjectiveId())
+                .ifPresent(log -> response.setCurrentProgress(log.getProgressPercent().intValue()));
+        return response;
+    }
+
     private boolean hasRole(String role) {
         return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_" + role));

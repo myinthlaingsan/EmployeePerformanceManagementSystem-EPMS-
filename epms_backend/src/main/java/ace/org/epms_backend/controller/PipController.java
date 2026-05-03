@@ -57,7 +57,7 @@ public class PipController {
     @PreAuthorize("hasAnyRole('HR', 'MANAGER')")
     @PutMapping("/{id}/extend")
     public ResponseEntity<ApiResponse<PipResponse>> extendPip(@PathVariable Long id, @Valid @RequestBody PipExtendRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(pipService.extendPip(id, request.getNewEndDate())));
+        return ResponseEntity.ok(ApiResponse.success(pipService.extendPip(id, request)));
     }
 
     @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'EMPLOYEE')")
