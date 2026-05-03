@@ -277,8 +277,11 @@ public class KpiServiceImpl implements KpiService {
                 KpiGoals goalSet = goalsRepository.findById(goalSetId)
                                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
 
-                if (!goalSet.getManager().getId().equals(getCurrentEmployee().getId())) {
-                        throw new SecurityException("Only the assigned manager can approve this goal set");
+                boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_HR") || a.getAuthority().equals("ROLE_ADMIN"));
+
+                if (!isHrOrAdmin && !goalSet.getManager().getId().equals(getCurrentEmployee().getId())) {
+                        throw new SecurityException("Only the assigned manager or HR/Admin can approve this goal set");
                 }
 
                 if (!goalSet.getStatus().equals(KpiGoalStatus.SUBMITTED)) {
