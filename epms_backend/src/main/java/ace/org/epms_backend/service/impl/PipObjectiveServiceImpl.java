@@ -86,10 +86,13 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
 
         Employee current = authService.getCurrentUser();
 
-        // 🔐 EMPLOYEE CAN ONLY VIEW OWN PIP OBJECTIVES
-        if (hasRole("EMPLOYEE") &&
-                !pip.getEmployee().getId().equals(current.getId())) {
-            throw new AccessDeniedException("Not allowed to view this PIP");
+        // 🔐 ACCESS CONTROL: Allow if HR, or if the user is the assigned MANAGER or the assigned EMPLOYEE
+        boolean isHR = hasRole("HR");
+        boolean isAssignedManager = pip.getManager().getId().equals(current.getId());
+        boolean isAssignedEmployee = pip.getEmployee().getId().equals(current.getId());
+
+        if (!isHR && !isAssignedManager && !isAssignedEmployee) {
+            throw new AccessDeniedException("You do not have permission to view objectives for this PIP");
         }
 
         return objectiveRepository.findByPip_PipId(pipId)
