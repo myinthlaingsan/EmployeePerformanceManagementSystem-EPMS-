@@ -15,8 +15,14 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ currentEndDate, onClose, 
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSubmit = async () => {
-        if (!data.comment) return;
-        if (data.outcome === PipOutcome.EXTEND && !data.newEndDate) return;
+        if (!data.comment) {
+            alert("Please provide final comments/justification.");
+            return;
+        }
+        if (data.outcome === PipOutcome.EXTEND && !data.newEndDate) {
+            alert("Please select a new end date for the extension.");
+            return;
+        }
 
         if (data.outcome !== PipOutcome.EXTEND) {
             if (!window.confirm("Warning: Once the PIP is finalized, it cannot be reopened. Are you sure you want to proceed?")) {

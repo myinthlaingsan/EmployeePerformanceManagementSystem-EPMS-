@@ -3,9 +3,10 @@ import { useGetProgressByObjectiveQuery } from '../../services/pipApi';
 
 interface ObjectiveProgressListProps {
     objectiveId: number;
+    hideTitle?: boolean;
 }
 
-const ObjectiveProgressList: React.FC<ObjectiveProgressListProps> = ({ objectiveId }) => {
+const ObjectiveProgressList: React.FC<ObjectiveProgressListProps> = ({ objectiveId, hideTitle }) => {
     const { data: logsResponse, isLoading } = useGetProgressByObjectiveQuery(objectiveId);
     const logs = logsResponse?.data || [];
 
@@ -21,7 +22,7 @@ const ObjectiveProgressList: React.FC<ObjectiveProgressListProps> = ({ objective
 
     return (
         <div className="mt-4 pt-4 border-t border-gray-50 space-y-3">
-            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Progress History</h5>
+            {!hideTitle && <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Progress History</h5>}
             <div className="space-y-3">
                 {logs.map((log) => (
                     <div key={log.logId} className="flex gap-3 group">
