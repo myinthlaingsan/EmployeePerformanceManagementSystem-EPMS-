@@ -6,6 +6,7 @@ import {
   useCalculateScoreMutation
 } from '../../services/kpiApi';
 import { useAuth } from '../../hooks/useAuth';
+import { useActiveCycle } from '../../context/ActiveCycleContext';
 import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
 import KpiRevisionModal from '../../components/kpi/KpiRevisionModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
@@ -14,10 +15,11 @@ const GoalDetail: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeCycleId } = useActiveCycle();
 
   const { data: goalSetResponse, isLoading, error } = useGetGoalSetByEmployeeQuery({
     employeeId: parseInt(employeeId!),
-    cycleId: 1
+    cycleId: activeCycleId
   });
 
   const [approveGoal] = useApproveGoalSetMutation();

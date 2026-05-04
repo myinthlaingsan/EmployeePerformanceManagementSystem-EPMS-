@@ -147,7 +147,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   };
 
   const handleLocalUpdate = (itemId: number, updates: any) => {
-    setLocalItems(prev => prev.map(item => 
+    setLocalItems(prev => prev.map(item =>
       item.id === itemId ? { ...item, ...updates } : item
     ));
     setIsModified(true);
@@ -183,7 +183,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const handleEdit = async () => {
     if (!goalSet) return;
     if (!window.confirm("This will revert the status to DRAFT so you can make changes. Continue?")) return;
-    
+
     setIsSubmitting(true);
     try {
       await revertToDraft(goalSet.id).unwrap();
@@ -216,7 +216,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
       alert("Please save your draft changes before approving.");
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       await approveGoalSet(goalSet.id).unwrap();
@@ -241,12 +241,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
             <div className="space-y-1">
               <div className="flex items-center gap-4">
                 <h1 className="text-2xl font-black text-gray-900 tracking-tight">{employee?.staffName}</h1>
-                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                  goalSet?.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
-                  goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
-                  goalSet?.status === 'SUBMITTED' ? 'bg-yellow-50 text-yellow-600' :
-                  'bg-gray-100 text-gray-400'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${goalSet?.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
+                    goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
+                      goalSet?.status === 'SUBMITTED' ? 'bg-yellow-50 text-yellow-600' :
+                        'bg-gray-100 text-gray-400'
+                  }`}>
                   {goalSet ? goalSet.status : 'Not Assigned'}
                 </span>
               </div>
