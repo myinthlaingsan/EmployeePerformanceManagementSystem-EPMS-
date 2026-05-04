@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCreateEmployeeMutation, useGetEmployeeByIdQuery, useUpdateEmployeeMutation } from "../../features/employee/employeeapi";
-import { useGetPositionsByDepartmentQuery } from "../../features/org/positionApi";
+import { useGetPositionsQuery } from "../../features/org/positionApi";
 import { useGetRolesQuery } from "../../features/org/roleApi";
 import { useGetActiveDepartmentsQuery } from "../../features/org/departmentApi";
 import type { CreateEmployeeRequest, UpdateEmployeeRequest, Gender, MaritalStatus, EmployeeStatus } from "../../features/employee/employeeTypes";
@@ -52,10 +52,7 @@ const EmployeeForm = () => {
 
   const [selectedPositionLevel, setSelectedPositionLevel] = useState("");
 
-  const { data: positions } = useGetPositionsByDepartmentQuery(
-    formData.currentDepartmentId || 0,
-    { skip: !formData.currentDepartmentId }
-  );
+  const { data: positions } = useGetPositionsQuery();
 
   useEffect(() => {
     if (isEdit && employeeData) {
@@ -181,10 +178,8 @@ const EmployeeForm = () => {
                     onChange={e => {
                       setFormData({ 
                         ...formData, 
-                        currentDepartmentId: Number(e.target.value),
-                        positionId: 0 // Reset position when department changes
+                        currentDepartmentId: Number(e.target.value)
                       });
-                      setSelectedPositionLevel("");
                     }}>
                     <option value="">Select Current Dept</option>
                     {departments?.map(dept => <option key={dept.id} value={dept.id}>{dept.departmentName}</option>)}
