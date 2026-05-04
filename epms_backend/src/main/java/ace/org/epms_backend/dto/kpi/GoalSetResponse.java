@@ -12,6 +12,7 @@ public class GoalSetResponse {
     private Long managerId;
     private String managerName;
     private Long appraisalCycleId;
+    private String appraisalCycleName;
     private KpiGoalStatus status;
     private List<GoalItemResponse> items;
 }

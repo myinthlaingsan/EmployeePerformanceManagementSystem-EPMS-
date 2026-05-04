@@ -17,6 +17,10 @@ import ace.org.epms_backend.service.feedback360.FeedbackSelectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.service.AuditService;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +36,7 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
     private final AppraisalCycleRepository appraisalCycleRepository;
     private final ReportingLineRepository reportingLineRepository;
     private final EmployeeTeamRepository teamRepository;
+    private final AuditService auditService;
 
     @Override
     public List<EmployeeEvaluationDTO> suggestEvaluators(Long employeeId) {
@@ -89,7 +94,15 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
                     .isAnonymous(true)
                     .build();
 
-            feedbackRequestRepository.save(request);
+            FeedbackRequest saved = feedbackRequestRepository.save(request);
+
+            auditService.log(AuditRequest.builder()
+                    .tableName("feedback_requests")
+                    .recordId(saved.getId())
+                    .action(AuditAction.INSERT)
+                    .newState(saved)
+                    .status(AuditStatus.SUCCESS)
+                    .build());
         }
     }
 

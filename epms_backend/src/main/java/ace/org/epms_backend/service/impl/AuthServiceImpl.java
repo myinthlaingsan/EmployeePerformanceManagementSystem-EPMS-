@@ -18,9 +18,14 @@ import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.JwtService;
+import ace.org.epms_backend.service.TokenBlacklistService;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -53,6 +58,9 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final AuditService auditService;
+    private final TokenBlacklistService tokenBlacklistService;
+
     @Override
     public AuthResponse login(AuthRequest authDto) {
         Employee employee = employeeRepository.findByEmail(authDto.getEmail())
@@ -122,7 +130,17 @@ public class AuthServiceImpl implements AuthService {
         employee.setAccountLocked(false);
         employee.setFailedLoginAttempts(0);
         employee.setLockTime(null);
-        return employeeRepository.save(employee);
+        Employee unlocked = employeeRepository.save(employee);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("employees")
+                .recordId(unlocked.getId())
+                .action(AuditAction.UPDATE)
+                .newState(unlocked)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        return unlocked;
     }
 
     @Override
@@ -164,8 +182,7 @@ public class AuthServiceImpl implements AuthService {
         resetTokenRepository.save(resetToken);
 
         applicationEventPublisher.publishEvent(
-                new ForgotPasswordEvent(emp.getId(),token)
-        );
+                new ForgotPasswordEvent(emp.getId(), token));
     }
 
     @Override
@@ -186,6 +203,14 @@ public class AuthServiceImpl implements AuthService {
 
         employeeRepository.save(emp);
 
+        auditService.log(AuditRequest.builder()
+                .tableName("employees")
+                .recordId(emp.getId())
+                .action(AuditAction.UPDATE)
+                .newState(emp)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         // Notify Password Reset
         applicationEventPublisher.publishEvent(NotificationEvent.builder()
                 .recipientId(emp.getId())
@@ -193,7 +218,7 @@ public class AuthServiceImpl implements AuthService {
                 .title("Password Reset Successful")
                 .message("Your password has been successfully reset. You can now login with your new password.")
                 .referenceType(ReferenceType.ACCOUNT)
-                        .referenceId(emp.getId())
+                .referenceId(emp.getId())
                 .actionUrl("/login")
                 .build());
 
@@ -230,5 +255,25 @@ public class AuthServiceImpl implements AuthService {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean validateToken(String token) {
+        try {
+            String username = jwtService.extractUsername(token);
+            UserPrincipal userPrincipal = (UserPrincipal) userDetailsService.loadUserByUsername(username);
+            return jwtService.isTokenValid(token, userPrincipal);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    @Transactional
+    public void revokeUserSessions(Long employeeId) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+        employee.setLastLogoutTime(LocalDateTime.now());
+        employeeRepository.save(employee);
     }
 }

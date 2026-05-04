@@ -1,6 +1,5 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import {type ApiResponse } from '../../services/ApiResponse.ts';
-import { baseQueryWithReauth } from '../../services/baseQueryWithReauth';
+import { api } from './api';
+import type { ApiResponse } from './ApiResponse';
 import type {
   KpiLibraryRequest,
   KpiLibraryResponse,
@@ -8,22 +7,41 @@ import type {
   GoalAssignmentRequest,
   GoalSetResponse,
   KpiGoalItemRequest,
+  KpiProgressHistory,
   ProgressRequest,
   KpiRevisionRequest,
   KpiScoreResponse,
-  KpiHistoryLog,
-} from './kpiTypes';
+} from '../features/kpi/kpiTypes';
 
-export const kpiApi = createApi({
-  reducerPath: 'kpiApi',
-  baseQuery: baseQueryWithReauth,
-  tagTypes: ['Library', 'GoalSet', 'Progress', 'Score', 'Category'],
+export const kpiApi = api.injectEndpoints({
   endpoints: (builder) => ({
-
     // ==================== Categories ====================
-    getCategories: builder.query<ApiResponse<KpiCategory[]>, void>({
+    getKpiCategories: builder.query<ApiResponse<KpiCategory[]>, void>({
       query: () => '/kpi/categories',
       providesTags: ['Category'],
+    }),
+    createKpiCategory: builder.mutation<ApiResponse<KpiCategory>, { name: string }>({
+      query: (body) => ({
+        url: '/kpi/categories',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Category'],
+    }),
+    updateKpiCategory: builder.mutation<ApiResponse<KpiCategory>, { id: number; name: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/kpi/categories/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Category'],
+    }),
+    deleteKpiCategory: builder.mutation<ApiResponse<string>, number>({
+      query: (id) => ({
+        url: `/kpi/categories/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Category'],
     }),
 
     // ==================== KPI Library ====================
@@ -114,6 +132,11 @@ export const kpiApi = createApi({
       invalidatesTags: ['GoalSet', 'Progress'],
     }),
 
+    getProgressHistory: builder.query<ApiResponse<KpiProgressHistory[]>, { employeeId: number; limit?: number }>({
+      query: ({ employeeId, limit = 10 }) => `/kpi/progress/history?employeeId=${employeeId}&limit=${limit}`,
+      providesTags: ['Progress'],
+    }),
+
     // ==================== Revision ====================
     reviseKpi: builder.mutation<
       ApiResponse<GoalSetResponse>,
@@ -125,6 +148,23 @@ export const kpiApi = createApi({
         body: data,
       }),
       invalidatesTags: ['GoalSet'],
+    }),
+
+    // ==================== Goal Set Retrieval ====================
+    getGoalSetByEmployee: builder.query<ApiResponse<GoalSetResponse>, { employeeId: number; cycleId: number }>({
+      query: ({ employeeId, cycleId }) => `/kpi/goal-set/employee/${employeeId}?cycleId=${cycleId}`,
+      providesTags: ['GoalSet'],
+    }),
+
+    getGoalSetById: builder.query<ApiResponse<GoalSetResponse>, number>({
+      query: (id) => `/kpi/goal-set/${id}`,
+      providesTags: ['GoalSet'],
+    }),
+
+    // ==================== Appraisal Cycle ====================
+    getActiveCycle: builder.query<ApiResponse<any>, void>({
+      query: () => '/kpi/active-cycle',
+      providesTags: ['GoalSet'], // Can use a specific tag if needed
     }),
 
     // ==================== Score Calculation ====================
@@ -142,7 +182,10 @@ export const kpiApi = createApi({
 });
 
 export const {
-  useGetCategoriesQuery,
+  useGetKpiCategoriesQuery,
+  useCreateKpiCategoryMutation,
+  useUpdateKpiCategoryMutation,
+  useDeleteKpiCategoryMutation,
   useCreateLibraryMutation,
   useGetAllLibrariesQuery,
   useToggleLibraryStatusMutation,
@@ -154,4 +197,8 @@ export const {
   useUpdateProgressMutation,
   useReviseKpiMutation,
   useCalculateScoreMutation,
+  useGetGoalSetByEmployeeQuery,
+  useGetGoalSetByIdQuery,
+  useGetProgressHistoryQuery,
+  useGetActiveCycleQuery,
 } = kpiApi;

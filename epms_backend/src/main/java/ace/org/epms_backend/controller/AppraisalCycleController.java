@@ -57,4 +57,9 @@ public class AppraisalCycleController {
     public ResponseEntity<ApiResponse<AppraisalCycleResponse>> close(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.close(id)));
     }
+
+    @GetMapping("/active")
+    public ResponseEntity<ApiResponse<AppraisalCycleResponse>> getActiveCycle() {
+        return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.getActiveCycle()));
+    }
 }

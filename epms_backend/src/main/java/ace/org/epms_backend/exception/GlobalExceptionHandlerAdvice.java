@@ -15,9 +15,9 @@ import java.util.Map;
 public class GlobalExceptionHandlerAdvice {
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<?>> handleException(Exception ex){
+    public ResponseEntity<ApiResponse<?>> handleException(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse<>(500,ex.getMessage(),null, LocalDateTime.now()));
+                .body(new ApiResponse<>(500, ex.getMessage(), null, LocalDateTime.now()));
     }
 
 //    @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -29,8 +29,8 @@ public class GlobalExceptionHandlerAdvice {
 //    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<?>> handleValidationException(MethodArgumentNotValidException ex){
-        Map<String,String> errors = new HashMap<>();
+    public ResponseEntity<ApiResponse<?>> handleValidationException(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
 
         ex.getBindingResult().getFieldErrors()
                 .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
@@ -40,68 +40,98 @@ public class GlobalExceptionHandlerAdvice {
     }
 
     @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ApiResponse<?>> UserNotFoundException(UserNotFoundException ex){
+    public ResponseEntity<ApiResponse<?>> UserNotFoundException(UserNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ApiResponse<>(404,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(404, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(EmailExistException.class)
-    public ResponseEntity<ApiResponse<?>> EmailExistException(EmailExistException ex){
+    public ResponseEntity<ApiResponse<?>> EmailExistException(EmailExistException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(CodeAlreadyExistsException.class)
-    public ResponseEntity<ApiResponse<?>> CodeAlreadyExistsException(CodeAlreadyExistsException ex){
+    public ResponseEntity<ApiResponse<?>> CodeAlreadyExistsException(CodeAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(LockedException.class)
-    public ResponseEntity<ApiResponse<?>> LockedException(LockedException ex){
+    public ResponseEntity<ApiResponse<?>> LockedException(LockedException ex) {
         return ResponseEntity.status(HttpStatus.LOCKED)
-                .body(new ApiResponse<>(423,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(423, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(InvalidTokenException.class)
-    public ResponseEntity<ApiResponse<?>> InvalidRefreshTokenException(InvalidTokenException ex){
+    public ResponseEntity<ApiResponse<?>> InvalidRefreshTokenException(InvalidTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse<>(401,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(401, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(CannotDeleteException.class)
-    public ResponseEntity<ApiResponse<?>> handleCannotDelete(CannotDeleteException ex){
+    public ResponseEntity<ApiResponse<?>> handleCannotDelete(CannotDeleteException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(CannotAssignException.class)
-    public ResponseEntity<ApiResponse<?>> handleCannotAssign(CannotAssignException ex){
+    public ResponseEntity<ApiResponse<?>> handleCannotAssign(CannotAssignException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(AlreadyActiveException.class)
-    public ResponseEntity<ApiResponse<?>> handleAlreadyActive(AlreadyActiveException ex){
+    public ResponseEntity<ApiResponse<?>> handleAlreadyActive(AlreadyActiveException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(AlreadyAssignException.class)
-    public ResponseEntity<ApiResponse<?>> handleAlreadyAssign(AlreadyAssignException ex){
+    public ResponseEntity<ApiResponse<?>> handleAlreadyAssign(AlreadyAssignException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(PasswordIncorrectException.class)
-    public ResponseEntity<ApiResponse<?>> handlePasswordIncorrect(PasswordIncorrectException ex){
+    public ResponseEntity<ApiResponse<?>> handlePasswordIncorrect(PasswordIncorrectException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<?>> handleAccessDenied(AccessDeniedException ex){
+    public ResponseEntity<ApiResponse<?>> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiResponse<>(403,ex.getMessage(),null,LocalDateTime.now()));
+                .body(new ApiResponse<>(403, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler({NotFoundException.class, ResourceNotFoundException.class})
+    public ResponseEntity<ApiResponse<?>> handleNotFound(Exception ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiResponse<>(404, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(TokenExpiredException.class)
+    public ResponseEntity<ApiResponse<?>> handleTokenExpired(TokenExpiredException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiResponse<>(401, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(UnauthorizedActionException.class)
+    public ResponseEntity<ApiResponse<?>> handleUnauthorizedAction(UnauthorizedActionException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>(403, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler({
+            LevelAlreadyExists.class,
+            AppraisalLockedException.class,
+            InvalidAppraisalStateException.class,
+            InvalidStateException.class,
+            AppraisalException.class
+    })
+    public ResponseEntity<ApiResponse<?>> handleConflictExceptions(Exception ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
     }
 }

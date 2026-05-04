@@ -4,6 +4,9 @@ public enum AppraisalStatus {
     PENDING,
     SELF_ASSESSED,
     EVALUATED,
+    HR_APPROVED,
+    FINALIZED,
     ARCHIVED
 }
+
 

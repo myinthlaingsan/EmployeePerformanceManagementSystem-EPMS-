@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
 //    Optional<KpiGoals> findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(Long employeeId, Long cycleId);
-@Query("SELECT k FROM KpiGoals k WHERE k.employee.id = :employeeId AND k.cycle.id = :cycleId AND k.isCurrent = true")
+@Query("SELECT k FROM KpiGoals k WHERE k.employee.id = :employeeId AND k.cycle.cycleId = :cycleId AND k.isCurrent = true")
 Optional<KpiGoals> findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
         @Param("employeeId") Long employeeId,
         @Param("cycleId") Long cycleId

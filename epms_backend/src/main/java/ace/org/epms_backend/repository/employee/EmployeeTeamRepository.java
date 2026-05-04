@@ -13,4 +13,5 @@ public interface EmployeeTeamRepository extends JpaRepository<EmployeeTeam, Long
     List<EmployeeTeam> findByEmployeeId(Long employeeId);
     Optional<EmployeeTeam> findByEmployeeIdAndTeamTeamId(Long employeeId, Long teamId);
     Optional<EmployeeTeam> findByEmployeeIdAndIsPrimaryTrue(Long employeeId);
+    void deleteByEmployeeIdAndTeamTeamId(Long employeeId, Long teamId);
 }

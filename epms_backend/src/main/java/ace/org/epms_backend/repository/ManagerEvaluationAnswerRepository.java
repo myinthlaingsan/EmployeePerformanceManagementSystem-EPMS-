@@ -11,4 +11,7 @@ public interface ManagerEvaluationAnswerRepository extends JpaRepository<Manager
     List<ManagerEvaluationAnswer> findByEvaluation_EvaluationId(Long evaluationId);
 
     Optional<ManagerEvaluationAnswer> findByEvaluation_EvaluationIdAndQuestion_QuestionId(Long evaluationId, Long questionId);
+
+    List<ManagerEvaluationAnswer> findByEvaluation_Appraisal_AppraisalId(Long appraisalId);
 }
+

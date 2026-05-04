@@ -6,7 +6,7 @@ import ace.org.epms_backend.dto.pip.PipResponse;
 import ace.org.epms_backend.model.pip.PipRecord;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", builder = @org.mapstruct.Builder(disableBuilder = true))
 public interface PipMapper {
 
     @Mapping(source = "employee.id", target = "employeeId")

@@ -9,11 +9,11 @@ import java.util.Optional;
 
 @Repository
 public interface KpiFinalScoreRepository extends JpaRepository<KpiFinalScore, Long> {
-//    Optional<KpiFinalScore> findByEmployeeIdAndCycleId(Long employeeId, Long cycleId);
+    // Optional<KpiFinalScore> findByEmployeeIdAndCycleId(Long employeeId, Long
+    // cycleId);
 
-    @Query("SELECT k FROM KpiFinalScore k WHERE k.employee.id = :employeeId AND k.goalSet.cycle.id = :cycleId")
+    @Query("SELECT k FROM KpiFinalScore k WHERE k.employee.id = :employeeId AND k.goalSet.cycle.cycleId = :cycleId")
     Optional<KpiFinalScore> findByEmployeeIdAndCycleId(
             @Param("employeeId") Long employeeId,
-            @Param("cycleId") Long cycleId
-    );
+            @Param("cycleId") Long cycleId);
 }

@@ -4,11 +4,14 @@ import ace.org.epms_backend.dto.appraisal.*;
 import java.util.List;
 
 public interface SelfAssessmentService {
-    SelfAssessmentResponse create(SelfAssessmentRequest request);
+
+    FullSelfAssessmentResponse getMyAssessmentForm(Long appraisalId);
+
     void saveAnswers(Long selfAssessmentId, List<SelfAssessmentAnswerRequest> answers);
-    List<SelfAssessmentAnswerResponse> getAnswers(Long selfAssessmentId);
+
+    void saveDraft(Long selfAssessmentId);
+
     void submitFinal(Long selfAssessmentId);
-    
-    // Keeping for compatibility if needed, but marked as legacy
-    void submitSelfAssessment(SelfAssessmentSubmitRequest request);
+
+    List<SelfAssessmentResponse> getMyAssessments(Long employeeId);
 }

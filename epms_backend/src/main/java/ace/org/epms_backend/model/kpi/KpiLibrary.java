@@ -1,5 +1,7 @@
 package ace.org.epms_backend.model.kpi;
 
+import java.util.List;
+
 import ace.org.epms_backend.model.BaseEntity;
 import ace.org.epms_backend.model.employee.Position;
 import jakarta.persistence.*;

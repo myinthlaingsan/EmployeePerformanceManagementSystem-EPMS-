@@ -1,5 +1,6 @@
 package ace.org.epms_backend.repository;
 
+import ace.org.epms_backend.enums.AppraisalStatus;
 import ace.org.epms_backend.model.appraisal.Appraisal;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -12,4 +13,8 @@ public interface AppraisalRepository extends JpaRepository<Appraisal, Long> {
     List<Appraisal> findByCycle_CycleId(Long cycleId);
     Optional<Appraisal> findByEmployee_IdAndCycle_CycleId(Long employeeId, Long cycleId);
     List<Appraisal> findAllByEmployee_IdAndCycle_CycleId(Long employeeId, Long cycleId);
+    
+    List<Appraisal> findByEmployee_IdAndStatusIn(Long employeeId, List<AppraisalStatus> statuses);
+    List<Appraisal> findByManager_IdAndStatusIn(Long managerId, List<AppraisalStatus> statuses);
 }
+

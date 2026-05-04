@@ -18,7 +18,6 @@ export interface KpiLibraryDetailRequest {
   unit?: string;
   targetValue: number;
   weightPercent: number;
-  priority: Priority;
   categoryId: number;
 }
 
@@ -26,6 +25,7 @@ export interface KpiLibraryRequest {
   title: string;
   description?: string;
   positionId: number;
+  targetLevelId?: number;
   details: KpiLibraryDetailRequest[];
 }
 
@@ -35,8 +35,8 @@ export interface KpiLibraryDetailResponse {
   unit?: string;
   targetValue: number;
   weightPercent: number;
-  priority?: string;
   isActive: boolean;
+  categoryId?: number;
   categoryName?: string;
 }
 
@@ -44,7 +44,10 @@ export interface KpiLibraryResponse {
   id: number;
   title: string;
   description?: string;
+  positionId?: number;
   positionName: string;
+  targetLevelId?: number;
+  levelName?: string;
   isActive: boolean;
   details: KpiLibraryDetailResponse[];
 }
@@ -68,12 +71,13 @@ export interface KpiGoalItemRequest {
 export interface GoalItemResponse {
   id: number;
   title: string;
+  description?: string;
   targetValue: number;
   unit?: string;
   weightPercent: number;
-  priority?: string;
   status: KpiItemStatus;
   currentProgress?: number;
+  categoryId?: number;
   categoryName?: string;
 }
 
@@ -85,6 +89,7 @@ export interface GoalSetResponse {
   managerId: number;
   managerName: string;
   appraisalCycleId: number;
+  appraisalCycleName?: string;
   status: KpiGoalStatus;
   items: GoalItemResponse[];
 }
@@ -95,6 +100,16 @@ export interface ProgressRequest {
   actualValue: number;
   progressPercent: number;
   evidenceNote?: string;
+}
+
+export interface KpiProgressHistory {
+  id: number;
+  goalItemId: number;
+  goalTitle: string;
+  actualValue: number;
+  progressPercent: number;
+  evidenceNote?: string;
+  updatedAt: string;
 }
 
 // ==================== Revision ====================

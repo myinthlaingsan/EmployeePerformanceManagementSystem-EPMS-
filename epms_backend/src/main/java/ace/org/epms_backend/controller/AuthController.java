@@ -67,7 +67,7 @@ public class AuthController {
 
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(
-            @RequestBody ForgotPasswordRequest request) {
+            @Valid @RequestBody ForgotPasswordRequest request) {
 
         authService.forgotPassword(request);
 
@@ -78,12 +78,26 @@ public class AuthController {
 
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<Void>> resetPassword(
-            @RequestBody ResetPasswordRequest request) {
+            @Valid @RequestBody ResetPasswordRequest request) {
 
         authService.resetPassword(request);
 
         return ResponseEntity.ok(
                 ApiResponse.success(null)
         );
+    }
+
+    @GetMapping("/validate")
+    public ResponseEntity<ApiResponse<Boolean>> validateToken(jakarta.servlet.http.HttpServletRequest request) {
+        String token = jwtService.extractTokenFromRequest(request);
+        boolean isValid = token != null && authService.validateToken(token);
+        return ResponseEntity.ok(ApiResponse.success(isValid));
+    }
+
+    @PostMapping("/revoke-sessions/{employeeId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> revokeSessions(@PathVariable Long employeeId) {
+        authService.revokeUserSessions(employeeId);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

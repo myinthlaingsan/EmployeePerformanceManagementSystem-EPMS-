@@ -1,13 +1,16 @@
 package ace.org.epms_backend.service.appraisal.impl;
 
 import ace.org.epms_backend.dto.appraisal.AppraisalSummaryResponse;
-import ace.org.epms_backend.enums.FormType;
+import ace.org.epms_backend.enums.PerformanceGrade;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.mapper.AppraisalSummaryMapper;
 import ace.org.epms_backend.model.appraisal.*;
-import ace.org.epms_backend.repository.AppraisalRepository;
-import ace.org.epms_backend.repository.AppraisalCycleRepository;
-import ace.org.epms_backend.repository.AppraisalSummaryRepository;
-import ace.org.epms_backend.repository.ScoringWeightRepository;
+import ace.org.epms_backend.model.employee.Employee;
+import ace.org.epms_backend.model.feedback360.FeedbackSummary;
+import ace.org.epms_backend.repository.*;
+import ace.org.epms_backend.repository.EmployeeRepository;
+
+import ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository;
 import ace.org.epms_backend.service.appraisal.FinalAppraisalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,61 +28,80 @@ public class FinalAppraisalServiceImpl implements FinalAppraisalService {
     private final AppraisalSummaryRepository summaryRepository;
     private final ScoringWeightRepository weightRepository;
     private final AppraisalCycleRepository cycleRepository;
+    private final EmployeeRepository employeeRepository;
+    private final ManagerEvaluationRepository managerEvaluationRepository;
+    private final SelfAssessmentRepository selfAssessmentRepository;
+    private final FeedbackSummaryRepository feedbackSummaryRepository;
+    private final AppraisalSummaryMapper summaryMapper;
 
     @Override
     @Transactional
     public void generateFinalScore(Long employeeId, Long cycleId) {
         AppraisalCycle cycle = cycleRepository.findById(cycleId)
                 .orElseThrow(() -> new NotFoundException("Cycle not found"));
+        
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
 
-        List<Appraisal> appraisals = appraisalRepository.findAllByEmployee_IdAndCycle_CycleId(employeeId, cycleId);
-        ScoringWeight weights = weightRepository.findById(1L).orElse(new ScoringWeight());
+        // Find the main appraisal for this employee/cycle
+        Appraisal appraisal = appraisalRepository.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found for employee in this cycle"));
 
-        BigDecimal managerScore = BigDecimal.ZERO;
-        BigDecimal feedbackScore = BigDecimal.ZERO;
-        BigDecimal selfScore = BigDecimal.ZERO;
+        // Fetch scores from sub-entities
+        BigDecimal managerScore = managerEvaluationRepository.findByAppraisal_AppraisalId(appraisal.getAppraisalId())
+                .map(ManagerEvaluation::getTotalScore).orElse(BigDecimal.ZERO);
+        
+        BigDecimal selfScore = selfAssessmentRepository.findByAppraisal_AppraisalId(appraisal.getAppraisalId())
+                .map(SelfAssessment::getTotalScore).orElse(BigDecimal.ZERO);
 
-        for (Appraisal a : appraisals) {
-            FormType type = a.getForm().getFormType();
-            if (type == FormType.MANAGER_EVALUATION) managerScore = a.getFormScore();
-            else if (type == FormType.FEEDBACK) feedbackScore = a.getFormScore();
-            else if (type == FormType.SELF_ASSESSMENT) selfScore = a.getFormScore();
-        }
+        BigDecimal feedbackScore = feedbackSummaryRepository.findByEmployeeIdAndCycleCycleId(employeeId, cycleId)
+                .map(FeedbackSummary::getFinalScore).orElse(BigDecimal.ZERO);
 
+        // Fetch Weights
+        ScoringWeight weights = weightRepository.findByCycle_CycleId(cycleId)
+                .orElseGet(() -> {
+                    ScoringWeight w = new ScoringWeight();
+                    w.setSelfWeight(new BigDecimal("0.2"));
+                    w.setManagerWeight(new BigDecimal("0.5"));
+                    w.setFeedbackWeight(new BigDecimal("0.3"));
+                    return w;
+                });
+
+        // Calculate Weighted Total
         BigDecimal totalScore = managerScore.multiply(weights.getManagerWeight())
-                .add(feedbackScore.multiply(weights.getFeedbackWeight()))
-                .add(selfScore.multiply(weights.getSelfWeight()));
+                .add(selfScore.multiply(weights.getSelfWeight()))
+                .add(feedbackScore.multiply(weights.getFeedbackWeight()));
 
-        AppraisalSummary summary = summaryRepository.findByEmployeeIdAndCycle_CycleId(employeeId, cycleId)
-                .orElse(new AppraisalSummary());
+        totalScore = totalScore.setScale(2, RoundingMode.HALF_UP);
 
-        summary.setEmployeeId(employeeId);
-        summary.setCycle(cycle);
-        summary.setTotalScore(totalScore.setScale(2, RoundingMode.HALF_UP));
-        summary.setFinalGrade(calculateGrade(totalScore));
+        // Save Summary
+        AppraisalSummary summary = summaryRepository.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
+                .orElseGet(() -> {
+                    AppraisalSummary newSummary = new AppraisalSummary();
+                    newSummary.setEmployee(employee);
+                    newSummary.setCycle(cycle);
+                    return newSummary;
+                });
+
+        summary.setTotalScore(totalScore);
+        summary.setFinalGrade(determineGrade(totalScore));
 
         summaryRepository.save(summary);
     }
 
-    private String calculateGrade(BigDecimal score) {
-        if (score.compareTo(new BigDecimal("90")) >= 0) return "A";
-        if (score.compareTo(new BigDecimal("80")) >= 0) return "B";
-        if (score.compareTo(new BigDecimal("70")) >= 0) return "C";
-        if (score.compareTo(new BigDecimal("60")) >= 0) return "D";
-        return "F";
+    private PerformanceGrade determineGrade(BigDecimal score) {
+        if (score.compareTo(new BigDecimal("4.5")) >= 0) return PerformanceGrade.OUTSTANDING;
+        if (score.compareTo(new BigDecimal("3.5")) >= 0) return PerformanceGrade.EXCEEDS_EXPECTATIONS;
+        if (score.compareTo(new BigDecimal("2.5")) >= 0) return PerformanceGrade.MEETS_EXPECTATIONS;
+        if (score.compareTo(new BigDecimal("1.5")) >= 0) return PerformanceGrade.NEEDS_IMPROVEMENT;
+        return PerformanceGrade.UNSATISFACTORY;
     }
 
     @Override
     public AppraisalSummaryResponse getFinalResult(Long employeeId, Long cycleId) {
-        AppraisalSummary summary = summaryRepository.findByEmployeeIdAndCycle_CycleId(employeeId, cycleId)
+        AppraisalSummary summary = summaryRepository.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
                 .orElseThrow(() -> new NotFoundException("Summary not found"));
 
-        AppraisalSummaryResponse response = new AppraisalSummaryResponse();
-        response.setId(summary.getId());
-        response.setEmployeeId(summary.getEmployeeId());
-        response.setCycleId(summary.getCycle().getCycleId());
-        response.setTotalScore(summary.getTotalScore());
-        response.setFinalGrade(summary.getFinalGrade());
-        return response;
+        return summaryMapper.toResponse(summary);
     }
 }

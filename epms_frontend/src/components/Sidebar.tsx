@@ -1,13 +1,13 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
-import { 
-  LayoutDashboard, 
-  ClipboardCheck, 
-  User, 
-  Users, 
-  MessageSquare, 
-  TrendingUp, 
+import {
+  LayoutDashboard,
+  ClipboardCheck,
+  User,
+  Users,
+  MessageSquare,
+  TrendingUp,
   BarChart3,
   ChevronDown,
   Plus,
@@ -16,7 +16,9 @@ import {
   Building2,
   ShieldCheck,
   Briefcase,
-  Zap
+  Zap,
+  Target,
+  Library
 } from "lucide-react";
 
 interface NavItem {
@@ -49,12 +51,13 @@ const ADMIN_ITEMS: NavItem[] = [
 ];
 
 const Sidebar = () => {
-  const { logout, isAdmin, isHR } = useAuth();
+  const { logout, isAdmin, isHR, isManager } = useAuth();
   const navigate = useNavigate();
   const [mgmtOpen, setMgmtOpen] = useState(false);
+  const [perfOpen, setPerfOpen] = useState(true);
 
-  const activeClass = "bg-brand-primary/5 text-brand-primary border-r-4 border-brand-primary font-bold";
-  const inactiveClass = "text-text-muted hover:bg-surface-base hover:text-text-title";
+  const activeClass = "bg-blue-50 text-blue-600 border-r-4 border-blue-600";
+  const inactiveClass = "text-gray-500 hover:bg-gray-50 hover:text-gray-900";
 
   const filteredNav = NAV_ITEMS.filter((item) => {
     if (item.adminOnly && !isAdmin && !isHR) return false;
@@ -64,9 +67,9 @@ const Sidebar = () => {
   return (
     <aside className="w-64 bg-white border-r border-gray-100 flex flex-col h-screen sticky top-0">
       {/* Brand */}
-      <div className="p-8">
-        <h1 className="text-xl font-black text-brand-primary tracking-tight">HR Portal</h1>
-        <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] mt-1">Enterprise Suite</p>
+      <div className="p-6">
+        <h1 className="text-xl font-bold text-gray-900 tracking-tight">HR Portal</h1>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mt-1">Enterprise Suite</p>
       </div>
 
       {/* Navigation */}
@@ -77,8 +80,7 @@ const Sidebar = () => {
               key={item.label}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${
-                  isActive ? activeClass : inactiveClass
+                `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${isActive ? activeClass : inactiveClass
                 }`
               }
             >
@@ -87,12 +89,95 @@ const Sidebar = () => {
             </NavLink>
           ))}
 
+          {/* Performance Hub Accordion */}
+          <div>
+            <button
+              onClick={() => setPerfOpen(!perfOpen)}
+              className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Target className="w-5 h-5" strokeWidth={2} />
+                Performance Hub
+              </div>
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${perfOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {perfOpen && (
+              <div className="bg-gray-50/50 py-1">
+                <NavLink
+                  to="/kpi"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                  }
+                >
+                  Intelligence Hub
+                </NavLink>
+                <NavLink
+                  to="/kpi/my"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                  }
+                >
+                  My Goals
+                </NavLink>
+                {isManager && (
+                  <NavLink
+                    to="/kpi/team"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                    }
+                  >
+                    Team Performance
+                  </NavLink>
+                )}
+                <NavLink
+                  to="/kpi/update"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                  }
+                >
+                  Update Progress
+                </NavLink>
+                {(isAdmin || isHR) && (
+                  <NavLink
+                    to="/kpi/manage"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                    }
+                  >
+                    KPI Assignment
+                  </NavLink>
+                )}
+                {(isAdmin || isHR) && (
+                  <>
+                    <NavLink
+                      to="/kpi/library"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                      }
+                    >
+                      KPI Library
+                    </NavLink>
+                    <NavLink
+                      to="/kpi/categories"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                      }
+                    >
+                      KPI Categories
+                    </NavLink>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Management Accordion */}
           {(isAdmin || isHR) && (
             <div>
               <button
                 onClick={() => setMgmtOpen(!mgmtOpen)}
-                className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-text-muted hover:bg-surface-base hover:text-text-title transition-all"
+                className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
               >
                 <div className="flex items-center gap-3">
                   <Building2 className="w-5 h-5" strokeWidth={2} />
@@ -107,8 +192,7 @@ const Sidebar = () => {
                       key={item.label}
                       to={item.to}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 pl-12 pr-6 py-2.5 text-xs font-medium transition-all ${
-                          isActive ? "text-brand-primary font-bold" : "text-text-muted hover:text-text-title"
+                        `flex items-center gap-3 pl-12 pr-6 py-2.5 text-xs font-medium transition-all ${isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
                         }`
                       }
                     >
@@ -127,22 +211,22 @@ const Sidebar = () => {
       <div className="p-6">
         <button
           onClick={() => navigate("/appraisal/new")}
-          className="w-full bg-brand-primary hover:bg-brand-secondary text-white rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-brand-primary/20 transition-all active:scale-95"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 px-4 text-sm font-semibold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
         >
           <Plus className="w-4 h-4" strokeWidth={3} />
-          Launch Review
+          New Review
         </button>
       </div>
 
       {/* Footer */}
-      <div className="border-t border-surface-border p-4 space-y-1">
-        <button className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface-base hover:text-text-title rounded-lg transition-all">
+      <div className="border-t border-gray-100 p-4 space-y-1">
+        <button className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-all">
           <LifeBuoy className="w-5 h-5" strokeWidth={2} />
           Support
         </button>
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface-base hover:text-red-600 rounded-lg transition-all"
+          className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-red-600 rounded-lg transition-all"
         >
           <LogOut className="w-5 h-5" strokeWidth={2} />
           Logout

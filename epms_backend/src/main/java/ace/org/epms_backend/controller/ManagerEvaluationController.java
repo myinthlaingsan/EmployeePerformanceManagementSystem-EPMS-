@@ -19,37 +19,41 @@ public class ManagerEvaluationController {
     private final ManagerEvaluationService service;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<ManagerEvaluationResponse>> create(
-            @RequestBody ManagerEvaluationCreateRequest request
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                service.create(request)
-        ));
+    public ResponseEntity<ApiResponse<ManagerEvaluationResponse>> create(@RequestBody ManagerEvaluationRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(service.create(request)));
     }
 
-    @PostMapping("/{id}/answers")
+    @GetMapping("/form/{appraisalId}")
+    public ResponseEntity<ApiResponse<FullManagerEvaluationResponse>> getEvaluationForm(@PathVariable Long appraisalId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getEvaluationForm(appraisalId)));
+    }
+
+    @GetMapping("/employee-view/{appraisalId}")
+    public ResponseEntity<ApiResponse<EmployeeSelfAssessmentViewResponse>> getEmployeeView(@PathVariable Long appraisalId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getEmployeeView(appraisalId)));
+    }
+
+    @PostMapping("/{evaluationId}/answers")
     public ResponseEntity<ApiResponse<Void>> saveAnswers(
-            @PathVariable Long id,
-            @RequestBody List<ManagerEvaluationAnswerRequest> request
+            @PathVariable Long evaluationId,
+            @RequestBody List<ManagerEvaluationAnswerRequest> answers
     ) {
-        service.saveAnswers(id, request);
+        service.saveAnswers(evaluationId, answers);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @GetMapping("/{id}/answers")
-    public ResponseEntity<ApiResponse<List<ManagerEvaluationAnswerResponse>>> getAnswers(
-            @PathVariable Long id
+    @PostMapping("/{evaluationId}/draft")
+    public ResponseEntity<ApiResponse<Void>> saveDraft(
+            @PathVariable Long evaluationId,
+            @RequestParam(required = false) String finalComment
     ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                service.getAnswers(id)
-        ));
+        service.saveDraft(evaluationId, finalComment);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @PutMapping("/{id}/submit")
-    public ResponseEntity<ApiResponse<Void>> submitFinal(
-            @PathVariable Long id
-    ) {
-        service.submitFinal(id);
+    @PostMapping("/{evaluationId}/submit")
+    public ResponseEntity<ApiResponse<Void>> submitFinal(@PathVariable Long evaluationId) {
+        service.submitFinal(evaluationId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 }
