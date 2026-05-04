@@ -18,38 +18,34 @@ public class SelfAssessmentController {
 
     private final SelfAssessmentService service;
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<SelfAssessmentResponse>> create(
-            @RequestBody SelfAssessmentRequest request
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                service.create(request)
-        ));
+    @GetMapping("/form/{appraisalId}")
+    public ResponseEntity<ApiResponse<FullSelfAssessmentResponse>> getMyAssessmentForm(@PathVariable Long appraisalId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getMyAssessmentForm(appraisalId)));
     }
 
-    @PostMapping("/{id}/answers")
+    @PostMapping("/{selfAssessmentId}/answers")
     public ResponseEntity<ApiResponse<Void>> saveAnswers(
-            @PathVariable Long id,
-            @RequestBody List<SelfAssessmentAnswerRequest> request
+            @PathVariable Long selfAssessmentId,
+            @RequestBody List<SelfAssessmentAnswerRequest> answers
     ) {
-        service.saveAnswers(id, request);
+        service.saveAnswers(selfAssessmentId, answers);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @GetMapping("/{id}/answers")
-    public ResponseEntity<ApiResponse<List<SelfAssessmentAnswerResponse>>> getAnswers(
-            @PathVariable Long id
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                service.getAnswers(id)
-        ));
+    @PostMapping("/{selfAssessmentId}/draft")
+    public ResponseEntity<ApiResponse<Void>> saveDraft(@PathVariable Long selfAssessmentId) {
+        service.saveDraft(selfAssessmentId);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @PutMapping("/{id}/submit")
-    public ResponseEntity<ApiResponse<Void>> submitFinal(
-            @PathVariable Long id
-    ) {
-        service.submitFinal(id);
+    @PostMapping("/{selfAssessmentId}/submit")
+    public ResponseEntity<ApiResponse<Void>> submitFinal(@PathVariable Long selfAssessmentId) {
+        service.submitFinal(selfAssessmentId);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @GetMapping("/employee/{employeeId}")
+    public ResponseEntity<ApiResponse<List<SelfAssessmentResponse>>> getMyAssessments(@PathVariable Long employeeId) {
+        return ResponseEntity.ok(ApiResponse.success(service.getMyAssessments(employeeId)));
     }
 }

@@ -13,4 +13,6 @@ public interface AppraisalCycleService {
     void delete(Long id);
     AppraisalCycleResponse activate(Long id);
     AppraisalCycleResponse close(Long id);
+    AppraisalCycleResponse getActiveCycle();
 }
+

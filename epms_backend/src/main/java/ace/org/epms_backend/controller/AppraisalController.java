@@ -1,16 +1,19 @@
 package ace.org.epms_backend.controller;
 
 import ace.org.epms_backend.dto.ApiResponse;
-import ace.org.epms_backend.dto.appraisal.*;
+import ace.org.epms_backend.dto.appraisal.AppraisalAssignRequest;
+import ace.org.epms_backend.dto.appraisal.AppraisalBulkAssignRequest;
+import ace.org.epms_backend.dto.appraisal.AppraisalResponse;
+import ace.org.epms_backend.dto.appraisal.ScoreBreakdownResponse;
 import ace.org.epms_backend.service.AppraisalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/v1/appraisals")
@@ -19,42 +22,6 @@ import java.util.List;
 public class AppraisalController {
 
     private final AppraisalService appraisalService;
-
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<AppraisalResponse>> create(
-            @Valid @RequestBody AppraisalCreateRequest request
-    ) {
-        AppraisalResponse response = appraisalService.createAppraisal(request);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response));
-    }
-
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getAll() {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.getAll()));
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<AppraisalResponse>> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.getById(id)));
-    }
-
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<AppraisalResponse>> update(
-            @PathVariable Long id,
-            @Valid @RequestBody AppraisalUpdateRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.update(id, request)));
-    }
-
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
-        appraisalService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success(null));
-    }
 
     @PostMapping("/assign")
     @PreAuthorize("hasRole('ADMIN')")
@@ -66,60 +33,85 @@ public class AppraisalController {
         ));
     }
 
-    @PutMapping("/{id}/calculate")
-    public ResponseEntity<ApiResponse<AppraisalResponse>> calculate(@PathVariable Long id) {
+    @PostMapping("/assign/bulk")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<AppraisalResponse>>> assignBulk(
+            @Valid @RequestBody AppraisalBulkAssignRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.assignBulk(request)
+        ));
+    }
+
+    @GetMapping("/my-assessments")
+    public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getMyAssessments() {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.getMyAssessments()
+        ));
+    }
+
+    @GetMapping("/team-evaluations")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getTeamEvaluations() {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.getTeamEvaluations()
+        ));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<AppraisalResponse>> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(appraisalService.getById(id)));
+    }
+
+    @PostMapping("/{id}/calculate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ScoreBreakdownResponse>> calculate(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 appraisalService.calculate(id)
         ));
     }
 
-    @PutMapping("/{id}/lock")
+    @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<AppraisalResponse>> lock(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<AppraisalResponse>> approve(
+            @PathVariable Long id,
+            @RequestParam(required = false) String comment
+    ) {
         return ResponseEntity.ok(ApiResponse.success(
-                appraisalService.lock(id)
+                appraisalService.approve(id, comment)
         ));
     }
 
-    @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getByEmployeeId(@PathVariable Long employeeId) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.getByEmployeeId(employeeId)));
+    @PostMapping("/{id}/finalize")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<AppraisalResponse>> finalizeAppraisal(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.finalizeAppraisal(id)
+        ));
     }
 
-    @GetMapping("/manager/{managerId}")
-    public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getByManagerId(@PathVariable Long managerId) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.getByManagerId(managerId)));
+    @PostMapping("/{id}/employee-sign-off")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public ResponseEntity<ApiResponse<AppraisalResponse>> employeeSignOff(
+            @PathVariable Long id,
+            @RequestParam(required = false) String comment
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.employeeSignOff(id, comment)
+        ));
     }
 
-    @GetMapping("/cycle/{cycleId}")
-    public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getByCycleId(@PathVariable Long cycleId) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.getByCycleId(cycleId)));
-    }
-
-    @PutMapping("/{id}/self-submit")
-    public ResponseEntity<ApiResponse<AppraisalResponse>> submitSelfAssessment(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.submitSelfAssessment(id)));
-    }
-
-    @PutMapping("/{id}/manager-submit")
-    public ResponseEntity<ApiResponse<AppraisalResponse>> submitManagerEvaluation(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.submitManagerEvaluation(id)));
-    }
-
-    @PutMapping("/{id}/employee-sign")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
-    public ResponseEntity<ApiResponse<AppraisalResponse>> employeeSignOff(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.employeeSignOff(id)));
-    }
-
-    @PutMapping("/{id}/manager-sign")
+    @PostMapping("/{id}/manager-sign-off")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<AppraisalResponse>> managerSignOff(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.managerSignOff(id)));
-    }
-
-    @GetMapping("/{id}/details")
-    public ResponseEntity<ApiResponse<AppraisalDetailsResponse>> getDetails(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(appraisalService.getAppraisalDetails(id)));
+    public ResponseEntity<ApiResponse<AppraisalResponse>> managerSignOff(
+            @PathVariable Long id,
+            @RequestParam(required = false) String comment
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.managerSignOff(id, comment)
+        ));
     }
 }
+
+
+

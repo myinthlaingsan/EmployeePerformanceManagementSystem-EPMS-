@@ -1,43 +1,30 @@
 package ace.org.epms_backend.service;
 
 import ace.org.epms_backend.dto.appraisal.*;
-import ace.org.epms_backend.model.appraisal.Appraisal;
 
 import java.util.List;
 
 public interface AppraisalService {
 
-    AppraisalResponse createAppraisal(AppraisalCreateRequest request);
+    AppraisalResponse assignAppraisal(AppraisalAssignRequest request);
 
-    List<AppraisalResponse> getAll();
+    List<AppraisalResponse> assignBulk(AppraisalBulkAssignRequest request);
+
+    List<AppraisalResponse> getMyAssessments();
+
+    List<AppraisalResponse> getTeamEvaluations();
 
     AppraisalResponse getById(Long id);
 
-    AppraisalResponse assignAppraisal(AppraisalAssignRequest request);
+    ScoreBreakdownResponse calculate(Long id);
 
-    AppraisalResponse calculate(Long id);
-
-    AppraisalResponse lock(Long id);
+    AppraisalResponse approve(Long id, String comment);
 
     AppraisalResponse finalizeAppraisal(Long id);
 
-    AppraisalResponse update(Long id, AppraisalUpdateRequest request);
+    AppraisalResponse employeeSignOff(Long id, String comment);
 
-    void delete(Long id);
-
-    List<AppraisalResponse> getByEmployeeId(Long employeeId);
-
-    List<AppraisalResponse> getByManagerId(Long managerId);
-
-    List<AppraisalResponse> getByCycleId(Long cycleId);
-
-    AppraisalResponse submitSelfAssessment(Long id);
-
-    AppraisalResponse submitManagerEvaluation(Long id);
-
-    AppraisalResponse employeeSignOff(Long id);
-
-    AppraisalResponse managerSignOff(Long id);
-
-    AppraisalDetailsResponse getAppraisalDetails(Long id);
+    AppraisalResponse managerSignOff(Long id, String comment);
 }
+
+
