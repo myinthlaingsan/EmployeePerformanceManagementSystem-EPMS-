@@ -1,5 +1,5 @@
 // ==================== Enums ====================
-export type KpiGoalStatus = 'DRAFT' | 'APPROVED' | 'ARCHIVED';
+export type KpiGoalStatus = 'DRAFT' | 'SUBMITTED' | 'REJECTED' | 'APPROVED' | 'LOCKED' | 'ARCHIVED';
 
 export type KpiItemStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 
@@ -79,6 +79,17 @@ export interface GoalItemResponse {
   currentProgress?: number;
   categoryId?: number;
   categoryName?: string;
+}
+
+export interface KpiGoalBulkUpdateRequest {
+  items: {
+    id: number;
+    title: string;
+    unit: string;
+    targetValue: number;
+    weightPercent: number;
+    categoryId: number;
+  }[];
 }
 
 // ==================== Goal Set ====================

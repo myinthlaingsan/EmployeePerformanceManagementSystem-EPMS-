@@ -11,6 +11,7 @@ import type {
   ProgressRequest,
   KpiRevisionRequest,
   KpiScoreResponse,
+  KpiGoalBulkUpdateRequest,
 } from '../features/kpi/kpiTypes';
 
 export const kpiApi = api.injectEndpoints({
@@ -72,7 +73,7 @@ export const kpiApi = api.injectEndpoints({
 
     getLibraryById: builder.query<ApiResponse<KpiLibraryResponse>, number>({
       query: (id) => `/kpi/library/${id}`,
-      providesTags: (result, error, id) => [{ type: 'Library', id }],
+      providesTags: (_result, _error, id) => [{ type: 'Library', id }],
     }),
 
     updateLibrary: builder.mutation<ApiResponse<KpiLibraryResponse>, { id: number; data: KpiLibraryRequest }>({
@@ -81,7 +82,7 @@ export const kpiApi = api.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Library', id }, 'Library'],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Library', id }, 'Library'],
     }),
 
     // ==================== Assignment ====================
@@ -127,10 +128,30 @@ export const kpiApi = api.injectEndpoints({
       invalidatesTags: ['GoalSet'],
     }),
 
+    bulkUpdateGoalItems: builder.mutation<
+      ApiResponse<GoalSetResponse>,
+      { goalSetId: number; data: KpiGoalBulkUpdateRequest }
+    >({
+      query: ({ goalSetId, data }) => ({
+        url: `/kpi/goal-set/${goalSetId}/bulk-items`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['GoalSet'],
+    }),
+
     // ==================== Approval ====================
     approveGoalSet: builder.mutation<ApiResponse<GoalSetResponse>, number>({
       query: (id) => ({
         url: `/kpi/approve/${id}`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['GoalSet'],
+    }),
+
+    revertGoalSet: builder.mutation<ApiResponse<GoalSetResponse>, number>({
+      query: (id) => ({
+        url: `/kpi/goal-set/${id}/revert`,
         method: 'POST',
       }),
       invalidatesTags: ['GoalSet'],
@@ -192,6 +213,18 @@ export const kpiApi = api.injectEndpoints({
       }),
       invalidatesTags: ['Score'],
     }),
+    getTeamGoalSets: builder.query<ApiResponse<GoalSetResponse[]>, { managerId: number; cycleId: number }>({
+      query: ({ managerId, cycleId }) => `/kpi/goal-set/team?managerId=${managerId}&cycleId=${cycleId}`,
+      providesTags: ['GoalSet'],
+    }),
+
+    submitGoalSet: builder.mutation<ApiResponse<GoalSetResponse>, number>({
+      query: (id) => ({
+        url: `/kpi/goal-set/${id}/submit`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['GoalSet'],
+    }),
   }),
 });
 
@@ -207,7 +240,9 @@ export const {
   useAddGoalItemMutation,
   useUpdateGoalItemMutation,
   useDeleteGoalItemMutation,
+  useBulkUpdateGoalItemsMutation,
   useApproveGoalSetMutation,
+  useRevertGoalSetMutation,
   useUpdateProgressMutation,
   useReviseKpiMutation,
   useCalculateScoreMutation,
@@ -217,4 +252,6 @@ export const {
   useGetActiveCycleQuery,
   useGetLibraryByIdQuery,
   useUpdateLibraryMutation,
+  useGetTeamGoalSetsQuery,
+  useSubmitGoalSetMutation,
 } = kpiApi;

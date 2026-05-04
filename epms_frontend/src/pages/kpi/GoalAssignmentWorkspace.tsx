@@ -4,9 +4,10 @@ import {
   useGetGoalSetByEmployeeQuery,
   useGetAllLibrariesQuery,
   useAddGoalItemMutation,
-  useUpdateGoalItemMutation,
   useDeleteGoalItemMutation,
+  useBulkUpdateGoalItemsMutation,
   useApproveGoalSetMutation,
+  useRevertGoalSetMutation,
   useGetKpiCategoriesQuery,
   useAssignKpiToEmployeeMutation
 } from '../../services/kpiApi';
@@ -18,7 +19,10 @@ import {
   Trash2,
   Lock,
   LayoutTemplate,
-  Target
+  Target,
+  Save,
+  Edit3,
+  Undo2
 } from 'lucide-react';
 import {
   PRIORITY_MAP
@@ -44,13 +48,25 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const categories = categoriesResponse?.data || [];
 
   const [addGoalItem] = useAddGoalItemMutation();
-  const [updateGoalItem] = useUpdateGoalItemMutation();
   const [deleteGoalItem] = useDeleteGoalItemMutation();
+  const [bulkUpdateItems] = useBulkUpdateGoalItemsMutation();
   const [approveGoalSet] = useApproveGoalSetMutation();
+  const [revertToDraft] = useRevertGoalSetMutation();
   const [assignLibrary] = useAssignKpiToEmployeeMutation();
 
   const goalSet = goalSetResponse?.data;
-  const activeItems = goalSet?.items || [];
+  const [localItems, setLocalItems] = React.useState<any[]>([]);
+  const [isModified, setIsModified] = useState(false);
+
+  // Sync local items with server data when it loads
+  React.useEffect(() => {
+    if (goalSet?.items) {
+      setLocalItems(goalSet.items);
+      setIsModified(false);
+    }
+  }, [goalSet]);
+
+  const activeItems = localItems;
 
   const totalWeight = useMemo(() => {
     return activeItems.reduce((sum, item) => sum + Number(item.weightPercent), 0);
@@ -130,28 +146,60 @@ const GoalAssignmentWorkspace: React.FC = () => {
     }
   };
 
-  const handleUpdateItem = async (item: any, updates: any) => {
+  const handleLocalUpdate = (itemId: number, updates: any) => {
+    setLocalItems(prev => prev.map(item => 
+      item.id === itemId ? { ...item, ...updates } : item
+    ));
+    setIsModified(true);
+  };
+
+  const handleSaveDraft = async () => {
+    if (!goalSet) return;
+    setIsSubmitting(true);
     try {
-      await updateGoalItem({
-        itemId: item.id,
+      await bulkUpdateItems({
+        goalSetId: goalSet.id,
         data: {
-          title: updates.title ?? item.title,
-          unit: updates.unit ?? item.unit,
-          targetValue: updates.targetValue ?? item.targetValue,
-          weightPercent: updates.weightPercent ?? item.weightPercent,
-          categoryId: updates.categoryId ?? item.categoryId
+          items: localItems.map(item => ({
+            id: item.id,
+            title: item.title,
+            unit: item.unit,
+            targetValue: item.targetValue,
+            weightPercent: item.weightPercent,
+            categoryId: item.categoryId
+          }))
         }
       }).unwrap();
-      refetchGoals();
-    } catch (err) {
-      console.error('Failed to update goal:', err);
+      setIsModified(false);
+      alert("Draft saved successfully!");
+    } catch (err: any) {
+      console.error('Failed to save draft:', err);
+      alert(`Failed to save draft: ${err?.data?.message || err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!goalSet) return;
+    if (!window.confirm("This will revert the status to DRAFT so you can make changes. Continue?")) return;
+    
+    setIsSubmitting(true);
+    try {
+      await revertToDraft(goalSet.id).unwrap();
+    } catch (err: any) {
+      console.error('Failed to revert to draft:', err);
+      alert(`Failed to revert: ${err?.data?.message || err.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteItem = async (itemId: number) => {
+    if (!window.confirm("Are you sure you want to delete this goal? This change is immediate.")) return;
     try {
       await deleteGoalItem(itemId).unwrap();
-      refetchGoals();
+      // Tag invalidation will refetch, which will trigger useEffect to sync localItems
     } catch (err) {
       console.error('Failed to delete goal:', err);
     }
@@ -164,6 +212,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
       return;
     }
 
+    if (isModified) {
+      alert("Please save your draft changes before approving.");
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       await approveGoalSet(goalSet.id).unwrap();
@@ -188,7 +241,12 @@ const GoalAssignmentWorkspace: React.FC = () => {
             <div className="space-y-1">
               <div className="flex items-center gap-4">
                 <h1 className="text-2xl font-black text-gray-900 tracking-tight">{employee?.staffName}</h1>
-                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${goalSet ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                  goalSet?.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
+                  goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
+                  goalSet?.status === 'SUBMITTED' ? 'bg-yellow-50 text-yellow-600' :
+                  'bg-gray-100 text-gray-400'
+                }`}>
                   {goalSet ? goalSet.status : 'Not Assigned'}
                 </span>
               </div>
@@ -200,14 +258,37 @@ const GoalAssignmentWorkspace: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={handleApprove}
-            disabled={isSubmitting || totalWeight !== 100}
-            className="px-8 py-4 bg-gray-900 text-white text-[11px] font-black rounded-xl hover:bg-black disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition shadow-xl uppercase tracking-widest flex items-center gap-3"
-          >
-            <Lock className="w-4 h-4" />
-            Approve & Lock
-          </button>
+          <div className="flex items-center gap-4">
+            {goalSet?.status === 'APPROVED' ? (
+              <button
+                onClick={handleEdit}
+                disabled={isSubmitting}
+                className="px-8 py-4 bg-blue-600 text-white text-[11px] font-black rounded-xl hover:bg-blue-700 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition shadow-xl uppercase tracking-widest flex items-center gap-3"
+              >
+                <Edit3 className="w-4 h-4" />
+                Edit Goals
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={isSubmitting || !isModified}
+                  className={`px-8 py-4 ${isModified ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-gray-100 text-gray-400'} text-white text-[11px] font-black rounded-xl transition shadow-xl uppercase tracking-widest flex items-center gap-3`}
+                >
+                  <Save className="w-4 h-4" />
+                  Save Draft
+                </button>
+                <button
+                  onClick={handleApprove}
+                  disabled={isSubmitting || totalWeight !== 100 || isModified}
+                  className="px-8 py-4 bg-gray-900 text-white text-[11px] font-black rounded-xl hover:bg-black disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition shadow-xl uppercase tracking-widest flex items-center gap-3"
+                >
+                  <Lock className="w-4 h-4" />
+                  Approve & Lock
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8 items-start">
@@ -305,16 +386,18 @@ const GoalAssignmentWorkspace: React.FC = () => {
                         <td className="px-4 py-3 border border-gray-100">
                           <input
                             type="text"
-                            className="w-full bg-transparent border-none p-0 text-sm font-bold text-gray-900 focus:ring-0"
+                            className="w-full bg-transparent border-none p-0 text-sm font-bold text-gray-900 focus:ring-0 disabled:text-gray-400"
                             value={item.title}
-                            onChange={(e) => handleUpdateItem(item, { title: e.target.value })}
+                            onChange={(e) => handleLocalUpdate(item.id, { title: e.target.value })}
+                            disabled={goalSet?.status === 'APPROVED'}
                           />
                         </td>
                         <td className="px-4 py-3 border border-gray-100 text-center">
                           <select
-                            className="text-[9px] font-black uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-md border-none focus:ring-0 cursor-pointer text-gray-500"
+                            className="text-[9px] font-black uppercase tracking-widest bg-gray-50 px-2 py-1 rounded-md border-none focus:ring-0 cursor-pointer text-gray-500 disabled:opacity-50"
                             value={item.categoryId}
-                            onChange={(e) => handleUpdateItem(item, { categoryId: Number(e.target.value) })}
+                            onChange={(e) => handleLocalUpdate(item.id, { categoryId: Number(e.target.value) })}
+                            disabled={goalSet?.status === 'APPROVED'}
                           >
                             {categories.map(cat => (
                               <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -324,26 +407,29 @@ const GoalAssignmentWorkspace: React.FC = () => {
                         <td className="px-4 py-3 border border-gray-100 text-center">
                           <input
                             type="number"
-                            className="w-16 bg-gray-50/50 border border-gray-100 rounded-lg py-1 px-1 text-center text-xs font-black text-gray-900"
+                            className="w-16 bg-gray-50/50 border border-gray-100 rounded-lg py-1 px-1 text-center text-xs font-black text-gray-900 disabled:opacity-50"
                             value={item.targetValue}
-                            onChange={(e) => handleUpdateItem(item, { targetValue: Number(e.target.value) })}
+                            onChange={(e) => handleLocalUpdate(item.id, { targetValue: Number(e.target.value) })}
+                            disabled={goalSet?.status === 'APPROVED'}
                           />
                         </td>
                         <td className="px-4 py-3 border border-gray-100 text-center">
                           <input
                             type="text"
-                            className="w-full bg-transparent border-none p-0 text-xs font-bold text-gray-400 text-center focus:ring-0"
+                            className="w-full bg-transparent border-none p-0 text-xs font-bold text-gray-400 text-center focus:ring-0 disabled:opacity-50"
                             value={item.unit}
-                            onChange={(e) => handleUpdateItem(item, { unit: e.target.value })}
+                            onChange={(e) => handleLocalUpdate(item.id, { unit: e.target.value })}
+                            disabled={goalSet?.status === 'APPROVED'}
                           />
                         </td>
                         <td className="px-4 py-3 border border-gray-100 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <input
                               type="number"
-                              className="w-16 bg-blue-50/50 border border-blue-100 rounded-lg py-1.5 px-2 text-right text-xs font-black text-blue-700 focus:bg-white"
+                              className="w-16 bg-blue-50/50 border border-blue-100 rounded-lg py-1.5 px-2 text-right text-xs font-black text-blue-700 focus:bg-white disabled:opacity-50"
                               value={item.weightPercent}
-                              onChange={(e) => handleUpdateItem(item, { weightPercent: Number(e.target.value) })}
+                              onChange={(e) => handleLocalUpdate(item.id, { weightPercent: Number(e.target.value) })}
+                              disabled={goalSet?.status === 'APPROVED'}
                             />
                             <span className="text-[10px] font-bold text-blue-300">%</span>
                           </div>
@@ -351,7 +437,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
                         <td className="px-2 py-3 border border-gray-100 text-center">
                           <button
                             onClick={() => handleDeleteItem(item.id)}
-                            className="text-gray-200 hover:text-red-500 transition-colors"
+                            disabled={goalSet?.status === 'APPROVED'}
+                            className="text-gray-200 hover:text-red-500 transition-colors disabled:opacity-0"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

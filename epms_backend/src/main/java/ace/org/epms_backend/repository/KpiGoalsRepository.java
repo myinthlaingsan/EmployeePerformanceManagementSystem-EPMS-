@@ -20,7 +20,10 @@ Optional<KpiGoals> findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
 
     List<KpiGoals> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
 
-    List<KpiGoals> findByManagerIdAndCycleCycleId(Long managerId, Long cycleId);
+    @Query("SELECT k FROM KpiGoals k WHERE (k.manager.id = :managerId OR k.employee.id IN " +
+           "(SELECT rl.employee.id FROM ReportingLine rl WHERE rl.manager.id = :managerId AND rl.isActive = true)) " +
+           "AND k.cycle.cycleId = :cycleId AND k.isCurrent = true")
+    List<KpiGoals> findTeamGoals(@Param("managerId") Long managerId, @Param("cycleId") Long cycleId);
 
     @Query("SELECT k FROM KpiGoals k WHERE k.employee.id IN " +
            "(SELECT ed.employee.id FROM EmployeeDepartment ed WHERE ed.currentDepartment.id = :departmentId AND ed.isCurrent = true) " +

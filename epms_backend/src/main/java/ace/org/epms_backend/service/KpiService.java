@@ -27,8 +27,9 @@ public interface KpiService {
     GoalSetResponse updateGoalItem(Long itemId, KpiGoalItemRequest request);
 
     GoalSetResponse deleteGoalItem(Long itemId);
-
+    GoalSetResponse bulkUpdateGoalItems(Long goalSetId, KpiGoalBulkUpdateRequest request);
     GoalSetResponse approveGoalSet(Long goalSetId);
+    GoalSetResponse revertToDraft(Long goalSetId);
 
     // Progress
     GoalSetResponse updateProgress(ProgressRequest request);

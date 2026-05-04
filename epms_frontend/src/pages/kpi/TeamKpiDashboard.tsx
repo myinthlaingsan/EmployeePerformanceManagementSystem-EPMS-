@@ -9,46 +9,57 @@ import {
   Filter, 
   Download, 
   Plus, 
-  ChevronRight,
-  ArrowUpRight
+  ChevronRight
 } from 'lucide-react';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
+import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 
 const TeamKpiDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: employees = [], isLoading } = useGetEmployeesQuery();
-  const { activeCycleName } = useActiveCycle();
+  const { activeCycleId, activeCycleName } = useActiveCycle();
+
+  const { data: teamGoalsResponse } = useGetTeamGoalSetsQuery({
+    managerId: Number(user?.id),
+    cycleId: Number(activeCycleId)
+  }, { skip: !user?.id || !activeCycleId });
+
+  const teamGoals = teamGoalsResponse?.data || [];
 
   const teamMembers = useMemo(() => {
     if (!user) return [];
     
     const isAdminOrHr = user.roles?.some(r => r === 'ADMIN' || r === 'HR');
     
-    console.log('--- DEBUG: Team Dashboard ---');
-    console.log('Current User:', user.staffName, 'Roles:', user.roles);
-    console.log('Total Employees in System:', employees.length);
-
-    if (isAdminOrHr) {
-      return employees; // Show everyone for HR/Admin
+    let baseList = employees;
+    if (!isAdminOrHr) {
+      baseList = employees.filter(emp => Number(emp.directManagerId) === Number(user.id));
     }
 
-    // Filter by direct manager for standard managers
-    console.log('Checking matches for user ID:', user.id);
-    const reports = employees.filter(emp => Number(emp.directManagerId) === Number(user.id));
-    console.log('Filtered Direct Reports Result:', reports.length);
-    return reports;
-  }, [employees, user]);
+    return baseList.map(emp => {
+      const goals = teamGoals.find(g => g.employeeId === emp.id);
+      return {
+        ...emp,
+        goalSet: goals
+      };
+    });
+  }, [employees, user, teamGoals]);
 
-  const stats = useMemo(() => ({
-    overallCompletion: 0,
-    onTrack: 0,
-    atRisk: 0,
-    targetDate: 'Pending',
-    phase: 'Planning'
-  }), []);
+  const stats = useMemo(() => {
+    const totalReports = teamMembers.length;
+    const withGoals = teamMembers.filter(m => m.goalSet).length;
+    
+    return {
+      overallCompletion: totalReports > 0 ? Math.round((withGoals / totalReports) * 100) : 0,
+      onTrack: withGoals,
+      atRisk: totalReports - withGoals,
+      targetDate: 'Active',
+      phase: 'Goal Setting'
+    };
+  }, [teamMembers]);
 
   if (isLoading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -88,10 +99,10 @@ const TeamKpiDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
             <div className="flex justify-between items-start mb-4">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Overall Completion</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Goal Assignment</p>
               <div className="flex items-center gap-1 text-blue-600 font-bold text-xs">
                 <TrendingUp className="w-3 h-3" />
-                Baseline
+                Coverage
               </div>
             </div>
             <div className="flex items-baseline gap-2 mb-4">
@@ -105,7 +116,7 @@ const TeamKpiDashboard: React.FC = () => {
             </div>
             <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase tracking-widest">
               <span>Phase: {stats.phase}</span>
-              <span>No active targets</span>
+              <span>{stats.onTrack} of {teamMembers.length} Employees</span>
             </div>
           </div>
 
@@ -114,11 +125,11 @@ const TeamKpiDashboard: React.FC = () => {
               <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
-              <p className="text-sm font-bold text-gray-900 uppercase tracking-tight">On Track</p>
+              <p className="text-sm font-bold text-gray-900 uppercase tracking-tight">Assigned</p>
             </div>
             <div className="mt-4">
               <p className="text-4xl font-black text-gray-900">{stats.onTrack}</p>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Active Individual KPIs</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Active Goal Sets</p>
             </div>
           </div>
 
@@ -127,14 +138,14 @@ const TeamKpiDashboard: React.FC = () => {
               <div className="p-2 bg-red-50 rounded-lg text-red-600">
                 <AlertCircle className="w-5 h-5" />
               </div>
-              <p className="text-sm font-bold text-gray-900 uppercase tracking-tight">Risk & Overdue</p>
+              <p className="text-sm font-bold text-gray-900 uppercase tracking-tight">Pending</p>
             </div>
             <div className="mt-4">
               <div className="flex items-baseline gap-2">
                 <p className="text-4xl font-black text-red-600">{stats.atRisk}</p>
-                <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">At Risk</p>
+                <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Reports</p>
               </div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Requires manager action</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Requires assignment</p>
             </div>
           </div>
         </div>
@@ -163,11 +174,10 @@ const TeamKpiDashboard: React.FC = () => {
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Direct Report</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Goal / KPI</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Priority</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Goal Status</th>
+                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">KPI Items</th>
+                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cycle</th>
                   <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Progress</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Target Date</th>
                   <th className="px-4 py-4"></th>
                 </tr>
               </thead>
@@ -181,7 +191,7 @@ const TeamKpiDashboard: React.FC = () => {
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black text-sm">
-                          {emp.staffName.split(' ').map(n => n[0]).join('')}
+                          {emp.staffName.split(' ').map((n: string) => n[0]).join('')}
                         </div>
                         <div>
                           <p className="font-bold text-gray-900 text-sm tracking-tight">{emp.staffName}</p>
@@ -190,25 +200,41 @@ const TeamKpiDashboard: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-8 py-5">
-                      <p className="text-[11px] text-gray-400 italic font-medium italic">No active goals assigned</p>
-                    </td>
-                    <td className="px-8 py-5">
-                      <span className="text-[10px] font-black text-gray-200">—</span>
-                    </td>
-                    <td className="px-8 py-5">
-                      <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-50 text-gray-400">
-                        Not Assigned
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                        emp.goalSet?.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
+                        emp.goalSet?.status === 'LOCKED' ? 'bg-gray-900 text-white' :
+                        emp.goalSet?.status === 'SUBMITTED' ? 'bg-yellow-50 text-yellow-600' :
+                        emp.goalSet?.status === 'REJECTED' ? 'bg-red-50 text-red-600' :
+                        emp.goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
+                        'bg-gray-50 text-gray-400'
+                      }`}>
+                        {emp.goalSet?.status || 'Not Assigned'}
                       </span>
                     </td>
                     <td className="px-8 py-5">
-                      <div className="w-32 h-1 bg-gray-100/50 rounded-full"></div>
+                      <p className="text-xs font-bold text-gray-600">
+                        {emp.goalSet?.items?.length || 0} Items
+                      </p>
                     </td>
                     <td className="px-8 py-5">
-                      <p className="text-xs font-bold text-gray-300">—</p>
+                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          {emp.goalSet?.appraisalCycleName || activeCycleName}
+                       </p>
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-3">
+                         <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-blue-600 rounded-full"
+                              style={{ width: '0%' }} 
+                            ></div>
+                         </div>
+                         <span className="text-[10px] font-black text-gray-400">0%</span>
+                      </div>
                     </td>
                     <td className="px-4 py-5 text-right">
                       <div className="flex items-center justify-end gap-2 text-blue-600 group-hover:translate-x-1 transition-all duration-300">
-                        <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">Assign Now</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">Manage</span>
                         <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-600" />
                       </div>
                     </td>

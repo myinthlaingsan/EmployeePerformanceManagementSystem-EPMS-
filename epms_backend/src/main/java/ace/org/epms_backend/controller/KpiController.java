@@ -116,6 +116,13 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(kpiService.getGoalSetById(id)));
     }
 
+    @PutMapping("/goal-set/{id}/bulk-items")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<GoalSetResponse>> bulkUpdateItems(
+            @PathVariable Long id, @RequestBody KpiGoalBulkUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.bulkUpdateGoalItems(id, request)));
+    }
+
     @GetMapping("/progress/history")
     public ResponseEntity<ApiResponse<List<KpiProgressResponse>>> getRecentProgress(@RequestParam Long employeeId, @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(ApiResponse.success(kpiService.getRecentProgress(employeeId, limit)));
@@ -178,6 +185,12 @@ public class KpiController {
     public ResponseEntity<ApiResponse<List<GoalSetResponse>>> getDepartmentGoalSets(
             @RequestParam Long departmentId, @RequestParam Long cycleId) {
         return ResponseEntity.ok(ApiResponse.success(kpiService.getDepartmentGoalSets(departmentId, cycleId)));
+    }
+
+    @PostMapping("/goal-set/{id}/revert")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<GoalSetResponse>> revertToDraft(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.revertToDraft(id)));
     }
 
     @PostMapping("/goal-set/{id}/lock")

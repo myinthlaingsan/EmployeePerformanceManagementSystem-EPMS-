@@ -714,6 +714,37 @@ public class KpiServiceImpl implements KpiService {
         }
 
         @Override
+        @Transactional
+        public GoalSetResponse bulkUpdateGoalItems(Long goalSetId, KpiGoalBulkUpdateRequest request) {
+                KpiGoals goalSet = goalsRepository.findById(goalSetId)
+                                .orElseThrow(() -> new NotFoundException("Goal set not found"));
+
+                if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
+                        throw new IllegalStateException("Only DRAFT goals can be modified");
+                }
+
+                for (KpiGoalBulkUpdateRequest.ItemUpdate update : request.getItems()) {
+                        KpiGoalItem item = goalItemRepository.findById(update.getId())
+                                        .orElseThrow(() -> new NotFoundException("Goal item not found: " + update.getId()));
+                        
+                        if (!item.getGoalSet().getId().equals(goalSetId)) {
+                                throw new IllegalArgumentException("Item does not belong to this goal set");
+                        }
+
+                        item.setTitle(update.getTitle());
+                        item.setUnit(update.getUnit());
+                        item.setTargetValue(update.getTargetValue());
+                        item.setWeightPercent(update.getWeightPercent());
+                        item.setCategory(categoryRepository.findById(update.getCategoryId())
+                                        .orElseThrow(() -> new NotFoundException("Category not found")));
+                        
+                        goalItemRepository.save(item);
+                }
+
+                return kpiMapper.toGoalSetResponse(goalSet);
+        }
+
+        @Override
         public List<GoalSetResponse> getEmployeeGoalSets(Long employeeId) {
                 return goalsRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId).stream()
                                 .map(kpiMapper::toGoalSetResponse)
@@ -722,7 +753,7 @@ public class KpiServiceImpl implements KpiService {
 
         @Override
         public List<GoalSetResponse> getTeamGoalSets(Long managerId, Long cycleId) {
-                return goalsRepository.findByManagerIdAndCycleCycleId(managerId, cycleId).stream()
+                return goalsRepository.findTeamGoals(managerId, cycleId).stream()
                                 .map(kpiMapper::toGoalSetResponse)
                                 .collect(Collectors.toList());
         }
@@ -732,6 +763,21 @@ public class KpiServiceImpl implements KpiService {
                 return goalsRepository.findByDepartmentIdAndCycleId(departmentId, cycleId).stream()
                                 .map(kpiMapper::toGoalSetResponse)
                                 .collect(Collectors.toList());
+        }
+
+        @Override
+        @Transactional
+        public GoalSetResponse revertToDraft(Long goalSetId) {
+                KpiGoals goalSet = goalsRepository.findById(goalSetId)
+                                .orElseThrow(() -> new NotFoundException("Goal set not found"));
+
+                if (!goalSet.getStatus().equals(KpiGoalStatus.APPROVED)) {
+                        throw new IllegalStateException("Only APPROVED goals can be reverted to DRAFT");
+                }
+
+                goalSet.setStatus(KpiGoalStatus.DRAFT);
+                KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+                return kpiMapper.toGoalSetResponse(savedGoalSet);
         }
 
         @Override
