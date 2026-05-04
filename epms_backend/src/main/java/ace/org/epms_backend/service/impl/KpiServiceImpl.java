@@ -139,14 +139,31 @@ public class KpiServiceImpl implements KpiService {
                 Employee employee = employeeRepository.findById(request.getEmployeeId())
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
 
-                KpiLibrary library = libraryRepository.findById(request.getLibraryId())
+                KpiLibrary library = null;
+                if (request.getLibraryId() != null) {
+                        library = libraryRepository.findById(request.getLibraryId())
                                 .orElseThrow(() -> new NotFoundException("Library not found"));
-                AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
-                                .orElseThrow(() -> new NotFoundException("Appraisal Cycle Not found"));
-                if (!library.getIsActive()) {
-                        throw new IllegalArgumentException("Cannot assign from an inactive library");
+                        if (!library.getIsActive()) {
+                                throw new IllegalArgumentException("Cannot assign from an inactive library");
+                        }
                 }
+                AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
+                                .orElseGet(() -> cycleRepository.findByIsActiveTrue().stream().findFirst()
+                                .orElseThrow(() -> new NotFoundException("No active appraisal cycle found in the system. Please create one in Admin settings.")));
+                                
                 Employee currentManager = getCurrentEmployee();
+                
+                // Security check: Only allow if Manager, HR, or ADMIN
+                var authorities = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                                .map(a -> a.getAuthority())
+                                .collect(Collectors.toSet());
+                
+                boolean isHrOrAdmin = authorities.contains("ROLE_HR") || authorities.contains("ROLE_ADMIN");
+                boolean isManager = authorities.contains("ROLE_MANAGER");
+                
+                if (!isHrOrAdmin && !isManager) {
+                    throw new SecurityException("Insufficient permissions to assign goals");
+                }
 
                 KpiGoals goalSet = KpiGoals.builder()
                                 .employee(employee)
@@ -159,20 +176,22 @@ public class KpiServiceImpl implements KpiService {
 
                 KpiGoals savedGoalSet = goalsRepository.save(goalSet);
 
-                // Copy library details to goal items
-                List<KpiGoalItem> goalItems = library.getDetails().stream().map(libDetail -> {
-                        return KpiGoalItem.builder()
-                                        .goalSet(savedGoalSet)
-                                        .title(libDetail.getGoalTitle())
-                                        .targetValue(libDetail.getTargetValue())
-                                        .weightPercent(libDetail.getWeightPercent())
-                                        .category(libDetail.getCategory())
-                                        .status(KpiItemStatus.NOT_STARTED)
-                                        .isActive(true)
-                                        .build();
-                }).collect(Collectors.toList());
+                // Copy library details to goal items if library exists
+                if (library != null) {
+                        List<KpiGoalItem> goalItems = library.getDetails().stream().map(libDetail -> {
+                                return KpiGoalItem.builder()
+                                                .goalSet(savedGoalSet)
+                                                .title(libDetail.getGoalTitle())
+                                                .targetValue(libDetail.getTargetValue())
+                                                .weightPercent(libDetail.getWeightPercent())
+                                                .category(libDetail.getCategory())
+                                                .status(KpiItemStatus.NOT_STARTED)
+                                                .isActive(true)
+                                                .build();
+                        }).collect(Collectors.toList());
 
-                goalItemRepository.saveAll(goalItems);
+                        goalItemRepository.saveAll(goalItems);
+                }
 
                 // Trigger Notification
                 eventPublisher.publishEvent(NotificationEvent.builder()
@@ -284,8 +303,8 @@ public class KpiServiceImpl implements KpiService {
                         throw new SecurityException("Only the assigned manager or HR/Admin can approve this goal set");
                 }
 
-                if (!goalSet.getStatus().equals(KpiGoalStatus.SUBMITTED)) {
-                        throw new IllegalStateException("Only SUBMITTED goals can be approved");
+                if (!goalSet.getStatus().equals(KpiGoalStatus.SUBMITTED) && !goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
+                        throw new IllegalStateException("Only DRAFT or SUBMITTED goals can be approved");
                 }
 
                 BigDecimal totalWeight = goalSet.getItems().stream()

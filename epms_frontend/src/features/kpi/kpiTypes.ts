@@ -55,7 +55,7 @@ export interface KpiLibraryResponse {
 // ==================== Goal Assignment ====================
 export interface GoalAssignmentRequest {
   employeeId: number;
-  libraryId: number;
+  libraryId?: number;
   appraisalCycleId: number;
 }
 
