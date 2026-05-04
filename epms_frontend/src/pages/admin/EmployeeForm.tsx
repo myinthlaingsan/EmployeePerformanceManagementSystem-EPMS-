@@ -181,7 +181,6 @@ const EmployeeForm = () => {
                         ...formData, 
                         currentDepartmentId: Number(e.target.value)
                       });
-                      setSelectedPositionLevel("");
                     }}>
                     <option value="">Select Current Dept</option>
                     {departments?.map(dept => <option key={dept.id} value={dept.id}>{dept.departmentName}</option>)}

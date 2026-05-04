@@ -17,5 +17,4 @@ public interface PositionService {
     PositionResponse updatePosition(Long id, PositionRequest request);
 
     void deletePosition(Long id);
-    List<PositionResponse> getPositionsByDepartment(Long departmentId);
 }
