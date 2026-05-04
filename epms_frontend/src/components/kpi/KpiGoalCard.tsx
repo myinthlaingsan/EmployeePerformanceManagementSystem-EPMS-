@@ -9,7 +9,17 @@ interface KpiGoalCardProps {
 
 const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
   const progress = Math.min(Math.round((kpi.currentProgress || 0) / (kpi.targetValue || 1) * 100), 100);
-  const isBehind = progress < 50 && idx === 1; // Visual demo from image
+  
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'COMPLETED': return { label: 'Completed', color: 'bg-emerald-500' };
+      case 'IN_PROGRESS': return { label: 'In Progress', color: 'bg-blue-500' };
+      case 'NOT_STARTED':
+      default:
+        return { label: 'Not Started', color: 'bg-slate-300' };
+    }
+  };
+  const statusDisplay = getStatusDisplay(kpi.itemStatus || 'NOT_STARTED');
 
   const getCategoryStyles = (category?: string) => {
     const cat = category?.toLowerCase() || '';
@@ -59,8 +69,8 @@ const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
               <div className="space-y-1">
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Status</p>
                 <div className="flex items-center text-[11px] font-bold text-slate-600">
-                  <span className={`w-2 h-2 rounded-full mr-2 ${isBehind ? 'bg-rose-500' : progress === 0 ? 'bg-slate-300' : 'bg-blue-500'}`}></span>
-                  {isBehind ? 'Behind' : progress === 0 ? 'Not Started' : 'In Progress'}
+                  <span className={`w-2 h-2 rounded-full mr-2 ${statusDisplay.color}`}></span>
+                  {statusDisplay.label}
                 </div>
               </div>
             </div>
@@ -70,7 +80,7 @@ const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
             <div className="space-y-2">
               <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div 
-                  className={`h-full rounded-full transition-all duration-1000 ease-out ${isBehind ? 'bg-rose-500' : 'bg-blue-600'}`} 
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${kpi.itemStatus === 'COMPLETED' ? 'bg-emerald-500' : 'bg-blue-600'}`} 
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
