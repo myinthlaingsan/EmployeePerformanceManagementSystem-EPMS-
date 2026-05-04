@@ -25,5 +25,7 @@ public class PerformanceHistoryResponse {
     private Boolean isPrivate;
     private Long performerId;
     private String performerName;
+    private ace.org.epms_backend.enums.FeedbackType feedbackType;
+    private String tagName;
     private Instant createdAt;
 }

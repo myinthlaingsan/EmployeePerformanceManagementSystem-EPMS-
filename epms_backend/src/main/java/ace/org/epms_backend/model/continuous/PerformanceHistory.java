@@ -45,5 +45,10 @@ public class PerformanceHistory extends BaseEntity {
     @JoinColumn(name = "performer_id")
     private Employee performer;
 
+    @Enumerated(EnumType.STRING)
+    private ace.org.epms_backend.enums.FeedbackType feedbackType;
+
+    private String tagName;
+
     private Long createdBy;
 }

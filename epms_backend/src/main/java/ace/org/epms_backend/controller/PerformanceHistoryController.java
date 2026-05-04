@@ -38,4 +38,10 @@ public class PerformanceHistoryController {
         PerformanceHistoryResponse response = historyService.getHistoryById(historyId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse<List<PerformanceHistoryResponse>>> getAllHistory() {
+        List<PerformanceHistoryResponse> responses = historyService.getAllHistory();
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
 }

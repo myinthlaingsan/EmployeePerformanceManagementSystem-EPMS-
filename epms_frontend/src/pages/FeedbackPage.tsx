@@ -18,6 +18,124 @@ import { useGetEmployeesQuery } from "../features/employee/employeeapi";
 import { FeedbackType } from "../features/continuous/continuousTypes";
 import { format } from "date-fns";
 
+const FeedbackSnapshot = ({ stats }: { stats: { praise: number; improvement: number; correction: number } }) => {
+  const { isManager, isAdmin, isHR } = useAuth();
+  const showTips = isManager || isAdmin || isHR;
+
+  return (
+    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-6">
+      <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Feedback Snapshot</h3>
+      <div className="space-y-4">
+        {/* Praise */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-bold text-gray-600">Praise</span>
+            <span className="font-black text-emerald-500">{stats.praise}%</span>
+          </div>
+          <div className="h-2 bg-gray-50 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+              style={{ width: `${stats.praise}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Improvement */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-bold text-gray-600">Improvement</span>
+            <span className="font-black text-amber-500">{stats.improvement}%</span>
+          </div>
+          <div className="h-2 bg-gray-50 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-amber-500 rounded-full transition-all duration-500" 
+              style={{ width: `${stats.improvement}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Correction */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-bold text-gray-600">Correction</span>
+            <span className="font-black text-rose-500">{stats.correction}%</span>
+          </div>
+          <div className="h-2 bg-gray-50 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-rose-500 rounded-full transition-all duration-500" 
+              style={{ width: `${stats.correction}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {showTips && (
+        <div className="pt-6 mt-4 bg-[#0052cc] rounded-[1.5rem] p-6 text-white space-y-6 shadow-xl shadow-blue-100">
+          <div className="flex items-center gap-3">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            <h3 className="text-lg font-bold">Manager Tips</h3>
+          </div>
+          
+          <p className="text-sm leading-relaxed text-blue-50">
+            Giving constructive feedback works best when it's specific, actionable, and delivered within 24 hours of the observed behavior.
+          </p>
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 bg-white/10 p-4 rounded-xl border border-white/5">
+              <svg className="w-4 h-4 mt-0.5 text-blue-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+              <p className="text-xs font-medium leading-tight">Use the "Situation-Behavior-Impact" model.</p>
+            </div>
+            
+            <div className="flex items-start gap-3 bg-white/10 p-4 rounded-xl border border-white/5">
+              <svg className="w-4 h-4 mt-0.5 text-blue-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+              <p className="text-xs font-medium leading-tight">Balance praise with growth opportunities.</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const feedbackTypeConfig = {
+  [FeedbackType.PRAISE]: {
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.382-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+      </svg>
+    ),
+    label: "Praise",
+    activeClass: "bg-white text-emerald-600 shadow-sm ring-1 ring-black/5",
+    inactiveClass: "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50",
+  },
+  [FeedbackType.IMPROVEMENT]: {
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+    ),
+    label: "Improvement",
+    activeClass: "bg-white text-amber-600 shadow-sm ring-1 ring-black/5",
+    inactiveClass: "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50",
+  },
+  [FeedbackType.WARNING]: {
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    label: "Correction",
+    activeClass: "bg-white text-rose-600 shadow-sm ring-1 ring-black/5",
+    inactiveClass: "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50",
+  },
+};
+
 const FeedbackPage = () => {
   const { user, isManager, isAdmin, isHR } = useAuth();
   const canCreate = isManager; // Admins and HR are restricted to history only
@@ -150,27 +268,37 @@ const FeedbackPage = () => {
 
   if (isLoading) return <div className="p-8 text-center">Loading Feedbacks...</div>;
 
+  const stats = feedbacks ? {
+    praise: Math.round((feedbacks.filter(f => f.feedbackType === FeedbackType.PRAISE).length / (feedbacks.length || 1)) * 100),
+    improvement: Math.round((feedbacks.filter(f => f.feedbackType === FeedbackType.IMPROVEMENT).length / (feedbacks.length || 1)) * 100),
+    correction: Math.round((feedbacks.filter(f => f.feedbackType === FeedbackType.WARNING).length / (feedbacks.length || 1)) * 100),
+  } : { praise: 0, improvement: 0, correction: 0 };
+
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-8">
-      <header className="flex justify-between items-center">
+    <div className="max-w-7xl mx-auto p-6 space-y-8">
+      <header className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Continuous Feedback</h1>
-          <p className="text-gray-500">Real-time performance insights and recognitions.</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Continuous Feedback</h1>
+          <p className="text-gray-500 font-medium">Real-time performance insights and team recognition.</p>
         </div>
         {canCreate && (
           <button
             onClick={() => setShowModal(true)}
-            className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center gap-2"
+            className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center gap-2 group"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <div className="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center group-hover:bg-blue-400 transition">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
             Give Feedback
           </button>
         )}
       </header>
 
-      <div className="grid gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Main Feed */}
+        <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
         {(isAdmin || isHR) && (
           <div className="text-center py-20 bg-amber-50 rounded-3xl border-2 border-dashed border-amber-200">
             <h3 className="text-amber-800 font-bold text-xl mb-2">Access Restricted</h3>
@@ -262,10 +390,25 @@ const FeedbackPage = () => {
 
             {/* Replies Section */}
             {expandedFeedbackId === fb.feedbackId && (
-              <FeedbackReplies feedbackId={fb.feedbackId} />
+              <FeedbackReplies feedbackId={fb.feedbackId} authorId={fb.managerId} />
             )}
           </div>
         ))}
+        </div>
+
+        {/* Sidebar Widgets */}
+        <div className="lg:col-span-1 space-y-6 order-1 lg:order-2 lg:sticky lg:top-6">
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition">
+            <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Feedback</p>
+              <h3 className="text-2xl font-bold text-gray-900">{feedbacks?.length || 0}</h3>
+            </div>
+          </div>
+          <FeedbackSnapshot stats={stats} />
+        </div>
       </div>
 
       {/* Create Feedback Modal */}
@@ -290,104 +433,77 @@ const FeedbackPage = () => {
                       ))}
                     </select>
                   </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Feedback Category</label>
-                      {!isAddingTag ? (
-                        <div className="flex gap-2">
-                          <select
-                            required
-                            className="flex-1 px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                            value={newFeedback.tagId}
-                            onChange={e => {
-                              if (e.target.value === "NEW") {
-                                setIsAddingTag(true);
-                              } else {
-                                setNewFeedback({ ...newFeedback, tagId: e.target.value === "" ? "" : Number(e.target.value) });
-                              }
-                            }}
-                          >
-                            <option value="">Select a Tag</option>
-                            {tags?.map(tag => <option key={tag.tagId} value={tag.tagId}>{tag.tagName}</option>)}
-                            <option value="NEW" className="text-blue-600 font-bold">+ Add New Tag...</option>
-                          </select>
-                          {newFeedback.tagId && (
-                            <div className="flex gap-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const tag = tags?.find(t => t.tagId === newFeedback.tagId);
-                                  if (tag) {
-                                    setNewTagName(tag.tagName);
-                                    setEditingTagId(tag.tagId);
-                                    setIsAddingTag(true);
-                                  }
-                                }}
-                                className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition"
-                                title="Edit Tag"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setTagToDelete(newFeedback.tagId as number)}
-                                className="p-3 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition"
-                                title="Delete Tag"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            autoFocus
-                            placeholder="New tag name..."
-                            className="flex-1 px-4 py-3 bg-blue-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                            value={newTagName}
-                            onChange={e => setNewTagName(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleCreateTag();
-                              }
-                              if (e.key === 'Escape') {
-                                setIsAddingTag(false);
-                                setNewTagName("");
-                              }
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={handleCreateTag}
-                            disabled={isCreatingTag || isUpdatingTag}
-                            className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsAddingTag(false);
-                              setEditingTagId(null);
-                              setNewTagName("");
-                            }}
-                            className="p-3 bg-gray-100 text-gray-400 rounded-xl hover:bg-gray-200 transition"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between px-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tag</label>
+                    {!isAddingTag && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingTag(true)}
+                        className="text-blue-600 text-[9px] font-black uppercase tracking-widest hover:text-blue-800 transition"
+                      >
+                        + New Tag
+                      </button>
+                    )}
+                  </div>
+                  
+                  {isAddingTag ? (
+                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="New tag name..."
+                        className="flex-1 px-4 py-3 bg-gray-50 border border-blue-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition"
+                        value={newTagName}
+                        onChange={e => setNewTagName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleCreateTag();
+                          }
+                          if (e.key === 'Escape') {
+                            setIsAddingTag(false);
+                            setNewTagName("");
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateTag}
+                        disabled={isCreatingTag || isUpdatingTag || !newTagName.trim()}
+                        className="p-3.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddingTag(false);
+                          setNewTagName("");
+                        }}
+                        className="p-3.5 bg-gray-100 text-gray-400 rounded-xl hover:bg-gray-200 transition"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                     </div>
+                  ) : (
+                    <select
+                      required
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition font-bold text-gray-700"
+                      value={newFeedback.tagId}
+                      onChange={e => setNewFeedback({ ...newFeedback, tagId: Number(e.target.value) })}
+                    >
+                      <option value="">Choose Tag...</option>
+                      {tags?.map(tag => (
+                        <option key={tag.tagId} value={tag.tagId}>{tag.tagName}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
                 </div>
 
                 {selectedEmp && (
@@ -405,22 +521,24 @@ const FeedbackPage = () => {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Feedback Type</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {Object.values(FeedbackType).map(type => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setNewFeedback({ ...newFeedback, feedbackType: type })}
-                        className={`px-3 py-2 rounded-xl text-[10px] font-bold border-2 transition ${newFeedback.feedbackType === type
-                          ? type === FeedbackType.PRAISE ? 'border-emerald-500 bg-emerald-50 text-emerald-600' :
-                            type === FeedbackType.IMPROVEMENT ? 'border-amber-500 bg-amber-50 text-amber-600' :
-                            'border-rose-500 bg-rose-50 text-rose-600'
-                          : 'border-transparent bg-gray-50 text-gray-400 hover:bg-gray-100'
+                  <div className="flex p-1 bg-gray-50 rounded-2xl border border-gray-100">
+                    {Object.values(FeedbackType).map(type => {
+                      const config = feedbackTypeConfig[type];
+                      const isActive = newFeedback.feedbackType === type;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setNewFeedback({ ...newFeedback, feedbackType: type })}
+                          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
+                            isActive ? config.activeClass : config.inactiveClass
                           }`}
-                      >
-                        {type}
-                      </button>
-                    ))}
+                        >
+                          {config.icon}
+                          {config.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -537,20 +655,58 @@ const FeedbackPage = () => {
   );
 };
 
-const FeedbackReplies = ({ feedbackId }: { feedbackId: number }) => {
+const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorId: number }) => {
   const { user } = useAuth();
   const { data: replies, isLoading } = useGetFeedbackRepliesQuery(feedbackId);
   const [replyToFeedback, { isLoading: isReplying }] = useReplyToFeedbackMutation();
   const [deleteReply] = useDeleteReplyMutation();
   const [updateReply, { isLoading: isUpdatingReply }] = useUpdateReplyMutation();
+  
   const [newReply, setNewReply] = useState("");
+  const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [editingReplyId, setEditingReplyId] = useState<number | null>(null);
   const [editReplyText, setEditReplyText] = useState("");
   const [replyToDelete, setReplyToDelete] = useState<number | null>(null);
+  const [highlightedReplyId, setHighlightedReplyId] = useState<number | null>(null);
 
-  const handleEditReply = (reply: any) => {
-    setEditingReplyId(reply.replyId);
-    setEditReplyText(reply.replyText);
+  const handleScrollToParent = (parentId: number) => {
+    const element = document.getElementById(`reply-${parentId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedReplyId(parentId);
+      setTimeout(() => setHighlightedReplyId(null), 2000);
+    }
+  };
+
+  const handleReply = async (e: React.FormEvent, parentId?: number) => {
+    e.preventDefault();
+    const text = parentId ? editReplyText : newReply;
+    if (!text.trim() || !user) return;
+
+    try {
+      await replyToFeedback({
+        feedbackId,
+        body: { replyText: text, employeeId: user.id, parentId }
+      }).unwrap();
+      if (parentId) {
+        setReplyingToId(null);
+        setEditReplyText("");
+      } else {
+        setNewReply("");
+      }
+    } catch (err: any) {
+      alert(err.data?.message || "Failed to post reply.");
+    }
+  };
+
+  const handleDeleteReply = async () => {
+    if (!replyToDelete) return;
+    try {
+      await deleteReply({ replyId: replyToDelete, feedbackId }).unwrap();
+      setReplyToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete reply", err);
+    }
   };
 
   const handleUpdateReply = async (replyId: number) => {
@@ -568,149 +724,181 @@ const FeedbackReplies = ({ feedbackId }: { feedbackId: number }) => {
     }
   };
 
-  const handleDeleteReply = async () => {
-    if (!replyToDelete) return;
-    try {
-      await deleteReply({ replyId: replyToDelete, feedbackId }).unwrap();
-      setReplyToDelete(null);
-    } catch (err) {
-      console.error("Failed to delete reply", err);
-    }
-  };
+  const ReplyItem = ({ reply, allReplies }: { reply: any; allReplies: any[] }) => {
+    const isCurrentUser = reply.employeeId === user?.id;
+    const isAuthor = reply.employeeId === authorId;
 
-  const handleReply = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newReply.trim() || !user) return;
-
-    try {
-      await replyToFeedback({
-        feedbackId,
-        body: {
-          replyText: newReply,
-          employeeId: user.id
-        }
-      }).unwrap();
-      setNewReply("");
-    } catch (err) {
-      console.error("Failed to reply", err);
-    }
-  };
-
-  if (isLoading) return <div className="mt-4 text-[10px] text-gray-400">Loading replies...</div>;
-
-  return (
-    <div className="mt-6 pt-6 border-t border-gray-50 space-y-4">
-      <div className="space-y-4">
-        {replies?.map((reply) => (
-          <div key={reply.replyId} className={`flex gap-3 ${reply.employeeId === user?.id ? 'flex-row-reverse' : ''}`}>
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
-              reply.employeeId === user?.id ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
-            }`}>
-              {reply.employeeName?.charAt(0) || '?'}
+    return (
+      <div id={`reply-${reply.replyId}`} className={`space-y-3`}>
+        <div className={`flex gap-3 px-3 py-2 rounded-2xl transition-all duration-500 group ${
+          highlightedReplyId === reply.replyId 
+            ? 'bg-blue-100 ring-4 ring-blue-300 scale-[1.02] shadow-lg'
+            : isCurrentUser ? 'flex-row-reverse bg-blue-50/30 border-l-4 border-blue-500' : 'bg-gray-50/30'
+        }`}>
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-sm transition-colors duration-500 ${
+            highlightedReplyId === reply.replyId
+              ? 'bg-blue-600 text-white'
+              : isCurrentUser ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-100'
+          }`}>
+            {reply.employeeName?.charAt(0) || '?'}
+          </div>
+          
+          <div className={`max-w-[85%] ${isCurrentUser ? 'items-end text-right' : 'items-start'} flex flex-col gap-1`}>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-gray-900 uppercase tracking-tight">
+                {isCurrentUser ? 'You' : reply.employeeName}
+              </span>
+              {isAuthor && <span className="px-1.5 py-0.5 bg-gray-900 text-white text-[8px] font-black rounded uppercase tracking-widest leading-none">Author</span>}
+              <span className="text-[10px] text-gray-400 font-medium">{reply.createdAt ? format(new Date(reply.createdAt), 'h:mm a') : ''}</span>
             </div>
-            <div className={`max-w-[80%] ${reply.employeeId === user?.id ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-              <div className={`px-4 py-2 rounded-2xl text-sm ${
-                reply.employeeId === user?.id 
-                  ? 'bg-indigo-600 text-white rounded-tr-none' 
-                  : 'bg-gray-50 text-gray-700 rounded-tl-none'
-              }`}>
+
+
+            <div className={`px-3 py-2 rounded-2xl text-sm transition-all shadow-sm relative min-w-[120px] ${
+              isCurrentUser 
+                ? 'bg-[#e7f9f2] text-gray-800 rounded-tr-none border border-[#d1f0e4]' 
+                : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
+            }`}>
+              {reply.parentId && (
+                (() => {
+                  const parent = allReplies?.find(r => String(r.replyId) === String(reply.parentId));
+                  if (!parent) return null;
+                  return (
+                    <div 
+                      onClick={() => handleScrollToParent(parent.replyId)}
+                      className={`mb-2 p-2 rounded-lg border-l-4 flex flex-col gap-1 shadow-sm cursor-pointer hover:opacity-80 transition-opacity ${
+                        isCurrentUser ? 'bg-[#d1f0e4] border-[#4bb08b]' : 'bg-gray-100 border-gray-400'
+                      }`}
+                    >
+                      <div className={`text-[10px] font-black uppercase tracking-tight ${isCurrentUser ? 'text-[#3e8e71]' : 'text-gray-600'}`}>
+                        {parent.employeeName}
+                      </div>
+                      <div className={`text-[11px] leading-tight ${isCurrentUser ? 'text-gray-700' : 'text-gray-500'} italic line-clamp-2`}>
+                        "{parent.replyText}"
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+
+              <div className="flex flex-col gap-1">
                 {editingReplyId === reply.replyId ? (
-                  <div className="flex flex-col gap-2">
+                  <div className="space-y-2 mt-1">
                     <input
-                      type="text"
-                      className="text-black px-2 py-1 rounded text-sm w-full outline-none"
+                      className="bg-white border border-gray-200 px-3 py-1.5 rounded-xl text-sm w-full outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                       value={editReplyText}
                       onChange={(e) => setEditReplyText(e.target.value)}
                       autoFocus
                     />
                     <div className="flex gap-2 justify-end">
-                      <button onClick={() => setEditingReplyId(null)} className="text-[10px] uppercase font-bold text-indigo-200 hover:text-white">Cancel</button>
-                      <button onClick={() => handleUpdateReply(reply.replyId)} disabled={isUpdatingReply} className="text-[10px] uppercase font-bold text-white hover:text-indigo-200">Save</button>
+                      <button onClick={() => setEditingReplyId(null)} className="text-[10px] font-black text-gray-400">Cancel</button>
+                      <button onClick={() => handleUpdateReply(reply.replyId)} className="text-[10px] font-black text-blue-600">Save</button>
                     </div>
                   </div>
                 ) : (
-                  reply.replyText
+                  <span className="leading-relaxed">{reply.replyText}</span>
                 )}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
-                  {reply.employeeName}
-                </span>
-                <span className="text-[10px] text-gray-300">•</span>
-                <span className="text-[10px] text-gray-300">{reply.createdAt ? format(new Date(reply.createdAt), 'MMM d, p') : ''}</span>
-                {reply.employeeId === user?.id && (
-                  <div className="flex items-center">
-                    <button 
-                      onClick={() => handleEditReply(reply)}
-                      className="ml-1 text-gray-300 hover:text-indigo-400 transition"
-                      title="Edit Reply"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </button>
-                    <button 
-                      onClick={() => setReplyToDelete(reply.replyId)}
-                      className="ml-1 text-gray-300 hover:text-rose-500 transition"
-                      title="Delete Reply"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
+                
+                <div className="flex justify-end items-center gap-1 mt-0.5">
+                  <span className={`text-[9px] font-medium ${isCurrentUser ? 'text-[#4bb08b]/70' : 'text-gray-400'}`}>
+                    {reply.createdAt ? format(new Date(reply.createdAt), 'HH:mm') : ''}
+                  </span>
+                  {isCurrentUser && (
+                    <svg className="w-3 h-3 text-[#4bb08b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
               </div>
             </div>
+
+            <div className="flex items-center gap-3 mt-1 opacity-0 group-hover:opacity-100 transition-all">
+              {!editingReplyId && (
+                <button 
+                  onClick={() => { setReplyingToId(reply.replyId); setEditReplyText(""); }} 
+                  className="text-[10px] font-black text-indigo-500 hover:text-indigo-700 transition"
+                >
+                  Reply
+                </button>
+              )}
+              {isCurrentUser && !editingReplyId && (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { setEditingReplyId(reply.replyId); setEditReplyText(reply.replyText); }} className="text-gray-300 hover:text-blue-500 transition">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  </button>
+                  <button onClick={() => setReplyToDelete(reply.replyId)} className="text-gray-300 hover:text-rose-500 transition">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {replyingToId === reply.replyId && (
+              <form onSubmit={(e) => handleReply(e, reply.replyId)} className="mt-3 flex gap-2 w-full animate-in slide-in-from-top-2">
+                <input
+                  placeholder={`Reply to ${reply.employeeName}...`}
+                  className="flex-1 px-3 py-1.5 bg-white border border-gray-100 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner"
+                  value={editReplyText}
+                  onChange={(e) => setEditReplyText(e.target.value)}
+                  autoFocus
+                />
+                <button type="submit" className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                </button>
+                <button onClick={() => setReplyingToId(null)} className="p-1.5 bg-gray-100 text-gray-400 rounded-lg">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </form>
+            )}
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (isLoading) return <div className="mt-4 text-[10px] text-gray-400 uppercase font-black animate-pulse">Loading discussion...</div>;
+
+  const sortedReplies = [...(replies || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  return (
+    <div className="mt-6 pt-6 border-t border-gray-100 space-y-6">
+      <div className="space-y-6">
+        {sortedReplies.map((reply) => (
+          <ReplyItem key={reply.replyId} reply={reply} allReplies={sortedReplies} />
         ))}
       </div>
 
-      <form onSubmit={handleReply} className="flex gap-2 pt-2">
-        <input
-          type="text"
-          placeholder="Write a reply..."
-          className="flex-1 px-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
-          value={newReply}
-          onChange={(e) => setNewReply(e.target.value)}
-        />
-        <button
-          type="submit"
-          disabled={isReplying || !newReply.trim()}
-          className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition shadow-lg shadow-indigo-100"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
-        </button>
+      <form onSubmit={(e) => handleReply(e)} className="flex gap-3 pt-4 border-t border-gray-50">
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-indigo-50 text-indigo-600 border border-indigo-100`}>
+          {user?.staffName?.charAt(0) || '?'}
+        </div>
+        <div className="flex-1 flex gap-2">
+          <input
+            placeholder="Add to the conversation..."
+            className="flex-1 px-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
+            value={newReply}
+            onChange={(e) => setNewReply(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={isReplying || !newReply.trim()}
+            className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition shadow-lg shadow-indigo-100"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+          </button>
+        </div>
       </form>
 
-      {/* Delete Reply Confirmation Modal */}
       {replyToDelete && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 p-8 text-center">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 p-8 text-center border border-gray-100">
             <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Reply?</h3>
-            <p className="text-gray-500 text-sm mb-8">
-              Are you sure you want to remove this reply?
-            </p>
+            <h3 className="text-xl font-black text-gray-900 mb-2">Delete Message?</h3>
+            <p className="text-gray-500 text-sm mb-8 font-medium">This will permanently remove your contribution from this thread.</p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setReplyToDelete(null)}
-                className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteReply}
-                className="flex-1 px-6 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition shadow-lg shadow-rose-200"
-              >
-                Delete
-              </button>
+              <button onClick={() => setReplyToDelete(null)} className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition uppercase text-[10px] tracking-widest">Cancel</button>
+              <button onClick={handleDeleteReply} className="flex-1 px-6 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition shadow-lg shadow-rose-200 uppercase text-[10px] tracking-widest">Delete</button>
             </div>
           </div>
         </div>

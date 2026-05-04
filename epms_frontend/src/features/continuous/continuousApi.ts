@@ -205,6 +205,11 @@ export const continuousApi = api.injectEndpoints({
       transformResponse: (response: ApiResponse<PerformanceHistoryResponse[]>) => response.data,
       providesTags: ["PerformanceHistory" as any],
     }),
+    getAllPerformanceHistory: builder.query<PerformanceHistoryResponse[], void>({
+      query: () => "/performance-history/all",
+      transformResponse: (response: ApiResponse<PerformanceHistoryResponse[]>) => response.data,
+      providesTags: ["PerformanceHistory" as any],
+    }),
   }),
 });
 
@@ -234,4 +239,5 @@ export const {
   useUpdateReplyMutation,
   useUpdateCommentMutation,
   useGetPerformanceHistoryByEmployeeQuery,
+  useGetAllPerformanceHistoryQuery,
 } = continuousApi;

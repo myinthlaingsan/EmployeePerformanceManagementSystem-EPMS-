@@ -15,5 +15,6 @@ public class MeetingCommentResponse {
     private String managerName;
     private String comment;
     private CommentType commentType;
+    private Long parentId;
     private Instant createdAt;
 }

@@ -33,34 +33,49 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
         Employee currentUser = authService.getCurrentUser();
         boolean privileged = isPrivileged(currentUser);
 
-        return historyRepository.findByEmployee_IdOrManager_Id(employeeId, employeeId).stream()
+        // Find records where this person is the subject, the manager, the performer, or the creator.
+        return historyRepository.findByEmployee_IdOrManager_IdOrPerformer_IdOrCreatedBy(employeeId, employeeId, employeeId, employeeId).stream()
                 .filter(h -> privileged || 
                              (currentUser.getId().equals(h.getCreatedBy())) || 
                              (!Boolean.TRUE.equals(h.getIsPrivate()) && (currentUser.getId().equals(h.getEmployee().getId()) || (h.getManager() != null && currentUser.getId().equals(h.getManager().getId())))))
                 .filter(h -> {
-                    // If the target of history is not the employee of this record, 
-                    // it means we are viewing the manager's history.
-                    // In this case, we only want to show actions PERFORMED by that manager.
+                    // Filter logic:
+                    // 1. If Mar is the employee (subject), she sees it (unless private and she's not creator).
+                    // 2. If Mar is NOT the employee, she only sees it if she was the performer/creator (manager action log).
                     if (!h.getEmployee().getId().equals(employeeId)) {
                         Long actualPerformerId = h.getPerformer() != null ? h.getPerformer().getId() : h.getCreatedBy();
                         return employeeId.equals(actualPerformerId);
                     }
                     return true;
                 })
-                .map(h -> {
-                    ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse res = historyMapper.toResponse(h);
-                    if (res.getPerformerId() == null) {
-                        res.setPerformerId(h.getCreatedBy());
-                        // Fallback: if it was a manager action, we can use managerName
-                        if (h.getManager() != null && h.getManager().getId().equals(h.getCreatedBy())) {
-                            res.setPerformerName(h.getManager().getStaffName());
-                        } else if (h.getEmployee().getId().equals(h.getCreatedBy())) {
-                            res.setPerformerName(h.getEmployee().getStaffName());
-                        }
-                    }
-                    return res;
-                })
+                .map(this::mapToResponseWithFallback)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getAllHistory() {
+        Employee currentUser = authService.getCurrentUser();
+        if (!isPrivileged(currentUser)) {
+            throw new ace.org.epms_backend.exception.AccessDeniedException("Only Admin or HR can view global pulse.");
+        }
+
+        return historyRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(this::mapToResponseWithFallback)
+                .collect(Collectors.toList());
+    }
+
+    private ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse mapToResponseWithFallback(PerformanceHistory h) {
+        ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse res = historyMapper.toResponse(h);
+        if (res.getPerformerId() == null) {
+            res.setPerformerId(h.getCreatedBy());
+            // Fallback: if it was a manager action, we can use managerName
+            if (h.getManager() != null && h.getManager().getId().equals(h.getCreatedBy())) {
+                res.setPerformerName(h.getManager().getStaffName());
+            } else if (h.getEmployee() != null && h.getEmployee().getId().equals(h.getCreatedBy())) {
+                res.setPerformerName(h.getEmployee().getStaffName());
+            }
+        }
+        return res;
     }
 
     @Override

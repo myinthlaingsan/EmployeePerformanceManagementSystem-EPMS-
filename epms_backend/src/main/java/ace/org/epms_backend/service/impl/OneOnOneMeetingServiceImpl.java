@@ -6,6 +6,7 @@ import ace.org.epms_backend.dto.continuous.OneOnOneMeetingRequest;
 import ace.org.epms_backend.dto.continuous.OneOnOneMeetingResponse;
 import ace.org.epms_backend.enums.CommentType;
 import ace.org.epms_backend.enums.RoleType;
+import ace.org.epms_backend.enums.FeedbackType;
 import ace.org.epms_backend.enums.SourceType;
 import ace.org.epms_backend.exception.AccessDeniedException;
 import ace.org.epms_backend.exception.NotFoundException;
@@ -56,8 +57,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(savedMeeting.getMeetingId())
                 .title("New 1-on-1 Meeting Scheduled")
-                .description("Meeting scheduled for " + savedMeeting.getMeetingDate() + " at " + savedMeeting.getMeetingTime() + ". Agenda/Reason: " + (savedMeeting.getDiscussionPoints() != null ? savedMeeting.getDiscussionPoints() : "Not specified"))
-                .isPrivate(savedMeeting.getIsPrivateNote())
+                .description("Manager " + savedMeeting.getManager().getStaffName() + " scheduled a meeting with " + savedMeeting.getEmployee().getStaffName() + " on " + savedMeeting.getMeetingDate())
+                .isPrivate(false)
                 .createdBy(savedMeeting.getManager().getId())
                 .manager(savedMeeting.getManager())
                 .performer(savedMeeting.getManager())
@@ -109,8 +110,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(updatedMeeting.getMeetingId())
                 .title("1-on-1 Meeting Updated")
-                .description("Meeting details were updated. Agenda/Reason: " + (updatedMeeting.getDiscussionPoints() != null ? updatedMeeting.getDiscussionPoints() : "Not specified"))
-                .isPrivate(updatedMeeting.getIsPrivateNote())
+                .description("Manager " + updatedMeeting.getManager().getStaffName() + " updated the meeting details.")
+                .isPrivate(false)
                 .createdBy(authService.getCurrentUser().getId())
                 .manager(updatedMeeting.getManager())
                 .performer(authService.getCurrentUser())
@@ -248,8 +249,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(comment.getMeeting().getMeetingId())
                 .title("Meeting Comment Updated")
-                .description((isOwner ? "Owner " : "Admin ") + currentUser.getStaffName() + " updated comment to: " + request.getComment())
-                .isPrivate(comment.getMeeting().getIsPrivateNote())
+                .description(currentUser.getStaffName() + " updated their comment.")
+                .isPrivate(false)
                 .createdBy(currentUser.getId())
                 .manager(comment.getMeeting().getManager())
                 .performer(currentUser)
@@ -281,8 +282,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(comment.getMeeting().getMeetingId())
                 .title("Meeting Comment Deleted")
-                .description((comment.getManager() != null ? "Manager " : "Employee ") + currentUser.getStaffName() + " deleted their comment.")
-                .isPrivate(comment.getMeeting().getIsPrivateNote())
+                .description(currentUser.getStaffName() + " deleted their comment.")
+                .isPrivate(false)
                 .createdBy(currentUser.getId())
                 .manager(comment.getMeeting().getManager())
                 .performer(currentUser)

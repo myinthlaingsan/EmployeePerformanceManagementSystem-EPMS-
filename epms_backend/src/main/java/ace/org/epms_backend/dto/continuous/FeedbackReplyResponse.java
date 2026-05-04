@@ -10,5 +10,6 @@ public class FeedbackReplyResponse {
     private Long employeeId;
     private String employeeName;
     private String replyText;
+    private Long parentId;
     private Instant createdAt;
 }

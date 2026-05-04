@@ -9,6 +9,7 @@ import java.util.List;
 
 @Repository
 public interface PerformanceHistoryRepository extends JpaRepository<PerformanceHistory, Long> {
-    List<PerformanceHistory> findByEmployee_IdOrManager_Id(Long employeeId, Long managerId);
+    List<PerformanceHistory> findByEmployee_IdOrManager_IdOrPerformer_IdOrCreatedBy(Long employeeId, Long managerId, Long performerId, Long createdBy);
     List<PerformanceHistory> findBySourceTypeAndSourceId(SourceType sourceType, Long sourceId);
+    List<PerformanceHistory> findAllByOrderByCreatedAtDesc();
 }

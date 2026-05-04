@@ -1,31 +1,26 @@
 import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
-import {
-  useGetAllMeetingsQuery,
-  useScheduleMeetingMutation,
-  useUpdateMeetingMutation,
+import { 
+  useGetAllMeetingsQuery, 
+  useGetMeetingsByEmployeeQuery, 
+  useGetMeetingsByManagerQuery, 
+  useScheduleMeetingMutation, 
+  useUpdateMeetingMutation, 
   useDeleteMeetingMutation,
   useGetMeetingCommentsQuery,
   useAddMeetingCommentMutation,
   useDeleteCommentMutation,
-  useUpdateCommentMutation,
+  useUpdateCommentMutation
 } from "../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../features/employee/employeeapi";
 import { format } from "date-fns";
 
 const MeetingPage = () => {
   const { user, isManager, isAdmin, isHR } = useAuth();
-  const canSchedule = isManager; // Admins and HR are restricted to history only
+  const canSchedule = isManager;
 
-  const { data: meetings, isLoading } = useGetAllMeetingsQuery(undefined, { skip: !user });
+  const { data: allMeetings, isLoading } = useGetAllMeetingsQuery(undefined, { skip: !user });
   const { data: employees } = useGetEmployeesQuery();
-  const [scheduleMeeting, { isLoading: isScheduling }] = useScheduleMeetingMutation();
-  const [updateMeeting, { isLoading: isUpdating }] = useUpdateMeetingMutation();
-  const [deleteMeeting] = useDeleteMeetingMutation();
-
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [expandedMeetingId, setExpandedMeetingId] = useState<number | null>(null);
-  const [meetingToDelete, setMeetingToDelete] = useState<number | null>(null);
 
   const filteredEmployees = (isAdmin || isHR)
     ? employees
@@ -33,8 +28,15 @@ const MeetingPage = () => {
         emp.currentDepartmentId === user?.currentDepartmentId && 
         emp.id !== user?.id
       );
+  const [scheduleMeeting, { isLoading: isScheduling }] = useScheduleMeetingMutation();
+  const [updateMeeting, { isLoading: isUpdating }] = useUpdateMeetingMutation();
+  const [deleteMeeting] = useDeleteMeetingMutation();
 
+  const [expandedMeetingId, setExpandedMeetingId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [meetingToDelete, setMeetingToDelete] = useState<number | null>(null);
+
   const [newMeeting, setNewMeeting] = useState({
     employeeId: 0,
     meetingDate: "",
@@ -46,27 +48,27 @@ const MeetingPage = () => {
     isPrivateNote: false
   });
 
-  const selectedEmp = employees?.find(e => e.id === newMeeting.employeeId);
+  const meetings = (isAdmin || isHR) ? allMeetings : allMeetings?.filter(m => m.employeeId === user?.id || m.managerId === user?.id);
 
   const handleSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newMeeting.employeeId) {
-      alert("Please select an employee.");
+    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || !newMeeting.actionItems || !user) {
+      alert("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
+      return;
+    }
+
+    if (newMeeting.followUpDate && newMeeting.followUpDate < newMeeting.meetingDate) {
+      alert("Follow up date cannot be earlier than the meeting date.");
       return;
     }
 
     try {
-      const body = {
-        ...newMeeting,
-        managerId: user.id,
-      };
-
+      const body = { ...newMeeting, managerId: user.id };
       if (editingId) {
         await updateMeeting({ id: editingId, body }).unwrap();
       } else {
         await scheduleMeeting(body).unwrap();
       }
-
       setShowModal(false);
       setEditingId(null);
       setNewMeeting({
@@ -84,6 +86,21 @@ const MeetingPage = () => {
     }
   };
 
+  const handleEdit = (m: any) => {
+    setEditingId(m.meetingId);
+    setNewMeeting({
+      employeeId: m.employeeId,
+      meetingDate: m.meetingDate,
+      meetingTime: m.meetingTime,
+      discussionPoints: m.discussionPoints,
+      keyIssues: m.keyIssues,
+      actionItems: m.actionItems,
+      followUpDate: m.followUpDate || "",
+      isPrivateNote: m.isPrivateNote
+    });
+    setShowModal(true);
+  };
+
   const handleDelete = async () => {
     if (!meetingToDelete) return;
     try {
@@ -94,37 +111,22 @@ const MeetingPage = () => {
     }
   };
 
-  const handleEdit = (meeting: any) => {
-    setEditingId(meeting.meetingId);
-    setNewMeeting({
-      employeeId: meeting.employeeId,
-      meetingDate: meeting.meetingDate,
-      meetingTime: meeting.meetingTime,
-      discussionPoints: meeting.discussionPoints,
-      keyIssues: meeting.keyIssues,
-      actionItems: meeting.actionItems,
-      followUpDate: meeting.followUpDate || "",
-      isPrivateNote: meeting.isPrivateNote,
-    });
-    setShowModal(true);
-  };
-
   if (isLoading) return <div className="p-8 text-center">Loading Meetings...</div>;
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-8">
-      <header className="flex justify-between items-center">
+    <div className="max-w-7xl mx-auto p-6 space-y-8">
+      <header className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">1-on-1 Meetings</h1>
-          <p className="text-gray-500">Track and manage your performance sync-ups.</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">1-on-1 Meetings</h1>
+          <p className="text-gray-500 font-medium">Schedule and track personalized development conversations.</p>
         </div>
         {canSchedule && (
           <button
             onClick={() => setShowModal(true)}
-            className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 flex items-center gap-2"
+            className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 flex items-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
             Schedule Meeting
           </button>
@@ -132,188 +134,163 @@ const MeetingPage = () => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {(isAdmin || isHR) && (
-          <div className="col-span-full text-center py-20 bg-indigo-50 rounded-3xl border-2 border-dashed border-indigo-200">
-            <h3 className="text-indigo-800 font-bold text-xl mb-2">Access Restricted</h3>
-            <p className="text-indigo-600 font-medium">Admins are restricted to viewing performance history only. Meeting details are hidden.</p>
-            <a href="/performance-history" className="mt-4 inline-block px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition">Go to Performance History</a>
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition">
+          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
-        )}
-
-        {!(isAdmin || isHR) && meetings?.length === 0 && (
-          <div className="col-span-full text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-            <p className="text-gray-400 font-medium">No meetings scheduled yet.</p>
+          <div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Scheduled Meetings</p>
+            <h3 className="text-2xl font-bold text-gray-900">{meetings?.length || 0}</h3>
           </div>
-        )}
+        </div>
 
-        {!(isAdmin || isHR) && meetings?.map((meeting) => (
-          <div key={meeting.meetingId} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition group">
-            <div className="flex justify-between items-center mb-6">
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition">
+          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Follow up Tasks</p>
+            <h3 className="text-2xl font-bold text-gray-900">{meetings?.filter(m => m.followUpDate).length || 0}</h3>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6">
+        {meetings?.map((m) => (
+          <div key={m.meetingId} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition group">
+            <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-bold text-lg shadow-inner">
+                  {m.employeeName?.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900">
-                    {meeting.managerName}
-                    {meeting.employeeId !== user?.id && <span className="text-gray-400 font-normal ml-1 text-sm">with {meeting.employeeName}</span>}
-                  </h3>
-                  <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
-                    <p>{format(new Date(meeting.meetingDate), 'MMM d, yyyy')}</p>
-                    <p>{meeting.meetingTime}</p>
-                    {meeting.isPrivateNote && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                        Private
+                  <h3 className="font-bold text-gray-900 text-lg">{m.employeeName}</h3>
+                  <div className="flex items-center gap-3 text-sm text-gray-500 font-medium">
+                    <span className="flex items-center gap-1">
+                      <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {format(new Date(m.meetingDate), 'MMM d, yyyy')}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {m.meetingTime}
+                    </span>
+                    {m.followUpDate && (
+                      <span className="flex items-center gap-1 text-rose-500 font-bold">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Follow up: {format(new Date(m.followUpDate), 'MMM d, yyyy')}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="text-right">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Manager to Employee</p>
-                  <p className="font-bold text-indigo-600">{meeting.managerName}</p>
-                </div>
-                {(meeting.managerId === user?.id || isAdmin || isHR) && (
+              <div className="flex items-center gap-2">
+                {m.isPrivateNote && (
+                  <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-full uppercase tracking-widest border border-amber-100">Private</span>
+                )}
+                {canSchedule && (
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={() => handleEdit(meeting)}
-                      className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                      title="Edit Meeting"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
+                    <button onClick={() => handleEdit(m)} className="p-2 text-gray-400 hover:text-indigo-600 transition">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </button>
-                    <button 
-                      onClick={() => setMeetingToDelete(meeting.meetingId)}
-                      className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                      title="Delete Meeting"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                    <button onClick={() => setMeetingToDelete(m.meetingId)} className="p-2 text-gray-400 hover:text-rose-600 transition">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Discussion Points</h4>
-                <p className="text-sm text-gray-600 line-clamp-2">{meeting.discussionPoints}</p>
+            <div className="grid md:grid-cols-3 gap-6 bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100/50">
+              <div className="space-y-2">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Discussion Points</span>
+                <p className="text-gray-700 text-sm leading-relaxed">{m.discussionPoints}</p>
               </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-50">
-                <div>
-                  <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Action Items</h4>
-                  <p className="text-xs text-gray-500">{meeting.actionItems || 'None'}</p>
-                </div>
-                {meeting.followUpDate && (
-                  <div>
-                    <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Follow-up</h4>
-                    <p className="text-xs text-gray-500">{format(new Date(meeting.followUpDate), 'MMM d, yyyy')}</p>
-                  </div>
-                )}
+              <div className="space-y-2">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Key Issues</span>
+                <p className="text-gray-700 text-sm leading-relaxed">{m.keyIssues}</p>
+              </div>
+              <div className="space-y-2">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</span>
+                <p className="text-gray-700 text-sm leading-relaxed">{m.actionItems}</p>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-50">
+            <div className="pt-4 mt-4 border-t border-gray-50 flex items-center justify-between">
               <button 
-                onClick={() => setExpandedMeetingId(expandedMeetingId === meeting.meetingId ? null : meeting.meetingId)}
+                onClick={() => setExpandedMeetingId(expandedMeetingId === m.meetingId ? null : m.meetingId)}
                 className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-indigo-600 transition group"
               >
-                <div className="w-8 h-8 rounded-lg bg-gray-50 group-hover:bg-indigo-50 flex items-center justify-center transition">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                <div className="w-6 h-6 rounded-lg bg-gray-50 flex items-center justify-center group-hover:bg-indigo-50 transition">
+                  <svg className={`w-3.5 h-3.5 transition-transform ${expandedMeetingId === m.meetingId ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
-                <span>Discussion & Comments</span>
+                <span>Meeting Discussion</span>
               </button>
             </div>
 
-            {/* Comments Section */}
-            {expandedMeetingId === meeting.meetingId && (
-              <MeetingComments meetingId={meeting.meetingId} />
+            {expandedMeetingId === m.meetingId && (
+              <MeetingComments meetingId={m.meetingId} />
             )}
           </div>
         ))}
       </div>
 
-      {/* Schedule Meeting Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">{editingId ? 'Edit 1-on-1 Meeting' : 'Schedule 1-on-1 Meeting'}</h2>
-              <form onSubmit={handleSchedule} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Employee</label>
-                  <select
-                    required
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                    value={newMeeting.employeeId}
-                    onChange={e => setNewMeeting({ ...newMeeting, employeeId: Number(e.target.value) })}
-                  >
-                    <option value="">Choose Staff Member</option>
-                    {filteredEmployees?.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.staffName}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedEmp && (
-                  <div className="flex gap-4 p-4 bg-indigo-50 rounded-2xl animate-in fade-in slide-in-from-top-2">
-                    <div className="flex-1">
-                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Department</p>
-                      <p className="text-sm font-bold text-indigo-900">{selectedEmp.currentDepartmentName || 'N/A'}</p>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Position</p>
-                      <p className="text-sm font-bold text-indigo-900">{selectedEmp.positionName}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden border border-gray-100">
+            <div className="bg-indigo-600 p-8 text-white">
+              <h2 className="text-2xl font-black uppercase tracking-tight">{editingId ? "Update Meeting" : "Schedule 1-on-1"}</h2>
+              <p className="text-indigo-100 font-medium">Define goals and expectations for the upcoming conversation.</p>
+            </div>
+            <div className="p-8">
+              <form onSubmit={handleSchedule} className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Meeting Date</label>
-                    <input
-                      type="date"
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Employee</label>
+                    <select 
                       required
-                      className="w-full px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-xs"
-                      value={newMeeting.meetingDate}
-                      onChange={e => setNewMeeting({ ...newMeeting, meetingDate: e.target.value })}
-                    />
+                      className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm font-bold"
+                      value={newMeeting.employeeId || ""}
+                      onChange={e => setNewMeeting({ ...newMeeting, employeeId: Number(e.target.value) })}
+                    >
+                      <option value="">Choose Member...</option>
+                      {filteredEmployees?.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.staffName}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Meeting Time</label>
-                    <input
-                      type="time"
-                      required
-                      className="w-full px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-xs"
-                      value={newMeeting.meetingTime}
-                      onChange={e => setNewMeeting({ ...newMeeting, meetingTime: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Follow-up</label>
-                    <input
-                      type="date"
-                      className="w-full px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-xs"
-                      value={newMeeting.followUpDate}
-                      onChange={e => setNewMeeting({ ...newMeeting, followUpDate: e.target.value })}
-                    />
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Date & Time</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input 
+                        required
+                        type="date"
+                        className="px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-xs font-bold"
+                        value={newMeeting.meetingDate}
+                        onChange={e => setNewMeeting({ ...newMeeting, meetingDate: e.target.value })}
+                      />
+                      <input 
+                        required
+                        type="time"
+                        className="px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-xs font-bold"
+                        value={newMeeting.meetingTime}
+                        onChange={e => setNewMeeting({ ...newMeeting, meetingTime: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Discussion Points</label>
                   <textarea 
+                    required
                     className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-14 resize-none text-sm"
                     placeholder="What would you like to discuss?"
                     value={newMeeting.discussionPoints}
@@ -325,6 +302,7 @@ const MeetingPage = () => {
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Key Issues</label>
                     <textarea 
+                      required
                       className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-12 resize-none text-sm"
                       value={newMeeting.keyIssues}
                       onChange={e => setNewMeeting({ ...newMeeting, keyIssues: e.target.value })}
@@ -333,11 +311,23 @@ const MeetingPage = () => {
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</label>
                     <textarea 
+                      required
                       className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-12 resize-none text-sm"
                       value={newMeeting.actionItems}
                       onChange={e => setNewMeeting({ ...newMeeting, actionItems: e.target.value })}
                     />
                   </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Follow up Date</label>
+                  <input 
+                    type="date"
+                    min={newMeeting.meetingDate}
+                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm font-bold"
+                    value={newMeeting.followUpDate}
+                    onChange={e => setNewMeeting({ ...newMeeting, followUpDate: e.target.value })}
+                  />
                 </div>
 
                 <div className="flex items-center gap-2 px-1">
@@ -386,7 +376,6 @@ const MeetingPage = () => {
         </div>
       )}
 
-      {/* Delete Meeting Confirmation Modal */}
       {meetingToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 p-8 text-center">
@@ -426,14 +415,49 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
   const [addComment, { isLoading: isCommenting }] = useAddMeetingCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
   const [updateComment, { isLoading: isUpdatingComment }] = useUpdateCommentMutation();
+  
   const [newComment, setNewComment] = useState("");
+  const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
+  const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
 
-  const handleEditComment = (comment: any) => {
-    setEditingCommentId(comment.id);
-    setEditCommentText(comment.comment);
+  const handleScrollToParent = (parentId: number) => {
+    const element = document.getElementById(`comment-${parentId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedCommentId(parentId);
+      setTimeout(() => setHighlightedCommentId(null), 2000);
+    }
+  };
+
+  const handleComment = async (e: React.FormEvent, parentId?: number) => {
+    e.preventDefault();
+    const text = parentId ? editCommentText : newComment;
+    if (!text.trim() || !user) return;
+
+    try {
+      await addComment({
+        meetingId,
+        body: {
+          comment: text,
+          commentType: isManager ? 'MANAGER' : 'EMPLOYEE',
+          managerId: isManager ? user.id : undefined,
+          employeeId: !isManager ? user.id : undefined,
+          parentId
+        }
+      }).unwrap();
+      
+      if (parentId) {
+        setReplyingToId(null);
+        setEditCommentText("");
+      } else {
+        setNewComment("");
+      }
+    } catch (err) {
+      console.error("Failed to add comment", err);
+    }
   };
 
   const handleUpdateComment = async (commentId: number) => {
@@ -466,147 +490,175 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
     }
   };
 
-  const handleComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim() || !user) return;
+  const CommentItem = ({ comment, allComments }: { comment: any; allComments: any[] }) => {
+    const isOwnComment = (isManager && comment.commentType === 'MANAGER' && comment.managerId === user?.id) || 
+                         (!isManager && comment.commentType === 'EMPLOYEE' && comment.employeeId === user?.id);
 
-    try {
-      await addComment({
-        meetingId,
-        body: {
-          comment: newComment,
-          commentType: isManager ? 'MANAGER' : 'EMPLOYEE',
-          managerId: isManager ? user.id : undefined,
-          employeeId: !isManager ? user.id : undefined,
-        }
-      }).unwrap();
-      setNewComment("");
-    } catch (err) {
-      console.error("Failed to add comment", err);
-    }
-  };
-
-  if (isLoading) return <div className="mt-4 text-[10px] text-gray-400">Loading comments...</div>;
-
-  return (
-    <div className="mt-6 pt-6 border-t border-gray-50 space-y-4">
-      <div className="space-y-4">
-        {comments?.map((comment) => {
-          const isOwnComment = (isManager && comment.commentType === 'MANAGER') || 
-                              (!isManager && comment.commentType === 'EMPLOYEE' && comment.employeeId === user?.id) ||
-                              (isManager && comment.managerId === user?.id);
+    return (
+      <div id={`comment-${comment.id}`} className={`space-y-2`}>
+        <div className={`flex gap-3 group transition-all duration-500 rounded-2xl ${
+          highlightedCommentId === comment.id 
+            ? 'bg-blue-50 ring-4 ring-blue-300 scale-[1.02] shadow-lg p-3 -m-3' 
+            : isOwnComment ? 'flex-row-reverse' : ''
+        }`}>
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-sm transition-colors duration-500 ${
+            highlightedCommentId === comment.id
+              ? 'bg-blue-600 text-white'
+              : isOwnComment ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 border border-gray-100'
+          }`}>
+            {(comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)?.charAt(0)}
+          </div>
           
-          return (
-            <div key={comment.id} className={`flex gap-3 ${isOwnComment ? 'flex-row-reverse' : ''}`}>
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
-                isOwnComment ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
-              }`}>
-                {(comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)?.charAt(0)}
-              </div>
-              <div className={`max-w-[80%] ${isOwnComment ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                <div className={`px-4 py-2 rounded-2xl text-sm ${
-                  isOwnComment 
-                    ? 'bg-indigo-600 text-white rounded-tr-none' 
-                    : 'bg-gray-50 text-gray-700 rounded-tl-none'
-                }`}>
-                  {editingCommentId === comment.id ? (
-                    <div className="flex flex-col gap-2">
-                      <input
-                        type="text"
-                        className="text-black px-2 py-1 rounded text-sm w-full outline-none"
-                        value={editCommentText}
-                        onChange={(e) => setEditCommentText(e.target.value)}
-                        autoFocus
-                      />
-                      <div className="flex gap-2 justify-end">
-                        <button onClick={() => setEditingCommentId(null)} className="text-[10px] uppercase font-bold text-indigo-200 hover:text-white">Cancel</button>
-                        <button onClick={() => handleUpdateComment(comment.id)} disabled={isUpdatingComment} className="text-[10px] uppercase font-bold text-white hover:text-indigo-200">Save</button>
+          <div className={`max-w-[85%] ${isOwnComment ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-gray-900 uppercase tracking-tight">
+                {isOwnComment ? 'You' : (comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)}
+              </span>
+              {comment.commentType === 'MANAGER' && <span className="px-1.5 py-0.5 bg-gray-900 text-white text-[8px] font-black rounded uppercase tracking-widest leading-none">Manager</span>}
+              <span className="text-[10px] text-gray-400 font-medium">{comment.createdAt ? format(new Date(comment.createdAt), 'h:mm a') : ''}</span>
+            </div>
+
+            <div className={`px-3 py-2 rounded-2xl text-sm transition-all shadow-sm relative min-w-[120px] ${
+              isOwnComment 
+                ? 'bg-[#e7f9f2] text-gray-800 rounded-tr-none border border-[#d1f0e4]' 
+                : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
+            }`}>
+              {comment.parentId && (
+                (() => {
+                  const parent = allComments?.find(c => String(c.id) === String(comment.parentId));
+                  if (!parent) return null;
+                  const parentName = parent.commentType === 'MANAGER' ? parent.managerName : parent.employeeName;
+                  return (
+                    <div 
+                      onClick={() => handleScrollToParent(parent.id)}
+                      className={`mb-2 p-2 rounded-lg border-l-4 flex flex-col gap-1 shadow-sm cursor-pointer hover:opacity-80 transition-opacity ${
+                        isOwnComment ? 'bg-[#d1f0e4] border-[#4bb08b]' : 'bg-gray-100 border-gray-400'
+                      }`}
+                    >
+                      <div className={`text-[10px] font-black uppercase tracking-tight ${isOwnComment ? 'text-[#3e8e71]' : 'text-gray-600'}`}>
+                        {parentName}
+                      </div>
+                      <div className={`text-[11px] leading-tight ${isOwnComment ? 'text-gray-700' : 'text-gray-500'} italic line-clamp-2`}>
+                        "{parent.comment}"
                       </div>
                     </div>
-                  ) : (
-                    comment.comment
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
-                    {comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName}
-                  </span>
-                  <span className="text-[10px] text-gray-300">•</span>
-                  <span className="text-[10px] text-gray-300">{comment.createdAt ? format(new Date(comment.createdAt), 'MMM d, p') : ''}</span>
-                  {isOwnComment && (
-                    <div className="flex items-center">
-                      <button 
-                        onClick={() => handleEditComment(comment)}
-                        className="ml-1 text-gray-300 hover:text-indigo-400 transition"
-                        title="Edit Comment"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
-                      <button 
-                        onClick={() => setCommentToDelete(comment.id)}
-                        className="ml-1 text-gray-300 hover:text-rose-500 transition"
-                        title="Delete Comment"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                  );
+                })()
+              )}
+
+              <div className="flex flex-col gap-1">
+                {editingCommentId === comment.id ? (
+                  <div className="space-y-2 py-1">
+                    <textarea
+                      className="bg-white border border-gray-200 p-2 rounded-lg text-sm w-full text-gray-900 outline-none focus:ring-2 focus:ring-indigo-400 h-16 resize-none shadow-inner"
+                      value={editCommentText}
+                      onChange={(e) => setEditCommentText(e.target.value)}
+                      autoFocus
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button onClick={() => setEditingCommentId(null)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600">Cancel</button>
+                      <button onClick={() => handleUpdateComment(comment.id)} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800">Save</button>
                     </div>
+                  </div>
+                ) : (
+                  <span className="leading-relaxed">{comment.comment}</span>
+                )}
+
+                <div className="flex justify-end items-center gap-1 mt-0.5">
+                  {isOwnComment && (
+                    <svg className="w-3 h-3 text-[#4bb08b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
                   )}
                 </div>
               </div>
             </div>
-          );
-        })}
+
+            <div className="flex items-center gap-3 px-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-all">
+               {!editingCommentId && (
+                 <button onClick={() => { setReplyingToId(comment.id); setEditCommentText(""); }} className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700">Reply</button>
+               )}
+               {isOwnComment && !editingCommentId && (
+                 <div className="flex items-center gap-2">
+                   <button onClick={() => { setEditingCommentId(comment.id); setEditCommentText(comment.comment); }} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-indigo-500 transition">Edit</button>
+                   <button onClick={() => setCommentToDelete(comment.id)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-rose-500 transition">Delete</button>
+                 </div>
+               )}
+            </div>
+
+            {replyingToId === comment.id && (
+              <form onSubmit={(e) => handleComment(e, comment.id)} className="mt-2 flex gap-2 w-full animate-in slide-in-from-top-2">
+                <input
+                  placeholder="Type your reply..."
+                  className="flex-1 px-3 py-1.5 bg-white border border-gray-100 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner"
+                  value={editCommentText}
+                  onChange={(e) => setEditCommentText(e.target.value)}
+                  autoFocus
+                />
+                <button type="submit" className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                </button>
+                <button onClick={() => setReplyingToId(null)} className="p-1.5 bg-gray-100 text-gray-400 rounded-lg">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (isLoading) return <div className="mt-8 text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">Fetching discussions...</div>;
+
+  const sortedComments = [...(comments || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  return (
+    <div className="mt-8 pt-8 border-t border-gray-100 space-y-6">
+      <div className="space-y-6">
+        {sortedComments.length > 0 ? (
+          sortedComments.map((comment) => (
+            <CommentItem key={comment.id} comment={comment} allComments={sortedComments} />
+          ))
+        ) : (
+          <div className="text-center py-6 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-100">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No conversation yet. Be the first to comment.</p>
+          </div>
+        )}
       </div>
 
-      <form onSubmit={handleComment} className="flex gap-2 pt-2">
-        <input
-          type="text"
-          placeholder="Add a comment..."
-          className="flex-1 px-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-        />
-        <button
-          type="submit"
-          disabled={isCommenting || !newComment.trim()}
-          className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition shadow-lg shadow-indigo-100"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
-        </button>
+      <form onSubmit={(e) => handleComment(e)} className="flex gap-3 pt-6">
+        <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-xs font-bold text-indigo-600 border border-indigo-100 shrink-0">
+          {user?.staffName?.charAt(0) || '?'}
+        </div>
+        <div className="flex-1 flex gap-2">
+          <input
+            className="flex-1 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition shadow-sm"
+            placeholder="Write a comment..."
+            value={newComment}
+            onChange={e => setNewComment(e.target.value)}
+          />
+          <button 
+            type="submit"
+            disabled={isCommenting || !newComment.trim()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+          </button>
+        </div>
       </form>
 
-      {/* Delete Comment Confirmation Modal */}
       {commentToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 p-8 text-center">
+          <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 p-8 text-center border border-gray-100">
             <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Comment?</h3>
-            <p className="text-gray-500 text-sm mb-8">
-              Are you sure you want to remove this comment?
-            </p>
+            <h3 className="text-xl font-black text-gray-900 mb-2">Delete Comment?</h3>
+            <p className="text-gray-500 text-sm mb-8 font-medium">This thread path will be removed permanently.</p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setCommentToDelete(null)}
-                className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteComment}
-                className="flex-1 px-6 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition shadow-lg shadow-rose-200"
-              >
-                Delete
-              </button>
+              <button onClick={() => setCommentToDelete(null)} className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition uppercase text-[10px] tracking-widest">Cancel</button>
+              <button onClick={handleDeleteComment} className="flex-1 px-6 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition shadow-lg shadow-rose-200 uppercase text-[10px] tracking-widest">Delete</button>
             </div>
           </div>
         </div>

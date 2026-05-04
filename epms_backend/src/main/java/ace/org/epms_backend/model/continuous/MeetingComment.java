@@ -38,4 +38,7 @@ public class MeetingComment extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private CommentType commentType;
+
+    @Column(name = "parent_id")
+    private Long parentId;
 }

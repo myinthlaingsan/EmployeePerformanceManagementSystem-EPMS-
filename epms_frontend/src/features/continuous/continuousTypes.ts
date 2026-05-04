@@ -51,12 +51,14 @@ export interface FeedbackReplyResponse {
   employeeId: number;
   employeeName: string;
   replyText: string;
+  parentId?: number;
   createdAt: string;
 }
 
 export interface FeedbackReplyRequest {
   employeeId: number;
   replyText: string;
+  parentId?: number;
 }
 
 export interface OneOnOneMeetingResponse {
@@ -97,6 +99,7 @@ export interface MeetingCommentResponse {
   managerName?: string;
   comment: string;
   commentType: CommentType;
+  parentId?: number;
   createdAt: string;
 }
 
@@ -105,6 +108,7 @@ export interface MeetingCommentRequest {
   managerId?: number;
   comment: string;
   commentType: CommentType;
+  parentId?: number;
 }
 
 export interface PerformanceHistoryResponse {
@@ -119,6 +123,8 @@ export interface PerformanceHistoryResponse {
   sourceId: number;
   title: string;
   description: string;
+  feedbackType?: FeedbackType;
+  tagName?: string;
   isPrivate: boolean;
   createdAt: string;
 }
