@@ -19,7 +19,7 @@ const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
         return { label: 'Not Started', color: 'bg-slate-300' };
     }
   };
-  const statusDisplay = getStatusDisplay(kpi.itemStatus || 'NOT_STARTED');
+  const statusDisplay = getStatusDisplay(kpi.status || 'NOT_STARTED');
 
   const getCategoryStyles = (category?: string) => {
     const cat = category?.toLowerCase() || '';
@@ -32,7 +32,7 @@ const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
   return (
     <div className="relative overflow-hidden bg-white rounded-[1.5rem] p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 group animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
       {/* Background Progress Number */}
-      <div className="absolute top-4 right-8 text-[5rem] font-black text-slate-50 pointer-events-none select-none leading-none z-0">
+      <div className="absolute top-4 right-8 text-[5rem] font-black text-blue-50 pointer-events-none select-none leading-none z-0">
         {progress}%
       </div>
 
@@ -80,7 +80,7 @@ const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
             <div className="space-y-2">
               <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div 
-                  className={`h-full rounded-full transition-all duration-1000 ease-out ${kpi.itemStatus === 'COMPLETED' ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${kpi.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-blue-600'}`} 
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>

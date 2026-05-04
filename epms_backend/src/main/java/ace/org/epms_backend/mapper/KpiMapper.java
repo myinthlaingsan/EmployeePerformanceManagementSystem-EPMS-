@@ -41,7 +41,7 @@ public interface KpiMapper {
     @Mapping(target = "items", source = "items")
     GoalSetResponse toGoalSetResponse(KpiGoals goalSet);
 
-    @Mapping(target = "currentProgress", ignore = true)
+    @Mapping(target = "currentProgress", source = "actualValue")
     @Mapping(target = "categoryName", source = "category.name")
     @Mapping(target = "categoryId", source = "category.id")
     GoalItemResponse toGoalItemResponse(KpiGoalItem item);
