@@ -3,16 +3,21 @@ import { useAuth } from '../../hooks/useAuth';
 import { useGetGoalSetByEmployeeQuery } from '../../services/kpiApi';
 import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
+
+// Import New Style Components
+import KpiSummaryCard from '../../components/kpi/KpiSummaryCard';
+import KpiGoalCard from '../../components/kpi/KpiGoalCard';
+import KpiTimeline from '../../components/kpi/KpiTimeline';
+import KpiFeedbackCard from '../../components/kpi/KpiFeedbackCard';
+
 import { 
-  ChevronRight, 
-  History, 
-  CheckCircle2, 
-  Clock, 
-  Target,
-  ArrowRight,
+  Bell, 
+  HelpCircle, 
+  LayoutGrid, 
+  Filter, 
+  ChevronRight,
   TrendingUp,
-  Calendar,
-  MoreHorizontal
+  Target
 } from 'lucide-react';
 
 const MyKpiDashboard: React.FC = () => {
@@ -27,8 +32,28 @@ const MyKpiDashboard: React.FC = () => {
   const [selectedKpi, setSelectedKpi] = useState<any>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
-  const goalSet = goalSetResponse?.data;
-  const kpis = goalSet?.items || [];
+  const kpis = goalSetResponse?.data?.items || [];
+
+  // Calculate Overall Progress
+  const overallProgress = useMemo(() => {
+    if (kpis.length === 0) return 0;
+    const totalWeight = kpis.reduce((acc, kpi) => acc + (kpi.weightPercent || 0), 0);
+    if (totalWeight === 0) return 0;
+    
+    const weightedSum = kpis.reduce((acc, kpi) => {
+      const progress = Math.min(Math.round((kpi.currentProgress || 0) / (kpi.targetValue || 1) * 100), 100);
+      return acc + (progress * (kpi.weightPercent || 0));
+    }, 0);
+    
+    return Math.round(weightedSum / totalWeight);
+  }, [kpis]);
+
+  // Mock Milestones
+  const milestones = [
+    { id: 1, date: 'OCT 12, 2024', title: 'Submit churn analysis report for Q3 review', category: 'Strategic Goal Milestone', status: 'upcoming' },
+    { id: 2, date: 'OCT 24, 2024', title: 'Register for UI Certification Exam', category: 'Development Goal Milestone', status: 'pending' },
+    { id: 3, date: 'NOV 05, 2024', title: 'Finalize Design System Documentation', category: 'Efficiency Goal Milestone', status: 'pending' },
+  ];
 
   if (isLoading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -37,190 +62,88 @@ const MyKpiDashboard: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50/30 pb-20">
-      {/* Header Section */}
-      <div className="bg-white border-b border-gray-100 mb-8">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-400 mb-4">
-            <span>Performance</span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-gray-900">My Goals</span>
+    <div className="min-h-screen bg-slate-50/50 font-sans selection:bg-blue-100">
+
+      <main className="max-w-[1440px] mx-auto px-8 py-12">
+        {/* Title and Summary Stats */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-10 mb-16">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-[0.3em] mb-1">
+              <span className="w-8 h-px bg-blue-600"></span>
+              Performance Cycle
+            </div>
+            <h1 className="text-5xl font-black text-slate-900 tracking-tight leading-[1.1]">My Assigned Goals</h1>
+            <p className="text-slate-400 font-black text-sm uppercase tracking-widest flex items-center gap-2 mt-2">
+              {activeCycleName} <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> Q3 Progress Review
+            </p>
           </div>
 
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                  {activeCycleName} Goals
-                </h1>
-                <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider border border-blue-100">
-                  {goalSet?.status || 'APPROVED'}
-                </span>
+          <div className="flex flex-wrap gap-5 w-full lg:w-auto">
+            <KpiSummaryCard label="Overall Progress" value={`${overallProgress}%`} icon={TrendingUp} color="blue" />
+            <KpiSummaryCard label="Active Goals" value={kpis.length < 10 ? `0${kpis.length}` : kpis.length} icon={Target} color="indigo" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+          {/* Left Column: Goals */}
+          <div className="lg:col-span-8 space-y-12">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Primary Objectives</h2>
+              <div className="flex gap-3">
+                <button className="p-2.5 bg-white rounded-xl border border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all shadow-sm"><Filter className="w-5 h-5" /></button>
+                <button className="p-2.5 bg-white rounded-xl border border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all shadow-sm"><LayoutGrid className="w-5 h-5" /></button>
               </div>
-              <p className="text-sm text-gray-500 font-medium">
-                Review and track your performance objectives for this cycle.
-              </p>
             </div>
 
-            <div className="flex items-center gap-3">
-               <button className="px-5 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition border border-gray-200">
-                  Request Revision
-               </button>
-               <button className="px-6 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition shadow-sm shadow-blue-200">
-                  Acknowledge Goals
-               </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main List - KPIs */}
-          <div className="lg:col-span-2 space-y-6">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Active Objectives</h3>
-            
-            {kpis.map((kpi) => {
-              const progress = Math.min(Math.round((kpi.currentProgress / kpi.targetValue) * 100), 100);
-              return (
-                <div key={kpi.id} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 transition-all p-6">
-                   <div className="flex justify-between items-start mb-6">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-3">
-                           <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition">
-                              {kpi.title}
-                           </h4>
-                           <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded">
-                              W: {kpi.weightPercent}%
-                           </span>
-                        </div>
-                        <p className="text-sm text-gray-500 font-medium leading-relaxed max-w-lg">
-                           {kpi.description || 'No description provided for this objective.'}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                           progress >= 100 ? 'bg-green-50 text-green-700 border-green-100' :
-                           progress > 0 ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                           'bg-gray-50 text-gray-400 border-gray-100'
-                        }`}>
-                           {progress >= 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started'}
-                        </span>
-                        <button 
-                          onClick={() => { setSelectedKpi(kpi); setIsUpdateModalOpen(true); }}
-                          className="text-[11px] font-bold text-blue-600 hover:text-blue-700 transition"
-                        >
-                          Update Progress
-                        </button>
-                      </div>
-                   </div>
-
-                   <div className="space-y-3">
-                      <div className="flex justify-between items-end text-xs mb-1">
-                        <span className="font-bold text-gray-900">{progress}% <span className="text-gray-400 font-medium">Complete</span></span>
-                        <span className="text-gray-400 font-bold uppercase text-[9px]">
-                           {kpi.currentProgress} / {kpi.targetValue} {kpi.unit || '%'}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                         <div 
-                           className={`h-full rounded-full transition-all duration-700 ease-out ${progress >= 100 ? 'bg-green-500' : 'bg-blue-600'}`}
-                           style={{ width: `${progress}%` }}
-                         ></div>
-                      </div>
-                   </div>
+            <div className="space-y-8">
+              {kpis.map((kpi, idx) => (
+                <KpiGoalCard 
+                  key={kpi.id} 
+                  kpi={kpi} 
+                  idx={idx} 
+                  onUpdate={(item) => { setSelectedKpi(item); setIsUpdateModalOpen(true); }} 
+                />
+              ))}
+              
+              {kpis.length === 0 && (
+                <div className="bg-white rounded-3xl p-20 border-2 border-dashed border-slate-100 flex flex-col items-center text-center gap-4">
+                  <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300">
+                    <Target className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-lg font-black text-slate-900">No goals assigned yet</p>
+                    <p className="text-sm text-slate-400 font-medium">Wait for your manager to set up your objectives for this cycle.</p>
+                  </div>
                 </div>
-              );
-            })}
-
-            {/* Support Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
-               <div className="bg-white rounded-xl border border-gray-100 p-6 flex items-start gap-4">
-                  <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 shrink-0">
-                     <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1">
-                     <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Alignment</h3>
-                     <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
-                        Directly aligned with <span className="text-blue-700 font-bold">Reliability & Scalability</span> initiative for 2024.
-                     </p>
-                  </div>
-               </div>
-
-               <div className="bg-white rounded-xl border border-gray-100 p-6 flex items-start gap-4">
-                  <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400 shrink-0">
-                     <Calendar className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1">
-                     <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Review Date</h3>
-                     <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
-                        Mid-cycle review: <span className="text-gray-900 font-bold">Nov 15, 2023</span>. Please update logs prior.
-                     </p>
-                  </div>
-               </div>
+              )}
             </div>
           </div>
 
-          {/* Side Content */}
-          <div className="space-y-8">
-            <section className="bg-white rounded-xl border border-gray-100 p-6">
-               <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest">History</h3>
-                  <History className="w-4 h-4 text-gray-300" />
-               </div>
+          {/* Right Column: Sidebar */}
+          <div className="lg:col-span-4 space-y-16">
+            <KpiTimeline milestones={milestones} />
+            
+            <KpiFeedbackCard />
 
-               <div className="space-y-6 relative">
-                  <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-gray-100"></div>
-
-                  <div className="relative flex gap-4">
-                     <div className="w-6 h-6 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 z-10 border-2 border-white">
-                        <CheckCircle2 className="w-3 h-3" />
-                     </div>
-                     <div className="space-y-0.5">
-                        <p className="text-[11px] font-bold text-gray-900">Version 2 approved</p>
-                        <p className="text-[10px] text-gray-400 font-medium">Oct 15, 2023</p>
-                     </div>
-                  </div>
-
-                  <div className="relative flex gap-4">
-                     <div className="w-6 h-6 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 z-10 border-2 border-white">
-                        <Clock className="w-3 h-3" />
-                     </div>
-                     <div className="space-y-0.5">
-                        <p className="text-[11px] font-bold text-gray-900">Goal revised</p>
-                        <p className="text-[10px] text-gray-400 font-medium">Oct 12, 2023</p>
-                     </div>
-                  </div>
-
-                  <div className="relative flex gap-4">
-                     <div className="w-6 h-6 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 z-10 border-2 border-white">
-                        <Target className="w-3 h-3" />
-                     </div>
-                     <div className="space-y-0.5">
-                        <p className="text-[11px] font-bold text-gray-900">Draft Created</p>
-                        <p className="text-[10px] text-gray-400 font-medium">Oct 01, 2023</p>
-                     </div>
-                  </div>
-               </div>
-
-               <button className="w-full mt-8 py-3 bg-gray-50 text-[10px] font-bold text-gray-500 uppercase tracking-widest hover:bg-gray-100 rounded-lg transition">
-                  Audit Log
-               </button>
-            </section>
-
-            <section className="bg-blue-600 rounded-xl p-8 text-white">
-               <h3 className="text-sm font-bold uppercase tracking-wider mb-2">KPI Support</h3>
-               <p className="text-xs text-blue-100 leading-relaxed font-medium mb-6">
-                  Need help defining measurable targets or resources?
-               </p>
-               <button className="flex items-center gap-2 text-xs font-bold group hover:gap-4 transition-all">
-                  <span>Open Library</span>
-                  <ArrowRight className="w-4 h-4" />
-               </button>
-            </section>
+            {/* Support Link */}
+            <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white flex flex-col items-center text-center gap-6 shadow-2xl shadow-slate-900/20">
+              <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center ring-1 ring-white/10">
+                <HelpCircle className="w-8 h-8 text-blue-400" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-black tracking-tight">Need Assistance?</h3>
+                <p className="text-slate-400 text-[13px] font-medium leading-relaxed px-4">
+                  Access our resources or contact HR support for goal setting and performance tracking assistance.
+                </p>
+              </div>
+              <button className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-2xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-blue-600/20 group">
+                Open Support Center 
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {isUpdateModalOpen && selectedKpi && (
         <ProgressUpdateModal
