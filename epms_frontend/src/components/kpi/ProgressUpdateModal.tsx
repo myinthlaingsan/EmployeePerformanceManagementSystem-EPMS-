@@ -30,7 +30,7 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden transition-all">
         <form onSubmit={handleSubmit}>
           <div className="p-6 border-b border-gray-100">

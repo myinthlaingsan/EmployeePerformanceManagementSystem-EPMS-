@@ -7,14 +7,14 @@ import { useActiveCycle } from '../../context/ActiveCycleContext';
 // Import New Style Components
 import KpiSummaryCard from '../../components/kpi/KpiSummaryCard';
 import KpiGoalCard from '../../components/kpi/KpiGoalCard';
-import KpiTimeline from '../../components/kpi/KpiTimeline';
-import KpiFeedbackCard from '../../components/kpi/KpiFeedbackCard';
+import KpiUpdateHistoryCard from '../../components/kpi/KpiUpdateHistoryCard';
 
-import { 
-  Bell, 
-  HelpCircle, 
-  LayoutGrid, 
-  Filter, 
+
+import {
+  Bell,
+  HelpCircle,
+  LayoutGrid,
+  Filter,
   ChevronRight,
   TrendingUp,
   Target
@@ -39,20 +39,20 @@ const MyKpiDashboard: React.FC = () => {
     if (kpis.length === 0) return 0;
     const totalWeight = kpis.reduce((acc, kpi) => acc + (kpi.weightPercent || 0), 0);
     if (totalWeight === 0) return 0;
-    
+
     const weightedSum = kpis.reduce((acc, kpi) => {
       const progress = Math.min(Math.round((kpi.currentProgress || 0) / (kpi.targetValue || 1) * 100), 100);
       return acc + (progress * (kpi.weightPercent || 0));
     }, 0);
-    
+
     return Math.round(weightedSum / totalWeight);
   }, [kpis]);
 
-  // Mock Milestones
-  const milestones = [
-    { id: 1, date: 'OCT 12, 2024', title: 'Submit churn analysis report for Q3 review', category: 'Strategic Goal Milestone', status: 'upcoming' },
-    { id: 2, date: 'OCT 24, 2024', title: 'Register for UI Certification Exam', category: 'Development Goal Milestone', status: 'pending' },
-    { id: 3, date: 'NOV 05, 2024', title: 'Finalize Design System Documentation', category: 'Efficiency Goal Milestone', status: 'pending' },
+  // Mock Update History
+  const updateHistory = [
+    { id: 1, date: 'Oct 12, 2023', context: 'Q4 Review', value: '82%' },
+    { id: 2, date: 'Sep 05, 2023', context: 'Monthly Check', value: '78%' },
+    { id: 3, date: 'Aug 18, 2023', context: 'Baseline Set', value: '75%' },
   ];
 
   if (isLoading) return (
@@ -97,14 +97,14 @@ const MyKpiDashboard: React.FC = () => {
 
             <div className="space-y-8">
               {kpis.map((kpi, idx) => (
-                <KpiGoalCard 
-                  key={kpi.id} 
-                  kpi={kpi} 
-                  idx={idx} 
-                  onUpdate={(item) => { setSelectedKpi(item); setIsUpdateModalOpen(true); }} 
+                <KpiGoalCard
+                  key={kpi.id}
+                  kpi={kpi}
+                  idx={idx}
+                  onUpdate={(item) => { setSelectedKpi(item); setIsUpdateModalOpen(true); }}
                 />
               ))}
-              
+
               {kpis.length === 0 && (
                 <div className="bg-white rounded-3xl p-20 border-2 border-dashed border-slate-100 flex flex-col items-center text-center gap-4">
                   <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300">
@@ -121,26 +121,11 @@ const MyKpiDashboard: React.FC = () => {
 
           {/* Right Column: Sidebar */}
           <div className="lg:col-span-4 space-y-16">
-            <KpiTimeline milestones={milestones} />
-            
-            <KpiFeedbackCard />
+            <KpiUpdateHistoryCard history={updateHistory} />
 
-            {/* Support Link */}
-            <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white flex flex-col items-center text-center gap-6 shadow-2xl shadow-slate-900/20">
-              <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center ring-1 ring-white/10">
-                <HelpCircle className="w-8 h-8 text-blue-400" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-black tracking-tight">Need Assistance?</h3>
-                <p className="text-slate-400 text-[13px] font-medium leading-relaxed px-4">
-                  Access our resources or contact HR support for goal setting and performance tracking assistance.
-                </p>
-              </div>
-              <button className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-2xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-blue-600/20 group">
-                Open Support Center 
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
+
+
+
           </div>
         </div>
       </main>
