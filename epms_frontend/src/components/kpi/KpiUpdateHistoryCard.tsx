@@ -1,15 +1,10 @@
 import React from 'react';
 import { History, Eye } from 'lucide-react';
 
-interface UpdateHistoryItem {
-  id: number;
-  date: string;
-  context: string;
-  value: string;
-}
+import type { KpiProgressHistory } from '../../features/kpi/kpiTypes';
 
 interface KpiUpdateHistoryCardProps {
-  history: UpdateHistoryItem[];
+  history: KpiProgressHistory[];
 }
 
 const KpiUpdateHistoryCard: React.FC<KpiUpdateHistoryCardProps> = ({ history }) => {
@@ -21,28 +16,28 @@ const KpiUpdateHistoryCard: React.FC<KpiUpdateHistoryCardProps> = ({ history }) 
       </div>
 
       <div className="grid grid-cols-12 gap-4 mb-4 px-2">
-        <div className="col-span-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</div>
-        <div className="col-span-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Value</div>
-        <div className="col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</div>
+        <div className="col-span-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date & Goal</div>
+        <div className="col-span-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Value</div>
       </div>
 
       <div className="space-y-2 mb-6">
-        {history.map((item) => (
-          <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-50 transition-all hover:shadow-md hover:border-slate-100 group cursor-pointer">
-            <div className="col-span-6">
-              <p className="text-sm font-bold text-slate-900">{item.date}</p>
-              <p className="text-[10px] font-medium text-slate-400 mt-0.5">{item.context}</p>
+        {history.length > 0 ? (
+          history.map((item) => (
+            <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-50 transition-all hover:shadow-md hover:border-slate-100 group cursor-pointer" title={item.evidenceNote}>
+              <div className="col-span-8 overflow-hidden pr-2">
+                <p className="text-sm font-bold text-slate-900">{new Date(item.updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                <p className="text-[11px] font-medium text-slate-500 mt-1 truncate" title={item.goalTitle}>{item.goalTitle}</p>
+              </div>
+              <div className="col-span-4 text-right">
+                <span className="text-lg font-black text-slate-900">{item.actualValue}</span>
+              </div>
             </div>
-            <div className="col-span-4 text-center">
-              <span className="text-lg font-black text-slate-900">{item.value}</span>
-            </div>
-            <div className="col-span-2 flex justify-end">
-              <button className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                <Eye className="w-4 h-4" />
-              </button>
-            </div>
+          ))
+        ) : (
+          <div className="text-center py-6 text-sm text-slate-400 font-medium">
+            No updates recorded yet.
           </div>
-        ))}
+        )}
       </div>
 
       <button className="w-full py-3.5 bg-white text-blue-600 text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-colors border border-slate-100 shadow-sm">

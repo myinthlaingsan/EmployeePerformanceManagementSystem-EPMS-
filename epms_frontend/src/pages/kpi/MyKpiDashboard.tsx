@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { useGetGoalSetByEmployeeQuery } from '../../services/kpiApi';
+import { useGetGoalSetByEmployeeQuery, useGetProgressHistoryQuery } from '../../services/kpiApi';
 import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
 
@@ -29,6 +29,11 @@ const MyKpiDashboard: React.FC = () => {
     cycleId: activeCycleId
   }, { skip: !user });
 
+  const { data: historyResponse } = useGetProgressHistoryQuery({
+    employeeId: user?.id || 0,
+    limit: 3
+  }, { skip: !user });
+
   const [selectedKpi, setSelectedKpi] = useState<any>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
@@ -48,12 +53,7 @@ const MyKpiDashboard: React.FC = () => {
     return Math.round(weightedSum / totalWeight);
   }, [kpis]);
 
-  // Mock Update History
-  const updateHistory = [
-    { id: 1, date: 'Oct 12, 2023', context: 'Q4 Review', value: '82%' },
-    { id: 2, date: 'Sep 05, 2023', context: 'Monthly Check', value: '78%' },
-    { id: 3, date: 'Aug 18, 2023', context: 'Baseline Set', value: '75%' },
-  ];
+  // Real history mapped directly via RTK Query and KpiUpdateHistoryCard
 
   if (isLoading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -121,7 +121,7 @@ const MyKpiDashboard: React.FC = () => {
 
           {/* Right Column: Sidebar */}
           <div className="lg:col-span-4 space-y-16">
-            <KpiUpdateHistoryCard history={updateHistory} />
+            <KpiUpdateHistoryCard history={historyResponse?.data || []} />
 
 
 
