@@ -200,8 +200,9 @@ const GoalAssignmentWorkspace: React.FC = () => {
     try {
       await deleteGoalItem(itemId).unwrap();
       // Tag invalidation will refetch, which will trigger useEffect to sync localItems
-    } catch (err) {
-      console.error('Failed to delete goal:', err);
+    } catch (err: any) {
+      const message = err?.data?.message || 'Failed to delete goal bc of progress exists';
+      alert(message);
     }
   };
 
@@ -242,9 +243,9 @@ const GoalAssignmentWorkspace: React.FC = () => {
               <div className="flex items-center gap-4">
                 <h1 className="text-2xl font-black text-gray-900 tracking-tight">{employee?.staffName}</h1>
                 <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${goalSet?.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
-                    goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
-                      goalSet?.status === 'SUBMITTED' ? 'bg-yellow-50 text-yellow-600' :
-                        'bg-gray-100 text-gray-400'
+                  goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
+                    goalSet?.status === 'SUBMITTED' ? 'bg-yellow-50 text-yellow-600' :
+                      'bg-gray-100 text-gray-400'
                   }`}>
                   {goalSet ? goalSet.status : 'Not Assigned'}
                 </span>

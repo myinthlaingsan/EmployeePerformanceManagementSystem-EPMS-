@@ -24,7 +24,7 @@ const KpiHub: React.FC = () => {
   const items = myGoals?.items || [];
 
   const overallProgress = items.length > 0
-    ? Math.round(items.reduce((acc, item) => acc + ((item.currentProgress || 0) / item.targetValue * item.weightPercent), 0))
+    ? Math.floor(items.reduce((acc, item) => acc + ((item.currentProgress || 0) / item.targetValue * item.weightPercent), 0))
     : 0;
 
   return (
@@ -104,7 +104,7 @@ const KpiHub: React.FC = () => {
                     <p className="text-[10px] font-bold text-gray-400 uppercase">Weight: {item.weightPercent}%</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-black text-gray-900">{Math.round((item.currentProgress || 0) / item.targetValue * 100)}%</p>
+                    <p className="text-sm font-black text-gray-900">{Math.floor((item.currentProgress || 0) / item.targetValue * 100)}%</p>
                     <div className="w-12 h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
                       <div className="bg-blue-600 h-full" style={{ width: `${(item.currentProgress || 0) / item.targetValue * 100}%` }}></div>
                     </div>

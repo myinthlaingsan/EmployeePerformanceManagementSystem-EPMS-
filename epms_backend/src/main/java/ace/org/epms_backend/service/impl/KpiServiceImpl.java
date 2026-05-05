@@ -142,27 +142,28 @@ public class KpiServiceImpl implements KpiService {
                 KpiLibrary library = null;
                 if (request.getLibraryId() != null) {
                         library = libraryRepository.findById(request.getLibraryId())
-                                .orElseThrow(() -> new NotFoundException("Library not found"));
+                                        .orElseThrow(() -> new NotFoundException("Library not found"));
                         if (!library.getIsActive()) {
                                 throw new IllegalArgumentException("Cannot assign from an inactive library");
                         }
                 }
                 AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
                                 .orElseGet(() -> cycleRepository.findByIsActiveTrue().stream().findFirst()
-                                .orElseThrow(() -> new NotFoundException("No active appraisal cycle found in the system. Please create one in Admin settings.")));
-                                
+                                                .orElseThrow(() -> new NotFoundException(
+                                                                "No active appraisal cycle found in the system. Please create one in Admin settings.")));
+
                 Employee currentManager = getCurrentEmployee();
-                
+
                 // Security check: Only allow if Manager, HR, or ADMIN
                 var authorities = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                                 .map(a -> a.getAuthority())
                                 .collect(Collectors.toSet());
-                
+
                 boolean isHrOrAdmin = authorities.contains("ROLE_HR") || authorities.contains("ROLE_ADMIN");
                 boolean isManager = authorities.contains("ROLE_MANAGER");
-                
+
                 if (!isHrOrAdmin && !isManager) {
-                    throw new SecurityException("Insufficient permissions to assign goals");
+                        throw new SecurityException("Insufficient permissions to assign goals");
                 }
 
                 KpiGoals goalSet = KpiGoals.builder()
@@ -285,8 +286,16 @@ public class KpiServiceImpl implements KpiService {
                         throw new IllegalStateException("Only DRAFT goals can be modified");
                 }
 
-                goalItemRepository.delete(item);
+                // Block deletion if this item has progress history
+                List<KpiProgress> progressRecords = progressRepository.findByGoalItemIdOrderByIdDesc(item.getId());
+                if (!progressRecords.isEmpty()) {
+                        throw new IllegalStateException(
+                                "This goal has existing progress records and cannot be deleted. "
+                                + "Use the Revise flow to modify it instead, so employee progress is preserved.");
+                }
+
                 goalSet.getItems().remove(item);
+                goalItemRepository.delete(item);
                 return kpiMapper.toGoalSetResponse(goalSet);
         }
 
@@ -297,13 +306,15 @@ public class KpiServiceImpl implements KpiService {
                                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
 
                 boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_HR") || a.getAuthority().equals("ROLE_ADMIN"));
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_HR")
+                                                || a.getAuthority().equals("ROLE_ADMIN"));
 
                 if (!isHrOrAdmin && !goalSet.getManager().getId().equals(getCurrentEmployee().getId())) {
                         throw new SecurityException("Only the assigned manager or HR/Admin can approve this goal set");
                 }
 
-                if (!goalSet.getStatus().equals(KpiGoalStatus.SUBMITTED) && !goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
+                if (!goalSet.getStatus().equals(KpiGoalStatus.SUBMITTED)
+                                && !goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
                         throw new IllegalStateException("Only DRAFT or SUBMITTED goals can be approved");
                 }
 
@@ -660,7 +671,8 @@ public class KpiServiceImpl implements KpiService {
                         throw new SecurityException("Only the employee can submit their goal set");
                 }
 
-                if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT) && !goalSet.getStatus().equals(KpiGoalStatus.REJECTED)) {
+                if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)
+                                && !goalSet.getStatus().equals(KpiGoalStatus.REJECTED)) {
                         throw new IllegalStateException("Only DRAFT or REJECTED goals can be submitted");
                 }
 
@@ -725,8 +737,9 @@ public class KpiServiceImpl implements KpiService {
 
                 for (KpiGoalBulkUpdateRequest.ItemUpdate update : request.getItems()) {
                         KpiGoalItem item = goalItemRepository.findById(update.getId())
-                                        .orElseThrow(() -> new NotFoundException("Goal item not found: " + update.getId()));
-                        
+                                        .orElseThrow(() -> new NotFoundException(
+                                                        "Goal item not found: " + update.getId()));
+
                         if (!item.getGoalSet().getId().equals(goalSetId)) {
                                 throw new IllegalArgumentException("Item does not belong to this goal set");
                         }
@@ -737,7 +750,7 @@ public class KpiServiceImpl implements KpiService {
                         item.setWeightPercent(update.getWeightPercent());
                         item.setCategory(categoryRepository.findById(update.getCategoryId())
                                         .orElseThrow(() -> new NotFoundException("Category not found")));
-                        
+
                         goalItemRepository.save(item);
                 }
 

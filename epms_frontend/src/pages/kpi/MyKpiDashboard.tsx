@@ -46,11 +46,11 @@ const MyKpiDashboard: React.FC = () => {
     if (totalWeight === 0) return 0;
 
     const weightedSum = kpis.reduce((acc, kpi) => {
-      const progress = Math.min(Math.round((kpi.currentProgress || 0) / (kpi.targetValue || 1) * 100), 100);
+      const progress = Math.min(Math.floor((kpi.currentProgress || 0) / (kpi.targetValue || 1) * 100), 100);
       return acc + (progress * (kpi.weightPercent || 0));
     }, 0);
 
-    return Math.round(weightedSum / totalWeight);
+    return Math.floor(weightedSum / totalWeight);
   }, [kpis]);
 
   // Real history mapped directly via RTK Query and KpiUpdateHistoryCard
