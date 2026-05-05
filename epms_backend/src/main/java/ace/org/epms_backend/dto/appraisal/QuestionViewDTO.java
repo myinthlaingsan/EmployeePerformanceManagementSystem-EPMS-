@@ -13,5 +13,6 @@ public class QuestionViewDTO {
     private String questionText;
     private String questionType;
     private Integer ratingValue;
+    private Boolean isCompleted;
     private String comment;
 }

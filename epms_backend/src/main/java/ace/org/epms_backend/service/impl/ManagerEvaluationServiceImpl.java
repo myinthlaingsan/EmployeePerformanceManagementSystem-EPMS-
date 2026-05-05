@@ -7,6 +7,7 @@ import ace.org.epms_backend.enums.*;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.ManagerEvaluationMapper;
 import ace.org.epms_backend.model.appraisal.*;
+import ace.org.epms_backend.model.employee.EmployeeDepartment;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.ManagerEvaluationService;
@@ -180,6 +181,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                         .questionText(q.getQuestionText())
                         .questionType(q.getQuestionType())
                         .ratingValue(q.getRatingValue())
+                        .isCompleted(q.getIsCompleted())
                         .comment(q.getComment())
                         .build();
             }).toList();
@@ -196,7 +198,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 ? appraisal.getEmployee().getPosition().getPositionName()
                 : "N/A";
 
-        ace.org.epms_backend.model.employee.EmployeeDepartment ed = empDeptRepo
+        EmployeeDepartment ed = empDeptRepo
                 .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
                 .orElse(null);
 
@@ -214,7 +216,6 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 .totalScore(fullSelf.getTotalScore())
                 .submittedAt(fullSelf.getSubmittedAt())
                 .categories(categoryViews)
-
 
                 .build();
     }
@@ -266,6 +267,9 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                                 .isRequired(q.getIsRequired())
                                 .employeeRatingValue(
                                         empAns != null ? empAns.getRatingValue()
+                                                : null)
+                                .employeeIsCompleted(
+                                        empAns != null ? empAns.getIsCompleted()
                                                 : null)
                                 .employeeComment(empAns != null ? empAns.getComment()
                                         : null)

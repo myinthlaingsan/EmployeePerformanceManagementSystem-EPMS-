@@ -14,5 +14,6 @@ public class SelfAssessmentAnswerResponse {
     private Long questionId;
     private String questionText;
     private String answerValue;
+    private Boolean isCompleted;
     private String comment;
 }

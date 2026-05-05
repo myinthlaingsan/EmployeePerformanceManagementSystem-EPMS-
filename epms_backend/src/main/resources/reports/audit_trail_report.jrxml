@@ -6,8 +6,12 @@
 	<field name="changedAt" class="java.lang.String"/>
 	<field name="oldValues" class="java.lang.String"/>
 	<field name="newValues" class="java.lang.String"/>
-	<title height="50">
-		<element kind="staticText" uuid="c643d96a-da6c-490e-a08e-25cba038ec31" x="0" y="0" width="802" height="30" fontSize="18.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+	<parameter name="logoStream" class="java.io.InputStream"/>
+	<title height="60">
+		<element kind="image" uuid="d654321a-da6c-490e-a08e-25cba038ec31" x="0" y="0" width="120" height="50">
+			<expression><![CDATA[$P{logoStream}]]></expression>
+		</element>
+		<element kind="staticText" uuid="c643d96a-da6c-490e-a08e-25cba038ec31" x="120" y="0" width="562" height="50" fontSize="18.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
 			<text><![CDATA[System Audit Trail Report]]></text>
 		</element>
 	</title>
@@ -15,20 +19,20 @@
 		<element kind="rectangle" uuid="63e37815-20fb-4567-a542-27ca4019ee52" x="0" y="0" width="802" height="30" backcolor="#F0F0F0">
 			<pen lineWidth="0.5" lineColor="#CCCCCC"/>
 		</element>
-		<element kind="staticText" uuid="b659101c-69e0-40ce-a1d4-7b39a4d9d121" x="0" y="0" width="100" height="30">
-			<text><![CDATA[Table]]></text>
+		<element kind="staticText" uuid="b659101c-69e0-40ce-a1d4-7b39a4d9d121" x="0" y="0" width="100" height="30" vTextAlign="Middle">
+			<text><![CDATA[ Table]]></text>
 		</element>
-		<element kind="staticText" uuid="cb024249-9853-4581-bbbb-64aef54644d2" x="100" y="0" width="80" height="30">
-			<text><![CDATA[Action]]></text>
+		<element kind="staticText" uuid="cb024249-9853-4581-bbbb-64aef54644d2" x="100" y="0" width="80" height="30" vTextAlign="Middle">
+			<text><![CDATA[ Action]]></text>
 		</element>
-		<element kind="staticText" uuid="43635018-8508-44d8-85f8-3d8f10e34c57" x="180" y="0" width="120" height="30">
-			<text><![CDATA[Changed By]]></text>
+		<element kind="staticText" uuid="43635018-8508-44d8-85f8-3d8f10e34c57" x="180" y="0" width="120" height="30" vTextAlign="Middle">
+			<text><![CDATA[ Changed By]]></text>
 		</element>
-		<element kind="staticText" uuid="d5512d75-c274-42e3-a1cf-148835145dfd" x="300" y="0" width="251" height="30">
-			<text><![CDATA[Old Values (JSON)]]></text>
+		<element kind="staticText" uuid="d5512d75-c274-42e3-a1cf-148835145dfd" x="300" y="0" width="251" height="30" vTextAlign="Middle">
+			<text><![CDATA[ Old Values (JSON)]]></text>
 		</element>
-		<element kind="staticText" uuid="ace5d527-d1a2-4346-a379-b6245c6e3ccb" x="551" y="0" width="251" height="30">
-			<text><![CDATA[New Values (JSON)]]></text>
+		<element kind="staticText" uuid="ace5d527-d1a2-4346-a379-b6245c6e3ccb" x="551" y="0" width="251" height="30" vTextAlign="Middle">
+			<text><![CDATA[ New Values (JSON)]]></text>
 		</element>
 	</columnHeader>
 	<detail>

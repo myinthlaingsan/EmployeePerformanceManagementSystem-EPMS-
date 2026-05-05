@@ -77,6 +77,7 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
                     });
 
             answer.setRatingValue(req.getRatingValue());
+            answer.setIsCompleted(req.getIsCompleted());
             answer.setComment(req.getComment());
             answerRepo.save(answer);
         }
@@ -183,6 +184,7 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
                                 .isRequired(q.getIsRequired())
                                 .answerId(ans != null ? ans.getId() : null)
                                 .ratingValue(ans != null ? ans.getRatingValue() : null)
+                                .isCompleted(ans != null ? ans.getIsCompleted() : null)
                                 .comment(ans != null ? ans.getComment() : null)
                                 .build();
                     }).toList();
