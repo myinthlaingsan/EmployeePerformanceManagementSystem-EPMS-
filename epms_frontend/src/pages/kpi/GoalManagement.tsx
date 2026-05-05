@@ -22,12 +22,12 @@ const GoalManagement: React.FC = () => {
   const { data: cyclesResponse } = useGetCyclesQuery();
   const cycles = Array.isArray(cyclesResponse) ? cyclesResponse : ((cyclesResponse as any)?.data || []);
   
-  // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('All');
   const [selectedCycle, setSelectedCycle] = useState<string>('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  // Filter Logic
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           emp.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -38,6 +38,10 @@ const GoalManagement: React.FC = () => {
                         
     return matchesSearch && matchesDept;
   });
+
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
@@ -128,7 +132,7 @@ const GoalManagement: React.FC = () => {
                         </td>
                       </tr>
                     )}
-                    {!loadingEmployees && filteredEmployees.slice(0, 10).map((emp) => (
+                    {!loadingEmployees && currentEmployees.map((emp) => (
                       <tr 
                         key={emp.id} 
                         onClick={() => navigate(`/kpi/assign/${emp.id}`)}
@@ -167,11 +171,23 @@ const GoalManagement: React.FC = () => {
               </div>
               <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">
-                  Showing <strong className="text-slate-900">1-{Math.min(filteredEmployees.length, 10)}</strong> of <strong className="text-slate-900">{filteredEmployees.length}</strong> employees
+                  Showing <strong className="text-slate-900">{filteredEmployees.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + itemsPerPage, filteredEmployees.length)}</strong> of <strong className="text-slate-900">{filteredEmployees.length}</strong> employees
                 </span>
                 <div className="flex gap-2">
-                  <button className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded-lg hover:bg-slate-50 transition">Previous</button>
-                  <button className="px-3 py-1.5 bg-[#0052CC] text-white text-[10px] font-bold rounded-lg hover:bg-[#0747A6] shadow-sm transition">Next</button>
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className="px-3 py-1.5 bg-[#0052CC] text-white text-[10px] font-bold rounded-lg hover:bg-[#0747A6] shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
             </div>

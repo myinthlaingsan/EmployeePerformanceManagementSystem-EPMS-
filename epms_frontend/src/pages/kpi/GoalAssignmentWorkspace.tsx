@@ -271,8 +271,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
               <>
                 <button
                   onClick={handleSaveDraft}
-                  disabled={isSubmitting || !isModified}
-                  className={`px-8 py-4 ${isModified ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-gray-100 text-gray-400'} text-white text-[11px] font-black rounded-xl transition shadow-xl uppercase tracking-widest flex items-center gap-3`}
+                  disabled={isSubmitting}
+                  className="px-8 py-4 bg-blue-600 hover:bg-blue-700 shadow-blue-200 text-white text-[11px] font-black rounded-xl transition shadow-xl uppercase tracking-widest flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="w-4 h-4" />
                   Save Draft
