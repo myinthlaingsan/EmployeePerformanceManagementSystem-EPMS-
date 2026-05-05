@@ -6,10 +6,10 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Search, 
-  Filter, 
+  Filter,
   Download, 
-  Plus, 
-  ChevronRight
+  ChevronRight,
+  LayoutTemplate
 } from 'lucide-react';
 import { useGetAllEmployeesQuery, useGetDirectReportsQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
@@ -112,6 +112,12 @@ const TeamKpiDashboard: React.FC = () => {
     );
   };
 
+  const handleBulkAssignAll = () => {
+    if (teamMembers.length === 0) return;
+    setSelectedIds(teamMembers.map(m => m.id));
+    setIsBulkModalOpen(true);
+  };
+
   if (isLoading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
@@ -144,6 +150,13 @@ const TeamKpiDashboard: React.FC = () => {
             <button className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 text-gray-900 text-xs font-black rounded-xl hover:bg-gray-50 transition-all shadow-sm uppercase tracking-widest">
               <Download className="w-4 h-4" />
               Report
+            </button>
+            <button 
+              onClick={handleBulkAssignAll}
+              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-xs font-black rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-100 uppercase tracking-widest active:scale-95"
+            >
+              <LayoutTemplate className="w-4 h-4" />
+              Bulk Assign Team
             </button>
           </div>
         </div>
@@ -231,13 +244,6 @@ const TeamKpiDashboard: React.FC = () => {
                   Bulk Assign ({selectedIds.length})
                 </button>
               )}
-              <button 
-                onClick={() => navigate('/kpi/manage')}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-[10px] font-black hover:bg-black transition-all shadow-md uppercase tracking-widest active:scale-95"
-              >
-                <Plus className="w-3 h-3" />
-                Assign Goal
-              </button>
             </div>
           </div>
 
