@@ -41,9 +41,22 @@ const TeamKpiDashboard: React.FC = () => {
 
     return baseList.map(emp => {
       const goals = teamGoals.find(g => g.employeeId === emp.id);
+      const items = goals?.items || [];
+      let progress = 0;
+      if (items.length > 0) {
+        const totalWeight = items.reduce((acc, i) => acc + (i.weightPercent || 0), 0);
+        if (totalWeight > 0) {
+          const weightedSum = items.reduce((acc, i) => {
+            const p = Math.min(Math.floor(((i as any).currentProgress || 0) / ((i as any).targetValue || 1) * 100), 100);
+            return acc + (p * (i.weightPercent || 0));
+          }, 0);
+          progress = Math.floor(weightedSum / totalWeight);
+        }
+      }
       return {
         ...emp,
-        goalSet: goals
+        goalSet: goals,
+        progress
       };
     });
   }, [employees, user, teamGoals]);
@@ -225,11 +238,19 @@ const TeamKpiDashboard: React.FC = () => {
                       <div className="flex items-center gap-3">
                          <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-blue-600 rounded-full"
-                              style={{ width: '0%' }} 
+                              className={`h-full rounded-full transition-all duration-700 ${
+                                emp.progress >= 80 ? 'bg-emerald-500' :
+                                emp.progress >= 40 ? 'bg-blue-600' :
+                                emp.progress > 0 ? 'bg-amber-500' : 'bg-gray-200'
+                              }`}
+                              style={{ width: `${emp.progress}%` }} 
                             ></div>
                          </div>
-                         <span className="text-[10px] font-black text-gray-400">0%</span>
+                         <span className={`text-[10px] font-black ${
+                           emp.progress >= 80 ? 'text-emerald-600' :
+                           emp.progress >= 40 ? 'text-blue-600' :
+                           emp.progress > 0 ? 'text-amber-600' : 'text-gray-400'
+                         }`}>{emp.progress}%</span>
                       </div>
                     </td>
                     <td className="px-4 py-5 text-right">
