@@ -90,8 +90,9 @@ const AppraisalAdminDashboard = () => {
       {/* Header */}
       <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Appraisal Management</h1>
-          <p className="text-gray-500 mt-1.5 text-base">Orchestrate performance cycles and design strategic review frameworks.</p>
+          <p className="text-[10px] font-bold text-brand-primary uppercase tracking-[0.2em] mb-2">Strategy & Governance</p>
+          <h1 className="text-4xl font-black text-brand-primary tracking-tight">Appraisal Management</h1>
+          <p className="text-text-muted mt-2 font-medium">Orchestrate performance cycles and design strategic review frameworks.</p>
         </div>
         <div className="flex gap-3">
           <button className="px-5 py-2.5 bg-gray-200/60 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors shadow-sm text-sm">
@@ -100,7 +101,7 @@ const AppraisalAdminDashboard = () => {
           <button 
             onClick={handleLaunchCycle}
             disabled={isCreating}
-            className="px-5 py-2.5 bg-[#0f62fe] hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-sm text-sm disabled:opacity-50"
+            className="px-6 py-3 bg-brand-primary hover:bg-brand-secondary text-white font-black rounded-xl transition-all shadow-lg shadow-brand-primary/20 text-xs uppercase tracking-widest disabled:opacity-50"
           >
             {isCreating ? 'Launching...' : 'Launch Cycle'}
           </button>
@@ -172,7 +173,7 @@ const AppraisalAdminDashboard = () => {
 
           <div className="space-y-4">
             {sections.map((section, sIndex) => (
-              <div key={section.id} className="border-l-[3px] border-[#0f62fe] bg-[#fafbfc] rounded-r-xl p-5 shadow-sm border-y border-r border-y-gray-100 border-r-gray-100 relative">
+              <div key={section.id} className="border-l-4 border-brand-primary bg-surface-base rounded-r-2xl p-6 shadow-sm border-y border-r border-surface-border relative">
                 <button 
                   onClick={() => handleRemoveSection(section.id)}
                   className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"

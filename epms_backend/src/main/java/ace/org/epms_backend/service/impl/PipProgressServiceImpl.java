@@ -67,10 +67,15 @@ public class PipProgressServiceImpl implements PipProgressService {
         log.setObjective(objective);
         log.setUpdatedBy(current.getId());
 
-        // Auto transition status if NOT_STARTED
+        // Auto transition status if NOT_STARTED or if progress reaches 100%
         if (objective.getStatus() == ObjectiveStatus.NOT_STARTED) {
             objective.setStatus(ObjectiveStatus.IN_PROGRESS);
-            objective.setUpdatedBy(current.getId()); // Track who triggered status change
+            objective.setUpdatedBy(current.getId());
+            objectiveRepository.save(objective);
+        } else if (request.getProgressPercent().compareTo(new java.math.BigDecimal("100")) == 0) {
+            objective.setStatus(ObjectiveStatus.COMPLETED);
+            objective.setIsAchieved(true);
+            objective.setUpdatedBy(current.getId());
             objectiveRepository.save(objective);
         }
 

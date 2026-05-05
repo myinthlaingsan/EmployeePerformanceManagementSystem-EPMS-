@@ -1,5 +1,6 @@
 package ace.org.epms_backend.model.pip;
 import ace.org.epms_backend.enums.PipOutcome;
+import ace.org.epms_backend.enums.PipSeverity;
 import ace.org.epms_backend.enums.PipStatus;
 import ace.org.epms_backend.model.BaseEntity;
 import ace.org.epms_backend.model.employee.Employee;
@@ -9,6 +10,8 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "pip_records")
@@ -39,8 +42,16 @@ public class PipRecord extends BaseEntity {
     private LocalDate startDate;
     private LocalDate endDate;
 
+    @ElementCollection
+    @CollectionTable(name = "pip_scheduled_reviews", joinColumns = @JoinColumn(name = "pip_id"))
+    @Column(name = "review_date")
+    private List<LocalDate> scheduledReviewDates = new ArrayList<>();
+
     @Enumerated(EnumType.STRING)
     private PipStatus status;
+
+    @Enumerated(EnumType.STRING)
+    private PipSeverity severity;
 
     @Enumerated(EnumType.STRING)
     private PipOutcome finalOutcome;
@@ -50,6 +61,16 @@ public class PipRecord extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String reason;
+
+    @Column(columnDefinition = "TEXT")
+    private String managerPrivateNote;
+
+    @Column(columnDefinition = "TEXT")
+    private String employeePrivateNote;
+
+    @OneToMany(mappedBy = "pip", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<PipObjective> objectives = new ArrayList<>();
 
     private Boolean isActive = true;
 

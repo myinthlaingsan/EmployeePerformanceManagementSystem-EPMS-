@@ -1,6 +1,7 @@
 package ace.org.epms_backend.service;
 
 import ace.org.epms_backend.dto.pip.PipCreateRequest;
+import ace.org.epms_backend.dto.pip.PipExtendRequest;
 import ace.org.epms_backend.dto.pip.PipResponse;
 import ace.org.epms_backend.dto.pip.PipUpdateRequest;
 
@@ -23,7 +24,7 @@ public interface PipService {
 
     void activatePip(Long id);
 
-    PipResponse extendPip(Long id, LocalDate newEndDate);
+    PipResponse extendPip(Long id, PipExtendRequest request);
 
     void deletePip(Long id);
 }

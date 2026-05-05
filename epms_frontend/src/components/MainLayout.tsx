@@ -8,7 +8,7 @@ const MainLayout = () => {
   useWebSocket();
 
   return (
-    <div className="flex min-h-screen bg-gray-50/50">
+    <div className="flex min-h-screen bg-surface-base">
       {/* Sidebar - Fixed width */}
       <Sidebar />
 

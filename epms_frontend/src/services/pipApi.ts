@@ -125,7 +125,14 @@ export const pipApi = api.injectEndpoints({
                 method: "POST",
                 body,
             }),
-            invalidatesTags: [{ type: "PipProgress", id: "LIST" }],
+            // Invalidate PipProgress to update the ledger, 
+            // and PipObjective/PIP to update status/progress bars immediately
+            invalidatesTags: (_result, _error, { objectiveId }) => [
+                { type: "PipProgress", id: "LIST" },
+                { type: "PipObjective", id: objectiveId },
+                { type: "PipObjective", id: "LIST" },
+                { type: "PIP", id: "LIST" }
+            ],
         }),
 
         // Review Endpoints
@@ -142,7 +149,7 @@ export const pipApi = api.injectEndpoints({
                 method: "POST",
                 body,
             }),
-            invalidatesTags: [{ type: "PipReview", id: "LIST" }],
+            invalidatesTags: [{ type: "PipReview", id: "LIST" }, { type: "PipObjective", id: "LIST" }],
         }),
         finalizePip: builder.mutation<ApiResponse<void>, { pipId: number; outcome: PipOutcome; comment: string }>({
             query: ({ pipId, outcome, comment }) => ({
