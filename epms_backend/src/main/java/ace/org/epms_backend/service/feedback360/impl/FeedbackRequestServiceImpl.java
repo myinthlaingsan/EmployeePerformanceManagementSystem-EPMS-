@@ -23,6 +23,10 @@ import ace.org.epms_backend.model.feedback360.DepartmentFeedbackConfig;
 import ace.org.epms_backend.repository.feedback360.DepartmentFeedbackConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +49,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     private final FeedbackMapper feedbackMapper;
     private final EvaluatorRotationService evaluatorRotationService;
     private final DepartmentFeedbackConfigRepository deptConfigRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -529,14 +534,24 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     .isAnonymous(anon)
                     .status(FeedbackStatus.PENDING)
                     .build();
+//            requestRepository.save(request);
             requestRepository.save(request);
-
             // Update workload map
             workloadMap.put(evaluator.getId(), currentWorkload + 1);
 
             log.info("Created {} request: Target {} <- Evaluator {} (Workload: {})", 
                 rel, target.getId(), evaluator.getId(), currentWorkload + 1);
-            return true;
+            // Notify Evaluator
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(evaluator.getId())
+                    .type(NotificationType.FEEDBACK_REQUESTED)
+                    .title("Feedback Requested")
+                    .message("You have been requested to provide 360 feedback for "
+                            + (anon ? "a colleague" : target.getStaffName()) + ".")
+                    .referenceType(ReferenceType.FEEDBACK)
+                    .referenceId(request.getId())
+                    .actionUrl("/feedback/my-pending")
+                    .build());
         }
         return false;
     }

@@ -11,6 +11,7 @@ public interface KpiMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "position", ignore = true)
+    @Mapping(target = "details", ignore = true)
     @Mapping(target = "isActive", expression = "java(true)")
     KpiLibrary toLibraryEntity(KpiLibraryRequest request);
 
@@ -21,9 +22,11 @@ public interface KpiMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "library", ignore = true)
     @Mapping(target = "isActive", expression = "java(true)")
+    @Mapping(target = "category", ignore = true)
     KpiLibraryDetails toLibraryDetailEntity(KpiLibraryDetailRequest request);
 
     @Mapping(target = "categoryName", source = "category.name")
+    @Mapping(target = "categoryId", source = "category.id")
     KpiLibraryDetailResponse toLibraryDetailResponse(KpiLibraryDetails details);
 
     List<KpiLibraryDetailResponse> toLibraryDetailResponseList(List<KpiLibraryDetails> details);
@@ -32,11 +35,14 @@ public interface KpiMapper {
     @Mapping(target = "managerId", source = "manager.id")
     @Mapping(target = "employeeName", source = "employee.staffName")
     @Mapping(target = "managerName", source = "manager.staffName")
+    @Mapping(target = "appraisalCycleId", source = "cycle.cycleId")
+    @Mapping(target = "appraisalCycleName", source = "cycle.cycleName")
     @Mapping(target = "items", source = "items")
     GoalSetResponse toGoalSetResponse(KpiGoals goalSet);
 
     @Mapping(target = "currentProgress", ignore = true)
     @Mapping(target = "categoryName", source = "category.name")
+    @Mapping(target = "categoryId", source = "category.id")
     GoalItemResponse toGoalItemResponse(KpiGoalItem item);
 
     List<GoalItemResponse> toGoalItemResponseList(List<KpiGoalItem> items);
@@ -48,5 +54,6 @@ public interface KpiMapper {
 
     @Mapping(target = "employeeId", source = "employee.id")
     @Mapping(target = "employeeName", source = "employee.staffName")
+    @Mapping(target = "cycleId", source = "goalSet.cycle.cycleId")
     KpiScoreResponse toScoreResponse(KpiFinalScore finalScore);
 }

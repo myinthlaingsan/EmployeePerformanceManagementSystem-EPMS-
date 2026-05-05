@@ -11,8 +11,18 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+
 import ace.org.epms_backend.model.appraisal.*;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Transactional;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.service.AuditService;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +42,8 @@ public class AppraisalServiceImpl implements AppraisalService {
     private final AppraisalFormRepository formRepo;
     private final PerformanceCategoryRepository performanceCategoryRepo;
     private final EmployeeDepartmentRepository employeeDepartmentRepo;
+    private final ApplicationEventPublisher eventPublisher;
+    private final AuditService auditService;
 
     @Override
     public AppraisalResponse createAppraisal(AppraisalCreateRequest request) {
@@ -57,15 +69,23 @@ public class AppraisalServiceImpl implements AppraisalService {
         if (request.getPerformanceCategoryId() != null) {
             appraisal.setPerformanceCategory(
                     performanceCategoryRepo.findById(request.getPerformanceCategoryId())
-                            .orElseThrow(() -> new NotFoundException("Performance Category not found")));
+                            .orElseThrow(() -> new NotFoundException(
+                                    "Performance Category not found")));
         }
 
         appraisal.setStatus(AppraisalStatus.PENDING);
         appraisal.setIsLocked(false);
+        Appraisal saved = appraisalRepo.save(appraisal);
 
-        appraisalRepo.save(appraisal);
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisals")
+                .recordId(saved.getAppraisalId())
+                .action(AuditAction.INSERT)
+                .newState(saved)
+                .status(AuditStatus.SUCCESS)
+                .build());
 
-        return appraisalMapper.toResponse(appraisal);
+        return appraisalMapper.toResponse(saved);
     }
 
     @Override
@@ -78,13 +98,20 @@ public class AppraisalServiceImpl implements AppraisalService {
             throw new RuntimeException("Cannot assign manager to an archived or locked appraisal");
         }
 
-        appraisal.setManager(
-                employeeRepo.findById(request.getManagerId())
-                        .orElseThrow(() -> new RuntimeException("Manager not found")));
+        employeeRepo.findById(request.getManagerId())
+                .orElseThrow(() -> new RuntimeException("Manager not found"));
 
-        appraisalRepo.save(appraisal);
+        Appraisal saved = appraisalRepo.save(appraisal);
 
-        return appraisalMapper.toResponse(appraisal);
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisals")
+                .recordId(saved.getAppraisalId())
+                .action(AuditAction.UPDATE)
+                .newState(saved)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        return appraisalMapper.toResponse(saved);
     }
 
     @Override
@@ -122,13 +149,22 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = getAppraisalOrThrow(id);
         checkNotLocked(appraisal);
 
-        if (!Boolean.TRUE.equals(appraisal.getEmployeeSigned()) || !Boolean.TRUE.equals(appraisal.getManagerSigned())) {
+        if (!Boolean.TRUE.equals(appraisal.getEmployeeSigned())
+                || !Boolean.TRUE.equals(appraisal.getManagerSigned())) {
             throw new RuntimeException("Cannot lock appraisal before both parties have signed off");
         }
 
         appraisal.setIsLocked(true);
         appraisal.setStatus(AppraisalStatus.ARCHIVED);
-        appraisalRepo.save(appraisal);
+        Appraisal saved = appraisalRepo.save(appraisal);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisals")
+                .recordId(saved.getAppraisalId())
+                .action(AuditAction.UPDATE)
+                .newState(saved)
+                .status(AuditStatus.SUCCESS)
+                .build());
 
         // Save to History
         AppraisalHistory history = AppraisalHistory.builder()
@@ -141,6 +177,18 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .isFinal(true)
                 .build();
         historyRepo.save(history);
+
+        // Notify Employee: Final Result Published
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(appraisal.getEmployee().getId())
+                .type(NotificationType.FINAL_RESULT_PUBLISHED)
+                .title("Appraisal Result Published")
+                .message("Your final appraisal result for " + appraisal.getCycle().getCycleName()
+                        + " has been published.")
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(appraisal.getAppraisalId())
+                .actionUrl("/appraisals/history")
+                .build());
 
         return appraisalMapper.toResponse(appraisal);
     }
@@ -155,9 +203,17 @@ public class AppraisalServiceImpl implements AppraisalService {
         appraisal.setStatus(AppraisalStatus.ARCHIVED);
         appraisal.setIsLocked(true);
 
-        appraisalRepo.save(appraisal);
+        Appraisal saved = appraisalRepo.save(appraisal);
 
-        return appraisalMapper.toResponse(appraisal);
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisals")
+                .recordId(saved.getAppraisalId())
+                .action(AuditAction.UPDATE)
+                .newState(saved)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        return appraisalMapper.toResponse(saved);
     }
 
     @Override
@@ -225,7 +281,17 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = getAppraisalOrThrow(id);
         checkNotLocked(appraisal);
         appraisal.setStatus(AppraisalStatus.SELF_ASSESSED);
-        return appraisalMapper.toResponse(appraisalRepo.save(appraisal));
+        Appraisal saved = appraisalRepo.save(appraisal);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisals")
+                .recordId(saved.getAppraisalId())
+                .action(AuditAction.UPDATE)
+                .newState(saved)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        return appraisalMapper.toResponse(saved);
     }
 
     @Override
@@ -234,11 +300,22 @@ public class AppraisalServiceImpl implements AppraisalService {
         checkNotLocked(appraisal);
 
         if (appraisal.getStatus() != AppraisalStatus.SELF_ASSESSED) {
-            throw new RuntimeException("Manager evaluation can only be submitted after self-assessment is completed");
+            throw new RuntimeException(
+                    "Manager evaluation can only be submitted after self-assessment is completed");
         }
 
         appraisal.setStatus(AppraisalStatus.EVALUATED);
-        return appraisalMapper.toResponse(appraisalRepo.save(appraisal));
+        Appraisal saved = appraisalRepo.save(appraisal);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisals")
+                .recordId(saved.getAppraisalId())
+                .action(AuditAction.UPDATE)
+                .newState(saved)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        return appraisalMapper.toResponse(saved);
     }
 
     @Override
@@ -251,7 +328,29 @@ public class AppraisalServiceImpl implements AppraisalService {
         }
 
         appraisal.setEmployeeSigned(true);
-        return appraisalMapper.toResponse(appraisalRepo.save(appraisal));
+        Appraisal saved = appraisalRepo.save(appraisal);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisals")
+                .recordId(saved.getAppraisalId())
+                .action(AuditAction.UPDATE)
+                .newState(saved)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        // Notify Manager
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(appraisal.getManager().getId())
+                .senderId(appraisal.getEmployee().getId())
+                .type(NotificationType.APPRAISAL_CYCLE_OPENED) // Reuse or use a generic type if needed
+                .title("Appraisal Signed by Employee")
+                .message(appraisal.getEmployee().getStaffName() + " has signed off on their appraisal.")
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(appraisal.getAppraisalId())
+                .actionUrl("/appraisals/review/" + appraisal.getAppraisalId())
+                .build());
+
+        return appraisalMapper.toResponse(appraisal);
     }
 
     @Override
@@ -264,7 +363,29 @@ public class AppraisalServiceImpl implements AppraisalService {
         }
 
         appraisal.setManagerSigned(true);
-        return appraisalMapper.toResponse(appraisalRepo.save(appraisal));
+        Appraisal saved = appraisalRepo.save(appraisal);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisals")
+                .recordId(saved.getAppraisalId())
+                .action(AuditAction.UPDATE)
+                .newState(saved)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        // Notify Employee
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(appraisal.getEmployee().getId())
+                .senderId(appraisal.getManager().getId())
+                .type(NotificationType.APPRAISAL_CYCLE_OPENED) // Reuse
+                .title("Appraisal Signed by Manager")
+                .message("Your Manager has signed off on your appraisal.")
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(appraisal.getAppraisalId())
+                .actionUrl("/appraisals/my-appraisals")
+                .build());
+
+        return appraisalMapper.toResponse(appraisal);
     }
 
     private Appraisal getAppraisalOrThrow(Long id) {
@@ -283,7 +404,8 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = getAppraisalOrThrow(id);
 
         // Employee Info
-        String deptName = employeeDepartmentRepo.findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
+        String deptName = employeeDepartmentRepo
+                .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
                 .map(ed -> ed.getCurrentDepartment().getDepartmentName())
                 .orElse("N/A");
 
@@ -308,11 +430,13 @@ public class AppraisalServiceImpl implements AppraisalService {
                     .builder()
                     .questionId(q.getQuestionId())
                     .questionText(q.getQuestionText())
-                    .categoryName(q.getCategory() != null ? q.getCategory().getCategoryName() : null);
+                    .categoryName(q.getCategory() != null ? q.getCategory().getCategoryName()
+                            : null);
 
             if (self.isPresent()) {
                 selfAnswerRepo
-                        .findBySelfAssessment_SelfAssessmentIdAndQuestion_QuestionId(self.get().getSelfAssessmentId(),
+                        .findBySelfAssessment_SelfAssessmentIdAndQuestion_QuestionId(
+                                self.get().getSelfAssessmentId(),
                                 q.getQuestionId())
                         .ifPresent(sa -> {
                             builder.selfAnswer(sa.getAnswerValue());
@@ -322,7 +446,8 @@ public class AppraisalServiceImpl implements AppraisalService {
 
             if (eval.isPresent()) {
                 evalAnswerRepo
-                        .findByEvaluation_EvaluationIdAndQuestion_QuestionId(eval.get().getEvaluationId(),
+                        .findByEvaluation_EvaluationIdAndQuestion_QuestionId(
+                                eval.get().getEvaluationId(),
                                 q.getQuestionId())
                         .ifPresent(ea -> {
                             builder.managerRating(ea.getRatingValue());

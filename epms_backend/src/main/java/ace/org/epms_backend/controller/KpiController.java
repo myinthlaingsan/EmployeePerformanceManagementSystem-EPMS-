@@ -1,6 +1,7 @@
 package ace.org.epms_backend.controller;
 
 import ace.org.epms_backend.dto.ApiResponse;
+import ace.org.epms_backend.dto.appraisal.AppraisalCycleResponse;
 import ace.org.epms_backend.dto.kpi.*;
 import ace.org.epms_backend.service.KpiService;
 import jakarta.validation.Valid;
@@ -17,6 +18,11 @@ import java.util.List;
 public class KpiController {
 
     private final KpiService kpiService;
+
+    @GetMapping("/active-cycle")
+    public ResponseEntity<ApiResponse<AppraisalCycleResponse>> getActiveCycle() {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.getActiveCycle()));
+    }
 
     // 1. KPI Library Management (HR/Admin)
     @PostMapping("/library")
@@ -37,10 +43,10 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(kpiService.toggleLibraryStatus(id, active)));
     }
 
-    @GetMapping("/categories")
-    public ResponseEntity<ApiResponse<List<KpiCategoryResponse>>> getAllCategories() {
-        return ResponseEntity.ok(ApiResponse.success(kpiService.getAllCategories()));
-    }
+//    @GetMapping("/categories")
+//    public ResponseEntity<ApiResponse<List<KpiCategoryResponse>>> getAllCategories() {
+//        return ResponseEntity.ok(ApiResponse.success(kpiService.getAllCategories()));
+//    }
 
     // 2. KPI Assignment (Manager/HR/Admin)
     @PostMapping("/assign")
@@ -95,5 +101,22 @@ public class KpiController {
     @PreAuthorize("hasAnyRole('MANAGER', 'HR')")
     public ResponseEntity<ApiResponse<KpiScoreResponse>> calculateScore(@RequestParam Long employeeId, @RequestParam Long cycleId) {
         return ResponseEntity.ok(ApiResponse.success(kpiService.calculateFinalScore(employeeId, cycleId)));
+    }
+
+    // 7. Goal Set Retrieval
+    @GetMapping("/goal-set/employee/{employeeId}")
+    public ResponseEntity<ApiResponse<GoalSetResponse>> getGoalSetByEmployee(
+            @PathVariable Long employeeId, @RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.getGoalSetByEmployee(employeeId, cycleId)));
+    }
+
+    @GetMapping("/goal-set/{id}")
+    public ResponseEntity<ApiResponse<GoalSetResponse>> getGoalSetById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.getGoalSetById(id)));
+    }
+
+    @GetMapping("/progress/history")
+    public ResponseEntity<ApiResponse<List<KpiProgressResponse>>> getRecentProgress(@RequestParam Long employeeId, @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(kpiService.getRecentProgress(employeeId, limit)));
     }
 }

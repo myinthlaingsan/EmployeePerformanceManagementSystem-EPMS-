@@ -9,7 +9,11 @@ import ace.org.epms_backend.model.feedback360.*;
 import ace.org.epms_backend.repository.QuestionRepository;
 import ace.org.epms_backend.repository.feedback360.*;
 import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +32,7 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
     private final FeedbackRequestRepository requestRepository;
     private final QuestionRepository questionRepository;
     private final FeedbackMapper feedbackMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -75,6 +80,17 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
 
         feedbackRequest.setStatus(FeedbackStatus.COMPLETED);
         requestRepository.save(feedbackRequest);
+
+        // Notify Target User (the one being evaluated)
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(feedbackRequest.getTargetUser().getId())
+                .type(NotificationType.FEEDBACK_SUBMITTED)
+                .title("Feedback Received")
+                .message("A new feedback submission has been completed for you.")
+                .referenceType(ReferenceType.FEEDBACK)
+                .referenceId(feedbackRequest.getId())
+                .actionUrl("/feedback/reports")
+                .build());
     }
 
     @Override

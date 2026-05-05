@@ -15,4 +15,6 @@ public interface DepartmentService {
     DepartmentResponse updateDepartment(Long id, DepartmentRequest request);
 
     void deleteDepartment(Long id);
+    List<DepartmentResponse> getActiveDepartments();
+    long getHeadcount(Long departmentId);
 }

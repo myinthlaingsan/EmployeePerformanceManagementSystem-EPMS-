@@ -11,7 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +43,12 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
             total = total.add(BigDecimal.valueOf(ans.getRatingValue()));
         }
 
-        BigDecimal avg = total.divide(BigDecimal.valueOf(answers.size()), 2, BigDecimal.ROUND_HALF_UP);
+        if (answers.isEmpty()) {
+            return;
+        }
+
+        BigDecimal avg = total.divide(BigDecimal.valueOf(answers.size()), 2, RoundingMode.HALF_UP);
+
 
         // find category
         PerformanceCategory category = categoryRepo.findAll().stream()

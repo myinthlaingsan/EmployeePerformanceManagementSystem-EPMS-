@@ -20,4 +20,5 @@ public interface EmployeeDepartmentRepository extends JpaRepository<EmployeeDepa
     java.util.List<EmployeeDepartment> findByCurrentDepartmentIdAndIsCurrentTrue(Long departmentId);
     boolean existsByCurrentDepartmentIdAndIsCurrentTrue(Long departmentId);
     java.util.List<EmployeeDepartment> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
+    long countByCurrentDepartmentIdAndIsCurrentTrue(Long departmentId);
 }

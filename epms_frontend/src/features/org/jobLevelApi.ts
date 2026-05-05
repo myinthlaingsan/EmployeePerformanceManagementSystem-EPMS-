@@ -5,20 +5,20 @@ import type { JobLevelRequest, JobLevelResponse } from "./orgTypes";
 export const jobLevelApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getJobLevels: builder.query<JobLevelResponse[], void>({
-      query: () => "/org/job-levels",
+      query: () => "/job-levels",
       transformResponse: (res: ApiResponse<JobLevelResponse[]>) => res.data,
       providesTags: ["JobLevel"],
     }),
 
     getJobLevelById: builder.query<JobLevelResponse, number>({
-      query: (id) => `/org/job-levels/${id}`,
+      query: (id) => `/job-levels/${id}`,
       transformResponse: (res: ApiResponse<JobLevelResponse>) => res.data,
       providesTags: (_result, _error, id) => [{ type: "JobLevel", id }],
     }),
 
     createJobLevel: builder.mutation<JobLevelResponse, JobLevelRequest>({
       query: (body) => ({
-        url: "/org/job-levels",
+        url: "/job-levels",
         method: "POST",
         body,
       }),
@@ -30,7 +30,7 @@ export const jobLevelApi = api.injectEndpoints({
       { id: number; body: JobLevelRequest }
     >({
       query: ({ id, body }) => ({
-        url: `/org/job-levels/${id}`,
+        url: `/job-levels/${id}`,
         method: "PUT",
         body,
       }),
@@ -42,7 +42,7 @@ export const jobLevelApi = api.injectEndpoints({
 
     deleteJobLevel: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/org/job-levels/${id}`,
+        url: `/job-levels/${id}`,
         method: "DELETE",
       }),
       invalidatesTags: ["JobLevel"],

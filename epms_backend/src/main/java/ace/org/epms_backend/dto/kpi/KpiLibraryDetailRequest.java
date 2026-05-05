@@ -22,4 +22,7 @@ public class KpiLibraryDetailRequest {
 
     @NotNull(message = "Category ID is required")
     private Long categoryId;
+
+    @NotNull(message = "Unit is required")
+    private String unit;
 }

@@ -3,6 +3,7 @@ package ace.org.epms_backend.controller;
 import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.pip.PipObjectiveRequest;
 import ace.org.epms_backend.dto.pip.PipObjectiveResponse;
+import ace.org.epms_backend.dto.pip.PipObjectiveUpdateRequest;
 import ace.org.epms_backend.enums.ObjectiveStatus;
 import ace.org.epms_backend.service.PipObjectiveService;
 import jakarta.validation.Valid;
@@ -20,6 +21,18 @@ import java.util.List;
 public class PipObjectiveController {
 
     private final PipObjectiveService service;
+
+    // HR or Manager updates objective details
+    @PreAuthorize("hasAnyRole('HR','MANAGER')")
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<PipObjectiveResponse>> update(
+            @PathVariable Long id,
+            @Valid @RequestBody PipObjectiveUpdateRequest request
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(service.updateObjective(id, request))
+        );
+    }
 
     // HR or Manager creates objective
     @PreAuthorize("hasAnyRole('HR','MANAGER')")

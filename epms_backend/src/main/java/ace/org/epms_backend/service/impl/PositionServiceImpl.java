@@ -90,4 +90,10 @@ public class PositionServiceImpl implements PositionService {
 
         positionRepository.delete(position);
     }
+    @Override
+    public List<PositionResponse> getPositionsByDepartment(Long departmentId) {
+        return positionRepository.findByDepartment_Id(departmentId).stream()
+                .map(positionMapper::toResponse)
+                .collect(Collectors.toList());
+    }
 }

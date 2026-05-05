@@ -1,13 +1,29 @@
 import { Outlet } from "react-router-dom";
-import Navbar from "./Navbar";
+import Sidebar from "./Sidebar";
+import Header from "./Header";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 const MainLayout = () => {
+  // Initialize WebSocket connection when the layout is mounted
+  useWebSocket();
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <Outlet />
-      </main>
+    <div className="flex min-h-screen bg-gray-50/50">
+      {/* Sidebar - Fixed width */}
+      <Sidebar />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header - Fixed height */}
+        <Header />
+
+        {/* Scrollable Main Content */}
+        <main className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

@@ -8,4 +8,8 @@ public interface TeamService {
     void assignEmployeeToTeam(TeamAssignmentRequest request);
     List<TeamMemberResponse> getTeamMembers(Long teamId);
     List<TeamResponse> getEmployeeTeams(Long employeeId);
+    List<TeamResponse> getAllTeams();
+    void updateTeam(Long id, TeamRequest request);
+    void deleteTeam(Long id);
+    void removeMemberFromTeam(Long teamId, Long employeeId);
 }

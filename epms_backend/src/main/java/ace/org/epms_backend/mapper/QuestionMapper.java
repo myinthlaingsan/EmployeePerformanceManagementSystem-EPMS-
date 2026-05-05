@@ -10,7 +10,8 @@ import org.mapstruct.MappingTarget;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", builder = @org.mapstruct.Builder(disableBuilder = true), imports = {QuestionType.class})
+@Mapper(componentModel = "spring", builder = @org.mapstruct.Builder(disableBuilder = true), imports = {
+        QuestionType.class })
 public interface QuestionMapper {
 
     @Mapping(target = "questionId", ignore = true)

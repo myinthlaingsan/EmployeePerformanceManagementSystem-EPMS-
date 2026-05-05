@@ -2,6 +2,7 @@ import {api} from "../../services/api"
 import type { ApiResponse } from "../../services/ApiResponse";
 import type {
   EmployeeResponse,
+  PagedResponse,
   CreateEmployeeRequest,
   UpdateEmployeeRequest,
   UpdateProfileRequest,
@@ -13,11 +14,30 @@ import type {
 export const employeeApi = api.injectEndpoints({
   endpoints: (builder) => ({
 
-    getEmployees: builder.query<EmployeeResponse[], void>({
-      query: () => "/emp",
-      transformResponse: (response: ApiResponse<EmployeeResponse[]>) =>
+    getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page: number; size: number }>({
+      query: ({ page, size }) => `/emp?page=${page}&size=${size}`,
+      transformResponse: (response: ApiResponse<PagedResponse<EmployeeResponse>>) =>
         response.data,
       providesTags: ["Employee"],
+    }),
+
+    searchEmployees: builder.query<PagedResponse<EmployeeResponse>, { query: string; page: number; size: number }>({
+      query: ({ query, page, size }) => `/emp/search?query=${query}&page=${page}&size=${size}`,
+      transformResponse: (response: ApiResponse<PagedResponse<EmployeeResponse>>) =>
+        response.data,
+      providesTags: ["Employee"],
+    }),
+
+    getDirectReports: builder.query<EmployeeResponse[], number>({
+      query: (id) => `/emp/${id}/direct-reports`,
+      transformResponse: (response: ApiResponse<EmployeeResponse[]>) =>
+        response.data,
+    }),
+
+    getManager: builder.query<EmployeeResponse, number>({
+      query: (id) => `/emp/${id}/manager`,
+      transformResponse: (response: ApiResponse<EmployeeResponse>) =>
+        response.data,
     }),
 
     getEmployeeById: builder.query<EmployeeResponse, number>({
@@ -132,6 +152,9 @@ export const employeeApi = api.injectEndpoints({
 
 export const {
   useGetEmployeesQuery,
+  useSearchEmployeesQuery,
+  useGetDirectReportsQuery,
+  useGetManagerQuery,
   useGetEmployeeByIdQuery,
   useCreateEmployeeMutation,
   useUpdateEmployeeMutation,

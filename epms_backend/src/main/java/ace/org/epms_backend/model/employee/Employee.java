@@ -1,6 +1,5 @@
 package ace.org.epms_backend.model.employee;
 
-
 import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -33,7 +32,7 @@ public class Employee extends BaseEntity {
 
     private String staffName;
     private String otherName;
-//    private String nrcNo;
+    // private String nrcNo;
     private Integer stateCode;
     private String township;
     private String nrcType;
@@ -80,8 +79,6 @@ public class Employee extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private EmployeeStatus status;
 
-
-
     private Boolean isActive = true;
 
     @Column(name = "failed_attempts", columnDefinition = "INT DEFAULT 0")
@@ -89,5 +86,6 @@ public class Employee extends BaseEntity {
     @Column(name = "account_locked", columnDefinition = "BOOLEAN DEFAULT false")
     private boolean accountLocked = false;
     private LocalDateTime lockTime;
+    private LocalDateTime lastLogoutTime;
 
 }
