@@ -11,7 +11,7 @@ import {
   Plus, 
   ChevronRight
 } from 'lucide-react';
-import { useGetAllEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetAllEmployeesQuery, useGetDirectReportsQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
 import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
@@ -19,7 +19,15 @@ import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 const TeamKpiDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: employees = [], isLoading } = useGetAllEmployeesQuery();
+  const isAdminOrHr = user?.roles?.some(r => r === 'ADMIN' || r === 'HR');
+
+  // Conditional data fetching: Admins see everyone, Managers see direct reports
+  const { data: allEmployees = [], isLoading: loadingAll } = useGetAllEmployeesQuery(undefined, { skip: !isAdminOrHr });
+  const { data: directReports = [], isLoading: loadingReports } = useGetDirectReportsQuery(Number(user?.id), { skip: isAdminOrHr || !user?.id });
+  
+  const employees = isAdminOrHr ? allEmployees : directReports;
+  const isLoading = isAdminOrHr ? loadingAll : loadingReports;
+
   const { activeCycleId, activeCycleName } = useActiveCycle();
 
   const { data: teamGoalsResponse } = useGetTeamGoalSetsQuery({
@@ -30,16 +38,9 @@ const TeamKpiDashboard: React.FC = () => {
   const teamGoals = teamGoalsResponse?.data || [];
 
   const teamMembers = useMemo(() => {
-    if (!user) return [];
+    if (!user || !employees) return [];
     
-    const isAdminOrHr = user.roles?.some(r => r === 'ADMIN' || r === 'HR');
-    
-    let baseList = employees;
-    if (!isAdminOrHr) {
-      baseList = employees.filter(emp => Number(emp.directManagerId) === Number(user.id));
-    }
-
-    return baseList.map(emp => {
+    return employees.map(emp => {
       const goals = teamGoals.find(g => g.employeeId === emp.id);
       const items = goals?.items || [];
       let progress = 0;

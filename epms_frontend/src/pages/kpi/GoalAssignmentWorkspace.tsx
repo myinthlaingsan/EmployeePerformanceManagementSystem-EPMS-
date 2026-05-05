@@ -11,7 +11,7 @@ import {
   useGetKpiCategoriesQuery,
   useAssignKpiToEmployeeMutation
 } from '../../services/kpiApi';
-import { useGetAllEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetEmployeeByIdQuery } from '../../features/employee/employeeapi';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
 import {
   Search,
@@ -33,8 +33,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const navigate = useNavigate();
   const { activeCycleId, activeCycleName } = useActiveCycle();
 
-  const { data: employees = [] } = useGetAllEmployeesQuery();
-  const employee = employees.find(e => e.id === Number(employeeId));
+  const { data: employee } = useGetEmployeeByIdQuery(Number(employeeId), { skip: !employeeId });
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
     employeeId: Number(employeeId),
     cycleId: activeCycleId
