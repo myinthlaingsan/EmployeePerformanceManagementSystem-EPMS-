@@ -647,7 +647,14 @@ public class KpiServiceImpl implements KpiService {
                 Pageable pageable = PageRequest.of(page, size);
                 Page<KpiLibrary> libraryPage = libraryRepository.findByTitleContainingIgnoreCase(keyword, pageable);
                 Page<KpiLibraryResponse> responsePage = libraryPage.map(kpiMapper::toLibraryResponse);
-                return PagedResponse.of(responsePage);
+                return new PagedResponse<>(
+                        responsePage.getContent(),
+                        responsePage.getNumber(),
+                        responsePage.getSize(),
+                        responsePage.getTotalElements(),
+                        responsePage.getTotalPages(),
+                        responsePage.isLast()
+                );
         }
 
         @Override
