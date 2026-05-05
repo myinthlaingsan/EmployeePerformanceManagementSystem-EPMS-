@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
+import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
+import { useAuth } from '../../hooks/useAuth';
 import {
   RefreshCw,
   ClipboardList,
@@ -10,14 +13,31 @@ import {
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { data: employees = [], isLoading: loadingEmployees } = useGetEmployeesQuery();
+  const { user, isAdmin } = useAuth();
   
+  // Data Fetching
+  const { data: employeesData = [], isLoading: loadingEmployees } = useGetEmployeesQuery();
+  const employees = employeesData.filter(emp => isAdmin || emp.id !== user?.id);
+  const { data: departments = [] } = useGetDepartmentsQuery();
+  const { data: cyclesResponse } = useGetCyclesQuery();
+  const cycles = Array.isArray(cyclesResponse) ? cyclesResponse : ((cyclesResponse as any)?.data || []);
+  
+  // Filter States
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('All');
+  const [selectedCycle, setSelectedCycle] = useState<string>('All');
 
-  const filteredEmployees = employees.filter(emp => 
-    emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    emp.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter Logic
+  const filteredEmployees = employees.filter(emp => {
+    const matchesSearch = emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          emp.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesDept = selectedDepartment === 'All' || 
+                        emp.currentDepartmentName === selectedDepartment || 
+                        emp.parentDepartmentName === selectedDepartment;
+                        
+    return matchesSearch && matchesDept;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
@@ -63,17 +83,27 @@ const GoalManagement: React.FC = () => {
                   onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
-              <select className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer">
-                <option>Department: All</option>
-                <option>Engineering</option>
-                <option>Sales</option>
+              <select 
+                className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer"
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+              >
+                <option value="All">Department: All</option>
+                {departments.map(dept => (
+                  <option key={dept.id} value={dept.departmentName}>{dept.departmentName}</option>
+                ))}
               </select>
-              <select className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer">
-                <option>Cycle: FY24</option>
+              <select 
+                className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer"
+                value={selectedCycle}
+                onChange={(e) => setSelectedCycle(e.target.value)}
+              >
+                <option value="All">Cycle: All</option>
+                {cycles.map(cycle => (
+                  <option key={cycle.id} value={cycle.id}>{cycle.name}</option>
+                ))}
               </select>
-              <select className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer">
-                <option>Status: All</option>
-              </select>
+              
               <button className="p-2.5 bg-slate-50 rounded-xl text-slate-500 hover:text-[#0052CC] hover:bg-blue-50 transition-colors">
                 <SlidersHorizontal className="w-4 h-4" />
               </button>
