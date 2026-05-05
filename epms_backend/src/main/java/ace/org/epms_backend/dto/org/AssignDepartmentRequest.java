@@ -11,7 +11,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AssignDepartmentRequest {
+    @NotNull(message = "Employee ID is required")
     private Long employeeId;
+    
     @NotNull(message = "Current department ID is required")
     private Long currentDepartmentId;
     

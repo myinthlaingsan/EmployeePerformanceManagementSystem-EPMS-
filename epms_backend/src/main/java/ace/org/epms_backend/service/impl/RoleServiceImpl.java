@@ -8,6 +8,10 @@ import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.EmployeeRoleRepository;
 import ace.org.epms_backend.repository.RoleRepository;
 import ace.org.epms_backend.service.RoleService;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +27,7 @@ public class RoleServiceImpl implements RoleService {
     private final RoleRepository roleRepository;
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleMapper roleMapper;
+    private final AuditService auditService;
 
     @Override
     public RoleResponse createRole(RoleRequest request) {
@@ -31,6 +36,15 @@ public class RoleServiceImpl implements RoleService {
         }
         Role role = roleMapper.toEntity(request);
         role = roleRepository.save(role);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("roles")
+                .recordId(role.getRoleId())
+                .action(AuditAction.INSERT)
+                .newState(role)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return roleMapper.toResponse(role);
     }
 
@@ -62,6 +76,15 @@ public class RoleServiceImpl implements RoleService {
 
         roleMapper.updateEntity(request, role);
         role = roleRepository.save(role);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("roles")
+                .recordId(role.getRoleId())
+                .action(AuditAction.UPDATE)
+                .newState(role)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return roleMapper.toResponse(role);
     }
 
@@ -76,5 +99,13 @@ public class RoleServiceImpl implements RoleService {
         }
 
         roleRepository.delete(role);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("roles")
+                .recordId(role.getRoleId())
+                .action(AuditAction.DELETE)
+                .oldState(role)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 }

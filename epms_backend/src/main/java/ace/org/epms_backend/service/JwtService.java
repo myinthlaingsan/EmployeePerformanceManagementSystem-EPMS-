@@ -2,6 +2,8 @@ package ace.org.epms_backend.service;
 
 import ace.org.epms_backend.model.UserPrincipal;
 import io.jsonwebtoken.Claims;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -21,10 +23,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class JwtService {
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    private final String jwtSecret;
+
+    public JwtService(@Value("${jwt.secret:GmP9kLz0aQ7wXvVtHs4YpCqR1nT5mB8sZjF2dEhUdfe3DEse}") String jwtSecret) {
+        this.jwtSecret = jwtSecret;
+    }
+
 
     private Key getSignKey(){
         byte[] keyBytes = Decoders.BASE64URL.decode(jwtSecret);
@@ -85,9 +90,23 @@ public class JwtService {
     }
 
 
-    public boolean isTokenValid(String token,UserDetails userDetails){
+    public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        boolean isValid = username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+
+        if (isValid && userDetails instanceof UserPrincipal userPrincipal) {
+            LocalDateTime lastLogout = userPrincipal.getEmployee().getLastLogoutTime();
+            if (lastLogout != null) {
+                Date issuedAt = extractClaim(token, Claims::getIssuedAt);
+                LocalDateTime issuedAtLDT = issuedAt.toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDateTime();
+                if (issuedAtLDT.isBefore(lastLogout)) {
+                    return false;
+                }
+            }
+        }
+        return isValid;
     }
 
     private boolean isTokenExpired(String token) {

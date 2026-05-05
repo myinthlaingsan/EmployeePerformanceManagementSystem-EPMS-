@@ -3,11 +3,9 @@ package ace.org.epms_backend.mapper;
 import ace.org.epms_backend.dto.org.RoleRequest;
 import ace.org.epms_backend.dto.org.RoleResponse;
 import ace.org.epms_backend.model.employee.Role;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
+import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", builder = @Builder(disableBuilder = true))
 public interface RoleMapper {
 
     @Mapping(target = "roleId", ignore = true)

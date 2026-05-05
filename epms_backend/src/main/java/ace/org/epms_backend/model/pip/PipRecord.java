@@ -48,6 +48,9 @@ public class PipRecord extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String overallComment;
 
+    @Column(columnDefinition = "TEXT")
+    private String reason;
+
     private Boolean isActive = true;
 
     private Long createdBy;

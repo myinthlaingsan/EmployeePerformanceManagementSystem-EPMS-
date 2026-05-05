@@ -1,3 +1,12 @@
+export interface PagedResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
+
 export type Gender = "M" | "F";
 
 export type MaritalStatus = "SINGLE" | "MARRIED" | "DIVORCED" | "WIDOWED";
@@ -100,6 +109,9 @@ export interface EmployeeResponse {
   currentDepartmentName?: string;
   currentDepartmentId?: number;
   parentDepartmentName?: string;
+  parentDepartmentId?: number;
+  directManagerId?: number;
+  directManagerName?: string;
   roles: string[];
   permissions: string[];
 }

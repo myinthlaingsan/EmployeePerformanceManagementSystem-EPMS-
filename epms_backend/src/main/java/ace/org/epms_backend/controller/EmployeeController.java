@@ -1,6 +1,7 @@
 package ace.org.epms_backend.controller;
 
 import ace.org.epms_backend.dto.ApiResponse;
+import ace.org.epms_backend.dto.PagedResponse;
 import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.service.EmployeeService;
 import jakarta.validation.Valid;
@@ -19,7 +20,7 @@ public class EmployeeController {
     @PostMapping("/set-password")
     public ResponseEntity<ApiResponse<?>> setPassword(
             @RequestParam String token,
-            @RequestBody SetPasswordRequest request
+            @Valid @RequestBody SetPasswordRequest request
     ){
         employeeService.setPassword(token,request.getPassword());
         return ResponseEntity
@@ -28,7 +29,7 @@ public class EmployeeController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<EmployeeResponse>> createEmployee(
-            @RequestBody CreateEmployeeRequest request
+            @Valid @RequestBody CreateEmployeeRequest request
     ) {
         EmployeeResponse response = employeeService.createEmployee(request);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -42,16 +43,30 @@ public class EmployeeController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<EmployeeResponse>>> getAll() {
+    public ResponseEntity<ApiResponse<PagedResponse<EmployeeResponse>>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
         return ResponseEntity.ok(
-                ApiResponse.success(employeeService.getAll())
+                ApiResponse.success(employeeService.getAllPaginated(page, size))
+        );
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<PagedResponse<EmployeeResponse>>> search(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(employeeService.search(query, page, size))
         );
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<EmployeeResponse>> updateEmployee(
             @PathVariable Long id,
-            @RequestBody UpdateEmployeeRequest request
+            @Valid @RequestBody UpdateEmployeeRequest request
     ) {
         return ResponseEntity.ok(
                 ApiResponse.success(employeeService.updateEmployee(id, request))
@@ -88,10 +103,24 @@ public class EmployeeController {
     @PostMapping("/{id}/change-password")
     public ResponseEntity<ApiResponse<?>> changePassword(
             @PathVariable Long id,
-            @RequestBody ChangePasswordRequest request
+            @Valid @RequestBody ChangePasswordRequest request
     ) {
         employeeService.changePassword(id, request);
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @GetMapping("/{id}/direct-reports")
+    public ResponseEntity<ApiResponse<List<EmployeeResponse>>> getDirectReports(@PathVariable Long id) {
+        return ResponseEntity.ok(
+                ApiResponse.success(employeeService.getDirectReports(id))
+        );
+    }
+
+    @GetMapping("/{id}/manager")
+    public ResponseEntity<ApiResponse<EmployeeResponse>> getManager(@PathVariable Long id) {
+        return ResponseEntity.ok(
+                ApiResponse.success(employeeService.getManager(id))
+        );
     }
 
 }

@@ -1,0 +1,126 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------< ace.org:epms_backend >------------------------
+[INFO] Building  0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.5.0:clean (default-clean) @ epms_backend ---
+[INFO] Deleting E:\ACEOJT\project\EPMS\epms_backend\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ epms_backend ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ epms_backend ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 456 source files with javac [debug parameters release 17] to target\classes
+[INFO] -------------------------------------------------------------
+[WARNING] COMPILATION WARNING : 
+[INFO] -------------------------------------------------------------
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/employee/EmployeeDepartment.java:[34,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/employee/Department.java:[26,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/appraisal/AppraisalHistory.java:[45,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/feedback360/FeedbackRequest.java:[45,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/feedback360/FeedbackRequest.java:[48,28] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/pip/PipRecord.java:[54,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/kpi/KpiLibraryDetails.java:[37,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/kpi/KpiGoalItem.java:[40,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/kpi/KpiLibrary.java:[35,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/Notification.java:[55,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/continuous/ContinuousFeedback.java:[42,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/pip/PipObjective.java:[42,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/pip/PipObjective.java:[46,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/employee/Team.java:[28,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/employee/Employee.java:[82,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/employee/Employee.java:[85,17] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/employee/Employee.java:[87,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/kpi/KpiGoals.java:[44,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/continuous/OneOnOneMeeting.java:[48,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/pip/PipReview.java:[39,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/model/employee/ReportingLine.java:[29,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/EmployeeMapper.java:[20,14] Unmapped target properties: "race, religion, birthPlace, contactAddress, permanentAddress, password, maritalStatus, spouseName, fatherName, dateOfAppointment, dateOfConfirmation, dateOfPromotion, failedLoginAttempts, accountLocked, lockTime, lastLogoutTime".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/EmployeeMapper.java:[25,22] Unmapped target properties: "currentDepartmentName, parentDepartmentName, directManagerId, directManagerName, roles, permissions".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/EmployeeMapper.java:[35,10] Unmapped target properties: "failedLoginAttempts, accountLocked, lockTime, lastLogoutTime".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/EmployeeMapper.java:[47,10] Unmapped target properties: "stateCode, township, nrcType, number, gender, race, religion, dateOfBirth, birthPlace, currency, dateOfAppointment, dateOfConfirmation, dateOfPromotion, isActive, failedLoginAttempts, accountLocked, lockTime, lastLogoutTime".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/PipObjectiveMapper.java:[19,18] Unmapped target properties: "createdAt, updatedAt, updatedBy".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/PipObjectiveMapper.java:[22,10] Unmapped target properties: "createdAt, updatedAt, objectiveId, pip, status, isAchieved, updatedBy, isActive".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/KpiMapper.java:[16,16] Unmapped target properties: "createdAt, updatedAt".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/KpiMapper.java:[20,24] Unmapped target property: "description".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/KpiMapper.java:[26,23] Unmapped target properties: "createdAt, updatedAt".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/KpiMapper.java:[53,17] Unmapped target properties: "createdAt, updatedAt".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/PipReviewMapper.java:[24,15] Unmapped target properties: "createdAt, updatedAt".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/PipReviewMapper.java:[34,10] Unmapped target properties: "createdAt, updatedAt".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/AppraisalCycleMapper.java:[14,20] Unmapped target properties: "createdAt, updatedAt".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/AppraisalCycleMapper.java:[16,28] Unmapped target properties: "kpiWeight, managerWeight, feedbackWeight, selfWeight".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/FeedbackMapper.java:[19,29] Unmapped target properties: "feedbackId, responses".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/FeedbackMapper.java:[28,29] Unmapped target properties: "selfScores, othersScores, detailedComments".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/FormCategoryMapper.java:[18,18] Unmapped target properties: "createdAt, updatedAt".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/FormCategoryMapper.java:[29,10] Unmapped target property: "isActive".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/PipProgressMapper.java:[24,20] Unmapped target properties: "createdAt, updatedAt".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/PipProgressMapper.java:[33,10] Unmapped target properties: "createdAt, updatedAt".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/PositionMapper.java:[16,14] Unmapped target property: "department".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/PositionMapper.java:[26,10] Unmapped target property: "department".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/continuous/OneOnOneMeetingMapper.java:[15,21] Unmapped target properties: "createdAt, updatedAt, meetingId, createdBy".
+[WARNING] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/continuous/OneOnOneMeetingMapper.java:[25,10] Unmapped target properties: "createdAt, updatedAt, meetingId, createdBy".
+[INFO] 45 warnings 
+[INFO] -------------------------------------------------------------
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/AppraisalMapper.java:[19,23] No property named "employee.name" exists in source parameter(s). Did you mean "employee.race"?
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/AppraisalMapper.java:[19,23] No property named "manager.name" exists in source parameter(s). Did you mean "manager.race"?
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/controller/AppraisalController.java:[66,39] cannot find symbol
+  symbol:   class ScoreBreakdownResponse
+  location: class ace.org.epms_backend.controller.AppraisalController
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/controller/AppraisalSummaryController.java:[5,36] cannot find symbol
+  symbol:   class AppraisalSummaryService
+  location: package ace.org.epms_backend.service
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/controller/AppraisalSummaryController.java:[19,19] cannot find symbol
+  symbol:   class AppraisalSummaryService
+  location: class ace.org.epms_backend.controller.AppraisalSummaryController
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/controller/AppraisalSummaryController.java:[15,1] cannot find symbol
+  symbol:   class AppraisalSummaryService
+  location: class ace.org.epms_backend.controller.AppraisalSummaryController
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/continuous/FeedbackReplyMapper.java:[10,8] No implementation was created for FeedbackReplyMapper due to having a problem in the erroneous element ace.org.epms_backend.model.continuous.FeedbackReply.FeedbackReplyBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/PipMapper.java:[10,8] No implementation was created for PipMapper due to having a problem in the erroneous element ace.org.epms_backend.model.pip.PipRecord.PipRecordBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/continuous/FeedbackTagMapper.java:[10,8] No implementation was created for FeedbackTagMapper due to having a problem in the erroneous element ace.org.epms_backend.model.continuous.FeedbackTag.FeedbackTagBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/continuous/ContinuousFeedbackMapper.java:[11,8] No implementation was created for ContinuousFeedbackMapper due to having a problem in the erroneous element ace.org.epms_backend.model.continuous.ContinuousFeedback.ContinuousFeedbackBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/AppraisalFormMapper.java:[13,8] No implementation was created for AppraisalFormMapper due to having a problem in the erroneous element ace.org.epms_backend.model.appraisal.AppraisalForm.AppraisalFormBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/continuous/MeetingCommentMapper.java:[10,8] No implementation was created for MeetingCommentMapper due to having a problem in the erroneous element ace.org.epms_backend.model.continuous.MeetingComment.MeetingCommentBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[INFO] 12 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  19.565 s
+[INFO] Finished at: 2026-05-03T15:16:17+06:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile (default-compile) on project epms_backend: Compilation failure: Compilation failure: 
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/AppraisalMapper.java:[19,23] No property named "employee.name" exists in source parameter(s). Did you mean "employee.race"?
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/AppraisalMapper.java:[19,23] No property named "manager.name" exists in source parameter(s). Did you mean "manager.race"?
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/controller/AppraisalController.java:[66,39] cannot find symbol
+[ERROR]   symbol:   class ScoreBreakdownResponse
+[ERROR]   location: class ace.org.epms_backend.controller.AppraisalController
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/controller/AppraisalSummaryController.java:[5,36] cannot find symbol
+[ERROR]   symbol:   class AppraisalSummaryService
+[ERROR]   location: package ace.org.epms_backend.service
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/controller/AppraisalSummaryController.java:[19,19] cannot find symbol
+[ERROR]   symbol:   class AppraisalSummaryService
+[ERROR]   location: class ace.org.epms_backend.controller.AppraisalSummaryController
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/controller/AppraisalSummaryController.java:[15,1] cannot find symbol
+[ERROR]   symbol:   class AppraisalSummaryService
+[ERROR]   location: class ace.org.epms_backend.controller.AppraisalSummaryController
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/continuous/FeedbackReplyMapper.java:[10,8] No implementation was created for FeedbackReplyMapper due to having a problem in the erroneous element ace.org.epms_backend.model.continuous.FeedbackReply.FeedbackReplyBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/PipMapper.java:[10,8] No implementation was created for PipMapper due to having a problem in the erroneous element ace.org.epms_backend.model.pip.PipRecord.PipRecordBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/continuous/FeedbackTagMapper.java:[10,8] No implementation was created for FeedbackTagMapper due to having a problem in the erroneous element ace.org.epms_backend.model.continuous.FeedbackTag.FeedbackTagBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/continuous/ContinuousFeedbackMapper.java:[11,8] No implementation was created for ContinuousFeedbackMapper due to having a problem in the erroneous element ace.org.epms_backend.model.continuous.ContinuousFeedback.ContinuousFeedbackBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/AppraisalFormMapper.java:[13,8] No implementation was created for AppraisalFormMapper due to having a problem in the erroneous element ace.org.epms_backend.model.appraisal.AppraisalForm.AppraisalFormBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] /E:/ACEOJT/project/EPMS/epms_backend/src/main/java/ace/org/epms_backend/mapper/continuous/MeetingCommentMapper.java:[10,8] No implementation was created for MeetingCommentMapper due to having a problem in the erroneous element ace.org.epms_backend.model.continuous.MeetingComment.MeetingCommentBuilder. Hint: this often means that some other annotation processor was supposed to process the erroneous element. You can also enable MapStruct verbose mode by setting -Amapstruct.verbose=true as a compilation argument.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

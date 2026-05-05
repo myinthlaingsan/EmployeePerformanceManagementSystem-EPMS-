@@ -26,6 +26,10 @@ import ace.org.epms_backend.repository.EmployeeRoleRepository;
 import ace.org.epms_backend.enums.RoleType;
 import ace.org.epms_backend.exception.AccessDeniedException;
 import ace.org.epms_backend.model.employee.Role;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -44,6 +48,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     private final PerformanceHistoryRepository historyRepository;
     private final AuthService authService;
     private final EmployeeRoleRepository employeeRoleRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -83,6 +88,20 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .performer(manager)
                 .build();
         historyRepository.save(history);
+
+        // Notify Employee (if not private)
+        if (!Boolean.TRUE.equals(feedback.getIsPrivate())) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(employee.getId())
+                    .senderId(manager.getId())
+                    .type(NotificationType.COMMENT_ADDED)
+                    .title("New Feedback Comment")
+                    .message("Manager " + manager.getStaffName() + " added a feedback comment: " + feedback.getDescription())
+                    .referenceType(ReferenceType.FEEDBACK) // Continuous feedback doesn't have a specific entity yet or use NONE
+                    .referenceId(feedback.getFeedbackId())
+                    .actionUrl("/continuous-feedback")
+                    .build());
+        }
 
         return feedbackMapper.toResponse(feedback);
     }
@@ -245,6 +264,22 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .performer(currentUser)
                 .build();
         historyRepository.save(history);
+
+        // Notify the other party
+        Long recipientId = currentUser.getId().equals(feedback.getManager().getId()) 
+                           ? feedback.getEmployee().getId() 
+                           : feedback.getManager().getId();
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(recipientId)
+                .senderId(currentUser.getId())
+                .type(NotificationType.COMMENT_REPLY)
+                .title("New Reply to Feedback")
+                .message(currentUser.getStaffName() + " replied: " + reply.getReplyText())
+                .referenceType(ReferenceType.FEEDBACK)
+                .referenceId(feedback.getFeedbackId())
+                .actionUrl("/continuous-feedback")
+                .build());
 
         return replyMapper.toResponse(reply);
     }

@@ -13,7 +13,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/v1/org/departments")
+@RequestMapping("/api/v1/departments")
 @RequiredArgsConstructor
 public class DepartmentController {
     private final DepartmentService departmentService;
@@ -45,5 +45,15 @@ public class DepartmentController {
     public ResponseEntity<ApiResponse<?>> deleteDepartment(@PathVariable Long id) {
         departmentService.deleteDepartment(id);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @GetMapping("/active")
+    public ResponseEntity<ApiResponse<List<DepartmentResponse>>> getActiveDepartments() {
+        return ResponseEntity.ok(ApiResponse.success(departmentService.getActiveDepartments()));
+    }
+
+    @GetMapping("/{id}/headcount")
+    public ResponseEntity<ApiResponse<Long>> getHeadcount(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(departmentService.getHeadcount(id)));
     }
 }

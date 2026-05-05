@@ -1,60 +1,82 @@
 package ace.org.epms_backend.model.appraisal;
 
 import ace.org.epms_backend.enums.AppraisalStatus;
-import ace.org.epms_backend.model.*;
+import ace.org.epms_backend.model.BaseEntity;
+import ace.org.epms_backend.model.PerformanceCategory;
 import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.SuperBuilder;
 
-import java.math.BigDecimal;
+import java.time.Instant;
 
 @Entity
-@Table(name = "appraisal")
+@Table(name = "appraisals")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@SuperBuilder
 public class Appraisal extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long appraisalId;
 
-    @ManyToOne
-    @JoinColumn(name = "employee_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
-    @ManyToOne
-    @JoinColumn(name = "manager_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id", nullable = false)
     private Employee manager;
 
-    @ManyToOne
-    @JoinColumn(name = "cycle_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cycle_id", nullable = false)
     private AppraisalCycle cycle;
 
-    @ManyToOne
-    @JoinColumn(name = "form_id")
-    private AppraisalForm form;
+    @ManyToOne(fetch = FetchType.LAZY)
 
-    @ManyToOne
     @JoinColumn(name = "performance_category_id")
     private PerformanceCategory performanceCategory;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private AppraisalStatus status;
 
-    private BigDecimal totalScore;
+    private Instant assignedAt;
 
-    private String performanceGrade;
+    private Instant selfSubmittedAt;
 
-    private Boolean employeeSigned;
-    private Boolean managerSigned;
+    private Instant managerSubmittedAt;
+
+    private Instant hrApprovedAt;
+
+    private Instant finalizedAt;
+
+    private Instant employeeSignedAt;
+
+    private Instant managerSignedAt;
+
+    private Instant lockedAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String employeeSignComment;
+
+    @Column(columnDefinition = "TEXT")
+    private String managerSignComment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private Employee approvedBy;
+
+    @Column(columnDefinition = "TEXT")
+    private String approvalComment;
+
+    private Boolean isLocked = false;
 
     private Boolean isActive = true;
-
-    private Boolean isLocked;
 }
+
+
+
 

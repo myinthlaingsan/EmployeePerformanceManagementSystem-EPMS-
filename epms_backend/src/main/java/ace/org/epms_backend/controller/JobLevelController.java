@@ -13,7 +13,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/v1/org/job-levels")
+@RequestMapping("/api/v1/job-levels")
 @RequiredArgsConstructor
 public class JobLevelController {
     private final JobLevelService jobLevelService;

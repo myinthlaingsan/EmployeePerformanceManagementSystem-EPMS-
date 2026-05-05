@@ -23,6 +23,8 @@ public class EmployeeResponse {
     private String currentDepartmentName;
     private Long currentDepartmentId;
     private String parentDepartmentName;
+    private Long directManagerId;
+    private String directManagerName;
     private List<String> roles;
     private List<String> permissions;
 }

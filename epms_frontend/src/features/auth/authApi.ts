@@ -58,6 +58,16 @@ export const authApi = api.injectEndpoints({
         body: data,
       }),
     }),
+    validateToken: builder.query<boolean, void>({
+      query: () => "/auth/validate",
+      transformResponse: (res: ApiResponse<boolean>) => res.data,
+    }),
+    revokeSessions: builder.mutation<void, number>({
+      query: (employeeId) => ({
+        url: `/auth/revoke-sessions/${employeeId}`,
+        method: "POST",
+      }),
+    }),
   }),
 });
 
@@ -69,4 +79,6 @@ export const {
   useLogoutUserApiMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,
+  useValidateTokenQuery,
+  useRevokeSessionsMutation,
 } = authApi;
