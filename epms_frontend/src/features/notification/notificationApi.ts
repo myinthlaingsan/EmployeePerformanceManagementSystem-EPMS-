@@ -22,7 +22,7 @@ export const notificationApi = api.injectEndpoints({
     markAllAsRead: builder.mutation<void, void>({
       query: () => ({
         url: "/notifications/read-all",
-        method: "PUT",
+        method: "PATCH",
       }),
     }),
   }),

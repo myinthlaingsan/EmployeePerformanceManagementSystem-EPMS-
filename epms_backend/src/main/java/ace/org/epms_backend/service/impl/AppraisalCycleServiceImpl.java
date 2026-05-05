@@ -169,10 +169,19 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         return appraisalCycleMapper.toResponse(cycle);
     }
 
+    @Override
+    public AppraisalCycleResponse getActiveCycle() {
+        return appraisalCycleRepository.findByIsActiveTrue().stream()
+                .findFirst()
+                .map(appraisalCycleMapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("No active appraisal cycle found"));
+    }
+
     private AppraisalCycle getCycleById(Long id) {
         return appraisalCycleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("AppraisalCycle not found with id: " + id));
     }
+
 
     private void deactivateCurrentActiveCycles() {
         List<AppraisalCycle> activeCycles = appraisalCycleRepository.findByIsActiveTrue();

@@ -18,6 +18,10 @@ import ace.org.epms_backend.repository.PermissionRepository;
 import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.repository.RoleRepository;
 import ace.org.epms_backend.service.PermissionService;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +38,7 @@ public class PermissionServiceImpl implements PermissionService {
     private final JobLevelRepository jobLevelRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
     private final PermissionMapper permissionMapper;
+    private final AuditService auditService;
 
     @Override
     @Transactional
@@ -43,6 +48,15 @@ public class PermissionServiceImpl implements PermissionService {
         }
         Permission permission = permissionMapper.toEntity(request);
         permission = permissionRepository.save(permission);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("permissions")
+                .recordId(permission.getPermissionId())
+                .action(AuditAction.INSERT)
+                .newState(permission)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return permissionMapper.toResponse(permission);
     }
 
@@ -73,6 +87,15 @@ public class PermissionServiceImpl implements PermissionService {
 
         permissionMapper.updateEntity(request, permission);
         permission = permissionRepository.save(permission);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("permissions")
+                .recordId(permission.getPermissionId())
+                .action(AuditAction.UPDATE)
+                .newState(permission)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return permissionMapper.toResponse(permission);
     }
 
@@ -87,6 +110,14 @@ public class PermissionServiceImpl implements PermissionService {
         }
 
         permissionRepository.delete(permission);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("permissions")
+                .recordId(permission.getPermissionId())
+                .action(AuditAction.DELETE)
+                .oldState(permission)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 
     @Override
@@ -108,7 +139,15 @@ public class PermissionServiceImpl implements PermissionService {
         assignment.setLevel(level);
         assignment.setPermission(permission);
 
-        roleLevelPermissionRepository.save(assignment);
+        RoleLevelPermission saved = roleLevelPermissionRepository.save(assignment);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("role_level_permissions")
+                .recordId(saved.getId())
+                .action(AuditAction.INSERT)
+                .newState(saved)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 
     @Override
@@ -118,6 +157,14 @@ public class PermissionServiceImpl implements PermissionService {
                 .orElseThrow(() -> new NotFoundException("Role level permission assignment not found"));
         
         roleLevelPermissionRepository.delete(assignment);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("role_level_permissions")
+                .recordId(assignment.getId())
+                .action(AuditAction.DELETE)
+                .oldState(assignment)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 
     @Override

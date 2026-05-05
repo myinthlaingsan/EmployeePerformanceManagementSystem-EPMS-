@@ -1,0 +1,137 @@
+package ace.org.epms_backend.controller.report;
+
+import ace.org.epms_backend.dto.ApiResponse;
+import ace.org.epms_backend.dto.report.*;
+import ace.org.epms_backend.service.report.ReportService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/reports")
+@RequiredArgsConstructor
+public class ReportController {
+
+    private final ReportService reportService;
+
+    @GetMapping("/kpi-achievement")
+    public ResponseEntity<ApiResponse<List<KpiAchievementReportDTO>>> getKpiAchievementReport(
+            @RequestParam Long cycleId,
+            @RequestParam(required = false) Long departmentId) {
+        List<KpiAchievementReportDTO> data = reportService.getKpiAchievementReport(cycleId, departmentId);
+        return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
+    @GetMapping("/kpi-achievement/download")
+    public ResponseEntity<byte[]> downloadKpiAchievementReport(
+            @RequestParam Long cycleId,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportKpiAchievementReport(cycleId, departmentId, format);
+        return createDownloadResponse(reportContent, "KPI_Achievement_Report", format);
+    }
+
+    // Appraisal Status
+    @GetMapping("/appraisal-status")
+    public ResponseEntity<ApiResponse<AppraisalStatusReportDTO>> getAppraisalStatusReport(@RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getAppraisalStatusReport(cycleId)));
+    }
+
+    @GetMapping("/appraisal-status/download")
+    public ResponseEntity<byte[]> downloadAppraisalStatusReport(@RequestParam Long cycleId, @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportAppraisalStatusReport(cycleId, format);
+        return createDownloadResponse(reportContent, "Appraisal_Status_Report", format);
+    }
+
+    // Performance Trend
+    @GetMapping("/performance-trend")
+    public ResponseEntity<ApiResponse<PerformanceTrendReportDTO>> getPerformanceTrendReport(@RequestParam Long employeeId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getPerformanceTrendReport(employeeId)));
+    }
+
+    @GetMapping("/performance-trend/download")
+    public ResponseEntity<byte[]> downloadPerformanceTrendReport(@RequestParam Long employeeId, @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportPerformanceTrendReport(employeeId, format);
+        return createDownloadResponse(reportContent, "Performance_Trend_Report", format);
+    }
+
+    // 360 Feedback
+    @GetMapping("/feedback-participation")
+    public ResponseEntity<ApiResponse<FeedbackParticipationReportDTO>> getFeedbackParticipationReport(@RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getFeedbackParticipationReport(cycleId)));
+    }
+
+    @GetMapping("/feedback-participation/download")
+    public ResponseEntity<byte[]> downloadFeedbackParticipationReport(@RequestParam Long cycleId, @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportFeedbackParticipationReport(cycleId, format);
+        return createDownloadResponse(reportContent, "Feedback_Participation_Report", format);
+    }
+
+    // PIP Tracking
+    @GetMapping("/pip-tracking")
+    public ResponseEntity<ApiResponse<PipTrackingReportDTO>> getPipTrackingReport() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getPipTrackingReport()));
+    }
+
+    @GetMapping("/pip-tracking/download")
+    public ResponseEntity<byte[]> downloadPipTrackingReport(@RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportPipTrackingReport(format);
+        return createDownloadResponse(reportContent, "PIP_Tracking_Report", format);
+    }
+
+    // Audit Trail
+    @GetMapping("/audit-trail")
+    public ResponseEntity<ApiResponse<List<AuditTrailReportDTO>>> getAuditTrailReport(
+            @RequestParam(required = false) String tableName,
+            @RequestParam(required = false) Long recordId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getAuditTrailReport(tableName, recordId)));
+    }
+
+    @GetMapping("/audit-trail/download")
+    public ResponseEntity<byte[]> downloadAuditTrailReport(
+            @RequestParam(required = false) String tableName,
+            @RequestParam(required = false) Long recordId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportAuditTrailReport(tableName, recordId, format);
+        return createDownloadResponse(reportContent, "Audit_Trail_Report", format);
+    }
+
+    // Department Comparison
+    @GetMapping("/dept-comparison")
+    public ResponseEntity<ApiResponse<List<DeptPerformanceReportDTO>>> getDeptPerformanceComparison(@RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getDeptPerformanceComparison(cycleId)));
+    }
+
+    @GetMapping("/dept-comparison/download")
+    public ResponseEntity<byte[]> downloadDeptPerformanceComparison(@RequestParam Long cycleId, @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportDeptPerformanceComparison(cycleId, format);
+        return createDownloadResponse(reportContent, "Dept_Performance_Comparison", format);
+    }
+
+    // Promotion Readiness
+    @GetMapping("/promotion-readiness")
+    public ResponseEntity<ApiResponse<List<PromotionReadinessReportDTO>>> getPromotionReadinessReport() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getPromotionReadinessReport()));
+    }
+
+    @GetMapping("/promotion-readiness/download")
+    public ResponseEntity<byte[]> downloadPromotionReadinessReport(@RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportPromotionReadinessReport(format);
+        return createDownloadResponse(reportContent, "Promotion_Readiness_Report", format);
+    }
+
+    private ResponseEntity<byte[]> createDownloadResponse(byte[] content, String baseName, String format) {
+        String fileName = baseName + "." + format.toLowerCase();
+        MediaType mediaType = "pdf".equalsIgnoreCase(format) ? MediaType.APPLICATION_PDF : 
+                              MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .contentType(mediaType)
+                .body(content);
+    }
+}

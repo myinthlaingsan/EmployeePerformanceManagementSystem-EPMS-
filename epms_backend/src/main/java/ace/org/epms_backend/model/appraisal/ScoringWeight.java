@@ -1,22 +1,32 @@
 package ace.org.epms_backend.model.appraisal;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "scoring_weight")
-@Getter
-@Setter
+@Table(name = "scoring_weights")
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class ScoringWeight {
 
     @Id
-    private Long id = 1L;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    private BigDecimal managerWeight = BigDecimal.valueOf(0.5);
-    private BigDecimal feedbackWeight = BigDecimal.valueOf(0.3);
-    private BigDecimal selfWeight = BigDecimal.valueOf(0.2);
+    @OneToOne
+    @JoinColumn(name = "cycle_id", nullable = false, unique = true)
+    private AppraisalCycle cycle;
+
+    private BigDecimal kpiWeight;
+
+    private BigDecimal managerWeight;
+
+    private BigDecimal feedbackWeight;
+
+    private BigDecimal selfWeight;
 }

@@ -1,17 +1,18 @@
 package ace.org.epms_backend.model.appraisal;
+
 import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "manager_evaluation_answer")
-@Getter
-@Setter
+@Table(name = "manager_evaluation_answers")
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@SuperBuilder
 public class ManagerEvaluationAnswer extends BaseEntity {
 
     @Id
@@ -19,11 +20,11 @@ public class ManagerEvaluationAnswer extends BaseEntity {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "evaluation_id")
+    @JoinColumn(name = "evaluation_id", nullable = false)
     private ManagerEvaluation evaluation;
 
     @ManyToOne
-    @JoinColumn(name = "question_id")
+    @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
     private Integer ratingValue;

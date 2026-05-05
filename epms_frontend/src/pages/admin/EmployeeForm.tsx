@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useCreateEmployeeMutation, useGetEmployeeByIdQuery, useUpdateEmployeeMutation } from "../../features/employee/employeeapi";
 import { useGetPositionsQuery } from "../../features/org/positionApi";
 import { useGetRolesQuery } from "../../features/org/roleApi";
-import { useGetDepartmentsQuery } from "../../features/org/departmentApi";
+import { useGetActiveDepartmentsQuery } from "../../features/org/departmentApi";
 import type { CreateEmployeeRequest, UpdateEmployeeRequest, Gender, MaritalStatus, EmployeeStatus } from "../../features/employee/employeeTypes";
 
 const EmployeeForm = () => {
@@ -12,10 +12,9 @@ const EmployeeForm = () => {
   const isEdit = !!id;
 
   const { data: employeeData, isLoading: isLoadingEmployee } = useGetEmployeeByIdQuery(Number(id), { skip: !isEdit });
-  const { data: positions } = useGetPositionsQuery();
   const { data: roles } = useGetRolesQuery();
-  const { data: departments } = useGetDepartmentsQuery();
-
+  const { data: departments } = useGetActiveDepartmentsQuery();
+  
   const [createEmployee, { isLoading: isCreating }] = useCreateEmployeeMutation();
   const [updateEmployee, { isLoading: isUpdating }] = useUpdateEmployeeMutation();
 
@@ -52,6 +51,8 @@ const EmployeeForm = () => {
   });
 
   const [selectedPositionLevel, setSelectedPositionLevel] = useState("");
+
+  const { data: positions } = useGetPositionsQuery();
 
   useEffect(() => {
     if (isEdit && employeeData) {
@@ -173,7 +174,13 @@ const EmployeeForm = () => {
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Current Department (ERP) *</label>
                   <select required className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                    value={formData.currentDepartmentId || ""} onChange={e => setFormData({ ...formData, currentDepartmentId: Number(e.target.value) })}>
+                    value={formData.currentDepartmentId || ""} 
+                    onChange={e => {
+                      setFormData({ 
+                        ...formData, 
+                        currentDepartmentId: Number(e.target.value)
+                      });
+                    }}>
                     <option value="">Select Current Dept</option>
                     {departments?.map(dept => <option key={dept.id} value={dept.id}>{dept.departmentName}</option>)}
                   </select>

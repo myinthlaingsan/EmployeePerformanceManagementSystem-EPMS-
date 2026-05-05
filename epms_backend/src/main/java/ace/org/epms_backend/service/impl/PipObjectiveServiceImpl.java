@@ -2,6 +2,7 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.pip.PipObjectiveRequest;
 import ace.org.epms_backend.dto.pip.PipObjectiveResponse;
+import ace.org.epms_backend.dto.pip.PipObjectiveUpdateRequest;
 import ace.org.epms_backend.enums.ObjectiveStatus;
 import ace.org.epms_backend.enums.PipStatus;
 import ace.org.epms_backend.exception.AccessDeniedException;
@@ -20,12 +21,14 @@ import lombok.RequiredArgsConstructor;
 // import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class PipObjectiveServiceImpl implements PipObjectiveService {
 
     private final PipObjectiveRepository objectiveRepository;
@@ -49,6 +52,23 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
         PipObjective objective = mapper.toEntity(request);
         objective.setPip(pip);
         objective.setStatus(ObjectiveStatus.NOT_STARTED);
+
+        return mapper.toResponse(objectiveRepository.save(objective));
+    }
+
+    @Override
+    public PipObjectiveResponse updateObjective(Long id, PipObjectiveUpdateRequest request) {
+        PipObjective objective = objectiveRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Objective not found"));
+
+        PipStatus status = objective.getPip().getStatus();
+        if (status == PipStatus.COMPLETED || status == PipStatus.CLOSED) {
+            throw new InvalidStateException("Objectives cannot be edited after PIP is COMPLETED or CLOSED");
+        }
+
+        if (request.getTitle() != null) objective.setTitle(request.getTitle());
+        if (request.getDescription() != null) objective.setDescription(request.getDescription());
+        if (request.getSuccessCriteria() != null) objective.setSuccessCriteria(request.getSuccessCriteria());
 
         return mapper.toResponse(objectiveRepository.save(objective));
     }
@@ -88,6 +108,10 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
 
         PipObjective objective = objectiveRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Objective not found"));
+
+        if (objective.getPip().getStatus() != PipStatus.ACTIVE && objective.getPip().getStatus() != PipStatus.EXTENDED) {
+            throw new InvalidStateException("Objective status can only be updated if PIP is ACTIVE or EXTENDED");
+        }
 
         objective.setStatus(status);
         objective.setIsAchieved(status == ObjectiveStatus.COMPLETED);

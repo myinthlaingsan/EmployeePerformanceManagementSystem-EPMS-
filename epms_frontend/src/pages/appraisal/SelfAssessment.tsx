@@ -208,7 +208,7 @@ const SelfAssessment = () => {
             Overall Self-Reflection
           </h2>
           <textarea 
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-6 text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all min-h-[160px]"
+            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-6 text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all min-h-40"
             placeholder="Share your major achievements, challenges, and goals for the next period..."
             value={comment}
             onChange={(e) => setComment(e.target.value)}

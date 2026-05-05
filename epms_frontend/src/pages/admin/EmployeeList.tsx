@@ -1,5 +1,6 @@
 import {
   useGetEmployeesQuery,
+  useSearchEmployeesQuery,
   useDeleteEmployeeMutation,
   useActivateEmployeeMutation,
   useDeactivateEmployeeMutation
@@ -13,11 +14,19 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 
 const EmployeeList = () => {
-  const { data: employees, isLoading, error } = useGetEmployeesQuery();
+  const [page, setPage] = useState(0);
+  const [size] = useState(10);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: pagedData, isLoading, error } = searchQuery
+    ? useSearchEmployeesQuery({ query: searchQuery, page, size })
+    : useGetEmployeesQuery({ page, size });
+
+  const employees = pagedData?.content;
   const { data: allRoles } = useGetRolesQuery();
   const [deleteEmployee] = useDeleteEmployeeMutation();
   const [activateEmployee] = useActivateEmployeeMutation();
-  const [deactivateEmployee] = useDeactivateEmployeeMutation();
+  // const [deactivateEmployee] = useDeactivateEmployeeMutation();
   const [assignRole] = useAssignRoleToEmployeeMutation();
   const [removeRole] = useRemoveRoleFromEmployeeMutation();
 
@@ -45,15 +54,32 @@ const EmployeeList = () => {
           <h1 className="text-2xl font-bold text-gray-900">Employees</h1>
           <p className="text-sm text-gray-500 mt-1">Manage staff accounts, roles, and status.</p>
         </div>
-        <Link
-          to="/employees/new"
-          className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Staff
-        </Link>
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <input
+              type="text"
+              placeholder="Search staff..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(0);
+              }}
+              className="pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-64 shadow-sm group-hover:border-gray-200"
+            />
+            <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <Link
+            to="/employees/new"
+            className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Staff
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -71,7 +97,7 @@ const EmployeeList = () => {
               <tr key={emp.id} className="hover:bg-gray-50/50 transition-colors group">
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-4">
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
+                    <div className="w-11 h-11 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
                       {emp.staffName.charAt(0)}
                     </div>
                     <div>
@@ -159,7 +185,7 @@ const EmployeeList = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
-                    <div className="h-4 w-[1px] bg-gray-100 mx-1"></div>
+                    <div className="h-4 w-px bg-gray-100 mx-1"></div>
                     <button
                       onClick={() => emp.id && activateEmployee(emp.id)}
                       className="text-[10px] font-black uppercase text-green-500 hover:text-green-700 transition"
@@ -173,6 +199,49 @@ const EmployeeList = () => {
           </tbody>
         </table>
       </div>
+
+      {pagedData && (
+        <div className="flex items-center justify-between px-6 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+            Showing {pagedData.content.length} of {pagedData.totalElements} results
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(page - 1)}
+              disabled={page === 0}
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-1">
+              {[...Array(pagedData.totalPages)].map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPage(i)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition ${
+                    page === i
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                      : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={pagedData.last}
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

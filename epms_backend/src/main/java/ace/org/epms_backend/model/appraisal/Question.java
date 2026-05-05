@@ -1,18 +1,19 @@
 package ace.org.epms_backend.model.appraisal;
+
 import ace.org.epms_backend.enums.QuestionType;
 import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "question")
-@Getter
-@Setter
+@Table(name = "questions")
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@SuperBuilder
 public class Question extends BaseEntity {
 
     @Id

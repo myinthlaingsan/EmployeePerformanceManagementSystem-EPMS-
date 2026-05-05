@@ -1,5 +1,6 @@
 package ace.org.epms_backend.service.impl;
 
+import ace.org.epms_backend.dto.PagedResponse;
 import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.enums.EmployeeStatus;
 import ace.org.epms_backend.exception.*;
@@ -19,6 +20,10 @@ import ace.org.epms_backend.enums.AuditAction;
 import ace.org.epms_backend.enums.AuditStatus;
 import ace.org.epms_backend.service.AuditService;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -98,20 +103,29 @@ public class EmployeeServiceImpl implements EmployeeService {
                 tokenRepository.save(resetToken);
 
                 // Assign Manager (Reporting Line)
-                if (request.getDirectManagerId() != null) {
-                        Employee manager = employeeRepository.findById(request.getDirectManagerId())
-                                        .orElseThrow(() -> new NotFoundException("Manager not found"));
-
-                        ReportingLine reportingLine = ReportingLine.builder()
-                                        .employee(savedEmployee)
-                                        .manager(manager)
-                                        .isActive(true)
-                                        .build();
-                        reportingLineRepository.save(reportingLine);
-                }
+                // if (request.getDirectManagerId() != null) {
+                // Employee manager = employeeRepository.findById(request.getDirectManagerId())
+                // .orElseThrow(() -> new NotFoundException("Manager not found"));
+                //
+                // ReportingLine reportingLine = ReportingLine.builder()
+                // .employee(savedEmployee)
+                // .manager(manager)
+                // .isActive(true)
+                // .build();
+                // reportingLineRepository.save(reportingLine);
+                // }
 
                 applicationEventPublisher.publishEvent(
                                 new EmployeeCreatedEvent(savedEmployee.getId(), token));
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(savedEmployee.getId())
+                                .action(AuditAction.INSERT)
+                                .newState(savedEmployee)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
+
                 return mapToResponse(savedEmployee);
         }
 
@@ -128,7 +142,15 @@ public class EmployeeServiceImpl implements EmployeeService {
 
                 emp.setPassword(passwordEncoder.encode(newPassword));
                 emp.setStatus(EmployeeStatus.ACTIVE);
-                employeeRepository.save(emp);
+                Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
 
                 // Notify Account Activated
                 applicationEventPublisher.publishEvent(NotificationEvent.builder()
@@ -160,6 +182,52 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         @Override
+        public PagedResponse<EmployeeResponse> getAllPaginated(int page, int size) {
+                Pageable pageable = PageRequest.of(
+                                page,
+                                size,
+                                Sort.by("id").descending());
+
+                Page<Employee> employeePage = employeeRepository.findAllPaginated(pageable);
+
+                List<EmployeeResponse> content = employeePage.getContent()
+                                .stream()
+                                .map(this::mapToResponse)
+                                .toList();
+
+                return new PagedResponse<>(
+                                content,
+                                employeePage.getNumber(),
+                                employeePage.getSize(),
+                                employeePage.getTotalElements(),
+                                employeePage.getTotalPages(),
+                                employeePage.isLast());
+        }
+
+        @Override
+        public PagedResponse<EmployeeResponse> search(String query, int page, int size) {
+                Pageable pageable = PageRequest.of(
+                                page,
+                                size,
+                                Sort.by("id").descending());
+
+                Page<Employee> employeePage = employeeRepository.searchEmployees(query, pageable);
+
+                List<EmployeeResponse> content = employeePage.getContent()
+                                .stream()
+                                .map(this::mapToResponse)
+                                .toList();
+
+                return new PagedResponse<>(
+                                content,
+                                employeePage.getNumber(),
+                                employeePage.getSize(),
+                                employeePage.getTotalElements(),
+                                employeePage.getTotalPages(),
+                                employeePage.isLast());
+        }
+
+        @Override
         public EmployeeResponse updateEmployee(Long id, UpdateEmployeeRequest request) {
                 Employee emp = employeeRepository.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
@@ -170,7 +238,16 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 .orElseThrow(() -> new NotFoundException("Position Not Found"));
                 emp.setPosition(position);
                 emp.setLevel(position.getLevel()); // Set level from position
+
                 Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
 
                 // Update Manager (Reporting Line)
                 if (request.getDirectManagerId() != null) {
@@ -207,7 +284,15 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
 
                 emp.setIsActive(false);
-                employeeRepository.save(emp);
+                Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
         }
 
         @Override
@@ -215,6 +300,15 @@ public class EmployeeServiceImpl implements EmployeeService {
                 Employee emp = employeeRepository.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
                 emp.setStatus(EmployeeStatus.ACTIVE);
+                Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
         }
 
         @Override
@@ -222,6 +316,37 @@ public class EmployeeServiceImpl implements EmployeeService {
                 Employee emp = employeeRepository.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
                 emp.setStatus(EmployeeStatus.INACTIVE);
+                Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
+        }
+
+        @Override
+        public List<EmployeeResponse> getDirectReports(Long managerId) {
+                Employee manager = employeeRepository.findById(managerId)
+                                .orElseThrow(() -> new NotFoundException("Manager not found"));
+
+                return reportingLineRepository.findAllByManagerAndIsActiveTrue(manager).stream()
+                                .map(ReportingLine::getEmployee)
+                                .map(this::mapToResponse)
+                                .toList();
+        }
+
+        @Override
+        public EmployeeResponse getManager(Long employeeId) {
+                Employee employee = employeeRepository.findById(employeeId)
+                                .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+                return reportingLineRepository.findByEmployeeAndIsActiveTrue(employee)
+                                .map(ReportingLine::getManager)
+                                .map(this::mapToResponse)
+                                .orElse(null);
         }
 
         @Override
@@ -285,7 +410,15 @@ public class EmployeeServiceImpl implements EmployeeService {
                         throw new PasswordIncorrectException("Old password incorrect");
                 }
                 emp.setPassword(passwordEncoder.encode(request.getNewPassword()));
-                employeeRepository.save(emp);
+                Employee updated = employeeRepository.save(emp);
+
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(updated.getId())
+                                .action(AuditAction.UPDATE)
+                                .newState(updated)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
 
                 // Notify Password Changed
                 applicationEventPublisher.publishEvent(NotificationEvent.builder()
@@ -326,13 +459,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                                                         ed.getCurrentDepartment().getDepartmentName());
                                         response.setParentDepartmentName(
                                                         ed.getParentDepartment().getDepartmentName());
-                                });
-
-                // Set Manager Info
-                reportingLineRepository.findByEmployeeAndIsActiveTrue(emp)
-                                .ifPresent(line -> {
-                                        response.setDirectManagerId(line.getManager().getId());
-                                        response.setDirectManagerName(line.getManager().getStaffName());
                                 });
                 return response;
         }

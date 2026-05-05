@@ -17,7 +17,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ current, total, label }) => {
       </div>
       <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
         <div 
-          className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-500 ease-out rounded-full shadow-sm"
+          className="bg-linear-to-r from-indigo-500 to-purple-500 h-full transition-all duration-500 ease-out rounded-full shadow-sm"
           style={{ width: `${percentage}%` }}
         />
       </div>

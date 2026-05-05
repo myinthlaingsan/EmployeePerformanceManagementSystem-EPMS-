@@ -47,6 +47,7 @@ export const positionApi = api.injectEndpoints({
       }),
       invalidatesTags: ["Position"],
     }),
+
   }),
 });
 

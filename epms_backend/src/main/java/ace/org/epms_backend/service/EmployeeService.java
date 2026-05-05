@@ -1,5 +1,6 @@
 package ace.org.epms_backend.service;
 
+import ace.org.epms_backend.dto.PagedResponse;
 import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.model.employee.Employee;
 
@@ -15,6 +16,10 @@ public interface EmployeeService {
 
     List<EmployeeResponse> getAll();
 
+    PagedResponse<EmployeeResponse> getAllPaginated(int page, int size);
+
+    PagedResponse<EmployeeResponse> search(String query, int page, int size);
+
     EmployeeResponse updateEmployee(Long id, UpdateEmployeeRequest request);
 
     void deleteEmployee(Long id);
@@ -23,6 +28,11 @@ public interface EmployeeService {
     void activateEmployee(Long id);
 
     void deactivateEmployee(Long id);
+
+    // HIERARCHY
+    List<EmployeeResponse> getDirectReports(Long managerId);
+
+    EmployeeResponse getManager(Long employeeId);
 
     // AUTH SUPPORT
     Employee findByEmail(String email);

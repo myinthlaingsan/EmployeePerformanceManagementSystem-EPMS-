@@ -11,4 +11,7 @@ public interface SelfAssessmentAnswerRepository extends JpaRepository<SelfAssess
     List<SelfAssessmentAnswer> findBySelfAssessment_SelfAssessmentId(Long selfAssessmentId);
 
     Optional<SelfAssessmentAnswer> findBySelfAssessment_SelfAssessmentIdAndQuestion_QuestionId(Long selfAssessmentId, Long questionId);
+
+    List<SelfAssessmentAnswer> findBySelfAssessment_Appraisal_AppraisalId(Long appraisalId);
 }
+

@@ -1,31 +1,38 @@
 package ace.org.epms_backend.model.appraisal;
 
+import ace.org.epms_backend.enums.PerformanceGrade;
+import ace.org.epms_backend.model.BaseEntity;
+import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "appraisal_summary")
-@Getter
-@Setter
+@Table(name = "appraisal_summaries")
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder
-public class AppraisalSummary {
+@EqualsAndHashCode(callSuper = true)
+public class AppraisalSummary extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long employeeId;
+    @ManyToOne
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
 
     @ManyToOne
-    @JoinColumn(name = "cycle_id")
+    @JoinColumn(name = "cycle_id", nullable = false)
     private AppraisalCycle cycle;
 
-    private BigDecimal totalScore; // across all forms
+    private BigDecimal totalScore;
 
-    private String finalGrade;
+    @Enumerated(EnumType.STRING)
+    private PerformanceGrade finalGrade;
 }

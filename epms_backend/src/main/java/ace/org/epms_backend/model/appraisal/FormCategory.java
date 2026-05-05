@@ -2,17 +2,17 @@ package ace.org.epms_backend.model.appraisal;
 
 import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "form_category")
-@Getter
-@Setter
+@Table(name = "form_categories")
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@SuperBuilder
 public class FormCategory extends BaseEntity {
 
     @Id

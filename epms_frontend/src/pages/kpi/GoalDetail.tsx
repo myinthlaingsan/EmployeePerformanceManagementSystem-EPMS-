@@ -148,7 +148,7 @@ const GoalDetail: React.FC = () => {
                     {item.targetValue} <span className="text-[10px] uppercase text-gray-300">{item.unit}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3 min-w-[150px]">
+                    <div className="flex items-center gap-3 min-w-37.5">
                       <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
                         <div
                           className="bg-blue-600 h-full transition-all duration-500"
