@@ -12,6 +12,7 @@ import type {
   KpiRevisionRequest,
   KpiScoreResponse,
   KpiGoalBulkUpdateRequest,
+  BulkGoalAssignmentRequest,
 } from '../features/kpi/kpiTypes';
 
 export const kpiApi = api.injectEndpoints({
@@ -89,6 +90,14 @@ export const kpiApi = api.injectEndpoints({
     assignKpiToEmployee: builder.mutation<ApiResponse<GoalSetResponse>, GoalAssignmentRequest>({
       query: (body) => ({
         url: '/kpi/assign',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['GoalSet'],
+    }),
+    bulkAssignKpi: builder.mutation<ApiResponse<void>, BulkGoalAssignmentRequest>({
+      query: (body) => ({
+        url: '/kpi/bulk-assign',
         method: 'POST',
         body,
       }),
@@ -254,4 +263,5 @@ export const {
   useUpdateLibraryMutation,
   useGetTeamGoalSetsQuery,
   useSubmitGoalSetMutation,
+  useBulkAssignKpiMutation,
 } = kpiApi;

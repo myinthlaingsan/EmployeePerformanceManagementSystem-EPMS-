@@ -18,6 +18,7 @@ public interface KpiService {
 
     // KPI Assignment
     GoalSetResponse assignKpiToEmployee(GoalAssignmentRequest request);
+    void bulkAssignKpi(BulkGoalAssignmentRequest request);
 
     // Goal Management
     GoalSetResponse addGoalItem(Long goalSetId, KpiGoalItemRequest request);

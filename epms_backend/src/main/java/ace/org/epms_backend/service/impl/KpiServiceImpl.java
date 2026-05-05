@@ -210,6 +210,68 @@ public class KpiServiceImpl implements KpiService {
 
         @Override
         @Transactional
+        public void bulkAssignKpi(BulkGoalAssignmentRequest request) {
+                KpiLibrary library = libraryRepository.findById(request.getLibraryId())
+                                .orElseThrow(() -> new NotFoundException("Library not found"));
+
+                if (!library.getIsActive()) {
+                        throw new IllegalArgumentException("Cannot assign from an inactive library");
+                }
+
+                AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
+                                .orElseGet(() -> cycleRepository.findByIsActiveTrue().stream().findFirst()
+                                                .orElseThrow(() -> new NotFoundException(
+                                                                "No active appraisal cycle found in the system.")));
+
+                Employee currentManager = getCurrentEmployee();
+
+                for (Long employeeId : request.getEmployeeIds()) {
+                        Employee employee = employeeRepository.findById(employeeId)
+                                        .orElseThrow(() -> new NotFoundException("Employee not found with ID: " + employeeId));
+
+                        // Create Draft Goal Set
+                        KpiGoals goalSet = KpiGoals.builder()
+                                        .employee(employee)
+                                        .manager(currentManager)
+                                        .cycle(cycle)
+                                        .status(KpiGoalStatus.DRAFT)
+                                        .version(1)
+                                        .isCurrent(true)
+                                        .build();
+
+                        KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+                        // Copy library details
+                        List<KpiGoalItem> goalItems = library.getDetails().stream().map(libDetail -> {
+                                return KpiGoalItem.builder()
+                                                .goalSet(savedGoalSet)
+                                                .title(libDetail.getGoalTitle())
+                                                .targetValue(libDetail.getTargetValue())
+                                                .weightPercent(libDetail.getWeightPercent())
+                                                .category(libDetail.getCategory())
+                                                .status(KpiItemStatus.NOT_STARTED)
+                                                .isActive(true)
+                                                .build();
+                        }).collect(Collectors.toList());
+
+                        goalItemRepository.saveAll(goalItems);
+
+                        // Trigger Notification
+                        eventPublisher.publishEvent(NotificationEvent.builder()
+                                        .recipientId(employee.getId())
+                                        .senderId(currentManager.getId())
+                                        .type(NotificationType.KPI_ASSIGNED)
+                                        .title("New KPI Assigned (Bulk)")
+                                        .message("A new KPI set has been bulk-assigned to you from library: " + library.getTitle())
+                                        .referenceType(ReferenceType.KPI)
+                                        .referenceId(savedGoalSet.getId())
+                                        .actionUrl("/kpis/my-goals")
+                                        .build());
+                }
+        }
+
+        @Override
+        @Transactional
         public GoalSetResponse addGoalItem(Long goalSetId, KpiGoalItemRequest request) {
                 KpiGoals goalSet = goalsRepository.findById(goalSetId)
                                 .orElseThrow(() -> new NotFoundException("Goal set not found"));

@@ -59,6 +59,12 @@ export interface GoalAssignmentRequest {
   appraisalCycleId: number;
 }
 
+export interface BulkGoalAssignmentRequest {
+  employeeIds: number[];
+  libraryId: number;
+  appraisalCycleId: number;
+}
+
 // ==================== Goal Items ====================
 export interface KpiGoalItemRequest {
   title: string;
