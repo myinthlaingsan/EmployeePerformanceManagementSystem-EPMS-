@@ -72,6 +72,10 @@ const GoalAssignmentWorkspace: React.FC = () => {
     return activeItems.reduce((sum, item) => sum + Number(item.weightPercent), 0);
   }, [activeItems]);
 
+  const overweightItems = useMemo(() => {
+    return activeItems.filter(item => Number(item.weightPercent) > 35);
+  }, [activeItems]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -426,13 +430,20 @@ const GoalAssignmentWorkspace: React.FC = () => {
                           <div className="flex items-center justify-end gap-2">
                             <input
                               type="number"
-                              className="w-16 bg-blue-50/50 border border-blue-100 rounded-lg py-1.5 px-2 text-right text-xs font-black text-blue-700 focus:bg-white disabled:opacity-50"
+                              className={`w-16 rounded-lg py-1.5 px-2 text-right text-xs font-black focus:bg-white disabled:opacity-50 ${
+                                Number(item.weightPercent) > 35
+                                  ? 'bg-red-50 border border-red-300 text-red-700'
+                                  : 'bg-blue-50/50 border border-blue-100 text-blue-700'
+                              }`}
                               value={item.weightPercent}
                               onChange={(e) => handleLocalUpdate(item.id, { weightPercent: Number(e.target.value) })}
                               disabled={goalSet?.status === 'APPROVED'}
                             />
-                            <span className="text-[10px] font-bold text-blue-300">%</span>
+                            <span className={`text-[10px] font-bold ${Number(item.weightPercent) > 35 ? 'text-red-400' : 'text-blue-300'}`}>%</span>
                           </div>
+                          {Number(item.weightPercent) > 35 && (
+                            <p className="text-[9px] font-bold text-red-500 mt-1 text-right">Max 35%</p>
+                          )}
                         </td>
                         <td className="px-2 py-3 border border-gray-100 text-center">
                           <button
@@ -465,25 +476,37 @@ const GoalAssignmentWorkspace: React.FC = () => {
               </div>
 
               {/* Progress Summary Footer */}
-              <div className="bg-gray-900 px-8 py-5 flex justify-between items-center">
+              <div className={`px-8 py-5 flex justify-between items-center ${totalWeight > 100 || overweightItems.length > 0 ? 'bg-red-950' : 'bg-gray-900'}`}>
                 <div className="flex items-center gap-6">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Aggregate Weight</p>
                     <div className="flex items-center gap-4">
                       <div className="w-48 h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div
-                          className={`h-full transition-all duration-700 ${totalWeight === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                          className={`h-full transition-all duration-700 ${totalWeight === 100 ? 'bg-green-500' : totalWeight > 100 ? 'bg-red-500' : 'bg-blue-500'}`}
                           style={{ width: `${Math.min(totalWeight, 100)}%` }}
                         ></div>
                       </div>
-                      <span className="text-3xl font-black text-white">{totalWeight}%</span>
+                      <span className={`text-3xl font-black ${totalWeight > 100 ? 'text-red-400' : 'text-white'}`}>{totalWeight}%</span>
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className={`text-xs font-black uppercase tracking-widest ${totalWeight === 100 ? 'text-green-400' : 'text-blue-400'}`}>
-                    {totalWeight === 100 ? 'Verified' : `${100 - totalWeight}% Remaining`}
+                <div className="text-right space-y-1">
+                  <p className={`text-xs font-black uppercase tracking-widest ${
+                    totalWeight === 100 && overweightItems.length === 0 ? 'text-green-400' :
+                    totalWeight > 100 || overweightItems.length > 0 ? 'text-red-400' : 'text-blue-400'
+                  }`}>
+                    {totalWeight === 100 && overweightItems.length === 0 
+                      ? 'Verified' 
+                      : totalWeight > 100 
+                        ? `Exceeded by ${totalWeight - 100}%` 
+                        : `${100 - totalWeight}% Remaining`}
                   </p>
+                  {overweightItems.length > 0 && (
+                    <p className="text-[10px] font-bold text-red-400">
+                      ⚠ {overweightItems.length} item{overweightItems.length > 1 ? 's' : ''} exceed{overweightItems.length === 1 ? 's' : ''} 35% cap
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
