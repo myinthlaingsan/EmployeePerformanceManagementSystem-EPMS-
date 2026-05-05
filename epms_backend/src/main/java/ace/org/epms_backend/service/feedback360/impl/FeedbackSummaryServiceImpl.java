@@ -32,6 +32,7 @@ public class FeedbackSummaryServiceImpl implements FeedbackSummaryService {
     private final EmployeeRepository employeeRepository;
     private final AppraisalCycleRepository cycleRepository;
     private final FeedbackMapper feedbackMapper;
+    private final ace.org.epms_backend.service.feedback360.FeedbackReportService feedbackReportService;
 
     @Override
     @Transactional
@@ -95,15 +96,14 @@ public class FeedbackSummaryServiceImpl implements FeedbackSummaryService {
 
     @Override
     public FeedbackSummaryResponse getSummary(Long employeeId, Long cycleId) {
-        return summaryRepository.findByEmployeeIdAndCycleCycleId(employeeId, cycleId)
-                .map(feedbackMapper::toSummaryResponse)
-                .orElseThrow(() -> new NotFoundException("Summary not found"));
+        // Return full detailed report using FeedbackReportService
+        return feedbackReportService.getFeedbackSummary(employeeId, cycleId);
     }
 
     @Override
     public List<FeedbackSummaryResponse> getSummariesByCycle(Long cycleId) {
         return summaryRepository.findByCycleCycleId(cycleId).stream()
-                .map(feedbackMapper::toSummaryResponse)
+                .map(s -> feedbackReportService.getFeedbackSummary(s.getEmployee().getId(), cycleId))
                 .collect(Collectors.toList());
     }
 

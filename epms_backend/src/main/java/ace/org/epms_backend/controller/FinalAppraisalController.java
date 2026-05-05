@@ -23,4 +23,5 @@ public class FinalAppraisalController {
     public ResponseEntity<AppraisalSummaryResponse> getFinalResult(@PathVariable Long employeeId, @PathVariable Long cycleId) {
         return ResponseEntity.ok(finalAppraisalService.getFinalResult(employeeId, cycleId));
     }
+
 }
