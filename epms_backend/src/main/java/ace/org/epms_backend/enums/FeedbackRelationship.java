@@ -5,5 +5,6 @@ public enum FeedbackRelationship {
     PEER,
     SUBORDINATE,
     SELF,
-    DIRECT_MANAGER // Keep for legacy if needed, but MANAGER is preferred
+    DIRECT_MANAGER,
+    SUPERIOR
 }

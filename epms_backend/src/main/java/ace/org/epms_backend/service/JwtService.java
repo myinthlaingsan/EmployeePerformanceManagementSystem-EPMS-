@@ -70,7 +70,7 @@ public class JwtService {
                 .collect(Collectors.toList()));
         claims.put("level", userDetails.getEmployee().getLevel().getLevelCode());
         claims.put("name", userDetails.getUsername());
-        return generateToken(claims,userDetails, 1000 * 60 * 15); // 15 mins
+        return generateToken(claims,userDetails, 1000 * 60 * 30); // 30t mins
     }
 
     public String generateRefreshToken(UserPrincipal userDetails){

@@ -3,6 +3,7 @@ package ace.org.epms_backend.controller.feedback360;
 import ace.org.epms_backend.dto.feedback360.FeedbackDetailsResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackSubmissionRequest;
 import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/360-feedback/feedbacks")
 @RequiredArgsConstructor
+@Tag(name = "360 Feedback Submission", description = "Endpoints for submitting and managing 360 feedback responses")
 public class FeedbackSubmissionController {
 
     private final FeedbackSubmissionService feedbackService;
