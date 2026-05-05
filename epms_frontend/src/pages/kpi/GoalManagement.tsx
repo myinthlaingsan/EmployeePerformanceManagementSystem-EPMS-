@@ -14,14 +14,17 @@ import {
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
-  
+  const [page, setPage] = useState(0);
+  const [size] = useState(10);
+
   // Data Fetching
-  const { data: employeesData = [], isLoading: loadingEmployees } = useGetEmployeesQuery();
-  const employees = employeesData.filter(emp => isAdmin || emp.id !== user?.id);
+  const { data: pagedData, isLoading: loadingEmployees } = useGetEmployeesQuery({ page, size });
+  const employees = pagedData?.content || [];
+
   const { data: departments = [] } = useGetDepartmentsQuery();
   const { data: cyclesResponse } = useGetCyclesQuery();
   const cycles = Array.isArray(cyclesResponse) ? cyclesResponse : ((cyclesResponse as any)?.data || []);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('All');
   const [selectedCycle, setSelectedCycle] = useState<string>('All');
@@ -29,13 +32,16 @@ const GoalManagement: React.FC = () => {
   const itemsPerPage = 10;
 
   const filteredEmployees = employees.filter(emp => {
-    const matchesSearch = emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          emp.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesDept = selectedDepartment === 'All' || 
-                        emp.currentDepartmentName === selectedDepartment || 
-                        emp.parentDepartmentName === selectedDepartment;
-                        
+    // Exclude current user unless admin
+    if (!isAdmin && emp.id === user?.id) return false;
+
+    const matchesSearch = emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesDept = selectedDepartment === 'All' ||
+      emp.currentDepartmentName === selectedDepartment ||
+      emp.parentDepartmentName === selectedDepartment;
+
     return matchesSearch && matchesDept;
   });
 
@@ -46,7 +52,7 @@ const GoalManagement: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
       <div className="max-w-[1440px] mx-auto px-8 py-10 space-y-8">
-        
+
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           <div className="space-y-1">
@@ -72,22 +78,22 @@ const GoalManagement: React.FC = () => {
 
         {/* Main Grid Setup - Now taking full width since widgets are removed */}
         <div className="grid grid-cols-1 gap-6">
-          
+
           <div className="space-y-4">
-            
+
             {/* Filters */}
             <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-3 items-center">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search employees by name or emp code..." 
+                <input
+                  type="text"
+                  placeholder="Search employees by name or emp code..."
                   className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#0052CC]/20 outline-none transition-all"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
-              <select 
+              <select
                 className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer"
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
@@ -97,7 +103,7 @@ const GoalManagement: React.FC = () => {
                   <option key={dept.id} value={dept.departmentName}>{dept.departmentName}</option>
                 ))}
               </select>
-              <select 
+              <select
                 className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer"
                 value={selectedCycle}
                 onChange={(e) => setSelectedCycle(e.target.value)}
@@ -107,7 +113,7 @@ const GoalManagement: React.FC = () => {
                   <option key={cycle.id} value={cycle.id}>{cycle.name}</option>
                 ))}
               </select>
-              
+
               <button className="p-2.5 bg-slate-50 rounded-xl text-slate-500 hover:text-[#0052CC] hover:bg-blue-50 transition-colors">
                 <SlidersHorizontal className="w-4 h-4" />
               </button>
@@ -133,8 +139,8 @@ const GoalManagement: React.FC = () => {
                       </tr>
                     )}
                     {!loadingEmployees && currentEmployees.map((emp) => (
-                      <tr 
-                        key={emp.id} 
+                      <tr
+                        key={emp.id}
                         onClick={() => navigate(`/kpi/assign/${emp.id}`)}
                         className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                       >
@@ -160,11 +166,11 @@ const GoalManagement: React.FC = () => {
                       </tr>
                     ))}
                     {filteredEmployees.length === 0 && !loadingEmployees && (
-                       <tr>
-                         <td colSpan={3} className="px-6 py-12 text-center text-sm font-bold text-slate-400">
-                           No employees found matching your criteria.
-                         </td>
-                       </tr>
+                      <tr>
+                        <td colSpan={3} className="px-6 py-12 text-center text-sm font-bold text-slate-400">
+                          No employees found matching your criteria.
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
@@ -174,14 +180,14 @@ const GoalManagement: React.FC = () => {
                   Showing <strong className="text-slate-900">{filteredEmployees.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + itemsPerPage, filteredEmployees.length)}</strong> of <strong className="text-slate-900">{filteredEmployees.length}</strong> employees
                 </span>
                 <div className="flex gap-2">
-                  <button 
+                  <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
                     className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
-                  <button 
+                  <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages || totalPages === 0}
                     className="px-3 py-1.5 bg-[#0052CC] text-white text-[10px] font-bold rounded-lg hover:bg-[#0747A6] shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"

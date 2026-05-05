@@ -11,7 +11,7 @@ import {
   Plus, 
   ChevronRight
 } from 'lucide-react';
-import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetAllEmployeesQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
 import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
@@ -19,7 +19,7 @@ import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 const TeamKpiDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: employees = [], isLoading } = useGetEmployeesQuery();
+  const { data: employees = [], isLoading } = useGetAllEmployeesQuery();
   const { activeCycleId, activeCycleName } = useActiveCycle();
 
   const { data: teamGoalsResponse } = useGetTeamGoalSetsQuery({

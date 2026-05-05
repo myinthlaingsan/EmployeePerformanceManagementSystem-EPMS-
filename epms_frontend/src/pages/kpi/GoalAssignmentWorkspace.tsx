@@ -11,7 +11,7 @@ import {
   useGetKpiCategoriesQuery,
   useAssignKpiToEmployeeMutation
 } from '../../services/kpiApi';
-import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetAllEmployeesQuery } from '../../features/employee/employeeapi';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
 import {
   Search,
@@ -33,9 +33,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const navigate = useNavigate();
   const { activeCycleId, activeCycleName } = useActiveCycle();
 
-  const { data: employees = [] } = useGetEmployeesQuery();
+  const { data: employees = [] } = useGetAllEmployeesQuery();
   const employee = employees.find(e => e.id === Number(employeeId));
-
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
     employeeId: Number(employeeId),
     cycleId: activeCycleId
@@ -431,8 +430,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
                             <input
                               type="number"
                               className={`w-16 rounded-lg py-1.5 px-2 text-right text-xs font-black focus:bg-white disabled:opacity-50 ${Number(item.weightPercent) > 35
-                                  ? 'bg-red-50 border border-red-300 text-red-700'
-                                  : 'bg-blue-50/50 border border-blue-100 text-blue-700'
+                                ? 'bg-red-50 border border-red-300 text-red-700'
+                                : 'bg-blue-50/50 border border-blue-100 text-blue-700'
                                 }`}
                               value={item.weightPercent}
                               onChange={(e) => handleLocalUpdate(item.id, { weightPercent: Number(e.target.value) })}
@@ -492,7 +491,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                 </div>
                 <div className="text-right space-y-1">
                   <p className={`text-xs font-black uppercase tracking-widest ${totalWeight === 100 && overweightItems.length === 0 ? 'text-green-400' :
-                      totalWeight > 100 || overweightItems.length > 0 ? 'text-red-400' : 'text-blue-400'
+                    totalWeight > 100 || overweightItems.length > 0 ? 'text-red-400' : 'text-blue-400'
                     }`}>
                     {totalWeight === 100 && overweightItems.length === 0
                       ? 'Verified'
