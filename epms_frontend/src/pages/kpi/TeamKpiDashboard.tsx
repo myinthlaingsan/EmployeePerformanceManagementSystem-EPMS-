@@ -38,14 +38,16 @@ const TeamKpiDashboard: React.FC = () => {
 
   const teamGoals = teamGoalsResponse?.data || [];
 
-  // Bulk Assignment State
+  // State
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'progress-high' | 'progress-low'>('name');
 
   const teamMembers = useMemo(() => {
     if (!user || !employees) return [];
     
-    return employees.map(emp => {
+    let members = employees.map(emp => {
       const goals = teamGoals.find(g => g.employeeId === emp.id);
       const items = goals?.items || [];
       let progress = 0;
@@ -65,7 +67,23 @@ const TeamKpiDashboard: React.FC = () => {
         progress
       };
     });
-  }, [employees, user, teamGoals]);
+
+    // Filter
+    if (searchTerm) {
+      members = members.filter(m => 
+        m.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Sort
+    return [...members].sort((a, b) => {
+      if (sortBy === 'name') return a.staffName.localeCompare(b.staffName);
+      if (sortBy === 'progress-high') return b.progress - a.progress;
+      if (sortBy === 'progress-low') return a.progress - b.progress;
+      return 0;
+    });
+  }, [employees, user, teamGoals, searchTerm, sortBy]);
 
   const stats = useMemo(() => {
     const totalReports = teamMembers.length;
@@ -119,6 +137,8 @@ const TeamKpiDashboard: React.FC = () => {
                 type="text" 
                 placeholder="Search reports..."
                 className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all w-64 shadow-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <button className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 text-gray-900 text-xs font-black rounded-xl hover:bg-gray-50 transition-all shadow-sm uppercase tracking-widest">
@@ -188,10 +208,21 @@ const TeamKpiDashboard: React.FC = () => {
           <div className="flex justify-between items-center">
             <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">Direct Reports Tracking</h3>
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-[10px] font-black text-gray-600 hover:bg-gray-50 transition-colors uppercase tracking-widest">
-                <Filter className="w-3 h-3" />
-                Filter
-              </button>
+              <div className="relative group">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors pointer-events-none" />
+                <select 
+                  className="pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black text-gray-600 outline-none appearance-none cursor-pointer hover:border-blue-200 transition-all shadow-sm uppercase tracking-widest"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                >
+                  <option value="name">Sort: Name (A-Z)</option>
+                  <option value="progress-high">Sort: High Progress</option>
+                  <option value="progress-low">Sort: Low Progress</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <div className="border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
+                </div>
+              </div>
               {selectedIds.length > 0 && (
                 <button 
                   onClick={() => setIsBulkModalOpen(true)}
