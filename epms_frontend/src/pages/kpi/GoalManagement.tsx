@@ -1,69 +1,155 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import {
-  useGetEmployeesQuery
-} from '../../features/employee/employeeapi';
-import {
-  useGetAllLibrariesQuery,
-  useAssignKpiToEmployeeMutation
-} from '../../services/kpiApi';
+  RefreshCw,
+  ClipboardList,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
   const { data: employees = [], isLoading: loadingEmployees } = useGetEmployeesQuery();
-  const { data: librariesResponse } = useGetAllLibrariesQuery();
-  const libraries = librariesResponse?.data || [];
+  
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const [assignKpi] = useAssignKpiToEmployeeMutation();
-
-
-  if (loadingEmployees) return <div className="p-6">Loading employees...</div>;
+  const filteredEmployees = employees.filter(emp => 
+    emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    emp.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Goal Management</h1>
-      </div>
+    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
+      <div className="max-w-[1440px] mx-auto px-8 py-10 space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Organization-wide Goal Assignment</h1>
+            <p className="text-sm text-slate-500 font-medium max-w-2xl">
+              Manage and track performance cycle milestones across all departments.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-50 transition shadow-sm flex items-center gap-2">
+              <ClipboardList className="w-4 h-4" />
+              Bulk Assign Templates
+            </button>
+            <button className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-50 transition shadow-sm flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Send Reminders
+            </button>
+            <button className="px-5 py-2.5 bg-[#0052CC] text-white text-xs font-bold rounded-lg hover:bg-[#0747A6] transition shadow-md shadow-blue-200 flex items-center gap-2">
+              <span className="text-lg leading-none mb-0.5">+</span> Create New Cycle
+            </button>
+          </div>
+        </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Employee</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Position</th>
-              <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
-            {employees.map((emp) => (
-              <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-semibold text-gray-900">{emp.staffName}</div>
-                  <div className="text-xs text-gray-500">{emp.employeeCode}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {emp.positionName}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => navigate(`/kpi/assign/${emp.id}`)}
-                    className="px-4 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white rounded-md text-xs font-bold transition-all uppercase tracking-widest border border-blue-100"
-                  >
-                    Assign Goals
-                  </button>
-                  <button
-                    onClick={() => navigate(`/kpi/goals/${emp.id}`)}
-                    className="ml-3 px-4 py-1.5 bg-gray-50 text-gray-500 hover:bg-gray-100 rounded-md text-xs font-bold transition-all uppercase tracking-widest border border-gray-100"
-                  >
-                    Review
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        {/* Main Grid Setup - Now taking full width since widgets are removed */}
+        <div className="grid grid-cols-1 gap-6">
+          
+          <div className="space-y-4">
+            
+            {/* Filters */}
+            <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-3 items-center">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Search employees by name or emp code..." 
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#0052CC]/20 outline-none transition-all"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <select className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer">
+                <option>Department: All</option>
+                <option>Engineering</option>
+                <option>Sales</option>
+              </select>
+              <select className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer">
+                <option>Cycle: FY24</option>
+              </select>
+              <select className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer">
+                <option>Status: All</option>
+              </select>
+              <button className="p-2.5 bg-slate-50 rounded-xl text-slate-500 hover:text-[#0052CC] hover:bg-blue-50 transition-colors">
+                <SlidersHorizontal className="w-4 h-4" />
+              </button>
+            </div>
 
+            {/* Table */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-100">
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Department</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {loadingEmployees && (
+                      <tr>
+                        <td colSpan={3} className="px-6 py-12 text-center text-sm font-bold text-slate-400">
+                          Loading employees...
+                        </td>
+                      </tr>
+                    )}
+                    {!loadingEmployees && filteredEmployees.slice(0, 10).map((emp) => (
+                      <tr 
+                        key={emp.id} 
+                        onClick={() => navigate(`/kpi/assign/${emp.id}`)}
+                        className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden relative border-2 border-white shadow-sm flex items-center justify-center text-slate-400 font-bold">
+                              {emp.staffName.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-slate-900 group-hover:text-[#0052CC] transition-colors">{emp.staffName}</div>
+                              <div className="text-[10px] font-medium text-slate-400">{emp.email || `${emp.staffName.split(' ')[0].toLowerCase()}@enterprise.com`}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">
+                          {emp.currentDepartmentName || emp.parentDepartmentName || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-xs font-semibold text-slate-600 whitespace-normal max-w-[120px] leading-tight">
+                            {emp.positionName || '-'}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredEmployees.length === 0 && !loadingEmployees && (
+                       <tr>
+                         <td colSpan={3} className="px-6 py-12 text-center text-sm font-bold text-slate-400">
+                           No employees found matching your criteria.
+                         </td>
+                       </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">
+                  Showing <strong className="text-slate-900">1-{Math.min(filteredEmployees.length, 10)}</strong> of <strong className="text-slate-900">{filteredEmployees.length}</strong> employees
+                </span>
+                <div className="flex gap-2">
+                  <button className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded-lg hover:bg-slate-50 transition">Previous</button>
+                  <button className="px-3 py-1.5 bg-[#0052CC] text-white text-[10px] font-bold rounded-lg hover:bg-[#0747A6] shadow-sm transition">Next</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 };

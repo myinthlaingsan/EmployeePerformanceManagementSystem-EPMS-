@@ -130,14 +130,7 @@ const Sidebar = () => {
                     Team Performance
                   </NavLink>
                 )}
-                <NavLink
-                  to="/kpi/update"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                  }
-                >
-                  Update Progress
-                </NavLink>
+
                 {(isAdmin || isHR) && (
                   <NavLink
                     to="/kpi/manage"
@@ -145,7 +138,7 @@ const Sidebar = () => {
                       `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
                     }
                   >
-                    KPI Assignment
+                    Goal Management
                   </NavLink>
                 )}
                 {(isAdmin || isHR) && (
