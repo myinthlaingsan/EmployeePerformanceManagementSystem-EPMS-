@@ -272,6 +272,7 @@ const TeamKpiDashboard: React.FC = () => {
                   <tr 
                     key={emp.id} 
                     className={`hover:bg-blue-50/10 transition-colors group cursor-pointer ${selectedIds.includes(emp.id) ? 'bg-blue-50/20' : ''}`} 
+                    onClick={() => navigate(`/kpi/assign/${emp.id}`)}
                   >
                     <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                        <input 
@@ -281,7 +282,7 @@ const TeamKpiDashboard: React.FC = () => {
                         onChange={() => handleToggleSelect(emp.id)}
                       />
                     </td>
-                    <td className="px-8 py-5" onClick={() => navigate(`/kpi/assign/${emp.id}`)}>
+                    <td className="px-8 py-5">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black text-sm">
                           {emp.staffName.split(' ').map((n: string) => n[0]).join('')}
