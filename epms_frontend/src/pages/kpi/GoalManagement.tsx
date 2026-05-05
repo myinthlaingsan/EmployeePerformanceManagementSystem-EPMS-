@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
+import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -10,6 +11,7 @@ import {
   Search,
   SlidersHorizontal,
 } from 'lucide-react';
+import BulkAssignModal from '../../components/kpi/BulkAssignModal';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -17,16 +19,22 @@ const GoalManagement: React.FC = () => {
   const [page, setPage] = useState(0);
   const [size] = useState(10);
 
+  // Selection State
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+
   // Data Fetching
   const { data: pagedData, isLoading: loadingEmployees } = useGetEmployeesQuery({ page, size });
   const employees = pagedData?.content || [];
 
   const { data: departments = [] } = useGetDepartmentsQuery();
+  const { data: positions = [] } = useGetPositionsQuery();
   const { data: cyclesResponse } = useGetCyclesQuery();
   const cycles = Array.isArray(cyclesResponse) ? cyclesResponse : ((cyclesResponse as any)?.data || []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('All');
+  const [selectedPosition, setSelectedPosition] = useState<string>('All');
   const [selectedCycle, setSelectedCycle] = useState<string>('All');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -42,12 +50,29 @@ const GoalManagement: React.FC = () => {
       emp.currentDepartmentName === selectedDepartment ||
       emp.parentDepartmentName === selectedDepartment;
 
-    return matchesSearch && matchesDept;
+    const matchesPosition = selectedPosition === 'All' ||
+      emp.positionName === selectedPosition;
+
+    return matchesSearch && matchesDept && matchesPosition;
   });
 
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(currentEmployees.map(m => m.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
@@ -62,17 +87,22 @@ const GoalManagement: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-50 transition shadow-sm flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (selectedIds.length === 0) {
+                  alert('Please select at least one employee');
+                  return;
+                }
+                setIsBulkModalOpen(true);
+              }}
+              className={`px-4 py-2.5 text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-2 ${selectedIds.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-white border border-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+            >
               <ClipboardList className="w-4 h-4" />
-              Bulk Assign Templates
+              Bulk Assign Templates {selectedIds.length > 0 && `(${selectedIds.length})`}
             </button>
-            <button className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-50 transition shadow-sm flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Send Reminders
-            </button>
-            <button className="px-5 py-2.5 bg-[#0052CC] text-white text-xs font-bold rounded-lg hover:bg-[#0747A6] transition shadow-md shadow-blue-200 flex items-center gap-2">
-              <span className="text-lg leading-none mb-0.5">+</span> Create New Cycle
-            </button>
+
+
           </div>
         </div>
 
@@ -105,6 +135,16 @@ const GoalManagement: React.FC = () => {
               </select>
               <select
                 className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer"
+                value={selectedPosition}
+                onChange={(e) => setSelectedPosition(e.target.value)}
+              >
+                <option value="All">Position: All</option>
+                {positions.map(pos => (
+                  <option key={pos.positionId} value={pos.positionName}>{pos.positionName}</option>
+                ))}
+              </select>
+              <select
+                className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer"
                 value={selectedCycle}
                 onChange={(e) => setSelectedCycle(e.target.value)}
               >
@@ -125,9 +165,17 @@ const GoalManagement: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-100">
+                      <th className="px-6 py-4 w-10">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded border-slate-200 text-[#0052CC] focus:ring-[#0052CC]/20 cursor-pointer"
+                          checked={selectedIds.length === currentEmployees.length && currentEmployees.length > 0}
+                          onChange={handleSelectAll}
+                        />
+                      </th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Department</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Position</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -142,8 +190,16 @@ const GoalManagement: React.FC = () => {
                       <tr
                         key={emp.id}
                         onClick={() => navigate(`/kpi/assign/${emp.id}`)}
-                        className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                        className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${selectedIds.includes(emp.id) ? 'bg-blue-50/30' : ''}`}
                       >
+                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-slate-200 text-[#0052CC] focus:ring-[#0052CC]/20 cursor-pointer"
+                            checked={selectedIds.includes(emp.id)}
+                            onChange={() => handleToggleSelect(emp.id)}
+                          />
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden relative border-2 border-white shadow-sm flex items-center justify-center text-slate-400 font-bold">
@@ -201,6 +257,17 @@ const GoalManagement: React.FC = () => {
           </div>
 
         </div>
+
+        {isBulkModalOpen && (
+          <BulkAssignModal
+            selectedEmployeeIds={selectedIds}
+            onClose={() => setIsBulkModalOpen(false)}
+            onSuccess={() => {
+              setIsBulkModalOpen(false);
+              setSelectedIds([]);
+            }}
+          />
+        )}
       </div>
     </div>
   );
