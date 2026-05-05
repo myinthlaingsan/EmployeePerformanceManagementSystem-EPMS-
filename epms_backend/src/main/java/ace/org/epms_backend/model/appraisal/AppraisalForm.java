@@ -25,5 +25,10 @@ public class AppraisalForm extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private FormType formType;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cycle_id")
+    private AppraisalCycle cycle;
+
     private Long createdBy;
 }
+

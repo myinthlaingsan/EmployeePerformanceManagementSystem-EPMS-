@@ -1,35 +1,24 @@
 package ace.org.epms_backend.mapper;
 
 import ace.org.epms_backend.dto.appraisal.AppraisalResponse;
-import ace.org.epms_backend.dto.appraisal.AppraisalUpdateRequest;
 import ace.org.epms_backend.model.appraisal.Appraisal;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
 
-@Mapper(componentModel = "spring", builder = @org.mapstruct.Builder(disableBuilder = true))
+import java.util.List;
+
+@Mapper(componentModel = "spring")
 public interface AppraisalMapper {
 
     @Mapping(target = "employeeId", source = "employee.id")
+    @Mapping(target = "employeeName", source = "employee.staffName")
+    @Mapping(target = "employeeCode", source = "employee.employeeCode")
+
     @Mapping(target = "managerId", source = "manager.id")
-    @Mapping(target = "status", expression = "java(appraisal.getStatus().name())")
-    @Mapping(target = "formScore", expression = "java(appraisal.getFormScore() != null ? appraisal.getFormScore().doubleValue() : null)")
-    @Mapping(target = "categoryName", source = "performanceCategory.name")
+    @Mapping(target = "managerName", source = "manager.staffName")
+    @Mapping(target = "cycleId", source = "cycle.cycleId")
+    @Mapping(target = "cycleName", source = "cycle.cycleName")
     AppraisalResponse toResponse(Appraisal appraisal);
 
-    @Mapping(target = "appraisalId", ignore = true)
-    @Mapping(target = "employee", ignore = true)
-    @Mapping(target = "manager", ignore = true)
-    @Mapping(target = "cycle", ignore = true)
-    @Mapping(target = "form", ignore = true)
-    @Mapping(target = "performanceCategory", ignore = true)
-    @Mapping(target = "formScore", ignore = true)
-    @Mapping(target = "performanceGrade", ignore = true)
-    @Mapping(target = "employeeSigned", ignore = true)
-    @Mapping(target = "managerSigned", ignore = true)
-    @Mapping(target = "isActive", ignore = true)
-    @Mapping(target = "isLocked", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
-    void updateEntityFromRequest(AppraisalUpdateRequest request, @MappingTarget Appraisal entity);
+    List<AppraisalResponse> toResponseList(List<Appraisal> appraisals);
 }

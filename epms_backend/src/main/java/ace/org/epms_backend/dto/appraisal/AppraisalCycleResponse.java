@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -18,9 +19,20 @@ public class AppraisalCycleResponse {
     private String cycleName;
     private LocalDate startDate;
     private LocalDate endDate;
+    private LocalDate selfAssessmentDeadline;
+    private LocalDate managerEvaluationDeadline;
+    private LocalDate finalizationDeadline;
     private String evaluationPeriod;
     private CycleStatus status;
     private Boolean isActive;
+    
+    // Scoring Weights
+    private BigDecimal kpiWeight;
+    private BigDecimal managerWeight;
+    private BigDecimal feedbackWeight;
+    private BigDecimal selfWeight;
+    
     private Instant createdAt;
     private Instant updatedAt;
 }
+

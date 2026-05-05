@@ -1,5 +1,8 @@
 package ace.org.epms_backend.service;
 
+import ace.org.epms_backend.dto.appraisal.ScoreBreakdownResponse;
+
 public interface AppraisalCalculationService {
-    void calculateScore(Long appraisalId);
+    ScoreBreakdownResponse calculateScore(Long appraisalId);
 }
+
