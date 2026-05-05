@@ -357,7 +357,7 @@ public class KpiServiceImpl implements KpiService {
 
                 Employee currentUser = getCurrentEmployee();
                 if (!item.getGoalSet().getEmployee().getId().equals(currentUser.getId())) {
-                        throw new SecurityException("Only the employee can update their progress");
+                        throw new SecurityException("Only the employee can update their own progress");
                 }
 
                 KpiProgress progress = kpiMapper.toProgressEntity(request);

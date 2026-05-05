@@ -82,9 +82,9 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(kpiService.approveGoalSet(id)));
     }
 
-    // 4. KPI Progress (Employee)
+    // 4. KPI Progress (Employee & Manager)
     @PostMapping("/progress")
-    @PreAuthorize("hasRole('EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<ApiResponse<GoalSetResponse>> updateProgress(@Valid @RequestBody ProgressRequest request) {
         return ResponseEntity.ok(ApiResponse.success(kpiService.updateProgress(request)));
     }
