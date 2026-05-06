@@ -11,4 +11,5 @@ public interface JobLevelService {
     JobLevelResponse getJobLevelById(Long id);
     JobLevelResponse updateJobLevel(Long id, JobLevelRequest request);
     void deleteJobLevel(Long id);
+    List<JobLevelResponse> getJobLevelsByDepartment(Long deptId);
 }

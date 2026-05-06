@@ -82,4 +82,11 @@ public class JobLevelServiceImpl implements JobLevelService {
 
         jobLevelRepository.delete(jobLevel);
     }
+
+    @Override
+    public List<JobLevelResponse> getJobLevelsByDepartment(Long deptId) {
+        return jobLevelRepository.findLevelsByDepartmentId(deptId).stream()
+                .map(jobLevelMapper::toResponse)
+                .collect(Collectors.toList());
+    }
 }

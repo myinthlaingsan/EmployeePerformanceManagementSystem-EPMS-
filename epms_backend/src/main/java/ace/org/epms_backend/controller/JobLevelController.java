@@ -45,4 +45,9 @@ public class JobLevelController {
         jobLevelService.deleteJobLevel(id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
+
+    @GetMapping("/department/{deptId}")
+    public ResponseEntity<ApiResponse<List<JobLevelResponse>>> getJobLevelsByDepartment(@PathVariable Long deptId) {
+        return ResponseEntity.ok(ApiResponse.success(jobLevelService.getJobLevelsByDepartment(deptId)));
+    }
 }
