@@ -108,7 +108,6 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
               ))
             )}
           </div>
-          </div>
 
           <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl">
             <input 
