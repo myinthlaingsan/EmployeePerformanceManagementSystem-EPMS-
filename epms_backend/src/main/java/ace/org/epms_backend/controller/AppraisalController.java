@@ -156,6 +156,13 @@ public class AppraisalController {
                 appraisalService.managerSignOff(id, comment)
         ));
     }
+ 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        appraisalService.deleteAppraisal(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }
 
 

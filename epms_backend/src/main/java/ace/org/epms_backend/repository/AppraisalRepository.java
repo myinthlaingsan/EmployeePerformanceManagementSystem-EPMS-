@@ -16,5 +16,7 @@ public interface AppraisalRepository extends JpaRepository<Appraisal, Long> {
     
     List<Appraisal> findByEmployee_IdAndStatusIn(Long employeeId, List<AppraisalStatus> statuses);
     List<Appraisal> findByManager_IdAndStatusIn(Long managerId, List<AppraisalStatus> statuses);
+ 
+    boolean existsByForm_FormId(Long formId);
 }
 

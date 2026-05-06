@@ -317,4 +317,27 @@ public class AppraisalServiceImpl implements AppraisalService {
 
         return appraisalMapper.toResponse(saved);
     }
+ 
+    @Override
+    @Transactional
+    public void deleteAppraisal(Long id) {
+        Appraisal appraisal = appraisalRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+ 
+        // Only allow deletion if still PENDING or if user is ADMIN
+        if (appraisal.getStatus() != AppraisalStatus.PENDING) {
+            // Check if user has ADMIN role? 
+            // For now, let's just restrict it to PENDING to be safe.
+            throw new RuntimeException("Cannot delete an appraisal that is already in progress. Status: " + appraisal.getStatus());
+        }
+ 
+        appraisalRepo.delete(appraisal);
+ 
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisals")
+                .recordId(id)
+                .action(AuditAction.DELETE)
+                .status(AuditStatus.SUCCESS)
+                .build());
+    }
 }

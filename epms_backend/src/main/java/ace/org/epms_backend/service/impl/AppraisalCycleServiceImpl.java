@@ -7,6 +7,7 @@ import ace.org.epms_backend.exception.ResourceNotFoundException;
 import ace.org.epms_backend.mapper.AppraisalCycleMapper;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
+import ace.org.epms_backend.repository.AppraisalRepository;
 import ace.org.epms_backend.repository.ScoringWeightRepository;
 import ace.org.epms_backend.service.AppraisalCycleService;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
@@ -32,6 +33,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     private final AppraisalCycleMapper appraisalCycleMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
+    private final AppraisalRepository appraisalRepository;
 
     @Override
     @Transactional
@@ -72,7 +74,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         return cycles.stream().map(cycle -> {
             AppraisalCycleResponse resp = appraisalCycleMapper.toResponse(cycle);
             scoringWeightRepository.findByCycle_CycleId(cycle.getCycleId())
-                .ifPresent(w -> mapWeightsToResponse(w, resp));
+                    .ifPresent(w -> mapWeightsToResponse(w, resp));
             return resp;
         }).toList();
     }
@@ -82,7 +84,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         AppraisalCycle cycle = getCycleById(id);
         AppraisalCycleResponse resp = appraisalCycleMapper.toResponse(cycle);
         scoringWeightRepository.findByCycle_CycleId(cycle.getCycleId())
-            .ifPresent(w -> mapWeightsToResponse(w, resp));
+                .ifPresent(w -> mapWeightsToResponse(w, resp));
         return resp;
     }
 
@@ -122,7 +124,8 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         return response;
     }
 
-    private void mapWeightsToResponse(ace.org.epms_backend.model.appraisal.ScoringWeight weights, AppraisalCycleResponse response) {
+    private void mapWeightsToResponse(ace.org.epms_backend.model.appraisal.ScoringWeight weights,
+            AppraisalCycleResponse response) {
         response.setKpiWeight(weights.getKpiWeight());
         response.setManagerWeight(weights.getManagerWeight());
         response.setSelfWeight(weights.getSelfWeight());
@@ -135,6 +138,13 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         if (!appraisalCycleRepository.existsById(id)) {
             throw new ResourceNotFoundException("AppraisalCycle not found with id: " + id);
         }
+
+        // Check if cycle has any appraisals assigned
+        if (!appraisalRepository.findByCycle_CycleId(id).isEmpty()) {
+            throw new RuntimeException(
+                    "Cannot delete cycle. It has active appraisals assigned. Please close or archive it instead.");
+        }
+
         appraisalCycleRepository.deleteById(id);
     }
 
@@ -142,9 +152,9 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     @Transactional
     public AppraisalCycleResponse activate(Long id) {
         AppraisalCycle cycle = getCycleById(id);
-        
+
         deactivateCurrentActiveCycles();
-        
+
         cycle.setIsActive(true);
         if (cycle.getStatus() == null || cycle.getStatus() == CycleStatus.ARCHIVED) {
             cycle.setStatus(CycleStatus.PLANNING);
@@ -156,7 +166,8 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .broadcast(true)
                 .type(NotificationType.APPRAISAL_CYCLE_OPENED)
                 .title("Appraisal Cycle Opened")
-                .message("The appraisal cycle '" + cycle.getCycleName() + "' is now open. You can start your self-assessments.")
+                .message("The appraisal cycle '" + cycle.getCycleName()
+                        + "' is now open. You can start your self-assessments.")
                 .referenceType(ReferenceType.APPRAISAL)
                 .referenceId(cycle.getCycleId())
                 .actionUrl("/appraisals/my-appraisals")
@@ -221,7 +232,6 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         return appraisalCycleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("AppraisalCycle not found with id: " + id));
     }
-
 
     private void deactivateCurrentActiveCycles() {
         List<AppraisalCycle> activeCycles = appraisalCycleRepository.findByIsActiveTrue();

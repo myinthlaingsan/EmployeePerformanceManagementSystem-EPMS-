@@ -40,5 +40,40 @@ public class AppraisalFormController {
     public ResponseEntity<Long> cloneForm(@PathVariable Long formId) {
         return ResponseEntity.ok(formService.cloneForm(formId));
     }
+ 
+    @PutMapping("/api/v1/appraisal-forms/{formId}")
+    public ResponseEntity<Void> updateForm(@PathVariable Long formId, @RequestBody AppraisalFormRequest request) {
+        formService.updateForm(formId, request);
+        return ResponseEntity.ok().build();
+    }
+ 
+    @PutMapping("/api/v1/categories/{categoryId}")
+    public ResponseEntity<Void> updateCategory(@PathVariable Long categoryId, @RequestBody CategoryRequest request) {
+        formService.updateCategory(categoryId, request);
+        return ResponseEntity.ok().build();
+    }
+ 
+    @PutMapping("/api/v1/questions/{questionId}")
+    public ResponseEntity<Void> updateQuestion(@PathVariable Long questionId, @RequestBody QuestionRequest request) {
+        formService.updateQuestion(questionId, request);
+        return ResponseEntity.ok().build();
+    }
+ 
+    @DeleteMapping("/api/v1/appraisal-forms/{formId}")
+    public ResponseEntity<Void> deleteForm(@PathVariable Long formId) {
+        formService.deleteForm(formId);
+        return ResponseEntity.noContent().build();
+    }
+ 
+    @DeleteMapping("/api/v1/categories/{categoryId}")
+    public ResponseEntity<Void> deleteCategory(@PathVariable Long categoryId) {
+        formService.deleteCategory(categoryId);
+        return ResponseEntity.noContent().build();
+    }
+ 
+    @DeleteMapping("/api/v1/questions/{questionId}")
+    public ResponseEntity<Void> deleteQuestion(@PathVariable Long questionId) {
+        formService.deleteQuestion(questionId);
+        return ResponseEntity.noContent().build();
+    }
 }
-

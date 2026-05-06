@@ -20,6 +20,7 @@ public interface EmployeeMapper {
     Employee toEntity(CreateEmployeeRequest request);
 
     @Mapping(source = "position.positionName", target = "positionName")
+    @Mapping(source = "position.positionId", target = "positionId")
     @Mapping(source = "level.levelName", target = "levelName")
     @Mapping(source = "level.levelRank", target = "levelRank")
     EmployeeResponse toResponse(Employee employee);
