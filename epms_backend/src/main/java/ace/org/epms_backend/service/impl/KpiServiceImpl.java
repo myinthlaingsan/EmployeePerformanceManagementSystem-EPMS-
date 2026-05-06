@@ -227,7 +227,8 @@ public class KpiServiceImpl implements KpiService {
 
                 for (Long employeeId : request.getEmployeeIds()) {
                         Employee employee = employeeRepository.findById(employeeId)
-                                        .orElseThrow(() -> new NotFoundException("Employee not found with ID: " + employeeId));
+                                        .orElseThrow(() -> new NotFoundException(
+                                                        "Employee not found with ID: " + employeeId));
 
                         // Create Draft Goal Set
                         KpiGoals goalSet = KpiGoals.builder()
@@ -262,7 +263,8 @@ public class KpiServiceImpl implements KpiService {
                                         .senderId(currentManager.getId())
                                         .type(NotificationType.KPI_ASSIGNED)
                                         .title("New KPI Assigned (Bulk)")
-                                        .message("A new KPI set has been bulk-assigned to you from library: " + library.getTitle())
+                                        .message("A new KPI set has been bulk-assigned to you from library: "
+                                                        + library.getTitle())
                                         .referenceType(ReferenceType.KPI)
                                         .referenceId(savedGoalSet.getId())
                                         .actionUrl("/kpis/my-goals")
@@ -342,8 +344,8 @@ public class KpiServiceImpl implements KpiService {
                 List<KpiProgress> progressRecords = progressRepository.findByGoalItemIdOrderByIdDesc(item.getId());
                 if (!progressRecords.isEmpty()) {
                         throw new IllegalStateException(
-                                "This goal has existing progress records and cannot be deleted. "
-                                + "Use the Revise flow to modify it instead, so employee progress is preserved.");
+                                        "This goal has existing progress records and cannot be deleted. "
+                                                        + "Use the Revise flow to modify it instead, so employee progress is preserved.");
                 }
 
                 goalSet.getItems().remove(item);
@@ -606,6 +608,7 @@ public class KpiServiceImpl implements KpiService {
         }
 
         @Override
+        @Transactional(readOnly = true)
         public GoalSetResponse getGoalSetByEmployee(Long employeeId, Long cycleId) {
                 return goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
                                 .map(kpiMapper::toGoalSetResponse)
@@ -614,6 +617,7 @@ public class KpiServiceImpl implements KpiService {
         }
 
         @Override
+        @Transactional(readOnly = true)
         public GoalSetResponse getGoalSetById(Long id) {
                 return goalsRepository.findById(id)
                                 .map(kpiMapper::toGoalSetResponse)
@@ -710,13 +714,12 @@ public class KpiServiceImpl implements KpiService {
                 Page<KpiLibrary> libraryPage = libraryRepository.findByTitleContainingIgnoreCase(keyword, pageable);
                 Page<KpiLibraryResponse> responsePage = libraryPage.map(kpiMapper::toLibraryResponse);
                 return new PagedResponse<>(
-                        responsePage.getContent(),
-                        responsePage.getNumber(),
-                        responsePage.getSize(),
-                        responsePage.getTotalElements(),
-                        responsePage.getTotalPages(),
-                        responsePage.isLast()
-                );
+                                responsePage.getContent(),
+                                responsePage.getNumber(),
+                                responsePage.getSize(),
+                                responsePage.getTotalElements(),
+                                responsePage.getTotalPages(),
+                                responsePage.isLast());
         }
 
         @Override
@@ -817,6 +820,7 @@ public class KpiServiceImpl implements KpiService {
         }
 
         @Override
+        @Transactional(readOnly = true)
         public List<GoalSetResponse> getEmployeeGoalSets(Long employeeId) {
                 return goalsRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId).stream()
                                 .map(kpiMapper::toGoalSetResponse)
@@ -824,6 +828,7 @@ public class KpiServiceImpl implements KpiService {
         }
 
         @Override
+        @Transactional(readOnly = true)
         public List<GoalSetResponse> getTeamGoalSets(Long managerId, Long cycleId) {
                 return goalsRepository.findTeamGoals(managerId, cycleId).stream()
                                 .map(kpiMapper::toGoalSetResponse)
@@ -831,6 +836,7 @@ public class KpiServiceImpl implements KpiService {
         }
 
         @Override
+        @Transactional(readOnly = true)
         public List<GoalSetResponse> getDepartmentGoalSets(Long departmentId, Long cycleId) {
                 return goalsRepository.findByDepartmentIdAndCycleId(departmentId, cycleId).stream()
                                 .map(kpiMapper::toGoalSetResponse)
@@ -843,8 +849,13 @@ public class KpiServiceImpl implements KpiService {
                 KpiGoals goalSet = goalsRepository.findById(goalSetId)
                                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
 
-                if (!goalSet.getStatus().equals(KpiGoalStatus.APPROVED)) {
-                        throw new IllegalStateException("Only APPROVED goals can be reverted to DRAFT");
+                // Allow reverting from any state that isn't already DRAFT or ARCHIVED
+                if (goalSet.getStatus() == KpiGoalStatus.DRAFT) {
+                        return kpiMapper.toGoalSetResponse(goalSet);
+                }
+
+                if (goalSet.getStatus() == KpiGoalStatus.ARCHIVED) {
+                        throw new IllegalStateException("Cannot revert archived goals");
                 }
 
                 goalSet.setStatus(KpiGoalStatus.DRAFT);
