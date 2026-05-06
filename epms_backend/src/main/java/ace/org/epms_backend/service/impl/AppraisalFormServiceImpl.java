@@ -145,4 +145,21 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                 .orElseThrow(() -> new NotFoundException("Form not found"));
         // Assuming we add logic if we have isActive on form
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppraisalFormResponse> getAllForms() {
+        return formRepository.findAll().stream()
+                .map(form -> AppraisalFormResponse.builder()
+                        .formId(form.getFormId())
+                        .formName(form.getFormName())
+                        .formType(form.getFormType() != null ? form.getFormType().name() : null)
+                        .cycleId(form.getCycle() != null ? form.getCycle().getCycleId() : null)
+                        .cycleName(form.getCycle() != null ? form.getCycle().getCycleName() : null)
+                        .createdBy(form.getCreatedBy())
+                        .createdAt(form.getCreatedAt())
+                        .updatedAt(form.getUpdatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
 }

@@ -10,4 +10,5 @@ public interface AppraisalFormService {
     FullFormResponse getFullForm(Long formId);
     Long cloneForm(Long formId);
     void updateFormStatus(Long formId, Boolean isActive);
+    List<AppraisalFormResponse> getAllForms();
 }
