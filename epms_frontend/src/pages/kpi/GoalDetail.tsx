@@ -81,22 +81,33 @@ const GoalDetail: React.FC = () => {
             {goalSet.status}
           </span>
 
-          {isManager && goalSet.status === 'DRAFT' && (
-            <button
-              onClick={handleApprove}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold text-sm shadow-sm transition"
-            >
-              Approve Goals
-            </button>
-          )}
+          {isManager && (goalSet.status === 'DRAFT' || goalSet.status === 'SUBMITTED' || goalSet.status === 'APPROVED') && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate(`/kpi/assign/${employeeId}`)}
+                className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-black font-bold text-sm shadow-sm transition flex items-center gap-2"
+              >
+                Modify Goals
+              </button>
+              
+              {goalSet.status === 'DRAFT' && (
+                <button
+                  onClick={handleApprove}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold text-sm shadow-sm transition"
+                >
+                  Approve Goals
+                </button>
+              )}
 
-          {isManager && goalSet.status === 'APPROVED' && (
-            <button
-              onClick={handleCalculate}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold text-sm shadow-sm transition"
-            >
-              Calculate Score
-            </button>
+              {goalSet.status === 'APPROVED' && (
+                <button
+                  onClick={handleCalculate}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold text-sm shadow-sm transition"
+                >
+                  Calculate Score
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

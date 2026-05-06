@@ -272,7 +272,13 @@ const TeamKpiDashboard: React.FC = () => {
                   <tr 
                     key={emp.id} 
                     className={`hover:bg-blue-50/10 transition-colors group cursor-pointer ${selectedIds.includes(emp.id) ? 'bg-blue-50/20' : ''}`} 
-                    onClick={() => navigate(`/kpi/assign/${emp.id}`)}
+                    onClick={() => {
+                      if (emp.goalSet?.status === 'APPROVED' || emp.goalSet?.status === 'LOCKED') {
+                        navigate(`/kpi/goals/${emp.id}`);
+                      } else {
+                        navigate(`/kpi/assign/${emp.id}`);
+                      }
+                    }}
                   >
                     <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                        <input 

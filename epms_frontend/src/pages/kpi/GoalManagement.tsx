@@ -274,7 +274,14 @@ const GoalManagement: React.FC = () => {
                     {!loadingEmployees && currentEmployees.map((emp) => (
                       <tr
                         key={emp.id}
-                        onClick={() => navigate(`/kpi/assign/${emp.id}`)}
+                        onClick={() => {
+                          const status = goalStatusMap.get(emp.id);
+                          if (status === 'APPROVED' || status === 'LOCKED') {
+                            navigate(`/kpi/goals/${emp.id}`);
+                          } else {
+                            navigate(`/kpi/assign/${emp.id}`);
+                          }
+                        }}
                         className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${selectedIds.includes(emp.id) ? 'bg-blue-50/30' : ''}`}
                       >
                         <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
