@@ -8,8 +8,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.util.List;
-
 @Entity
 @Table(name = "kpi_library")
 @Getter
@@ -24,6 +22,9 @@ public class KpiLibrary extends BaseEntity {
     private Long id;
 
     private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
     @ManyToOne
     @JoinColumn(name = "position_id")

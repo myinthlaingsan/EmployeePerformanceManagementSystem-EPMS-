@@ -30,4 +30,7 @@ public class FeedbackReply extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String replyText;
+
+    @Column(name = "parent_id")
+    private Long parentId;
 }

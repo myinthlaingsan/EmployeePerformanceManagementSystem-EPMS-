@@ -15,6 +15,7 @@ public interface KpiMapper {
     @Mapping(target = "isActive", expression = "java(true)")
     KpiLibrary toLibraryEntity(KpiLibraryRequest request);
 
+    @Mapping(target = "positionId", source = "position.positionId")
     @Mapping(target = "positionName", source = "position.positionName")
     @Mapping(target = "details", source = "details")
     KpiLibraryResponse toLibraryResponse(KpiLibrary library);
@@ -40,7 +41,7 @@ public interface KpiMapper {
     @Mapping(target = "items", source = "items")
     GoalSetResponse toGoalSetResponse(KpiGoals goalSet);
 
-    @Mapping(target = "currentProgress", ignore = true)
+    @Mapping(target = "currentProgress", source = "actualValue")
     @Mapping(target = "categoryName", source = "category.name")
     @Mapping(target = "categoryId", source = "category.id")
     GoalItemResponse toGoalItemResponse(KpiGoalItem item);

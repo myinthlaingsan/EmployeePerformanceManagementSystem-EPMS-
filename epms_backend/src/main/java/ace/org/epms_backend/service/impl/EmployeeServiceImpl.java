@@ -464,6 +464,12 @@ public class EmployeeServiceImpl implements EmployeeService {
                     response.setParentDepartmentName(
                             ed.getParentDepartment().getDepartmentName());
                 });
+            // Set Manager Info
+            reportingLineRepository.findByEmployeeAndIsActiveTrue(emp)
+                    .ifPresent(line -> {
+                            response.setDirectManagerId(line.getManager().getId());
+                            response.setDirectManagerName(line.getManager().getStaffName());
+                    });
         return response;
     }
 }

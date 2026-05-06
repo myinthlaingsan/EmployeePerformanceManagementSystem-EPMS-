@@ -15,4 +15,6 @@ public class MeetingCommentRequest {
 
     @NotNull(message = "Comment type is required")
     private CommentType commentType;
+
+    private Long parentId;
 }

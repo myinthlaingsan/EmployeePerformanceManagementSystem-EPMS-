@@ -18,5 +18,6 @@ public class QuestionWithAnswerDTO {
     // Answer part (can be null if not answered yet)
     private Long answerId;
     private Integer ratingValue;
+    private Boolean isCompleted;
     private String comment;
 }

@@ -36,6 +36,7 @@ export interface CreateEmployeeRequest {
   roleId: number;
   parentDepartmentId: number;
   currentDepartmentId: number;
+  directManagerId?: number;
 }
 
 export interface SetPasswordRequest {
@@ -80,6 +81,7 @@ export interface UpdateEmployeeRequest {
   isActive?: boolean;
 
   roleIds?: number[];
+  directManagerId?: number;
 }
 
 export interface UpdateProfileRequest {

@@ -12,10 +12,12 @@ public interface OneOnOneMeetingService {
     OneOnOneMeetingResponse getMeetingById(Long meetingId);
     List<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId);
     List<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId);
+    List<OneOnOneMeetingResponse> getAllMeetings();
     OneOnOneMeetingResponse updateMeeting(Long meetingId, OneOnOneMeetingRequest request);
     void deleteMeeting(Long meetingId);
 
     MeetingCommentResponse addComment(Long meetingId, MeetingCommentRequest request);
     List<MeetingCommentResponse> getCommentsByMeetingId(Long meetingId);
+    MeetingCommentResponse updateComment(Long commentId, MeetingCommentRequest request);
     void deleteComment(Long commentId);
 }

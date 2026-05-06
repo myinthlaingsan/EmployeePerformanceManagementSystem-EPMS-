@@ -13,6 +13,7 @@ import ace.org.epms_backend.model.employee.Permission;
 import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.repository.PassowrdResetTokenRepository;
 import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
@@ -57,6 +58,7 @@ public class AuthServiceImpl implements AuthService {
     private final PassowrdResetTokenRepository resetTokenRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final EmployeeDepartmentRepository employeeDepartmentRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final AuditService auditService;
     private final TokenBlacklistService tokenBlacklistService;
@@ -239,6 +241,14 @@ public class AuthServiceImpl implements AuthService {
                 .map(Permission::getPermissionName)
                 .toList();
         response.setPermissions(permissions);
+        
+        // Set Department Info
+        employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
+                .ifPresent(ed -> {
+                    response.setCurrentDepartmentName(ed.getCurrentDepartment().getDepartmentName());
+                    response.setCurrentDepartmentId(ed.getCurrentDepartment().getId());
+                    response.setParentDepartmentName(ed.getParentDepartment().getDepartmentName());
+                });
 
         return response;
     }

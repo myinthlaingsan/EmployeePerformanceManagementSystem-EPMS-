@@ -17,6 +17,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
@@ -200,14 +203,37 @@ public class ReportServiceImpl implements ReportService {
             logs = auditLogRepository.findAll();
         }
 
-        return logs.stream().map(l -> AuditTrailReportDTO.builder()
+        ObjectMapper mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+        List<String> sensitiveKeys = List.of("password", "salary", "phoneNo", "contactAddress", "permanentAddress");
+
+        return logs.stream().map(l -> {
+            String sanitizedOld = sanitizeJson(l.getOldValues(), mapper, sensitiveKeys);
+            String sanitizedNew = sanitizeJson(l.getNewValues(), mapper, sensitiveKeys);
+
+            return AuditTrailReportDTO.builder()
                 .tableName(l.getTableName())
                 .action(l.getAction().name())
                 .changedBy(l.getChangedBy() != null ? l.getChangedBy().getStaffName() : "SYSTEM")
                 .changedAt(l.getChangedAt().toString())
-                .oldValues(l.getOldValues())
-                .newValues(l.getNewValues())
-                .build()).collect(Collectors.toList());
+                .oldValues(sanitizedOld)
+                .newValues(sanitizedNew)
+                .build();
+        }).collect(Collectors.toList());
+    }
+
+    private String sanitizeJson(String json, ObjectMapper mapper, List<String> sensitiveKeys) {
+        if (json == null || json.isEmpty()) return "{}";
+        try {
+            Map<String, Object> map = mapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+            for (String key : sensitiveKeys) {
+                if (map.containsKey(key)) {
+                    map.put(key, "********"); // Mask the value
+                }
+            }
+            return mapper.writeValueAsString(map);
+        } catch (Exception e) {
+            return json; // Fallback if not valid JSON
+        }
     }
 
     @Override
