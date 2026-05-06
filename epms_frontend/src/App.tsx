@@ -12,7 +12,8 @@ import {
   adminRoutes,
   pipRoutes,
   generalRoutes,
-  kpiRoutes
+  kpiRoutes,
+  feedback360Routes
 } from "./routes";
 import { ActiveCycleProvider } from "./context/ActiveCycleContext";
 import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
@@ -57,6 +58,11 @@ const App = () => {
 
             {/* PIP Routes */}
             {pipRoutes.filter(r => !r.adminOnly).map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* Feedback 360 Routes */}
+            {feedback360Routes.map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 

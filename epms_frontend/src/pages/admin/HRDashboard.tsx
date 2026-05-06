@@ -3,8 +3,10 @@ import { useGetDepartmentsQuery } from "../../features/org/departmentApi";
 import { Link } from "react-router-dom";
 
 const HRDashboard = () => {
-  const { data: employees } = useGetEmployeesQuery();
+  const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 100 });
   const { data: departments } = useGetDepartmentsQuery();
+
+  const employees = employeeData?.content || [];
 
   return (
     <div className="space-y-8">
@@ -17,7 +19,7 @@ const HRDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="text-sm font-medium text-gray-500 uppercase">Total Employees</div>
-          <div className="text-4xl font-bold text-blue-600 mt-2">{employees?.length || 0}</div>
+          <div className="text-4xl font-bold text-blue-600 mt-2">{employeeData?.totalElements || 0}</div>
         </div>
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="text-sm font-medium text-gray-500 uppercase">Departments</div>
@@ -26,7 +28,7 @@ const HRDashboard = () => {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="text-sm font-medium text-gray-500 uppercase">Active Status</div>
           <div className="text-4xl font-bold text-green-600 mt-2">
-            {employees?.filter(e => e.id).length || 0}
+            {employees.length}
           </div>
         </div>
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -40,7 +42,7 @@ const HRDashboard = () => {
         <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Personnel Changes</h2>
           <div className="space-y-4">
-            {employees?.slice(0, 5).map(emp => (
+            {employees.slice(0, 5).map(emp => (
               <div key={emp.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
@@ -103,10 +105,10 @@ const HRDashboard = () => {
           </div>
           <div className="p-5 border border-gray-100 rounded-xl bg-gray-50 flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-gray-900 text-lg mb-1">Appraisal Results</h3>
-              <p className="text-sm text-gray-500 mb-4">Review finalized performance scores and reports for all employees.</p>
+              <h3 className="font-bold text-gray-900 text-lg mb-1">360 Feedback</h3>
+              <p className="text-sm text-gray-500 mb-4">Manage peer evaluation requests, configurations, and review aggregated results.</p>
             </div>
-            <button className="text-gray-400 font-bold cursor-not-allowed self-start" title="Feature coming soon">Reports &rarr;</button>
+            <Link to="/hr/feedback" className="text-blue-600 font-bold hover:underline self-start">Manage Feedback &rarr;</Link>
           </div>
         </div>
       </section>

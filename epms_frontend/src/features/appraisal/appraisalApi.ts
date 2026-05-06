@@ -55,6 +55,13 @@ export const appraisalApi = api.injectEndpoints({
     // Appraisal Cycles
     getCycles: builder.query<AppraisalCycle[], void>({
       query: () => '/appraisal-cycles',
+      transformResponse: (response: { data: AppraisalCycle[] }) => response.data,
+      providesTags: ['Cycle'],
+    }),
+    //Active Cycle
+    getActiveCycle: builder.query<AppraisalCycle, void>({
+      query: () => '/appraisal-cycles/active',
+      transformResponse: (response: { data: AppraisalCycle }) => response.data,
       providesTags: ['Cycle'],
     }),
     createCycle: builder.mutation<AppraisalCycle, CycleRequest>({
@@ -76,12 +83,14 @@ export const appraisalApi = api.injectEndpoints({
 
     getAppraisalForm: builder.query<AppraisalForm, string>({
       query: (id) => `/appraisal-forms/${id}`,
+      transformResponse: (response: { data: AppraisalForm }) => response.data,
       providesTags: ['Form'],
     }),
 
     // Appraisal Forms
     getAppraisalForms: builder.query<AppraisalForm[], void>({
       query: () => '/appraisal-forms',
+      transformResponse: (response: { data: AppraisalForm[] }) => response.data,
       providesTags: ['Form'],
     }),
     createAppraisalForm: builder.mutation<AppraisalForm, any>({
@@ -209,6 +218,7 @@ export const appraisalApi = api.injectEndpoints({
 
 export const {
   useGetCyclesQuery,
+  useGetActiveCycleQuery,
   useCreateCycleMutation,
   useUpdateCycleMutation,
   useGetAppraisalFormQuery,

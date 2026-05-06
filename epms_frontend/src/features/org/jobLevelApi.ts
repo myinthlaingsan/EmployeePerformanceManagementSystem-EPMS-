@@ -47,6 +47,12 @@ export const jobLevelApi = api.injectEndpoints({
       }),
       invalidatesTags: ["JobLevel"],
     }),
+
+    getJobLevelsByDepartment: builder.query<JobLevelResponse[], number>({
+      query: (deptId) => `/job-levels/department/${deptId}`,
+      transformResponse: (res: ApiResponse<JobLevelResponse[]>) => res.data,
+      providesTags: ["JobLevel"],
+    }),
   }),
 });
 
@@ -56,4 +62,5 @@ export const {
   useCreateJobLevelMutation,
   useUpdateJobLevelMutation,
   useDeleteJobLevelMutation,
+  useGetJobLevelsByDepartmentQuery,
 } = jobLevelApi;

@@ -10,7 +10,7 @@ export const api = createApi({
     "EmployeeDepartment", "Permission", "RoleLevelPermission", "PIP", 
     "PipObjective", "PipProgress", "PipReview", "Form", "Cycle", 
     "Appraisal", "Teams", "TeamMembers", "EmployeeTeams",
-    "Library", "GoalSet", "Progress", "Score", "Category"
+    "Library", "GoalSet", "Progress", "Score", "Category", "Feedback360"
   ],
   endpoints: () => ({}),
   // This adds more context to traces
