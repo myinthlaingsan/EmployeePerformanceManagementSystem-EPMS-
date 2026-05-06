@@ -20,4 +20,6 @@ public class FeedbackRequestGenerateDTO {
 
     // include subordinates (bottom-up)
     private Boolean includeSubordinates = true;
+
+    private Long formId;
 }

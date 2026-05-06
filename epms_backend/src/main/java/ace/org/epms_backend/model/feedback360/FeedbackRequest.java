@@ -2,6 +2,7 @@ package ace.org.epms_backend.model.feedback360;
 import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.enums.FeedbackStatus;
 import ace.org.epms_backend.model.BaseEntity;
+import ace.org.epms_backend.model.appraisal.AppraisalForm;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import jakarta.persistence.*;
@@ -38,6 +39,10 @@ public class FeedbackRequest extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "cycle_id", nullable = false)
     private AppraisalCycle cycle;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "form_id")
+    private AppraisalForm form;
 
     @Enumerated(EnumType.STRING)
     private FeedbackRelationship relationship;

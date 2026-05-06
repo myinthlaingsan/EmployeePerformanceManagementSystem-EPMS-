@@ -23,6 +23,8 @@ public class AppraisalResponse {
     private String managerName;
     private Long cycleId;
     private String cycleName;
+    private Long formId;
+    private String formName;
     private AppraisalStatus status;
 
     private Instant assignedAt;

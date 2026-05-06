@@ -18,6 +18,7 @@ import java.util.List;
 public class FeedbackSubmissionController {
 
     private final FeedbackSubmissionService feedbackService;
+    private final ace.org.epms_backend.service.feedback360.FeedbackFormService feedbackFormService;
 
     @PostMapping
     public ResponseEntity<Void> submitFeedback(@RequestBody FeedbackSubmissionRequest request, @RequestParam Long evaluatorId) {
@@ -44,5 +45,10 @@ public class FeedbackSubmissionController {
     public ResponseEntity<Void> deleteFeedback(@PathVariable Long feedbackId) {
         feedbackService.deleteFeedback(feedbackId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/request/{requestId}/questions")
+    public ResponseEntity<ace.org.epms_backend.dto.appraisal.FullFormResponse> getQuestions(@PathVariable Long requestId) {
+        return ResponseEntity.ok(feedbackFormService.getQuestionsForRequest(requestId));
     }
 }

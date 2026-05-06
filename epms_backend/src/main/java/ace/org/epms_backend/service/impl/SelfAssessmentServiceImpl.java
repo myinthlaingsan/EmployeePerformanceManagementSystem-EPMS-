@@ -153,12 +153,17 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
     }
 
     private FullSelfAssessmentResponse buildFullResponse(Appraisal appraisal, SelfAssessment self) {
-        // Find the SELF_ASSESSMENT form in the cycle
-        AppraisalForm form = appraisal.getCycle().getForms().stream()
+        // Use the specific form linked to the appraisal
+        AppraisalForm form = appraisal.getForm();
+        
+        if (form == null) {
+            // Fallback: Find the first SELF_ASSESSMENT form in the cycle if none linked (backward compatibility)
+            form = appraisal.getCycle().getForms().stream()
                 .filter(f -> f.getFormType() == FormType.SELF_ASSESSMENT)
                 .findFirst()
-                .orElseThrow(() -> new NotFoundException("No SELF_ASSESSMENT form found for cycle: " 
-                        + appraisal.getCycle().getCycleName()));
+                .orElseThrow(() -> new NotFoundException("No SELF_ASSESSMENT form found for appraisal: " 
+                        + appraisal.getAppraisalId()));
+        }
 
         List<FormCategory> categories = categoryRepo.findByForm_FormId(form.getFormId());
 
