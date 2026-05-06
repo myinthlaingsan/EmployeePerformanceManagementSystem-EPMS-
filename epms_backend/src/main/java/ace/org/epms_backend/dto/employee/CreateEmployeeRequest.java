@@ -54,9 +54,10 @@ public class CreateEmployeeRequest {
 
     @NotNull(message = "role is required")
     private Long roleId;
-    
-    private Long parentDepartmentId;
-    
+
+    private Long parentDepartmentId;   //Banking
     @NotNull(message = "current department is required")
     private Long currentDepartmentId;
+
+    private Long directManagerId;
 }

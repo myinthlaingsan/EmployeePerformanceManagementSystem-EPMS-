@@ -22,6 +22,12 @@ public class ContinuousFeedbackController {
     private final ContinuousFeedbackService feedbackService;
 
     // --- CONTINUOUS FEEDBACK APIs ---
+    
+    @GetMapping("/feedbacks")
+    public ResponseEntity<ApiResponse<List<ContinuousFeedbackResponse>>> getAllFeedbacks() {
+        List<ContinuousFeedbackResponse> responses = feedbackService.getAllFeedbacks();
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
 
     @PostMapping("/feedbacks")
     public ResponseEntity<ApiResponse<ContinuousFeedbackResponse>> createFeedback(
@@ -84,7 +90,15 @@ public class ContinuousFeedbackController {
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
-    @DeleteMapping("/replies/{replyId}")
+    @PutMapping("/feedbacks/replies/{replyId}")
+    public ResponseEntity<ApiResponse<FeedbackReplyResponse>> updateReply(
+            @PathVariable Long replyId,
+            @Valid @RequestBody FeedbackReplyRequest request) {
+        FeedbackReplyResponse response = feedbackService.updateReply(replyId, request);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @DeleteMapping("/feedbacks/replies/{replyId}")
     public ResponseEntity<ApiResponse<Void>> deleteReply(@PathVariable Long replyId) {
         feedbackService.deleteReply(replyId);
         return ResponseEntity.ok(ApiResponse.success());

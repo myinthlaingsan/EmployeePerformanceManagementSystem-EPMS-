@@ -38,7 +38,8 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
         AppraisalCycle cycle = appraisalCycleRepository.findById(cycleId)
                 .orElseThrow(() -> new RuntimeException("Appraisal cycle not found"));
 
-        List<Feedback> allFeedbacks = feedbackRepository.findByRequestTargetUserIdAndRequestCycleCycleId(targetUserId, cycleId);
+        List<Feedback> allFeedbacks = feedbackRepository.findByRequestTargetUserIdAndRequestCycleCycleId(targetUserId,
+                cycleId);
 
         Map<String, List<Integer>> selfScoresMap = new HashMap<>();
         Map<String, List<Integer>> othersScoresMap = new HashMap<>();
@@ -49,7 +50,7 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
         for (Feedback feedback : allFeedbacks) {
             List<FeedbackResponse> responses = feedbackResponseRepository.findByFeedbackId(feedback.getId());
             FeedbackRelationship relationship = feedback.getRequest().getRelationship();
-            
+
             String evaluatorName;
             if (relationship == FeedbackRelationship.PEER || relationship == FeedbackRelationship.SUBORDINATE) {
                 evaluatorName = "Anonymous " + relationship.name();
@@ -58,11 +59,12 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
             }
 
             for (FeedbackResponse response : responses) {
-                String categoryName = response.getQuestion().getCategory() != null ? 
-                                      response.getQuestion().getCategory().getCategoryName() : "General";
-                
+                String categoryName = response.getQuestion().getCategory() != null
+                        ? response.getQuestion().getCategory().getCategoryName()
+                        : "General";
+
                 Integer score = response.getScore();
-                
+
                 if (relationship == FeedbackRelationship.SELF) {
                     selfScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
                 } else {
@@ -83,8 +85,9 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
             }
         }
 
-        double totalAverageScore = totalOthersQuestions > 0 ? 
-                                   (totalOthersPoints / (double) (totalOthersQuestions * 5)) * 100.0 : 0.0;
+        double totalAverageScore = totalOthersQuestions > 0
+                ? (totalOthersPoints / (double) (totalOthersQuestions * 5)) * 100.0
+                : 0.0;
 
         FeedbackSummary summary = feedbackSummaryRepository.findByEmployeeIdAndCycleCycleId(targetUserId, cycleId)
                 .orElse(null);
@@ -111,10 +114,10 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                     List<Integer> scores = entry.getValue();
                     int totalPoints = scores.stream().mapToInt(Integer::intValue).sum();
                     int questionCount = scores.size();
-                    
+
                     // Formula from image: (Total Point / (Number of Questions Answered * 5)) * 100
                     double percentageScore = (totalPoints / (double) (questionCount * 5)) * 100.0;
-                    
+
                     return new CategoryScore(entry.getKey(), Math.round(percentageScore * 100.0) / 100.0);
                 })
                 .collect(Collectors.toList());

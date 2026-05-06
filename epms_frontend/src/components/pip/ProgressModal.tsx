@@ -4,10 +4,11 @@ import type { PipProgressRequest } from '../../features/pip/types';
 interface ProgressModalProps {
     onClose: () => void;
     onSave: (data: Omit<PipProgressRequest, 'objectiveId'>) => Promise<void>;
+    initialProgress?: number;
 }
 
-const ProgressModal: React.FC<ProgressModalProps> = ({ onClose, onSave }) => {
-    const [data, setData] = useState({ progressNote: '', progressPercent: 0 });
+const ProgressModal: React.FC<ProgressModalProps> = ({ onClose, onSave, initialProgress = 0 }) => {
+    const [data, setData] = useState({ progressNote: '', progressPercent: initialProgress });
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSubmit = async () => {

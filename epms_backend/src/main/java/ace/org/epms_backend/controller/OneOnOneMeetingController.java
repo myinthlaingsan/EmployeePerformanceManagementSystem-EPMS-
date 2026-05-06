@@ -23,6 +23,12 @@ public class OneOnOneMeetingController {
 
     // --- MEETING APIs ---
 
+    @GetMapping("/meetings")
+    public ResponseEntity<ApiResponse<List<OneOnOneMeetingResponse>>> getAllMeetings() {
+        List<OneOnOneMeetingResponse> responses = meetingService.getAllMeetings();
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
     @PostMapping("/meetings")
     public ResponseEntity<ApiResponse<OneOnOneMeetingResponse>> scheduleMeeting(
             @Valid @RequestBody OneOnOneMeetingRequest request) {
@@ -84,7 +90,15 @@ public class OneOnOneMeetingController {
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
-    @DeleteMapping("/comments/{commentId}")
+    @PutMapping("/meetings/comments/{commentId}")
+    public ResponseEntity<ApiResponse<MeetingCommentResponse>> updateComment(
+            @PathVariable Long commentId,
+            @Valid @RequestBody MeetingCommentRequest request) {
+        MeetingCommentResponse response = meetingService.updateComment(commentId, request);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @DeleteMapping("/meetings/comments/{commentId}")
     public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable Long commentId) {
         meetingService.deleteComment(commentId);
         return ResponseEntity.ok(ApiResponse.success());

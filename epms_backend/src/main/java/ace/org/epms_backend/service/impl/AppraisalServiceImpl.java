@@ -78,12 +78,13 @@ public class AppraisalServiceImpl implements AppraisalService {
         AppraisalCycle cycle = cycleRepo.findById(cycleId)
                 .orElseThrow(() -> new NotFoundException("Cycle not found"));
 
-        // Resolve form type to determine manager lookup logic
+        // Resolve form
+        AppraisalForm form = null;
         FormType formType = FormType.SELF_ASSESSMENT;
         if (formId != null) {
-            formType = formRepo.findById(formId)
-                    .map(AppraisalForm::getFormType)
+            form = formRepo.findById(formId)
                     .orElseThrow(() -> new NotFoundException("Form not found: " + formId));
+            formType = form.getFormType();
         }
 
         // Resolve manager based on form type
@@ -104,14 +105,13 @@ public class AppraisalServiceImpl implements AppraisalService {
                     .orElse(null);
         }
 
-
         Appraisal appraisal = new Appraisal();
         appraisal.setEmployee(employee);
         appraisal.setManager(manager); // null for MANAGER_EVALUATION
         appraisal.setCycle(cycle);
+        appraisal.setForm(form); // Link the specific form
         appraisal.setStatus(AppraisalStatus.PENDING);
         appraisal.setAssignedAt(Instant.now());
-
 
         Appraisal saved = appraisalRepo.save(appraisal);
 

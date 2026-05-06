@@ -8,7 +8,6 @@ public class GoalAssignmentRequest {
     @NotNull(message = "Employee ID is required")
     private Long employeeId;
 
-    @NotNull(message = "KPI Library ID is required")
     private Long libraryId;
 
     @NotNull(message = "Appraisal Cycle ID is required")

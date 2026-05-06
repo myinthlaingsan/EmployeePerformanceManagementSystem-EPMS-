@@ -12,4 +12,6 @@ import lombok.NoArgsConstructor;
 public class PipUpdateRequest {
     private Long managerId;
     private String reason;
+    private String managerPrivateNote;
+    private String employeePrivateNote;
 }

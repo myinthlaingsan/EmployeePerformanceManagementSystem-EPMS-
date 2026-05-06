@@ -9,4 +9,5 @@ public interface PerformanceHistoryService {
     List<PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId);
     List<PerformanceHistoryResponse> getHistoryBySource(SourceType sourceType, Long sourceId);
     PerformanceHistoryResponse getHistoryById(Long historyId);
+    List<PerformanceHistoryResponse> getAllHistory();
 }

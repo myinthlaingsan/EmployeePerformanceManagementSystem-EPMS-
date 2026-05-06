@@ -19,4 +19,5 @@ public class PipObjectiveResponse {
 
     private ObjectiveStatus status;
     private Boolean isAchieved;
+    private Integer currentProgress;
 }

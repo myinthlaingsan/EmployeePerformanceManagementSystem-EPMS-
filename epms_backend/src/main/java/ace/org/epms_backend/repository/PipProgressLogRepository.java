@@ -10,4 +10,6 @@ import java.util.List;
 public interface PipProgressLogRepository extends JpaRepository<PipProgressLog, Long> {
 
     List<PipProgressLog> findByObjective_ObjectiveId(Long objectiveId);
+
+    java.util.Optional<PipProgressLog> findFirstByObjective_ObjectiveIdOrderByCreatedAtDesc(Long objectiveId);
 }
