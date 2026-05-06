@@ -32,7 +32,6 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck },
-  { label: "Self-Assessment", to: "/appraisal/self", icon: User },
   { label: "360 Feedback", to: "/appraisal/360", icon: Users },
   { label: "1-on-1s", to: "/appraisal/1-on-1", icon: MessageSquare },
   { label: "PIP", to: "/pip", icon: TrendingUp },

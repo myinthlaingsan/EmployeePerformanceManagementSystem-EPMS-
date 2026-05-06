@@ -44,7 +44,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
 
     @Override
     @Transactional
-    public void addCategory(Long formId, CategoryRequest request) {
+    public Long addCategory(Long formId, CategoryRequest request) {
         AppraisalForm form = formRepository.findById(formId)
                 .orElseThrow(() -> new NotFoundException("Form not found"));
         
@@ -52,12 +52,12 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         category.setForm(form);
         category.setCategoryName(request.getCategoryName());
         category.setIsActive(true);
-        categoryRepository.save(category);
+        return categoryRepository.save(category).getCategoryId();
     }
 
     @Override
     @Transactional
-    public void addQuestion(Long categoryId, QuestionRequest request) {
+    public Long addQuestion(Long categoryId, QuestionRequest request) {
         FormCategory category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new NotFoundException("Category not found"));
 
@@ -67,7 +67,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         question.setQuestionType(QuestionType.valueOf(request.getQuestionType()));
         question.setIsRequired(request.getIsRequired());
         question.setIsActive(true);
-        questionRepository.save(question);
+        return questionRepository.save(question).getQuestionId();
     }
 
     @Override

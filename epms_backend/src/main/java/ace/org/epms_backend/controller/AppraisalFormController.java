@@ -22,15 +22,13 @@ public class AppraisalFormController {
     }
 
     @PostMapping("/api/v1/appraisal-forms/{formId}/categories")
-    public ResponseEntity<Void> addCategory(@PathVariable Long formId, @RequestBody CategoryRequest request) {
-        formService.addCategory(formId, request);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Long> addCategory(@PathVariable Long formId, @RequestBody CategoryRequest request) {
+        return ResponseEntity.ok(formService.addCategory(formId, request));
     }
 
     @PostMapping("/api/v1/categories/{categoryId}/questions")
-    public ResponseEntity<Void> addQuestion(@PathVariable Long categoryId, @RequestBody QuestionRequest request) {
-        formService.addQuestion(categoryId, request);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Long> addQuestion(@PathVariable Long categoryId, @RequestBody QuestionRequest request) {
+        return ResponseEntity.ok(formService.addQuestion(categoryId, request));
     }
 
     @GetMapping("/api/v1/appraisal-forms/{formId}")

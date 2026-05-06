@@ -7,6 +7,7 @@ import ace.org.epms_backend.exception.ResourceNotFoundException;
 import ace.org.epms_backend.mapper.AppraisalCycleMapper;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
+import ace.org.epms_backend.repository.ScoringWeightRepository;
 import ace.org.epms_backend.service.AppraisalCycleService;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.NotificationType;
@@ -27,6 +28,7 @@ import java.util.List;
 public class AppraisalCycleServiceImpl implements AppraisalCycleService {
 
     private final AppraisalCycleRepository appraisalCycleRepository;
+    private final ScoringWeightRepository scoringWeightRepository;
     private final AppraisalCycleMapper appraisalCycleMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
@@ -41,6 +43,15 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         AppraisalCycle cycle = appraisalCycleMapper.toEntity(request);
         cycle = appraisalCycleRepository.save(cycle);
 
+        // Save Scoring Weights
+        ace.org.epms_backend.model.appraisal.ScoringWeight weights = new ace.org.epms_backend.model.appraisal.ScoringWeight();
+        weights.setCycle(cycle);
+        weights.setKpiWeight(request.getKpiWeight());
+        weights.setManagerWeight(request.getManagerWeight());
+        weights.setSelfWeight(request.getSelfWeight());
+        weights.setFeedbackWeight(request.getFeedbackWeight());
+        scoringWeightRepository.save(weights);
+
         // Log Audit
         auditService.log(AuditRequest.builder()
                 .tableName("appraisal_cycle")
@@ -50,19 +61,29 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
-        return appraisalCycleMapper.toResponse(cycle);
+        AppraisalCycleResponse response = appraisalCycleMapper.toResponse(cycle);
+        mapWeightsToResponse(weights, response);
+        return response;
     }
 
     @Override
     public List<AppraisalCycleResponse> getAll() {
         List<AppraisalCycle> cycles = appraisalCycleRepository.findAll();
-        return appraisalCycleMapper.toResponseList(cycles);
+        return cycles.stream().map(cycle -> {
+            AppraisalCycleResponse resp = appraisalCycleMapper.toResponse(cycle);
+            scoringWeightRepository.findByCycle_CycleId(cycle.getCycleId())
+                .ifPresent(w -> mapWeightsToResponse(w, resp));
+            return resp;
+        }).toList();
     }
 
     @Override
     public AppraisalCycleResponse getById(Long id) {
         AppraisalCycle cycle = getCycleById(id);
-        return appraisalCycleMapper.toResponse(cycle);
+        AppraisalCycleResponse resp = appraisalCycleMapper.toResponse(cycle);
+        scoringWeightRepository.findByCycle_CycleId(cycle.getCycleId())
+            .ifPresent(w -> mapWeightsToResponse(w, resp));
+        return resp;
     }
 
     @Override
@@ -77,6 +98,16 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         appraisalCycleMapper.updateEntityFromRequest(request, cycle);
         cycle = appraisalCycleRepository.save(cycle);
 
+        // Update Weights
+        ace.org.epms_backend.model.appraisal.ScoringWeight weights = scoringWeightRepository.findByCycle_CycleId(id)
+                .orElse(new ace.org.epms_backend.model.appraisal.ScoringWeight());
+        weights.setCycle(cycle);
+        weights.setKpiWeight(request.getKpiWeight());
+        weights.setManagerWeight(request.getManagerWeight());
+        weights.setSelfWeight(request.getSelfWeight());
+        weights.setFeedbackWeight(request.getFeedbackWeight());
+        scoringWeightRepository.save(weights);
+
         // Log Audit
         auditService.log(AuditRequest.builder()
                 .tableName("appraisal_cycle")
@@ -86,7 +117,16 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
-        return appraisalCycleMapper.toResponse(cycle);
+        AppraisalCycleResponse response = appraisalCycleMapper.toResponse(cycle);
+        mapWeightsToResponse(weights, response);
+        return response;
+    }
+
+    private void mapWeightsToResponse(ace.org.epms_backend.model.appraisal.ScoringWeight weights, AppraisalCycleResponse response) {
+        response.setKpiWeight(weights.getKpiWeight());
+        response.setManagerWeight(weights.getManagerWeight());
+        response.setSelfWeight(weights.getSelfWeight());
+        response.setFeedbackWeight(weights.getFeedbackWeight());
     }
 
     @Override
