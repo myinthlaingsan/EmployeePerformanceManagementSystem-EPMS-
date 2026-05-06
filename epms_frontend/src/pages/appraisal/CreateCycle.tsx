@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
+import { subDays, isBefore, format } from 'date-fns';
 
 const AppraisalCycleCreate: React.FC = () => {
   const navigate = useNavigate();
@@ -44,14 +45,45 @@ const AppraisalCycleCreate: React.FC = () => {
       return;
     }
 
+    if (new Date(formData.endDate) < new Date(formData.startDate)) {
+      alert('End Date cannot be before Start Date');
+      return;
+    }
+
     try {
-      const cycleResp = await createCycle(formData).unwrap();
+      await createCycle(formData).unwrap();
       alert('Appraisal Cycle created successfully!');
-      navigate('/appraisal/design-form', { state: { cycleId: cycleResp.cycleId } });
+      navigate('/appraisal', { 
+        state: { 
+          activeTab: 'forms', 
+          expandedCycle: formData.cycleName 
+        } 
+      });
     } catch (err) {
       console.error('Failed to create cycle:', err);
       alert('Error creating cycle. Please check your data.');
     }
+  };
+
+  const handleDateChange = (field: string, value: string) => {
+    const updatedData = { ...formData, [field]: value };
+    
+    if ((field === 'startDate' || field === 'endDate') && updatedData.startDate && updatedData.endDate) {
+      const start = new Date(updatedData.startDate);
+      const end = new Date(updatedData.endDate);
+
+      if (isBefore(start, end) || start.getTime() === end.getTime()) {
+        const finalization = subDays(end, 5);
+        const manager = subDays(finalization, 5);
+        const self = subDays(manager, 10);
+
+        updatedData.finalizationDeadline = format(finalization, 'yyyy-MM-dd');
+        updatedData.managerEvaluationDeadline = format(manager, 'yyyy-MM-dd');
+        updatedData.selfAssessmentDeadline = format(self, 'yyyy-MM-dd');
+      }
+    }
+    
+    setFormData(updatedData);
   };
 
   const inputClass = "w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-700 placeholder:text-slate-300";
@@ -123,7 +155,7 @@ const AppraisalCycleCreate: React.FC = () => {
                     type="date" 
                     className={inputClass}
                     value={formData.startDate}
-                    onChange={e => setFormData({...formData, startDate: e.target.value})}
+                    onChange={e => handleDateChange('startDate', e.target.value)}
                     required
                   />
                 </div>
@@ -133,7 +165,8 @@ const AppraisalCycleCreate: React.FC = () => {
                     type="date" 
                     className={inputClass}
                     value={formData.endDate}
-                    onChange={e => setFormData({...formData, endDate: e.target.value})}
+                    min={formData.startDate}
+                    onChange={e => handleDateChange('endDate', e.target.value)}
                     required
                   />
                 </div>
@@ -152,6 +185,8 @@ const AppraisalCycleCreate: React.FC = () => {
                   type="date" 
                   className={inputClass}
                   value={formData.selfAssessmentDeadline}
+                  min={formData.startDate}
+                  max={formData.endDate}
                   onChange={e => setFormData({...formData, selfAssessmentDeadline: e.target.value})}
                   required
                 />
@@ -162,6 +197,8 @@ const AppraisalCycleCreate: React.FC = () => {
                   type="date" 
                   className={inputClass}
                   value={formData.managerEvaluationDeadline}
+                  min={formData.startDate}
+                  max={formData.endDate}
                   onChange={e => setFormData({...formData, managerEvaluationDeadline: e.target.value})}
                   required
                 />
@@ -172,6 +209,8 @@ const AppraisalCycleCreate: React.FC = () => {
                   type="date" 
                   className={inputClass}
                   value={formData.finalizationDeadline}
+                  min={formData.startDate}
+                  max={formData.endDate}
                   onChange={e => setFormData({...formData, finalizationDeadline: e.target.value})}
                   required
                 />

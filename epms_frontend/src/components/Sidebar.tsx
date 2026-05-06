@@ -18,7 +18,8 @@ import {
   Briefcase,
   Zap,
   Target,
-  Library
+  Library,
+  Calendar
 } from "lucide-react";
 
 interface NavItem {
@@ -47,6 +48,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { label: "Teams", to: "/teams", icon: Users },
   { label: "Permissions", to: "/permissions", icon: ShieldCheck },
   { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck },
+  { label: "Financial Years", to: "/financial-years", icon: Calendar },
 ];
 
 const Sidebar = () => {

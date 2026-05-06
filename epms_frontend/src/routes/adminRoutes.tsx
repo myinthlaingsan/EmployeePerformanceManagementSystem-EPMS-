@@ -9,6 +9,7 @@ import TeamList from "../pages/admin/TeamList";
 import PermissionList from "../pages/admin/PermissionList";
 import RoleLevelPermissionManager from "../pages/admin/org/RoleLevelPermissionManager";
 import EmployeeDepartmentHistory from "../pages/admin/org/EmployeeDepartmentHistory";
+import FinancialYearManagement from "../pages/appraisal/FinancialYearManagement";
 
 export const adminRoutes = [
   { path: "/hr", element: <HRDashboard /> },
@@ -22,5 +23,6 @@ export const adminRoutes = [
   { path: "/positions", element: <PositionList /> },
   { path: "/teams", element: <TeamList /> },
   {path: "/permissions", element: <PermissionList />},
-  {path : "/permissions/matrix", element: <RoleLevelPermissionManager />}
+  {path : "/permissions/matrix", element: <RoleLevelPermissionManager />},
+  { path: "/financial-years", element: <FinancialYearManagement /> }
 ];

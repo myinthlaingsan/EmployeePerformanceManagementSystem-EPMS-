@@ -1,26 +1,38 @@
 import { api } from "../../services/api";
 
 export interface Section {
-  id: string;
-  title: string;
+  categoryId?: number;
+  categoryName?: string;
+  id?: string;
+  title?: string;
   description?: string;
   questions: FormField[];
   weightage?: number;
 }
 
 export interface FormField {
-  id: string;
-  text: string;
-  type: 'RATING' | 'TEXT' | 'NUMBER';
-  required: boolean;
+  questionId?: number;
+  questionText?: string;
+  id?: string;
+  text?: string;
+  type?: 'RATING' | 'TEXT' | 'NUMBER' | 'YESNO';
+  questionType?: string;
+  required?: boolean;
+  isRequired?: boolean;
   weightage?: number;
 }
 
 export interface AppraisalForm {
-  id: string;
-  title: string;
+  formId: number;
+  formName: string;
+  formType: string;
+  cycleId?: number;
+  cycleName?: string;
+  id?: string;
+  title?: string;
   description?: string;
-  sections: Section[];
+  categories?: Section[];
+  sections?: Section[];
 }
 
 export interface AppraisalCycle {
@@ -77,14 +89,17 @@ export const appraisalApi = api.injectEndpoints({
     getAppraisalForm: builder.query<AppraisalForm, string>({
       query: (id) => `/appraisal-forms/${id}`,
       transformResponse,
-      providesTags: ['Form'],
+      providesTags: (_result, _error, id) => [{ type: 'Form', id }],
     }),
 
     // Appraisal Forms
     getAppraisalForms: builder.query<AppraisalForm[], void>({
       query: () => '/appraisal-forms',
       transformResponse,
-      providesTags: ['Form'],
+      providesTags: (result) =>
+        result
+          ? [...result.map(({ formId }) => ({ type: 'Form' as const, id: formId })), { type: 'Form', id: 'LIST' }]
+          : [{ type: 'Form', id: 'LIST' }],
     }),
     createAppraisalForm: builder.mutation<number, any>({
       query: (body) => ({
@@ -92,7 +107,8 @@ export const appraisalApi = api.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Form'],
+      transformResponse,
+      invalidatesTags: [{ type: 'Form', id: 'LIST' }],
     }),
     updateAppraisalForm: builder.mutation<AppraisalForm, { id: string; body: any }>({
       query: ({ id, body }) => ({
@@ -101,7 +117,7 @@ export const appraisalApi = api.injectEndpoints({
         body,
       }),
       transformResponse,
-      invalidatesTags: ['Form'],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Form', id }, { type: 'Form', id: 'LIST' }],
     }),
 
     // Categories
@@ -211,14 +227,18 @@ export const appraisalApi = api.injectEndpoints({
         method: 'POST',
         body: { categoryName },
       }),
+      transformResponse,
+      invalidatesTags: (_result, _error, { formId }) => [{ type: 'Form', id: formId }],
     }),
 
     addQuestion: builder.mutation<number, { categoryId: number; questionText: string; questionType: string; isRequired: boolean }>({
       query: ({ categoryId, ...body }) => ({
-        url: `/categories/${categoryId}/questions`,
+        url: `/appraisal-forms/categories/${categoryId}/questions`,
         method: 'POST',
         body: { ...body, categoryId },
       }),
+      transformResponse,
+      invalidatesTags: ['Form'], // Invalidate all forms since we don't have formId here
     }),
 
     assignBulk: builder.mutation<any, { cycleId: number; employeeIds: number[]; departmentIds?: number[]; formId?: number }>({

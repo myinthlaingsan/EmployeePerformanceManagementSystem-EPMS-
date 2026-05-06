@@ -7,10 +7,12 @@ import DiagnosticPage from "../pages/appraisal/DiagnosticPage";
 import CreateCycle from "../pages/appraisal/CreateCycle";
 import AppraisalFormDesign from "../pages/appraisal/AppraisalFormDesign";
 import AppraisalAssignment from "../pages/appraisal/AppraisalAssignment";
+import FormView from "../pages/appraisal/FormView";
 
 export const appraisalRoutes = [
   { path: "/appraisal", element: <AppraisalList /> },
   { path: "/appraisal/:id", element: <AppraisalDetail /> },
+  { path: "/appraisal/forms/:id", element: <FormView /> },
   { path: "/appraisal/:id/self-assessment", element: <SelfAssessment /> },
   { path: "/appraisal/:id/manager-evaluation", element: <ManagerEvaluation /> },
   { path: "/appraisal/:id/results", element: <ResultPage /> },
