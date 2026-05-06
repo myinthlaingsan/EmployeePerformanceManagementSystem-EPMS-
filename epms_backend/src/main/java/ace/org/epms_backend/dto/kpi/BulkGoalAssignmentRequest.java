@@ -16,4 +16,6 @@ public class BulkGoalAssignmentRequest {
 
     @NotNull(message = "Appraisal Cycle ID is required")
     private Long appraisalCycleId;
+
+    private boolean overwriteExisting;
 }

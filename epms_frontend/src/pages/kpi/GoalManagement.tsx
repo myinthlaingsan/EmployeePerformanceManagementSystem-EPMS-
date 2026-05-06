@@ -10,8 +10,11 @@ import {
   ClipboardList,
   Search,
   SlidersHorizontal,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
+import { useGetActiveCycleQuery, useGetDepartmentGoalSetsQuery } from '../../services/kpiApi';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -38,6 +41,87 @@ const GoalManagement: React.FC = () => {
   const [selectedCycle, setSelectedCycle] = useState<string>('All');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // KPI Status Fetching
+  const { data: activeCycleResponse } = useGetActiveCycleQuery();
+  const activeCycleId = activeCycleResponse?.data?.cycleId;
+
+  const effectiveCycleId = selectedCycle === 'All' ? activeCycleId : Number(selectedCycle);
+
+  const { data: goalSetsResponse } = useGetDepartmentGoalSetsQuery(
+    { cycleId: effectiveCycleId! },
+    { skip: !effectiveCycleId }
+  );
+  const goalSets = goalSetsResponse?.data || [];
+  const goalStatusMap = new Map<number, string>(goalSets.map(gs => [gs.employeeId, gs.status]));
+
+  const getStatusBadge = (status: string | undefined) => {
+    if (!status) return (
+      <div className="flex items-center gap-1.5 opacity-60">
+        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-400">
+          <XCircle className="w-3.5 h-3.5" />
+        </span>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Not Assigned</span>
+      </div>
+    );
+
+    switch (status) {
+      case 'DRAFT':
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-50 text-blue-600">
+              <ClipboardList className="w-3.5 h-3.5" />
+            </span>
+            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Drafting</span>
+          </div>
+        );
+      case 'SUBMITTED':
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-50 text-amber-600">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </span>
+            <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Awaiting Review</span>
+          </div>
+        );
+      case 'APPROVED':
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-600">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </span>
+            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Approved</span>
+          </div>
+        );
+      case 'LOCKED':
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-50 text-indigo-600">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </span>
+            <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Locked (Active)</span>
+          </div>
+        );
+      case 'REJECTED':
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-50 text-rose-600">
+              <XCircle className="w-3.5 h-3.5" />
+            </span>
+            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Rejected</span>
+          </div>
+        );
+      default:
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-50 text-slate-600">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </span>
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">{status}</span>
+          </div>
+        );
+    }
+  };
 
   const filteredEmployees = employees.filter(emp => {
     // Exclude current user unless admin
@@ -119,7 +203,7 @@ const GoalManagement: React.FC = () => {
                   type="text"
                   placeholder="Search employees by name or emp code..."
                   className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#0052CC]/20 outline-none transition-all"
-                  value={searchTerm}
+                  value={searchTerm || ''}
                   onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
@@ -129,8 +213,8 @@ const GoalManagement: React.FC = () => {
                 onChange={(e) => setSelectedDepartment(e.target.value)}
               >
                 <option value="All">Department: All</option>
-                {departments.map(dept => (
-                  <option key={dept.id} value={dept.departmentName}>{dept.departmentName}</option>
+                {departments.map((dept, idx) => (
+                  <option key={`${dept.id}-${idx}`} value={dept.departmentName}>{dept.departmentName}</option>
                 ))}
               </select>
               <select
@@ -139,8 +223,8 @@ const GoalManagement: React.FC = () => {
                 onChange={(e) => setSelectedPosition(e.target.value)}
               >
                 <option value="All">Position: All</option>
-                {positions.map(pos => (
-                  <option key={pos.positionId} value={pos.positionName}>{pos.positionName}</option>
+                {positions.map((pos, idx) => (
+                  <option key={`${pos.positionId}-${idx}`} value={pos.positionName}>{pos.positionName}</option>
                 ))}
               </select>
               <select
@@ -149,8 +233,8 @@ const GoalManagement: React.FC = () => {
                 onChange={(e) => setSelectedCycle(e.target.value)}
               >
                 <option value="All">Cycle: All</option>
-                {cycles.map(cycle => (
-                  <option key={cycle.id} value={cycle.id}>{cycle.name}</option>
+                {cycles.map((cycle, idx) => (
+                  <option key={`${cycle.id}-${idx}`} value={cycle.id}>{cycle.name}</option>
                 ))}
               </select>
 
@@ -176,12 +260,13 @@ const GoalManagement: React.FC = () => {
                       <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Department</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Position</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Goal Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {loadingEmployees && (
                       <tr>
-                        <td colSpan={3} className="px-6 py-12 text-center text-sm font-bold text-slate-400">
+                        <td colSpan={5} className="px-6 py-12 text-center text-sm font-bold text-slate-400">
                           Loading employees...
                         </td>
                       </tr>
@@ -219,11 +304,14 @@ const GoalManagement: React.FC = () => {
                             {emp.positionName || '-'}
                           </div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(goalStatusMap.get(emp.id))}
+                        </td>
                       </tr>
                     ))}
                     {filteredEmployees.length === 0 && !loadingEmployees && (
                       <tr>
-                        <td colSpan={3} className="px-6 py-12 text-center text-sm font-bold text-slate-400">
+                        <td colSpan={5} className="px-6 py-12 text-center text-sm font-bold text-slate-400">
                           No employees found matching your criteria.
                         </td>
                       </tr>

@@ -41,6 +41,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     private final AuditService auditService;
 
     @Override
+    @Transactional(readOnly = true)
     public AppraisalCycleResponse getActiveCycle() {
         AppraisalCycle cycle = cycleRepository.findByIsActiveTrue().stream().findFirst()
                 .orElseThrow(() -> new NotFoundException("No active appraisal cycle found"));
@@ -81,6 +82,22 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         if (!isHrOrAdmin && !isManager) {
             throw new SecurityException("Insufficient permissions to assign goals");
+        }
+
+        // Check for existing current goal set
+        List<KpiGoals> existingGoals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
+                request.getEmployeeId(), cycle.getCycleId());
+        
+        if (!existingGoals.isEmpty()) {
+            if (request.isOverwriteExisting()) {
+                existingGoals.forEach(g -> {
+                    g.setIsCurrent(false);
+                    g.setStatus(KpiGoalStatus.ARCHIVED);
+                });
+                goalsRepository.saveAll(existingGoals);
+            } else {
+                throw new IllegalStateException("Employee already has goals assigned for this cycle. Use the overwrite option if you wish to replace them.");
+            }
         }
 
         KpiGoals goalSet = KpiGoals.builder()
@@ -156,6 +173,23 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             Employee employee = employeeRepository.findById(employeeId)
                     .orElseThrow(() -> new NotFoundException(
                             "Employee not found with ID: " + employeeId));
+
+            // Check for existing goals
+            List<KpiGoals> existingGoals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
+                    employeeId, cycle.getCycleId());
+            
+            if (!existingGoals.isEmpty()) {
+                if (request.isOverwriteExisting()) {
+                    existingGoals.forEach(g -> {
+                        g.setIsCurrent(false);
+                        g.setStatus(KpiGoalStatus.ARCHIVED);
+                    });
+                    goalsRepository.saveAll(existingGoals);
+                } else {
+                    // Skip if overwrite is not allowed
+                    continue;
+                }
+            }
 
             // Create Draft Goal Set
             KpiGoals goalSet = KpiGoals.builder()
@@ -558,13 +592,19 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public GoalSetResponse getGoalSetByEmployee(Long employeeId, Long cycleId) {
-        return goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
-                .map(kpiMapper::toGoalSetResponse)
-                .orElseThrow(() -> new NotFoundException("Current goal set not found"));
+        List<KpiGoals> goals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId,
+                cycleId);
+        if (goals.isEmpty()) {
+            throw new NotFoundException("Current goal set not found for employee ID: " + employeeId);
+        }
+        // Return the most recently created one if duplicates exist
+        return kpiMapper.toGoalSetResponse(goals.get(0));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public GoalSetResponse getGoalSetById(Long id) {
         return goalsRepository.findById(id)
                 .map(kpiMapper::toGoalSetResponse)
@@ -572,6 +612,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<GoalSetResponse> getEmployeeGoalSets(Long employeeId) {
         return goalsRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId).stream()
                 .map(kpiMapper::toGoalSetResponse)
@@ -579,6 +620,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<GoalSetResponse> getTeamGoalSets(Long managerId, Long cycleId) {
         return goalsRepository.findTeamGoals(managerId, cycleId).stream()
                 .map(kpiMapper::toGoalSetResponse)
@@ -586,8 +628,9 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<GoalSetResponse> getDepartmentGoalSets(Long departmentId, Long cycleId) {
-        return goalsRepository.findByDepartmentIdAndCycleId(departmentId, cycleId).stream()
+        return goalsRepository.findByCycleAndDepartment(cycleId, departmentId).stream()
                 .map(kpiMapper::toGoalSetResponse)
                 .collect(Collectors.toList());
     }

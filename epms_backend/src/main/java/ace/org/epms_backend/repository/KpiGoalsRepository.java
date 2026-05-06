@@ -18,6 +18,11 @@ public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
                         @Param("employeeId") Long employeeId,
                         @Param("cycleId") Long cycleId);
 
+        @Query("SELECT k FROM KpiGoals k WHERE k.employee.id = :employeeId AND k.cycle.cycleId = :cycleId AND k.isCurrent = true ORDER BY k.createdAt DESC")
+        List<KpiGoals> findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
+                        @Param("employeeId") Long employeeId,
+                        @Param("cycleId") Long cycleId);
+
         List<KpiGoals> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
 
         @Query("SELECT k FROM KpiGoals k WHERE (k.manager.id = :managerId OR k.employee.id IN " +
@@ -35,10 +40,9 @@ public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
 
         @Query("SELECT k FROM KpiGoals k " +
                         "WHERE k.cycle.cycleId = :cycleId " +
-                        "AND (:departmentId IS NULL OR EXISTS (" +
-                        "    SELECT ed FROM EmployeeDepartment ed " +
-                        "    WHERE ed.employee = k.employee " +
-                        "    AND ed.currentDepartment.id = :departmentId " +
+                        "AND (:departmentId IS NULL OR k.employee.id IN (" +
+                        "    SELECT ed.employee.id FROM EmployeeDepartment ed " +
+                        "    WHERE ed.currentDepartment.id = :departmentId " +
                         "    AND ed.isCurrent = true" +
                         ")) " +
                         "AND k.isCurrent = true")

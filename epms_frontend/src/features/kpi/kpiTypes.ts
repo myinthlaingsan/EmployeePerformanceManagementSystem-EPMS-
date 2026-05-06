@@ -57,12 +57,14 @@ export interface GoalAssignmentRequest {
   employeeId: number;
   libraryId?: number;
   appraisalCycleId: number;
+  overwriteExisting?: boolean;
 }
 
 export interface BulkGoalAssignmentRequest {
   employeeIds: number[];
   libraryId: number;
   appraisalCycleId: number;
+  overwriteExisting?: boolean;
 }
 
 // ==================== Goal Items ====================

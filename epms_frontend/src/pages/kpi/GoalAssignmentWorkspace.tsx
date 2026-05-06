@@ -55,6 +55,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const goalSet = goalSetResponse?.data;
   const [localItems, setLocalItems] = React.useState<any[]>([]);
   const [isModified, setIsModified] = useState(false);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
 
   // Sync local items with server data when it loads
   React.useEffect(() => {
@@ -85,13 +86,15 @@ const GoalAssignmentWorkspace: React.FC = () => {
     if (!activeCycleId) return;
     setIsSubmitting(true);
     try {
-      if (!goalSet) {
+      if (!goalSet || overwriteExisting) {
         await assignLibrary({
           employeeId: Number(employeeId),
           libraryId: library.id,
-          appraisalCycleId: activeCycleId
+          appraisalCycleId: activeCycleId,
+          overwriteExisting: overwriteExisting
         }).unwrap();
       } else {
+        // Default behavior: Append to existing
         for (const detail of library.details) {
           await addGoalItem({
             goalSetId: goalSet.id,
@@ -106,6 +109,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
         }
       }
       refetchGoals();
+      alert(overwriteExisting ? "Goals replaced successfully!" : "Template items appended successfully!");
     } catch (err: any) {
       console.error('Failed to apply template:', err);
       const errorMsg = err?.data?.message || err?.message || "Check network/permissions";
@@ -300,6 +304,21 @@ const GoalAssignmentWorkspace: React.FC = () => {
               <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">KPI Templates</h3>
               <LayoutTemplate className="w-4 h-4 text-gray-400" />
             </div>
+
+            {goalSet && (
+              <div className="mb-6 p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="overwriteToggle"
+                  className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500/20 cursor-pointer"
+                  checked={overwriteExisting}
+                  onChange={(e) => setOverwriteExisting(e.target.checked)}
+                />
+                <label htmlFor="overwriteToggle" className="text-[9px] font-black text-amber-900 uppercase tracking-widest cursor-pointer">
+                  Replace Existing Goals
+                </label>
+              </div>
+            )}
 
             <div className="relative mb-6">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

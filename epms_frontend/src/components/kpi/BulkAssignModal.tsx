@@ -16,6 +16,7 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLibraryId, setSelectedLibraryId] = useState<number | null>(null);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
 
   const libraries = librariesResponse?.data || [];
   const filteredLibraries = libraries.filter(lib => 
@@ -30,7 +31,8 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
       await bulkAssign({
         employeeIds: selectedEmployeeIds,
         libraryId: selectedLibraryId,
-        appraisalCycleId: activeCycleId
+        appraisalCycleId: activeCycleId,
+        overwriteExisting: overwriteExisting
       }).unwrap();
       
       alert(`Successfully assigned template to ${selectedEmployeeIds.length} employees!`);
@@ -105,6 +107,21 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
                 </div>
               ))
             )}
+          </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+            <input 
+              type="checkbox" 
+              id="overwriteExisting"
+              className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500/20 cursor-pointer"
+              checked={overwriteExisting}
+              onChange={(e) => setOverwriteExisting(e.target.checked)}
+            />
+            <label htmlFor="overwriteExisting" className="flex-1 cursor-pointer">
+              <span className="block text-[11px] font-black text-amber-900 uppercase tracking-widest">Overwrite Existing Goals</span>
+              <span className="block text-[10px] font-bold text-amber-600 mt-0.5">If checked, existing draft goals for these employees will be replaced.</span>
+            </label>
           </div>
         </div>
 

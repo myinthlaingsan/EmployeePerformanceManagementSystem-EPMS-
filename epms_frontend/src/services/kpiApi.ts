@@ -226,6 +226,14 @@ export const kpiApi = api.injectEndpoints({
       query: ({ managerId, cycleId }) => `/kpi/goal-set/team?managerId=${managerId}&cycleId=${cycleId}`,
       providesTags: ['GoalSet'],
     }),
+    getDepartmentGoalSets: builder.query<ApiResponse<GoalSetResponse[]>, { departmentId?: number; cycleId: number }>({
+      query: ({ departmentId, cycleId }) => {
+        let url = `/kpi/goal-set/department?cycleId=${cycleId}`;
+        if (departmentId) url += `&departmentId=${departmentId}`;
+        return url;
+      },
+      providesTags: ['GoalSet'],
+    }),
 
     submitGoalSet: builder.mutation<ApiResponse<GoalSetResponse>, number>({
       query: (id) => ({
@@ -262,6 +270,7 @@ export const {
   useGetLibraryByIdQuery,
   useUpdateLibraryMutation,
   useGetTeamGoalSetsQuery,
+  useGetDepartmentGoalSetsQuery,
   useSubmitGoalSetMutation,
   useBulkAssignKpiMutation,
 } = kpiApi;

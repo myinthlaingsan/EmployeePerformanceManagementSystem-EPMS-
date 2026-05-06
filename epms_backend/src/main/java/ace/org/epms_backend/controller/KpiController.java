@@ -4,7 +4,6 @@ import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.appraisal.AppraisalCycleResponse;
 import ace.org.epms_backend.dto.kpi.*;
 import ace.org.epms_backend.dto.PagedResponse;
-import ace.org.epms_backend.service.KpiService;
 import ace.org.epms_backend.service.kpi.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +43,8 @@ public class KpiController {
 
     @PatchMapping("/library/{id}/status")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
-    public ResponseEntity<ApiResponse<KpiLibraryResponse>> toggleLibraryStatus(@PathVariable Long id, @RequestParam boolean active) {
+    public ResponseEntity<ApiResponse<KpiLibraryResponse>> toggleLibraryStatus(@PathVariable Long id,
+            @RequestParam boolean active) {
         return ResponseEntity.ok(ApiResponse.success(libraryService.toggleLibraryStatus(id, active)));
     }
 
@@ -65,13 +65,15 @@ public class KpiController {
     // 3. Goal Item Management (Manager/HR/Admin - Pre-Approval)
     @PostMapping("/goal-set/{goalSetId}/items")
     @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<ApiResponse<GoalSetResponse>> addGoalItem(@PathVariable Long goalSetId, @Valid @RequestBody KpiGoalItemRequest request) {
+    public ResponseEntity<ApiResponse<GoalSetResponse>> addGoalItem(@PathVariable Long goalSetId,
+            @Valid @RequestBody KpiGoalItemRequest request) {
         return ResponseEntity.ok(ApiResponse.success(goalService.addGoalItem(goalSetId, request)));
     }
 
     @PutMapping("/items/{itemId}")
     @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<ApiResponse<GoalSetResponse>> updateGoalItem(@PathVariable Long itemId, @Valid @RequestBody KpiGoalItemRequest request) {
+    public ResponseEntity<ApiResponse<GoalSetResponse>> updateGoalItem(@PathVariable Long itemId,
+            @Valid @RequestBody KpiGoalItemRequest request) {
         return ResponseEntity.ok(ApiResponse.success(goalService.updateGoalItem(itemId, request)));
     }
 
@@ -106,7 +108,8 @@ public class KpiController {
     // 6. KPI Score Calculation (System/Manager)
     @PostMapping("/calculate-score")
     @PreAuthorize("hasAnyRole('MANAGER', 'HR')")
-    public ResponseEntity<ApiResponse<KpiScoreResponse>> calculateScore(@RequestParam Long employeeId, @RequestParam Long cycleId) {
+    public ResponseEntity<ApiResponse<KpiScoreResponse>> calculateScore(@RequestParam Long employeeId,
+            @RequestParam Long cycleId) {
         return ResponseEntity.ok(ApiResponse.success(scoringService.calculateFinalScore(employeeId, cycleId)));
     }
 
@@ -130,7 +133,8 @@ public class KpiController {
     }
 
     @GetMapping("/progress/history")
-    public ResponseEntity<ApiResponse<List<KpiProgressResponse>>> getRecentProgress(@RequestParam Long employeeId, @RequestParam(defaultValue = "10") int limit) {
+    public ResponseEntity<ApiResponse<List<KpiProgressResponse>>> getRecentProgress(@RequestParam Long employeeId,
+            @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(ApiResponse.success(progressService.getRecentProgress(employeeId, limit)));
     }
 
@@ -157,7 +161,8 @@ public class KpiController {
 
     @GetMapping("/library/search")
     public ResponseEntity<ApiResponse<PagedResponse<KpiLibraryResponse>>> searchLibraries(
-            @RequestParam String keyword, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+            @RequestParam String keyword, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(ApiResponse.success(libraryService.searchLibraries(keyword, page, size)));
     }
 
@@ -189,7 +194,7 @@ public class KpiController {
     @GetMapping("/goal-set/department")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<GoalSetResponse>>> getDepartmentGoalSets(
-            @RequestParam Long departmentId, @RequestParam Long cycleId) {
+            @RequestParam(required = false) Long departmentId, @RequestParam Long cycleId) {
         return ResponseEntity.ok(ApiResponse.success(goalService.getDepartmentGoalSets(departmentId, cycleId)));
     }
 
