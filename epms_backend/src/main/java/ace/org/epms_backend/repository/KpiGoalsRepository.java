@@ -2,6 +2,7 @@ package ace.org.epms_backend.repository;
 
 import ace.org.epms_backend.model.kpi.KpiGoals;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -48,4 +49,9 @@ public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
                         "AND k.isCurrent = true")
         List<KpiGoals> findByCycleAndDepartment(@Param("cycleId") Long cycleId,
                         @Param("departmentId") Long departmentId);
+
+        @Modifying
+        @Query("UPDATE KpiGoals g SET g.isCurrent = false, g.status = 'ARCHIVED' " +
+                        "WHERE g.employee.id = :employeeId AND g.cycle.cycleId = :cycleId AND g.isCurrent = true")
+        void archiveExistingGoalSets(@Param("employeeId") Long employeeId, @Param("cycleId") Long cycleId);
 }

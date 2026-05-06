@@ -84,18 +84,13 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             throw new SecurityException("Insufficient permissions to assign goals");
         }
 
-        // Check for existing current goal set
-        List<KpiGoals> existingGoals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
-                request.getEmployeeId(), cycle.getCycleId());
-        
-        if (!existingGoals.isEmpty()) {
-            if (request.isOverwriteExisting()) {
-                existingGoals.forEach(g -> {
-                    g.setIsCurrent(false);
-                    g.setStatus(KpiGoalStatus.ARCHIVED);
-                });
-                goalsRepository.saveAll(existingGoals);
-            } else {
+        // Atomic archive existing goals
+        if (request.isOverwriteExisting()) {
+            goalsRepository.archiveExistingGoalSets(request.getEmployeeId(), cycle.getCycleId());
+        } else {
+            List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
+                    request.getEmployeeId(), cycle.getCycleId());
+            if (!existing.isEmpty()) {
                 throw new IllegalStateException("Employee already has goals assigned for this cycle. Use the overwrite option if you wish to replace them.");
             }
         }
@@ -174,20 +169,14 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     .orElseThrow(() -> new NotFoundException(
                             "Employee not found with ID: " + employeeId));
 
-            // Check for existing goals
-            List<KpiGoals> existingGoals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
-                    employeeId, cycle.getCycleId());
-            
-            if (!existingGoals.isEmpty()) {
-                if (request.isOverwriteExisting()) {
-                    existingGoals.forEach(g -> {
-                        g.setIsCurrent(false);
-                        g.setStatus(KpiGoalStatus.ARCHIVED);
-                    });
-                    goalsRepository.saveAll(existingGoals);
-                } else {
-                    // Skip if overwrite is not allowed
-                    continue;
+            // Atomic archive or skip
+            if (request.isOverwriteExisting()) {
+                goalsRepository.archiveExistingGoalSets(employeeId, cycle.getCycleId());
+            } else {
+                List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
+                        employeeId, cycle.getCycleId());
+                if (!existing.isEmpty()) {
+                    continue; // Skip
                 }
             }
 
