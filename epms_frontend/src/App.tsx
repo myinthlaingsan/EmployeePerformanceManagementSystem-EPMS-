@@ -12,7 +12,8 @@ import {
   adminRoutes,
   pipRoutes,
   generalRoutes,
-  kpiRoutes
+  kpiRoutes,
+  continuousRoutes
 } from "./routes";
 import { ActiveCycleProvider } from "./context/ActiveCycleContext";
 import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
@@ -47,6 +48,11 @@ const App = () => {
           <Route element={<ActiveCycleProvider><MainLayout /></ActiveCycleProvider>}>
             {/* General Routes (Dashboard, Profile, etc.) */}
             {generalRoutes.map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* Continuous Feedback & Performance History Routes */}
+            {continuousRoutes.map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 

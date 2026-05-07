@@ -13,13 +13,14 @@ import type {
   FeedbackTagRequest,
   PerformanceHistoryResponse,
 } from "./continuousTypes";
+import type { PagedResponse } from "../employee/employeeTypes";
 
 export const continuousApi = api.injectEndpoints({
   endpoints: (builder) => ({
     // Feedback Tags
-    getAllFeedbacks: builder.query<ContinuousFeedbackResponse[], void>({
-      query: () => "/feedbacks",
-      transformResponse: (response: ApiResponse<ContinuousFeedbackResponse[]>) => response.data,
+    getAllFeedbacks: builder.query<PagedResponse<ContinuousFeedbackResponse>, { page: number; size: number }>({
+      query: ({ page, size }) => `/feedbacks?page=${page}&size=${size}`,
+      transformResponse: (response: ApiResponse<PagedResponse<ContinuousFeedbackResponse>>) => response.data,
       providesTags: ["ContinuousFeedback" as any],
     }),
     getFeedbackTags: builder.query<FeedbackTagResponse[], void>({
@@ -54,17 +55,14 @@ export const continuousApi = api.injectEndpoints({
     }),
 
     // Continuous Feedback
-    getFeedbacksByEmployee: builder.query<ContinuousFeedbackResponse[], number>({
-      query: (employeeId) => `/feedbacks/employee/${employeeId}`,
-      transformResponse: (response: ApiResponse<ContinuousFeedbackResponse[]>) => response.data,
-      providesTags: (result) =>
-        result
-          ? [...result.map(({ feedbackId }) => ({ type: "ContinuousFeedback" as any, id: feedbackId })), "ContinuousFeedback" as any]
-          : ["ContinuousFeedback" as any],
+    getFeedbacksByEmployee: builder.query<PagedResponse<ContinuousFeedbackResponse>, { employeeId: number; page: number; size: number }>({
+      query: ({ employeeId, page, size }) => `/feedbacks/employee/${employeeId}?page=${page}&size=${size}`,
+      transformResponse: (response: ApiResponse<PagedResponse<ContinuousFeedbackResponse>>) => response.data,
+      providesTags: ["ContinuousFeedback" as any],
     }),
-    getFeedbacksByManager: builder.query<ContinuousFeedbackResponse[], number>({
-      query: (managerId) => `/feedbacks/manager/${managerId}`,
-      transformResponse: (response: ApiResponse<ContinuousFeedbackResponse[]>) => response.data,
+    getFeedbacksByManager: builder.query<PagedResponse<ContinuousFeedbackResponse>, { managerId: number; page: number; size: number }>({
+      query: ({ managerId, page, size }) => `/feedbacks/manager/${managerId}?page=${page}&size=${size}`,
+      transformResponse: (response: ApiResponse<PagedResponse<ContinuousFeedbackResponse>>) => response.data,
       providesTags: ["ContinuousFeedback" as any],
     }),
     createFeedback: builder.mutation<ContinuousFeedbackResponse, ContinuousFeedbackRequest>({
@@ -126,19 +124,19 @@ export const continuousApi = api.injectEndpoints({
     }),
 
     // 1-on-1 Meetings
-    getAllMeetings: builder.query<OneOnOneMeetingResponse[], void>({
-      query: () => "/meetings",
-      transformResponse: (response: ApiResponse<OneOnOneMeetingResponse[]>) => response.data,
+    getAllMeetings: builder.query<PagedResponse<OneOnOneMeetingResponse>, { page: number; size: number }>({
+      query: ({ page, size }) => `/meetings?page=${page}&size=${size}`,
+      transformResponse: (response: ApiResponse<PagedResponse<OneOnOneMeetingResponse>>) => response.data,
       providesTags: ["OneOnOneMeeting" as any],
     }),
-    getMeetingsByEmployee: builder.query<OneOnOneMeetingResponse[], number>({
-      query: (employeeId) => `/meetings/employee/${employeeId}`,
-      transformResponse: (response: ApiResponse<OneOnOneMeetingResponse[]>) => response.data,
+    getMeetingsByEmployee: builder.query<PagedResponse<OneOnOneMeetingResponse>, { employeeId: number; page: number; size: number }>({
+      query: ({ employeeId, page, size }) => `/meetings/employee/${employeeId}?page=${page}&size=${size}`,
+      transformResponse: (response: ApiResponse<PagedResponse<OneOnOneMeetingResponse>>) => response.data,
       providesTags: ["OneOnOneMeeting" as any],
     }),
-    getMeetingsByManager: builder.query<OneOnOneMeetingResponse[], number>({
-      query: (managerId) => `/meetings/manager/${managerId}`,
-      transformResponse: (response: ApiResponse<OneOnOneMeetingResponse[]>) => response.data,
+    getMeetingsByManager: builder.query<PagedResponse<OneOnOneMeetingResponse>, { managerId: number; page: number; size: number }>({
+      query: ({ managerId, page, size }) => `/meetings/manager/${managerId}?page=${page}&size=${size}`,
+      transformResponse: (response: ApiResponse<PagedResponse<OneOnOneMeetingResponse>>) => response.data,
       providesTags: ["OneOnOneMeeting" as any],
     }),
     scheduleMeeting: builder.mutation<OneOnOneMeetingResponse, OneOnOneMeetingRequest>({
@@ -200,13 +198,31 @@ export const continuousApi = api.injectEndpoints({
     }),
 
     // Performance History
-    getPerformanceHistoryByEmployee: builder.query<PerformanceHistoryResponse[], number>({
-      query: (employeeId) => `/performance-history/employee/${employeeId}`,
+    getPerformanceHistoryByEmployee: builder.query<PagedResponse<PerformanceHistoryResponse>, { employeeId: number; sourceType?: string; page: number; size: number }>({
+      query: ({ employeeId, sourceType, page, size }) => {
+        let url = `/performance-history/employee/${employeeId}?page=${page}&size=${size}`;
+        if (sourceType && sourceType !== 'ALL') url += `&sourceType=${sourceType}`;
+        return url;
+      },
+      transformResponse: (response: ApiResponse<PagedResponse<PerformanceHistoryResponse>>) => response.data,
+      providesTags: ["PerformanceHistory" as any],
+    }),
+    getAllPerformanceHistory: builder.query<PagedResponse<PerformanceHistoryResponse>, { sourceType?: string; page: number; size: number }>({
+      query: ({ sourceType, page, size }) => {
+        let url = `/performance-history/all?page=${page}&size=${size}`;
+        if (sourceType && sourceType !== 'ALL') url += `&sourceType=${sourceType}`;
+        return url;
+      },
+      transformResponse: (response: ApiResponse<PagedResponse<PerformanceHistoryResponse>>) => response.data,
+      providesTags: ["PerformanceHistory" as any],
+    }),
+    getPerformanceHistoryAnalytics: builder.query<PerformanceHistoryResponse[], void>({
+      query: () => "/performance-history/all/raw",
       transformResponse: (response: ApiResponse<PerformanceHistoryResponse[]>) => response.data,
       providesTags: ["PerformanceHistory" as any],
     }),
-    getAllPerformanceHistory: builder.query<PerformanceHistoryResponse[], void>({
-      query: () => "/performance-history/all",
+    getEmployeePerformanceHistoryAnalytics: builder.query<PerformanceHistoryResponse[], number>({
+      query: (employeeId) => `/performance-history/employee/${employeeId}/raw`,
       transformResponse: (response: ApiResponse<PerformanceHistoryResponse[]>) => response.data,
       providesTags: ["PerformanceHistory" as any],
     }),
@@ -240,4 +256,6 @@ export const {
   useUpdateCommentMutation,
   useGetPerformanceHistoryByEmployeeQuery,
   useGetAllPerformanceHistoryQuery,
+  useGetPerformanceHistoryAnalyticsQuery,
+  useGetEmployeePerformanceHistoryAnalyticsQuery,
 } = continuousApi;
