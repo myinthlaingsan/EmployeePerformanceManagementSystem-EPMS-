@@ -18,6 +18,8 @@ public interface AppraisalMapper {
     @Mapping(target = "managerName", source = "manager.staffName")
     @Mapping(target = "cycleId", source = "cycle.cycleId")
     @Mapping(target = "cycleName", source = "cycle.cycleName")
+    @Mapping(target = "formId", source = "form.formId")
+    @Mapping(target = "formName", source = "form.formName")
     AppraisalResponse toResponse(Appraisal appraisal);
 
     List<AppraisalResponse> toResponseList(List<Appraisal> appraisals);

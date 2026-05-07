@@ -9,6 +9,7 @@ import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.model.PerformanceCategory;
 import ace.org.epms_backend.model.appraisal.*;
 import ace.org.epms_backend.repository.*;
+import ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository;
 import ace.org.epms_backend.service.AppraisalCalculationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,8 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
     private final AppraisalSummaryRepository summaryRepo;
     private final PerformanceCategoryRepository performanceCategoryRepo;
     private final ScoringWeightRepository weightRepo;
+    private final KpiFinalScoreRepository kpiFinalScoreRepo;
+    private final FeedbackSummaryRepository feedbackSummaryRepo;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -41,8 +44,18 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                 selfAnswerRepo.findBySelfAssessment_Appraisal_AppraisalId(appraisalId));
         BigDecimal managerRaw = calculateAverageRating(
                 mgrAnswerRepo.findByEvaluation_Appraisal_AppraisalId(appraisalId));
-        BigDecimal kpiRaw = BigDecimal.ZERO;
-        BigDecimal feedbackRaw = BigDecimal.ZERO;
+        
+        // 1.1 Fetch KPI Final Score (0-100) and map to 1-5 scale
+        BigDecimal kpiRaw = kpiFinalScoreRepo.findByEmployeeIdAndCycleId(
+                        appraisal.getEmployee().getId(), appraisal.getCycle().getCycleId())
+                .map(kpi -> kpi.getTotalAchievementPercent().divide(new BigDecimal("20"), 2, RoundingMode.HALF_UP))
+                .orElse(BigDecimal.ZERO);
+
+        // 1.2 Fetch 360 Feedback Summary Score (1-5)
+        BigDecimal feedbackRaw = feedbackSummaryRepo.findByEmployeeIdAndCycleCycleId(
+                        appraisal.getEmployee().getId(), appraisal.getCycle().getCycleId())
+                .map(fs -> fs.getFinalScore())
+                .orElse(BigDecimal.ZERO);
 
         // 2. Fetch Weights
         ScoringWeight weights = weightRepo.findByCycle_CycleId(appraisal.getCycle().getCycleId())

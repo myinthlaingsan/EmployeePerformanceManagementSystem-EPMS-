@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useCreateEmployeeMutation, useGetEmployeeByIdQuery, useUpdateEmployeeMutation } from "../../features/employee/employeeapi";
+import { useCreateEmployeeMutation, useGetEmployeeByIdQuery, useUpdateEmployeeMutation, useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { useGetPositionsQuery } from "../../features/org/positionApi";
 import { useGetRolesQuery } from "../../features/org/roleApi";
 import { useGetActiveDepartmentsQuery } from "../../features/org/departmentApi";
@@ -14,6 +14,9 @@ const EmployeeForm = () => {
   const { data: employeeData, isLoading: isLoadingEmployee } = useGetEmployeeByIdQuery(Number(id), { skip: !isEdit });
   const { data: roles } = useGetRolesQuery();
   const { data: departments } = useGetActiveDepartmentsQuery();
+  const { data: employeesData } = useGetEmployeesQuery({ page: 0, size: 1000 });
+  const employees = employeesData?.content || [];
+
   
   const [createEmployee, { isLoading: isCreating }] = useCreateEmployeeMutation();
   const [updateEmployee, { isLoading: isUpdating }] = useUpdateEmployeeMutation();
@@ -27,9 +30,10 @@ const EmployeeForm = () => {
     roleId: 0,
     parentDepartmentId: 0,
     currentDepartmentId: 0,
+    directManagerId: undefined,
     stateCode: undefined,
     township: "",
-    nrcType: "",
+    nrcType: "(N)",
     number: "",
     gender: undefined,
     dateOfBirth: "",
@@ -49,6 +53,16 @@ const EmployeeForm = () => {
     dateOfPromotion: "",
     status: undefined,
   });
+  
+  const availableManagers = useMemo(() => {
+    return employees.filter(emp => {
+      const isManager = emp.roles?.includes("MANAGER");
+      const isSameDepartment = formData.currentDepartmentId 
+        ? emp.currentDepartmentId === formData.currentDepartmentId 
+        : true;
+      return isManager && isSameDepartment;
+    });
+  }, [employees, formData.currentDepartmentId]);
 
   const [selectedPositionLevel, setSelectedPositionLevel] = useState("");
 
@@ -59,7 +73,7 @@ const EmployeeForm = () => {
       setFormData(prev => ({
         ...prev,
         ...employeeData, // this merges simple matching fields
-        positionId: positions?.find(p => p.positionName === employeeData.positionName)?.positionId || 0,
+        positionId: employeeData.positionId || 0,
       }));
       setSelectedPositionLevel(employeeData.levelName);
     }
@@ -84,8 +98,9 @@ const EmployeeForm = () => {
         await createEmployee(formData as CreateEmployeeRequest).unwrap();
       }
       navigate("/employees");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save employee", err);
+      alert(err?.data?.message || "Failed to save employee. Please check all required fields.");
     }
   };
 
@@ -134,8 +149,8 @@ const EmployeeForm = () => {
                 value={formData.phoneNo || ""} onChange={e => setFormData({ ...formData, phoneNo: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Gender</label>
-              <select className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Gender *</label>
+              <select required className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
                 value={formData.gender || ""} onChange={e => setFormData({ ...formData, gender: e.target.value as Gender })}>
                 <option value="">Select Gender</option>
                 <option value="M">Male</option>
@@ -143,8 +158,8 @@ const EmployeeForm = () => {
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Date of Birth</label>
-              <input type="date" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-700"
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Date of Birth *</label>
+              <input type="date" required className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-700"
                 value={formData.dateOfBirth || ""} onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })} />
             </div>
           </div>
@@ -208,6 +223,17 @@ const EmployeeForm = () => {
             )}
 
             <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Direct Manager</label>
+              <select className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                value={formData.directManagerId || ""} onChange={e => setFormData({ ...formData, directManagerId: e.target.value ? Number(e.target.value) : undefined })}>
+                <option value="">No Manager</option>
+                {availableManagers?.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.staffName} ({emp.employeeCode})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Salary Base</label>
               <div className="flex gap-2">
                 <input type="number" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
@@ -252,13 +278,13 @@ const EmployeeForm = () => {
                 value={formData.stateCode || ""} onChange={e => setFormData({ ...formData, stateCode: Number(e.target.value) })} />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Township</label>
-              <input type="text" placeholder="MaGaWa" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition uppercase"
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Township *</label>
+              <input type="text" required placeholder="MaGaWa" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition uppercase"
                 value={formData.township || ""} onChange={e => setFormData({ ...formData, township: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Type</label>
-              <select className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Type *</label>
+              <select required className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
                 value={formData.nrcType || "(N)"} onChange={e => setFormData({ ...formData, nrcType: e.target.value })}>
                 <option value="(N)">(N)</option>
                 <option value="(E)">(E)</option>
@@ -267,8 +293,8 @@ const EmployeeForm = () => {
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Number</label>
-              <input type="text" placeholder="123456" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Number *</label>
+              <input type="text" required placeholder="123456" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
                 value={formData.number || ""} onChange={e => setFormData({ ...formData, number: e.target.value })} />
             </div>
           </div>

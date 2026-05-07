@@ -80,8 +80,12 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .sourceId(feedback.getFeedbackId())
                 .title("New Continuous Feedback")
                 .description("Manager " + manager.getStaffName() + " created feedback: " + feedback.getDescription())
+                .feedbackType(feedback.getFeedbackType())
+                .tagName(tag != null ? tag.getTagName() : null)
                 .isPrivate(feedback.getIsPrivate())
                 .createdBy(manager.getId())
+                .manager(manager)
+                .performer(manager)
                 .build();
         historyRepository.save(history);
 
@@ -113,25 +117,45 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     @Override
-    public List<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId) {
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
-        return feedbackRepository.findByEmployee_Id(employeeId).stream()
-                .filter(f -> (currentUser.getId().equals(f.getManager().getId())) ||
-                             (!Boolean.TRUE.equals(f.getIsPrivate()) && currentUser.getId().equals(f.getEmployee().getId())))
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findVisibleFeedbacksByEmployee(employeeId, currentUser.getId(), pageable);
+
+        List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                feedbackPage.getNumber(),
+                feedbackPage.getSize(),
+                feedbackPage.getTotalElements(),
+                feedbackPage.getTotalPages(),
+                feedbackPage.isLast()
+        );
     }
 
     @Override
-    public List<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId) {
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
-        return feedbackRepository.findByManager_Id(managerId).stream()
-                .filter(f -> (currentUser.getId().equals(f.getManager().getId())) ||
-                             (!Boolean.TRUE.equals(f.getIsPrivate()) && currentUser.getId().equals(f.getEmployee().getId())))
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findVisibleFeedbacksByManager(managerId, currentUser.getId(), pageable);
+
+        List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                feedbackPage.getNumber(),
+                feedbackPage.getSize(),
+                feedbackPage.getTotalElements(),
+                feedbackPage.getTotalPages(),
+                feedbackPage.isLast()
+        );
     }
 
     private boolean isPrivileged(Employee employee) {
@@ -146,7 +170,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
-        checkFeedbackAccess(feedback);
+        checkFeedbackModificationAccess(feedback);
 
         if (!feedback.getEmployee().getId().equals(request.getEmployeeId())) {
             Employee employee = employeeRepository.findById(request.getEmployeeId())
@@ -171,15 +195,20 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         feedbackMapper.updateEntityFromRequest(request, feedback);
         feedback = feedbackRepository.save(feedback);
 
+        Employee currentUser = authService.getCurrentUser();
         // Update PerformanceHistory
         PerformanceHistory history = PerformanceHistory.builder()
                 .employee(feedback.getEmployee())
                 .sourceType(SourceType.FEEDBACK)
                 .sourceId(feedback.getFeedbackId())
                 .title("Updated Continuous Feedback")
-                .description("Feedback was updated. New description: " + feedback.getDescription())
+                .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Employee ") + currentUser.getStaffName() + " updated feedback. New details: " + feedback.getDescription())
+                .feedbackType(feedback.getFeedbackType())
+                .tagName(feedback.getTag() != null ? feedback.getTag().getTagName() : null)
                 .isPrivate(feedback.getIsPrivate())
-                .createdBy(feedback.getManager().getId())
+                .createdBy(currentUser.getId())
+                .manager(feedback.getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
 
@@ -192,8 +221,31 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
-        checkFeedbackAccess(feedback);
+        checkFeedbackModificationAccess(feedback);
+        
+        // Delete all replies first to avoid foreign key constraint violations
+        List<FeedbackReply> replies = replyRepository.findByFeedback_FeedbackId(feedbackId);
+        if (!replies.isEmpty()) {
+            replyRepository.deleteAll(replies);
+        }
+        
         feedbackRepository.delete(feedback);
+
+        Employee currentUser = authService.getCurrentUser();
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(feedback.getEmployee())
+                .sourceType(SourceType.FEEDBACK)
+                .sourceId(feedbackId)
+                .title("Feedback Deleted")
+                .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Admin ") + currentUser.getStaffName() + " deleted the feedback.")
+                .feedbackType(feedback.getFeedbackType())
+                .tagName(feedback.getTag() != null ? feedback.getTag().getTagName() : null)
+                .isPrivate(feedback.getIsPrivate())
+                .createdBy(currentUser.getId())
+                .manager(feedback.getManager())
+                .performer(currentUser)
+                .build();
+        historyRepository.save(history);
     }
 
     @Override
@@ -224,8 +276,12 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .sourceId(feedback.getFeedbackId())
                 .title("New Reply to Feedback")
                 .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Employee ") + currentUser.getStaffName() + " replied: " + reply.getReplyText())
+                .feedbackType(feedback.getFeedbackType())
+                .tagName(feedback.getTag() != null ? feedback.getTag().getTagName() : null)
                 .isPrivate(feedback.getIsPrivate())
                 .createdBy(currentUser.getId())
+                .manager(feedback.getManager())
+                .performer(currentUser)
                 .build();
         historyRepository.save(history);
 
@@ -279,14 +335,93 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         throw new NotFoundException("Feedback not found");
     }
 
+    private void checkFeedbackModificationAccess(ContinuousFeedback feedback) {
+        Employee currentUser = authService.getCurrentUser();
+
+        if (!currentUser.getId().equals(feedback.getManager().getId())) {
+            throw new AccessDeniedException("You do not have permission to modify this feedback.");
+        }
+    }
+
+    @Override
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getAllFeedbacks(int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
+        Employee currentUser = authService.getCurrentUser();
+
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findAllVisibleFeedbacks(currentUser.getId(), pageable);
+
+        List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
+                .map(feedbackMapper::toResponse)
+                .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                feedbackPage.getNumber(),
+                feedbackPage.getSize(),
+                feedbackPage.getTotalElements(),
+                feedbackPage.getTotalPages(),
+                feedbackPage.isLast()
+        );
+    }
+
+    @Override
+    @Transactional
+    public FeedbackReplyResponse updateReply(Long replyId, FeedbackReplyRequest request) {
+        FeedbackReply reply = replyRepository.findById(replyId)
+                .orElseThrow(() -> new NotFoundException("Reply not found"));
+                
+        Employee currentUser = authService.getCurrentUser();
+        if (!currentUser.getId().equals(reply.getEmployee().getId()) && !isPrivileged(currentUser)) {
+            throw new AccessDeniedException("You can only edit your own replies.");
+        }
+
+        reply.setReplyText(request.getReplyText());
+        FeedbackReply updatedReply = replyRepository.save(reply);
+
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(reply.getFeedback().getEmployee())
+                .sourceType(SourceType.FEEDBACK)
+                .sourceId(reply.getFeedback().getFeedbackId())
+                .title("Feedback Reply Updated")
+                .description(currentUser.getStaffName() + " updated their reply: " + request.getReplyText())
+                .feedbackType(reply.getFeedback().getFeedbackType())
+                .tagName(reply.getFeedback().getTag() != null ? reply.getFeedback().getTag().getTagName() : null)
+                .isPrivate(reply.getFeedback().getIsPrivate())
+                .createdBy(currentUser.getId())
+                .manager(reply.getFeedback().getManager())
+                .performer(currentUser)
+                .build();
+        historyRepository.save(history);
+
+        return replyMapper.toResponse(updatedReply);
+    }
+
     @Override
     @Transactional
     public void deleteReply(Long replyId) {
         FeedbackReply reply = replyRepository.findById(replyId)
                 .orElseThrow(() -> new NotFoundException("Reply not found"));
         
-        checkFeedbackAccess(reply.getFeedback());
+        Employee currentUser = authService.getCurrentUser();
+        if (!currentUser.getId().equals(reply.getEmployee().getId()) && !isPrivileged(currentUser)) {
+            throw new AccessDeniedException("You can only delete your own replies.");
+        }
         
         replyRepository.delete(reply);
+
+        PerformanceHistory history = PerformanceHistory.builder()
+                .employee(reply.getFeedback().getEmployee())
+                .sourceType(SourceType.FEEDBACK)
+                .sourceId(reply.getFeedback().getFeedbackId())
+                .title("Feedback Reply Deleted")
+                .description(currentUser.getStaffName() + " deleted their reply.")
+                .feedbackType(reply.getFeedback().getFeedbackType())
+                .tagName(reply.getFeedback().getTag() != null ? reply.getFeedback().getTag().getTagName() : null)
+                .isPrivate(reply.getFeedback().getIsPrivate())
+                .createdBy(currentUser.getId())
+                .manager(reply.getFeedback().getManager())
+                .performer(currentUser)
+                .build();
+        historyRepository.save(history);
     }
 }

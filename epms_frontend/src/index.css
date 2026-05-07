@@ -3,6 +3,20 @@
 @theme {
   /* Enable class-based dark mode */
   --dark-mode: class;
+
+  /* Brand Design System - Tonal Architecture */
+  --color-brand-primary: #0f172a;
+  --color-brand-secondary: #334155;
+  
+  --color-text-title: #0f172a;
+  --color-text-body: #334155;
+  --color-text-muted: #64748b;
+  
+  --color-surface-base: #f8fafc;
+  --color-surface-border: #e2e8f0;
+  
+  --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 /* Or explicitly specify the selector */

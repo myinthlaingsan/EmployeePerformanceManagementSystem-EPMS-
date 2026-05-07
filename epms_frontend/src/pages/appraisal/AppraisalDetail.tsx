@@ -13,9 +13,9 @@ const AppraisalDetail: React.FC = () => {
   if (!appraisal) return <div className="p-8 text-center text-slate-500 font-bold">Appraisal not found.</div>;
 
   const steps = [
-    { name: 'Self-Assessment', status: appraisal.selfAssessment.isSubmitted ? 'completed' : 'current' },
-    { name: 'Manager Evaluation', status: appraisal.managerEvaluation.isSubmitted ? 'completed' : (appraisal.selfAssessment.isSubmitted ? 'current' : 'upcoming') },
-    { name: 'Sign-Off', status: appraisal.status === 'COMPLETED' ? 'completed' : (appraisal.managerEvaluation.isSubmitted ? 'current' : 'upcoming') },
+    { name: 'Self-Assessment', status: appraisal.selfSubmittedAt ? 'completed' : 'current' },
+    { name: 'Manager Evaluation', status: appraisal.managerSubmittedAt ? 'completed' : (appraisal.selfSubmittedAt ? 'current' : 'upcoming') },
+    { name: 'Sign-Off', status: (appraisal.employeeSignedAt && appraisal.managerSignedAt) ? 'completed' : (appraisal.managerSubmittedAt ? 'current' : 'upcoming') },
   ];
 
   return (
@@ -59,19 +59,19 @@ const AppraisalDetail: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="p-4 bg-slate-50 rounded-xl">
                 <p className="text-slate-500 mb-1">Employee Name</p>
-                <p className="font-bold text-slate-800">{appraisal.employeeInfo?.staffName || 'N/A'}</p>
+                <p className="font-bold text-slate-800">{appraisal.employeeName || 'N/A'}</p>
               </div>
               <div className="p-4 bg-slate-50 rounded-xl">
                 <p className="text-slate-500 mb-1">Employee Code</p>
-                <p className="font-bold text-slate-800">{appraisal.employeeInfo?.employeeCode || 'N/A'}</p>
+                <p className="font-bold text-slate-800">{appraisal.employeeCode || 'N/A'}</p>
               </div>
               <div className="p-4 bg-slate-50 rounded-xl">
                 <p className="text-slate-500 mb-1">Cycle Name</p>
-                <p className="font-bold text-slate-800">{appraisal.cycleName || 'Annual Review 2024'}</p>
+                <p className="font-bold text-slate-800">{appraisal.cycleName || 'N/A'}</p>
               </div>
               <div className="p-4 bg-slate-50 rounded-xl">
-                <p className="text-slate-500 mb-1">Last Updated</p>
-                <p className="font-bold text-slate-800">{appraisal.updatedAt ? format(new Date(appraisal.updatedAt), 'MMM dd, yyyy') : 'N/A'}</p>
+                <p className="text-slate-500 mb-1">Assigned At</p>
+                <p className="font-bold text-slate-800">{appraisal.assignedAt ? format(new Date(appraisal.assignedAt), 'MMM dd, yyyy') : 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -81,7 +81,7 @@ const AppraisalDetail: React.FC = () => {
           <div className="bg-indigo-600 rounded-2xl p-8 text-white shadow-lg shadow-indigo-200">
             <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              {appraisal.status === 'PENDING_ASSESSMENT' && (
+              {appraisal.status === 'PENDING' && (
                 <button 
                   onClick={() => navigate(`/appraisal/${id}/self-assessment`)}
                   className="w-full py-3 bg-white text-indigo-600 font-bold rounded-xl hover:bg-indigo-50 transition-colors"
@@ -89,7 +89,7 @@ const AppraisalDetail: React.FC = () => {
                   Start Assessment
                 </button>
               )}
-              {appraisal.status === 'PENDING_EVALUATION' && (
+              {appraisal.status === 'SELF_ASSESSED' && (
                 <button 
                   onClick={() => navigate(`/appraisal/${id}/manager-evaluation`)}
                   className="w-full py-3 bg-white text-indigo-600 font-bold rounded-xl hover:bg-indigo-50 transition-colors"
@@ -97,7 +97,7 @@ const AppraisalDetail: React.FC = () => {
                   Start Evaluation
                 </button>
               )}
-              {appraisal.status === 'COMPLETED' && (
+              {appraisal.status === 'FINALIZED' && (
                 <button 
                   onClick={() => navigate(`/appraisal/${id}/results`)}
                   className="w-full py-3 bg-white text-indigo-600 font-bold rounded-xl hover:bg-indigo-50 transition-colors"

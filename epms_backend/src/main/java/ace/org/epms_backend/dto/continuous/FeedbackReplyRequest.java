@@ -11,4 +11,6 @@ public class FeedbackReplyRequest {
 
     @NotBlank(message = "Reply text cannot be blank")
     private String replyText;
+
+    private Long parentId;
 }

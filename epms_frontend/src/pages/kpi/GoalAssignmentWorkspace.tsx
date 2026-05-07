@@ -307,8 +307,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
             {goalSet && (
               <div className="mb-6 p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   id="overwriteToggle"
                   className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500/20 cursor-pointer"
                   checked={overwriteExisting}

@@ -11,10 +11,13 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FeedbackSummaryResponse {
+    private Long summaryId;
     private Long targetUserId;
     private String targetUserName;
     private String cycleName;
     private List<CategoryScore> selfScores;
-    private List<CategoryScore> othersScores;
+    private List<CategoryScore> scores;
     private List<DetailedComment> detailedComments;
+    private Double totalAverageScore;
+    private Boolean isFinalized;
 }

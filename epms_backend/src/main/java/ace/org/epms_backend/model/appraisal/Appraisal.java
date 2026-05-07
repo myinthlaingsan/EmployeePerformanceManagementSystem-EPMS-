@@ -35,9 +35,12 @@ public class Appraisal extends BaseEntity {
     private AppraisalCycle cycle;
 
     @ManyToOne(fetch = FetchType.LAZY)
-
     @JoinColumn(name = "performance_category_id")
     private PerformanceCategory performanceCategory;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "form_id")
+    private AppraisalForm form;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

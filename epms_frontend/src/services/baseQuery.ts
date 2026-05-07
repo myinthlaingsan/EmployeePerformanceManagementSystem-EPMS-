@@ -6,7 +6,8 @@ export const baseQuery = fetchBaseQuery({
     credentials: "include",
     prepareHeaders: (headers, { getState }) => {
         const token = (getState() as RootState).auth.accessToken;
-
+        // 2. Add the skip-warning header for ngrok
+        headers.set("ngrok-skip-browser-warning", "true");
         if (token) {
             headers.set("Authorization", `Bearer ${token}`);
         }
