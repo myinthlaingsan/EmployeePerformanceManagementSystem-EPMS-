@@ -117,25 +117,45 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     @Override
-    public List<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId) {
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
-        return feedbackRepository.findByEmployee_Id(employeeId).stream()
-                .filter(f -> (currentUser.getId().equals(f.getManager().getId())) ||
-                             (!Boolean.TRUE.equals(f.getIsPrivate()) && currentUser.getId().equals(f.getEmployee().getId())))
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findVisibleFeedbacksByEmployee(employeeId, currentUser.getId(), pageable);
+
+        List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                feedbackPage.getNumber(),
+                feedbackPage.getSize(),
+                feedbackPage.getTotalElements(),
+                feedbackPage.getTotalPages(),
+                feedbackPage.isLast()
+        );
     }
 
     @Override
-    public List<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId) {
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
-        return feedbackRepository.findByManager_Id(managerId).stream()
-                .filter(f -> (currentUser.getId().equals(f.getManager().getId())) ||
-                             (!Boolean.TRUE.equals(f.getIsPrivate()) && currentUser.getId().equals(f.getEmployee().getId())))
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findVisibleFeedbacksByManager(managerId, currentUser.getId(), pageable);
+
+        List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                feedbackPage.getNumber(),
+                feedbackPage.getSize(),
+                feedbackPage.getTotalElements(),
+                feedbackPage.getTotalPages(),
+                feedbackPage.isLast()
+        );
     }
 
     private boolean isPrivileged(Employee employee) {
@@ -324,15 +344,24 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     @Override
-    public List<ContinuousFeedbackResponse> getAllFeedbacks() {
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getAllFeedbacks(int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivilegedUser = isPrivileged(currentUser);
 
-        return feedbackRepository.findAll().stream()
-                .filter(f -> currentUser.getId().equals(f.getManager().getId()) ||
-                             (!Boolean.TRUE.equals(f.getIsPrivate()) && currentUser.getId().equals(f.getEmployee().getId())))
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findAllVisibleFeedbacks(currentUser.getId(), pageable);
+
+        List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
                 .map(feedbackMapper::toResponse)
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                feedbackPage.getNumber(),
+                feedbackPage.getSize(),
+                feedbackPage.getTotalElements(),
+                feedbackPage.getTotalPages(),
+                feedbackPage.isLast()
+        );
     }
 
     @Override

@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { useState } from "react";
+import React, { useState } from "react";
+
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -17,8 +18,8 @@ import {
   Briefcase,
   Zap,
   Target,
-  History,
-  
+  Library,
+  History
 } from "lucide-react";
 
 interface NavItem {
@@ -32,11 +33,11 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-  { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck, end: true },
   { label: "360 Feedback", to: "/appraisal/360", icon: Users },
+  { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck },
   { label: "Performance Pulse", to: "/performance-history", icon: History },
   { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare },
-  { label: "1-on-1s", to: "/meetings", icon: MessageSquare },
+  { label: "1-on-1 Meetings", to: "/meetings", icon: Users },
   { label: "PIP", to: "/pip", icon: TrendingUp },
   { label: "Analytics", to: "/hr", icon: BarChart3, adminOnly: true },
 ];
@@ -234,4 +235,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar;
+export default React.memo(Sidebar);
