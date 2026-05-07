@@ -76,23 +76,45 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     }
 
     @Override
-    public List<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId) {
+    public ace.org.epms_backend.dto.PagedResponse<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("meetingDate").descending().and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
         Employee currentUser = authService.getCurrentUser();
-        return meetingRepository.findByEmployeeId(employeeId).stream()
-                .filter(m -> (currentUser.getId().equals(m.getManager().getId())) ||
-                             (!Boolean.TRUE.equals(m.getIsPrivateNote()) && currentUser.getId().equals(m.getEmployee().getId())))
+
+        org.springframework.data.domain.Page<OneOnOneMeeting> meetingPage = meetingRepository.findVisibleMeetingsByEmployee(employeeId, currentUser.getId(), pageable);
+
+        List<OneOnOneMeetingResponse> content = meetingPage.getContent().stream()
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                meetingPage.getNumber(),
+                meetingPage.getSize(),
+                meetingPage.getTotalElements(),
+                meetingPage.getTotalPages(),
+                meetingPage.isLast()
+        );
     }
 
     @Override
-    public List<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId) {
+    public ace.org.epms_backend.dto.PagedResponse<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("meetingDate").descending().and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
         Employee currentUser = authService.getCurrentUser();
-        return meetingRepository.findByManagerId(managerId).stream()
-                .filter(m -> (currentUser.getId().equals(m.getManager().getId())) ||
-                             (!Boolean.TRUE.equals(m.getIsPrivateNote()) && currentUser.getId().equals(m.getEmployee().getId())))
+
+        org.springframework.data.domain.Page<OneOnOneMeeting> meetingPage = meetingRepository.findVisibleMeetingsByManager(managerId, currentUser.getId(), pageable);
+
+        List<OneOnOneMeetingResponse> content = meetingPage.getContent().stream()
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                meetingPage.getNumber(),
+                meetingPage.getSize(),
+                meetingPage.getTotalElements(),
+                meetingPage.getTotalPages(),
+                meetingPage.isLast()
+        );
     }
 
     @Override
@@ -122,15 +144,24 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     }
 
     @Override
-    public List<OneOnOneMeetingResponse> getAllMeetings() {
+    public ace.org.epms_backend.dto.PagedResponse<OneOnOneMeetingResponse> getAllMeetings(int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("meetingDate").descending().and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
         Employee currentUser = authService.getCurrentUser();
-        boolean isPrivilegedUser = isPrivileged(currentUser);
 
-        return meetingRepository.findAll().stream()
-                .filter(m -> currentUser.getId().equals(m.getManager().getId()) ||
-                             (!Boolean.TRUE.equals(m.getIsPrivateNote()) && currentUser.getId().equals(m.getEmployee().getId())))
+        org.springframework.data.domain.Page<OneOnOneMeeting> meetingPage = meetingRepository.findAllVisibleMeetings(currentUser.getId(), pageable);
+
+        List<OneOnOneMeetingResponse> content = meetingPage.getContent().stream()
                 .map(meetingMapper::toResponse)
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                meetingPage.getNumber(),
+                meetingPage.getSize(),
+                meetingPage.getTotalElements(),
+                meetingPage.getTotalPages(),
+                meetingPage.isLast()
+        );
     }
 
     @Override

@@ -7,8 +7,13 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
 @Entity
 @Table(name = "meeting_comments")
+@SQLDelete(sql = "UPDATE meeting_comments SET is_deleted = true, deleted_at = NOW() WHERE id = ?")
+@SQLRestriction("is_deleted = false OR is_deleted IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor

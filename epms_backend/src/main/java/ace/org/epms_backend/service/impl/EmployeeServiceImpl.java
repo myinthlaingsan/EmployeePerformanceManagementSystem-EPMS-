@@ -456,13 +456,17 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .toList();
         response.setPermissions(permissions);
 
-        // Set Department Name
+        // Set Department Name & ID
         employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
                 .ifPresent(ed -> {
                     response.setCurrentDepartmentName(
                             ed.getCurrentDepartment().getDepartmentName());
+                    response.setCurrentDepartmentId(
+                            ed.getCurrentDepartment().getId());
                     response.setParentDepartmentName(
                             ed.getParentDepartment().getDepartmentName());
+                    response.setParentDepartmentId(
+                            ed.getParentDepartment().getId());
                 });
         return response;
     }
