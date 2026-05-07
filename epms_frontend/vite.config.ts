@@ -10,4 +10,12 @@ export default defineConfig({
     // Fix for sockjs-client "global is not defined" error
     global: 'globalThis',
   },
+  // server: {
+  //   // This allows ngrok to bypass the "Blocked Request" security check
+  //   allowedHosts: [
+  //     'dash-murmuring-symphony.ngrok-free.dev', // The specific host from your error
+  //     '.ngrok-free.dev',                        // This allows any ngrok subdomain
+  //     '.ngrok-free.app'                         // Also covers the .app extension
+  //   ]
+  // }
 })

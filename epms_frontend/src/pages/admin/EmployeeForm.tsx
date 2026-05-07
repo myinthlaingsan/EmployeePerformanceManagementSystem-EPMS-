@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useCreateEmployeeMutation, useGetEmployeeByIdQuery, useUpdateEmployeeMutation } from "../../features/employee/employeeapi";
+import { useCreateEmployeeMutation, useGetEmployeeByIdQuery, useUpdateEmployeeMutation, useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { useGetPositionsQuery } from "../../features/org/positionApi";
 import { useGetRolesQuery } from "../../features/org/roleApi";
 import { useGetActiveDepartmentsQuery } from "../../features/org/departmentApi";
@@ -14,6 +14,9 @@ const EmployeeForm = () => {
   const { data: employeeData, isLoading: isLoadingEmployee } = useGetEmployeeByIdQuery(Number(id), { skip: !isEdit });
   const { data: roles } = useGetRolesQuery();
   const { data: departments } = useGetActiveDepartmentsQuery();
+  const { data: employeesData } = useGetEmployeesQuery({ page: 0, size: 1000 });
+  const employees = employeesData?.content || [];
+
   
   const [createEmployee, { isLoading: isCreating }] = useCreateEmployeeMutation();
   const [updateEmployee, { isLoading: isUpdating }] = useUpdateEmployeeMutation();
@@ -27,6 +30,7 @@ const EmployeeForm = () => {
     roleId: 0,
     parentDepartmentId: 0,
     currentDepartmentId: 0,
+    directManagerId: undefined,
     stateCode: undefined,
     township: "",
     nrcType: "(N)",
@@ -49,6 +53,16 @@ const EmployeeForm = () => {
     dateOfPromotion: "",
     status: undefined,
   });
+  
+  const availableManagers = useMemo(() => {
+    return employees.filter(emp => {
+      const isManager = emp.roles?.includes("MANAGER");
+      const isSameDepartment = formData.currentDepartmentId 
+        ? emp.currentDepartmentId === formData.currentDepartmentId 
+        : true;
+      return isManager && isSameDepartment;
+    });
+  }, [employees, formData.currentDepartmentId]);
 
   const [selectedPositionLevel, setSelectedPositionLevel] = useState("");
 
@@ -59,7 +73,7 @@ const EmployeeForm = () => {
       setFormData(prev => ({
         ...prev,
         ...employeeData, // this merges simple matching fields
-        positionId: positions?.find(p => p.positionName === employeeData.positionName)?.positionId || 0,
+        positionId: employeeData.positionId || 0,
       }));
       setSelectedPositionLevel(employeeData.levelName);
     }
@@ -207,6 +221,17 @@ const EmployeeForm = () => {
                 </select>
               </div>
             )}
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Direct Manager</label>
+              <select className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                value={formData.directManagerId || ""} onChange={e => setFormData({ ...formData, directManagerId: e.target.value ? Number(e.target.value) : undefined })}>
+                <option value="">No Manager</option>
+                {availableManagers?.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.staffName} ({emp.employeeCode})</option>
+                ))}
+              </select>
+            </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Salary Base</label>

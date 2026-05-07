@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   ClipboardCheck,
-  User,
   Users,
   MessageSquare,
   TrendingUp,
@@ -17,8 +16,7 @@ import {
   ShieldCheck,
   Briefcase,
   Zap,
-  Target,
-  Library
+  Target
 } from "lucide-react";
 
 interface NavItem {
@@ -27,11 +25,12 @@ interface NavItem {
   icon: React.ElementType;
   adminOnly?: boolean;
   hrOnly?: boolean;
+  end?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-  { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck },
+  { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck, end: true },
   { label: "360 Feedback", to: "/appraisal/360", icon: Users },
   { label: "1-on-1s", to: "/appraisal/1-on-1", icon: MessageSquare },
   { label: "PIP", to: "/pip", icon: TrendingUp },
@@ -45,7 +44,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { label: "Job Levels", to: "/job-levels", icon: Zap },
   { label: "Positions", to: "/positions", icon: Briefcase },
   { label: "Teams", to: "/teams", icon: Users },
-  { label: "Permissions", to: "/permissions", icon: ShieldCheck },
+  { label: "Permissions", to: "/permissions", icon: ShieldCheck, end: true },
   { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck },
 ];
 
@@ -78,6 +77,7 @@ const Sidebar = () => {
             <NavLink
               key={item.label}
               to={item.to}
+              end={item.end}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${isActive ? activeClass : inactiveClass
                 }`
@@ -105,6 +105,7 @@ const Sidebar = () => {
               <div className="bg-gray-50/50 py-1">
                 <NavLink
                   to="/kpi"
+                  end
                   className={({ isActive }) =>
                     `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
                   }
@@ -183,6 +184,7 @@ const Sidebar = () => {
                     <NavLink
                       key={item.label}
                       to={item.to}
+                      end={item.end}
                       className={({ isActive }) =>
                         `flex items-center gap-3 pl-12 pr-6 py-2.5 text-xs font-medium transition-all ${isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
                         }`
