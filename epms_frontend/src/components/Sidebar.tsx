@@ -16,7 +16,9 @@ import {
   ShieldCheck,
   Briefcase,
   Zap,
-  Target
+  Target,
+  History,
+  
 } from "lucide-react";
 
 interface NavItem {
@@ -32,7 +34,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck, end: true },
   { label: "360 Feedback", to: "/appraisal/360", icon: Users },
-  { label: "1-on-1s", to: "/appraisal/1-on-1", icon: MessageSquare },
+  { label: "Performance Pulse", to: "/performance-history", icon: History },
+  { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare },
+  { label: "1-on-1s", to: "/meetings", icon: MessageSquare },
   { label: "PIP", to: "/pip", icon: TrendingUp },
   { label: "Analytics", to: "/hr", icon: BarChart3, adminOnly: true },
 ];
