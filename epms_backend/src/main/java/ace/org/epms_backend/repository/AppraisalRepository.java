@@ -3,6 +3,7 @@ package ace.org.epms_backend.repository;
 import ace.org.epms_backend.enums.AppraisalStatus;
 import ace.org.epms_backend.model.appraisal.Appraisal;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,5 +19,9 @@ public interface AppraisalRepository extends JpaRepository<Appraisal, Long> {
     List<Appraisal> findByManager_IdAndStatusIn(Long managerId, List<AppraisalStatus> statuses);
  
     boolean existsByForm_FormId(Long formId);
+ 
+    @Query("SELECT a FROM Appraisal a JOIN EmployeeDepartment ed ON a.employee.id = ed.employee.id " +
+            "WHERE ed.currentDepartment.id = :departmentId AND ed.isCurrent = true")
+    List<Appraisal> findByDepartmentId(Long departmentId);
 }
 

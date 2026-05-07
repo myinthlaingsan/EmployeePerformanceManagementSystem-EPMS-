@@ -14,6 +14,12 @@ public interface AppraisalService {
 
     List<AppraisalResponse> getTeamEvaluations();
 
+    List<AppraisalResponse> getDepartmentAppraisals();
+
+    List<AppraisalResponse> getAppraisalsToEvaluate();
+
+    EmployeeSelfAssessmentViewResponse getEmployeeView(Long appraisalId);
+
     AppraisalResponse getById(Long id);
 
     ScoreBreakdownResponse calculate(Long id);

@@ -18,6 +18,7 @@ public class CorsConfig implements WebMvcConfigurer {
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://127.0.0.1:5173"
+//                "https://dash-murmuring-symphony.ngrok-free.dev"
         ));
         config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));

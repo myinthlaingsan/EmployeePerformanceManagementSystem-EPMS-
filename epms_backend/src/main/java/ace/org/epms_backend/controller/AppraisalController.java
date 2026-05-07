@@ -1,10 +1,7 @@
 package ace.org.epms_backend.controller;
 
 import ace.org.epms_backend.dto.ApiResponse;
-import ace.org.epms_backend.dto.appraisal.AppraisalAssignRequest;
-import ace.org.epms_backend.dto.appraisal.AppraisalBulkAssignRequest;
-import ace.org.epms_backend.dto.appraisal.AppraisalResponse;
-import ace.org.epms_backend.dto.appraisal.ScoreBreakdownResponse;
+import ace.org.epms_backend.dto.appraisal.*;
 import ace.org.epms_backend.model.appraisal.Appraisal;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.repository.AppraisalRepository;
@@ -101,6 +98,27 @@ public class AppraisalController {
         return ResponseEntity.ok(ApiResponse.success(
                 appraisalService.getTeamEvaluations()
         ));
+    }
+ 
+    @GetMapping("/department-assessments")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'HR')")
+    public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getDepartmentAppraisals() {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.getDepartmentAppraisals()
+        ));
+    }
+ 
+    @GetMapping("/to-evaluate")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getAppraisalsToEvaluate() {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.getAppraisalsToEvaluate()
+        ));
+    }
+ 
+    @GetMapping("/employee-view/{appraisalId}")
+    public ResponseEntity<ApiResponse<EmployeeSelfAssessmentViewResponse>> getEmployeeView(@PathVariable Long appraisalId) {
+        return ResponseEntity.ok(ApiResponse.success(appraisalService.getEmployeeView(appraisalId)));
     }
 
     @GetMapping("/{id}")
