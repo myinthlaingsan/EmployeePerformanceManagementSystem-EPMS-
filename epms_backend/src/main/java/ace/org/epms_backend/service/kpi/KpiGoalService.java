@@ -17,8 +17,6 @@ public interface KpiGoalService {
     
     GoalSetResponse approveGoalSet(Long goalSetId);
     GoalSetResponse revertToDraft(Long goalSetId);
-    GoalSetResponse submitGoalSet(Long goalSetId);
-    GoalSetResponse rejectGoalSet(Long goalSetId, String reason);
     GoalSetResponse lockGoalSet(Long goalSetId);
     GoalSetResponse reviseKpi(Long goalItemId, KpiRevisionRequest request);
     

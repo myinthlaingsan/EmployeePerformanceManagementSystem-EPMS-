@@ -91,7 +91,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
                     request.getEmployeeId(), cycle.getCycleId());
             if (!existing.isEmpty()) {
-                throw new IllegalStateException("Employee already has goals assigned for this cycle. Use the overwrite option if you wish to replace them.");
+                throw new IllegalStateException(
+                        "Employee already has goals assigned for this cycle. Use the overwrite option if you wish to replace them.");
             }
         }
 
@@ -338,58 +339,70 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional
     public GoalSetResponse approveGoalSet(Long goalSetId) {
-        KpiGoals goalSet = goalsRepository.findById(goalSetId)
-                .orElseThrow(() -> new NotFoundException("Goal set not found"));
+        try {
+            KpiGoals goalSet = goalsRepository.findById(goalSetId)
+                    .orElseThrow(() -> new NotFoundException("Goal set not found"));
 
-        boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_HR")
-                        || a.getAuthority().equals("ROLE_ADMIN"));
+            boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_HR")
+                            || a.getAuthority().equals("ROLE_ADMIN"));
 
-        if (!isHrOrAdmin && !goalSet.getManager().getId().equals(getCurrentEmployee().getId())) {
-            throw new SecurityException("Only the assigned manager or HR/Admin can approve this goal set");
+            if (!isHrOrAdmin && (goalSet.getManager() == null
+                    || !goalSet.getManager().getId().equals(getCurrentEmployee().getId()))) {
+                throw new SecurityException("Only the assigned manager or HR/Admin can approve this goal set");
+            }
+
+            if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
+                throw new IllegalStateException("Only DRAFT goals can be approved");
+            }
+
+            BigDecimal totalWeight = goalSet.getItems().stream()
+                    .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+                    .map(item -> item.getWeightPercent() != null ? item.getWeightPercent() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
+                throw new IllegalArgumentException("Total weight of active goal items must be exactly 100%");
+            }
+
+            goalSet.setStatus(KpiGoalStatus.APPROVED);
+            goalSet.setApprovedAt(Instant.now());
+            goalSet.setApprovedBy(getCurrentEmployee().getId());
+            KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+            // Trigger Notification
+            if (goalSet.getEmployee() != null) {
+                eventPublisher.publishEvent(NotificationEvent.builder()
+                        .recipientId(goalSet.getEmployee().getId())
+                        .senderId(getCurrentEmployee().getId())
+                        .type(NotificationType.KPI_APPROVED)
+                        .title("KPI Approved")
+                        .message("Your Manager has approved your KPI goals.")
+                        .referenceType(ReferenceType.KPI)
+                        .referenceId(goalSet.getId())
+                        .actionUrl("/kpis/my-goals")
+                        .build());
+            }
+
+            // Log Audit
+            auditService.log(AuditRequest.builder()
+                    .tableName("kpi_goals")
+                    .recordId(savedGoalSet.getId())
+                    .action(AuditAction.UPDATE)
+                    .newState(savedGoalSet)
+                    .status(AuditStatus.SUCCESS)
+                    .build());
+
+            return kpiMapper.toGoalSetResponse(savedGoalSet);
+        } catch (Throwable t) {
+            t.printStackTrace();
+            try {
+                java.nio.file.Files.writeString(java.nio.file.Path.of("error_approve.txt"),
+                        t.toString() + "\n" + java.util.Arrays.toString(t.getStackTrace()));
+            } catch (Exception ex) {
+            }
+            throw t;
         }
-
-        if (!goalSet.getStatus().equals(KpiGoalStatus.SUBMITTED)
-                && !goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
-            throw new IllegalStateException("Only DRAFT or SUBMITTED goals can be approved");
-        }
-
-        BigDecimal totalWeight = goalSet.getItems().stream()
-                .filter(KpiGoalItem::getIsActive)
-                .map(KpiGoalItem::getWeightPercent)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
-            throw new IllegalArgumentException("Total weight of goal items must be exactly 100%");
-        }
-
-        goalSet.setStatus(KpiGoalStatus.APPROVED);
-        goalSet.setApprovedAt(Instant.now());
-        goalSet.setApprovedBy(getCurrentEmployee().getId());
-        KpiGoals savedGoalSet = goalsRepository.save(goalSet);
-
-        // Trigger Notification
-        eventPublisher.publishEvent(NotificationEvent.builder()
-                .recipientId(goalSet.getEmployee().getId())
-                .senderId(getCurrentEmployee().getId())
-                .type(NotificationType.KPI_APPROVED)
-                .title("KPI Approved")
-                .message("Your Manager has approved your KPI goals.")
-                .referenceType(ReferenceType.KPI)
-                .referenceId(goalSet.getId())
-                .actionUrl("/kpis/my-goals")
-                .build());
-
-        // Log Audit
-        auditService.log(AuditRequest.builder()
-                .tableName("kpi_goals")
-                .recordId(savedGoalSet.getId())
-                .action(AuditAction.UPDATE)
-                .newState(savedGoalSet)
-                .status(AuditStatus.SUCCESS)
-                .build());
-
-        return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
     @Override
@@ -411,70 +424,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
-    @Override
-    @Transactional
-    public GoalSetResponse submitGoalSet(Long goalSetId) {
-        KpiGoals goalSet = goalsRepository.findById(goalSetId)
-                .orElseThrow(() -> new NotFoundException("Goal set not found"));
-
-        Employee currentUser = getCurrentEmployee();
-        if (!goalSet.getEmployee().getId().equals(currentUser.getId())) {
-            throw new SecurityException("Only the employee can submit their goal set");
-        }
-
-        if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)
-                && !goalSet.getStatus().equals(KpiGoalStatus.REJECTED)) {
-            throw new IllegalStateException("Only DRAFT or REJECTED goals can be submitted");
-        }
-
-        goalSet.setStatus(KpiGoalStatus.SUBMITTED);
-        KpiGoals savedGoalSet = goalsRepository.save(goalSet);
-
-        eventPublisher.publishEvent(NotificationEvent.builder()
-                .recipientId(goalSet.getManager().getId())
-                .senderId(currentUser.getId())
-                .type(NotificationType.KPI_SUBMITTED)
-                .title("KPI Goals Submitted")
-                .message("An employee has submitted their KPI goals for approval.")
-                .referenceType(ReferenceType.KPI)
-                .referenceId(goalSet.getId())
-                .actionUrl("/kpis/team-goals")
-                .build());
-
-        return kpiMapper.toGoalSetResponse(savedGoalSet);
-    }
-
-    @Override
-    @Transactional
-    public GoalSetResponse rejectGoalSet(Long goalSetId, String reason) {
-        KpiGoals goalSet = goalsRepository.findById(goalSetId)
-                .orElseThrow(() -> new NotFoundException("Goal set not found"));
-
-        Employee currentUser = getCurrentEmployee();
-        if (!goalSet.getManager().getId().equals(currentUser.getId())) {
-            throw new SecurityException("Only the manager can reject this goal set");
-        }
-
-        if (!goalSet.getStatus().equals(KpiGoalStatus.SUBMITTED)) {
-            throw new IllegalStateException("Only SUBMITTED goals can be rejected");
-        }
-
-        goalSet.setStatus(KpiGoalStatus.REJECTED);
-        KpiGoals savedGoalSet = goalsRepository.save(goalSet);
-
-        eventPublisher.publishEvent(NotificationEvent.builder()
-                .recipientId(goalSet.getEmployee().getId())
-                .senderId(currentUser.getId())
-                .type(NotificationType.KPI_REJECTED)
-                .title("KPI Goals Rejected")
-                .message("Your KPI goals were rejected. Reason: " + reason)
-                .referenceType(ReferenceType.KPI)
-                .referenceId(goalSet.getId())
-                .actionUrl("/kpis/my-goals")
-                .build());
-
-        return kpiMapper.toGoalSetResponse(savedGoalSet);
-    }
+    // submitGoalSet and rejectGoalSet have been removed as part of the new top-down
+    // workflow
 
     @Override
     @Transactional

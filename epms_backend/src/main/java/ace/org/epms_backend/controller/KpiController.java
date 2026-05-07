@@ -166,18 +166,7 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(libraryService.searchLibraries(keyword, page, size)));
     }
 
-    @PostMapping("/goal-set/{id}/submit")
-    @PreAuthorize("hasRole('EMPLOYEE')")
-    public ResponseEntity<ApiResponse<GoalSetResponse>> submitGoalSet(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(goalService.submitGoalSet(id)));
-    }
-
-    @PostMapping("/goal-set/{id}/reject")
-    @PreAuthorize("hasRole('MANAGER')")
-    public ResponseEntity<ApiResponse<GoalSetResponse>> rejectGoalSet(
-            @PathVariable Long id, @RequestParam String reason) {
-        return ResponseEntity.ok(ApiResponse.success(goalService.rejectGoalSet(id, reason)));
-    }
+    // The submit and reject endpoints have been removed for the top-down approval workflow.
 
     @GetMapping("/goal-set/employee/all/{employeeId}")
     public ResponseEntity<ApiResponse<List<GoalSetResponse>>> getEmployeeGoalSets(@PathVariable Long employeeId) {
