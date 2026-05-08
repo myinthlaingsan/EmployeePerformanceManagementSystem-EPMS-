@@ -7,6 +7,7 @@ import ace.org.epms_backend.exception.ResourceNotFoundException;
 import ace.org.epms_backend.mapper.AppraisalCycleMapper;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
+import ace.org.epms_backend.repository.appraisal.FinancialYearRepository;
 import ace.org.epms_backend.repository.ScoringWeightRepository;
 import ace.org.epms_backend.service.AppraisalCycleService;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
@@ -28,6 +29,7 @@ import java.util.List;
 public class AppraisalCycleServiceImpl implements AppraisalCycleService {
 
     private final AppraisalCycleRepository appraisalCycleRepository;
+    private final FinancialYearRepository financialYearRepository;
     private final ScoringWeightRepository scoringWeightRepository;
     private final AppraisalCycleMapper appraisalCycleMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -41,10 +43,18 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         }
 
         AppraisalCycle cycle = appraisalCycleMapper.toEntity(request);
+        
+        if (request.getFinancialYearId() != null) {
+            ace.org.epms_backend.model.appraisal.FinancialYear financialYear = financialYearRepository.findById(request.getFinancialYearId())
+                    .orElseThrow(() -> new ResourceNotFoundException("FinancialYear not found with id: " + request.getFinancialYearId()));
+            cycle.setFinancialYear(financialYear);
+        }
+
         cycle = appraisalCycleRepository.save(cycle);
 
-        // Save Scoring Weights
-        ace.org.epms_backend.model.appraisal.ScoringWeight weights = new ace.org.epms_backend.model.appraisal.ScoringWeight();
+        // Save Scoring Weights (use upsert to handle potential orphan rows from manual DB clears)
+        ace.org.epms_backend.model.appraisal.ScoringWeight weights = scoringWeightRepository.findByCycle_CycleId(cycle.getCycleId())
+                .orElse(new ace.org.epms_backend.model.appraisal.ScoringWeight());
         weights.setCycle(cycle);
         weights.setKpiWeight(request.getKpiWeight());
         weights.setManagerWeight(request.getManagerWeight());
@@ -96,6 +106,13 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         }
 
         appraisalCycleMapper.updateEntityFromRequest(request, cycle);
+        
+        if (request.getFinancialYearId() != null) {
+            ace.org.epms_backend.model.appraisal.FinancialYear financialYear = financialYearRepository.findById(request.getFinancialYearId())
+                    .orElseThrow(() -> new ResourceNotFoundException("FinancialYear not found with id: " + request.getFinancialYearId()));
+            cycle.setFinancialYear(financialYear);
+        }
+        
         cycle = appraisalCycleRepository.save(cycle);
 
         // Update Weights

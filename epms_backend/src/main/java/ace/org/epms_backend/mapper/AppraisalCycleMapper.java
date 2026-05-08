@@ -11,8 +11,11 @@ import java.util.List;
 
 @Mapper(componentModel = "spring", builder = @org.mapstruct.Builder(disableBuilder = true))
 public interface AppraisalCycleMapper {
+    @Mapping(target = "financialYear", ignore = true)
     AppraisalCycle toEntity(AppraisalCycleRequest request);
 
+    @Mapping(target = "financialYearId", source = "financialYear.id")
+    @Mapping(target = "financialYearTitle", source = "financialYear.title")
     AppraisalCycleResponse toResponse(AppraisalCycle entity);
 
     List<AppraisalCycleResponse> toResponseList(List<AppraisalCycle> entities);
@@ -20,5 +23,6 @@ public interface AppraisalCycleMapper {
     @Mapping(target = "cycleId", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "financialYear", ignore = true)
     void updateEntityFromRequest(AppraisalCycleRequest request, @MappingTarget AppraisalCycle entity);
 }

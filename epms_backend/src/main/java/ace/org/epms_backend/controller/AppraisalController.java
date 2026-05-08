@@ -156,6 +156,11 @@ public class AppraisalController {
                 appraisalService.managerSignOff(id, comment)
         ));
     }
+    @GetMapping("/cycle/{cycleId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getByCycleId(@PathVariable Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(appraisalService.getByCycleId(cycleId)));
+    }
 }
 
 

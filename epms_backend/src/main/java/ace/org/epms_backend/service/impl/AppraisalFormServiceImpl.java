@@ -65,6 +65,9 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         question.setCategory(category);
         question.setQuestionText(request.getQuestionText());
         question.setQuestionType(QuestionType.valueOf(request.getQuestionType()));
+        if (request.getSecondaryQuestionType() != null) {
+            question.setSecondaryQuestionType(QuestionType.valueOf(request.getSecondaryQuestionType()));
+        }
         question.setIsRequired(request.getIsRequired());
         question.setIsActive(true);
         return questionRepository.save(question).getQuestionId();
@@ -85,6 +88,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                             .questionId(q.getQuestionId())
                             .questionText(q.getQuestionText())
                             .questionType(q.getQuestionType() != null ? q.getQuestionType().name() : null)
+                            .secondaryQuestionType(q.getSecondaryQuestionType() != null ? q.getSecondaryQuestionType().name() : null)
                             .isRequired(q.getIsRequired())
                             .build())
                     .toList();
@@ -100,6 +104,8 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                 .formId(form.getFormId())
                 .formName(form.getFormName())
                 .formType(form.getFormType())
+                .cycleId(form.getCycle() != null ? form.getCycle().getCycleId() : null)
+                .cycleName(form.getCycle() != null ? form.getCycle().getCycleName() : null)
                 .categories(categoryDTOs)
                 .build();
     }
@@ -129,6 +135,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                 newQ.setCategory(savedCat);
                 newQ.setQuestionText(origQ.getQuestionText());
                 newQ.setQuestionType(origQ.getQuestionType());
+                newQ.setSecondaryQuestionType(origQ.getSecondaryQuestionType());
                 newQ.setIsRequired(origQ.getIsRequired());
                 newQ.setIsActive(origQ.getIsActive());
                 questionRepository.save(newQ);

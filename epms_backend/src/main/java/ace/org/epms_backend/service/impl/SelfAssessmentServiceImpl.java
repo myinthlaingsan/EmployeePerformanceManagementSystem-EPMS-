@@ -186,6 +186,7 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
                                 .questionId(q.getQuestionId())
                                 .questionText(q.getQuestionText())
                                 .questionType(q.getQuestionType() != null ? q.getQuestionType().name() : null)
+                                .secondaryQuestionType(q.getSecondaryQuestionType() != null ? q.getSecondaryQuestionType().name() : null)
                                 .isRequired(q.getIsRequired())
                                 .answerId(ans != null ? ans.getId() : null)
                                 .ratingValue(ans != null ? ans.getRatingValue() : null)

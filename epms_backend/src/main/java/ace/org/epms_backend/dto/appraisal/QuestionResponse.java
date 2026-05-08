@@ -8,5 +8,6 @@ public class QuestionResponse {
     private Long categoryId;
     private String questionText;
     private String questionType;
+    private String secondaryQuestionType;
     private Boolean isRequired;
 }

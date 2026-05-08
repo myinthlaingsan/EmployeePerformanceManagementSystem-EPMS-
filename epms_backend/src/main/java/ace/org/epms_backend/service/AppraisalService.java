@@ -25,6 +25,8 @@ public interface AppraisalService {
     AppraisalResponse employeeSignOff(Long id, String comment);
 
     AppraisalResponse managerSignOff(Long id, String comment);
+    
+    List<AppraisalResponse> getByCycleId(Long cycleId);
 }
 
 

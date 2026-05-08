@@ -317,4 +317,8 @@ public class AppraisalServiceImpl implements AppraisalService {
 
         return appraisalMapper.toResponse(saved);
     }
+    @Override
+    public List<AppraisalResponse> getByCycleId(Long cycleId) {
+        return appraisalMapper.toResponseList(appraisalRepo.findByCycle_CycleId(cycleId));
+    }
 }
