@@ -70,8 +70,8 @@ const PipDetailsPage: React.FC = () => {
     const [addProgress] = useAddProgressMutation();
     const [finalizePip] = useFinalizePipMutation();
 
-    const { data: employeesData } = useGetEmployeesQuery();
-    const allEmployees = employeesData || [];
+    const { data: employeesData } = useGetEmployeesQuery({ page: 0, size: 1000 });
+    const allEmployees = employeesData?.content || [];
 
     const [reflection, setReflection] = useState('');
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);

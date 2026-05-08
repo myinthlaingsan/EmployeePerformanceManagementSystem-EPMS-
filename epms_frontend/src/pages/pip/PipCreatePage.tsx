@@ -21,7 +21,8 @@ const PipCreatePage: React.FC = () => {
     const [activatePip, { isLoading: isActivating }] = useActivatePipMutation();
     
     const { data: departments, isLoading: isDepartmentsLoading } = useGetDepartmentsQuery();
-    const { data: employees, isLoading: isEmployeesLoading } = useGetEmployeesQuery();
+    const { data: employeeData, isLoading: isEmployeesLoading } = useGetEmployeesQuery({ page: 0, size: 1000 });
+    const employees = employeeData?.content;
 
     const [activeStep, setActiveStep] = useState(1);
     const [selectedDepartmentId, setSelectedDepartmentId] = useState<number>(0);

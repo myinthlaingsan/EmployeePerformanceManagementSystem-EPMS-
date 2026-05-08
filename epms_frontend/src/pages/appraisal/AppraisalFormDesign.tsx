@@ -4,8 +4,11 @@ import {
   useCreateAppraisalFormMutation, 
   useAddCategoryMutation, 
   useAddQuestionMutation,
-  useGetCyclesQuery
+  useGetCyclesQuery,
+  useGetAppraisalFormsQuery,
+  useLazyGetAppraisalFormQuery
 } from '../../features/appraisal/appraisalApi';
+import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { 
   Plus, 
   Trash2, 
@@ -24,6 +27,7 @@ import {
 interface QuestionDraft {
   text: string;
   type: 'RATING' | 'TEXT' | 'YESNO';
+  secondaryType?: 'RATING' | 'TEXT' | 'YESNO' | 'NONE';
   isRequired: boolean;
 }
 
@@ -46,6 +50,7 @@ const AppraisalFormDesign: React.FC = () => {
   const queryParams = new URLSearchParams(location.search);
   const initialCycleId = queryParams.get('cycleId') || location.state?.cycleId || '';
   const initialType = queryParams.get('type') || 'SELF_ASSESSMENT';
+  const initialSetName = queryParams.get('setName') ? decodeURIComponent(queryParams.get('setName')!) : '';
   
   const [formName, setFormName] = useState(
     initialType === 'MANAGER_EVALUATION' 
@@ -54,6 +59,14 @@ const AppraisalFormDesign: React.FC = () => {
   );
   const [formType, setFormType] = useState(initialType);
   const [selectedCycleId, setSelectedCycleId] = useState<string>(initialCycleId);
+  // setName: comes from URL (drill-down flow) or user can type it manually
+  const [setName, setSetName] = useState<string>(initialSetName);
+  const { data: positions = [] } = useGetPositionsQuery();
+  const { data: allForms = [], isLoading: formsLoading } = useGetAppraisalFormsQuery();
+  const [fetchFormDetail] = useLazyGetAppraisalFormQuery();
+
+  // Only show position dropdown when no setName from URL
+  const isSetNameFromUrl = !!initialSetName;
   const [categories, setCategories] = useState<CategoryDraft[]>([
     {
       name: initialType === 'MANAGER_EVALUATION' ? 'Management Skills' : 'Technical Competencies',
@@ -63,6 +76,7 @@ const AppraisalFormDesign: React.FC = () => {
             ? 'Rate the employee\'s leadership and team management skills.' 
             : 'How do you rate your code quality and adherence to standards?', 
           type: 'RATING', 
+          secondaryType: initialType === 'SELF_ASSESSMENT' ? 'YESNO' : 'NONE',
           isRequired: true 
         }
       ]
@@ -76,66 +90,34 @@ const AppraisalFormDesign: React.FC = () => {
     mandatory: true
   });
 
-  const libraryTemplates = [
-    {
-      name: 'Software Engineering Template',
-      categories: [
-        {
-          name: 'Technical Competency',
-          questions: [
-            { text: 'Code quality and adherence to architecture standards', type: 'RATING', isRequired: true },
-            { text: 'Problem-solving and algorithm efficiency', type: 'RATING', isRequired: true },
-            { text: 'Technical documentation and knowledge sharing', type: 'RATING', isRequired: false }
-          ]
-        },
-        {
-          name: 'Delivery & Reliability',
-          questions: [
-            { text: 'Ability to meet sprint deadlines and commitments', type: 'RATING', isRequired: true },
-            { text: 'Proactive communication of blockers', type: 'YESNO', isRequired: true }
-          ]
-        }
-      ]
-    },
-    {
-      name: 'Sales & Business Development',
-      categories: [
-        {
-          name: 'Target Achievement',
-          questions: [
-            { text: 'Consistent achievement of monthly sales quotas', type: 'RATING', isRequired: true },
-            { text: 'Accuracy of sales forecasting', type: 'RATING', isRequired: true }
-          ]
-        },
-        {
-          name: 'Client Relationships',
-          questions: [
-            { text: 'Customer satisfaction and feedback scores', type: 'RATING', isRequired: true },
-            { text: 'Negotiation and closing skills', type: 'RATING', isRequired: true }
-          ]
-        }
-      ]
-    },
-    {
-      name: 'General Professionalism',
-      categories: [
-        {
-          name: 'Core Values',
-          questions: [
-            { text: 'Demonstrates integrity and professional ethics', type: 'RATING', isRequired: true },
-            { text: 'Collaboration and team spirit', type: 'RATING', isRequired: true }
-          ]
-        }
-      ]
-    }
-  ];
+  // Filter system forms to show in library based on current type
+  const libraryForms = allForms.filter(f => {
+    const fType = f.formType?.toString().toUpperCase().replace(/[\s_]/g, '');
+    const targetType = formType?.toString().toUpperCase().replace(/[\s_]/g, '');
+    return fType === targetType;
+  });
 
-  const applyTemplate = (template: any) => {
-    setCategories(template.categories.map((c: any) => ({
-      name: c.name,
-      questions: c.questions.map((q: any) => ({ ...q }))
-    })));
-    setShowLibrary(false);
+  const applySystemTemplate = async (formId: number) => {
+    try {
+      const fullForm = await fetchFormDetail(String(formId)).unwrap();
+      const sections = fullForm.sections || fullForm.categories || [];
+      
+      if (sections.length > 0) {
+        setCategories(sections.map((s: any) => ({
+          name: s.categoryName || s.title || 'Section',
+          questions: (s.questions || []).map((q: any) => ({
+            text: q.questionText || q.text || '',
+            type: q.questionType || q.type || 'RATING',
+            secondaryType: q.secondaryQuestionType || q.secondaryType || 'NONE',
+            isRequired: q.isRequired ?? q.required ?? true
+          }))
+        })));
+      }
+      setShowLibrary(false);
+    } catch (err) {
+      console.error('Failed to load template:', err);
+      alert('Could not load this template. Please try another.');
+    }
   };
 
   // Handlers
@@ -149,7 +131,12 @@ const AppraisalFormDesign: React.FC = () => {
 
   const addQuestionToCategory = (catIndex: number) => {
     const newCats = [...categories];
-    newCats[catIndex].questions.push({ text: '', type: 'RATING', isRequired: true });
+    newCats[catIndex].questions.push({ 
+      text: '', 
+      type: 'RATING', 
+      secondaryType: formType === 'SELF_ASSESSMENT' ? 'YESNO' : 'NONE',
+      isRequired: true 
+    });
     setCategories(newCats);
   };
 
@@ -170,13 +157,18 @@ const AppraisalFormDesign: React.FC = () => {
       alert('Please select an Appraisal Cycle first.');
       return;
     }
+    if (!setName.trim()) {
+      alert('Please provide a Form Set name (e.g. the position name).');
+      return;
+    }
+    const prefixedFormName = `${setName.trim()} | ${formName}`;
 
     try {
       setIsSubmitting(true);
       
       // 1. Create the Form
       const formId = await createForm({
-        formName,
+        formName: prefixedFormName,
         formType,
         cycleId: Number(selectedCycleId)
       }).unwrap();
@@ -190,6 +182,7 @@ const AppraisalFormDesign: React.FC = () => {
             categoryId: catId,
             questionText: q.text,
             questionType: q.type,
+            secondaryQuestionType: q.secondaryType === 'NONE' ? null : q.secondaryType,
             isRequired: q.isRequired
           }).unwrap();
         }
@@ -198,7 +191,7 @@ const AppraisalFormDesign: React.FC = () => {
       const cycle = cycles.find(c => Number(c.cycleId) === Number(selectedCycleId));
       const cycleName = cycle?.cycleName || '';
 
-      alert('Evaluation Form designed and saved successfully!');
+      alert('Form saved successfully!');
       navigate('/appraisal', { 
         state: { 
           activeTab: 'forms', 
@@ -221,7 +214,19 @@ const AppraisalFormDesign: React.FC = () => {
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-8 py-4 sticky top-0 z-40 shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+          <button 
+            onClick={() => {
+              const cycle = cycles.find(c => Number(c.cycleId) === Number(selectedCycleId));
+              navigate('/appraisal', { 
+                state: { 
+                  activeTab: 'forms', 
+                  expandedCycle: cycle?.cycleName,
+                  expandedSet: setName || '__unassigned__'
+                } 
+              });
+            }} 
+            className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+          >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div>
@@ -276,7 +281,8 @@ const AppraisalFormDesign: React.FC = () => {
                 <select 
                   value={formType}
                   onChange={e => setFormType(e.target.value)}
-                  className={`${inputClass} appearance-none cursor-pointer`}
+                  className={`${inputClass} appearance-none cursor-not-allowed opacity-75`}
+                  disabled
                 >
                   <option value="SELF_ASSESSMENT">Self Assessment</option>
                   <option value="MANAGER_EVALUATION">Manager Evaluation</option>
@@ -288,13 +294,38 @@ const AppraisalFormDesign: React.FC = () => {
                 <select 
                   value={selectedCycleId}
                   onChange={e => setSelectedCycleId(e.target.value)}
-                  className={`${inputClass} appearance-none cursor-pointer`}
+                  className={`${inputClass} appearance-none cursor-not-allowed opacity-75`}
+                  disabled
                 >
                   <option value="">Select a Cycle...</option>
                   {cycles.map(c => (
                     <option key={c.cycleId} value={c.cycleId}>{c.cycleName}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className={labelClass}>Form Set Name</label>
+                {isSetNameFromUrl ? (
+                  <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+                    <Layers className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                    <span className="font-black text-indigo-700 text-sm">{setName}</span>
+                    <span className="ml-auto text-[10px] font-black text-indigo-400 uppercase tracking-wider bg-indigo-100 px-2 py-0.5 rounded-lg">Locked</span>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    className={inputClass}
+                    placeholder='e.g. "Software Engineer"'
+                    value={setName}
+                    onChange={e => setSetName(e.target.value)}
+                  />
+                )}
+                <p className="text-[10px] font-medium text-slate-400 mt-2 leading-relaxed">
+                  {isSetNameFromUrl
+                    ? 'Set from the Form Set you created. Saved as prefix in the form name.'
+                    : 'This name groups the two forms together as a Form Set.'}
+                </p>
               </div>
             </div>
           </div>
@@ -362,28 +393,52 @@ const AppraisalFormDesign: React.FC = () => {
                             {q.isRequired && <span className="text-rose-500 ml-1">*</span>}
                           </p>
                         </div>
-                        <div className="pl-8">
-                          {q.type === 'RATING' && (
-                            <div className="flex gap-4">
-                              {[1,2,3,4,5].map(n => (
-                                <div key={n} className="w-12 h-12 rounded-2xl border border-slate-200 flex items-center justify-center text-slate-400 font-bold hover:border-indigo-600 hover:text-indigo-600 cursor-default transition-all">
-                                  {n}
+                        <div className="pl-8 flex flex-col gap-8">
+                          {/* Box 1 Preview (Secondary) */}
+                          {q.secondaryType && q.secondaryType !== 'NONE' && (
+                            <div className="space-y-4">
+                              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Rating 1: {q.secondaryType}</span>
+                              {q.secondaryType === 'RATING' && (
+                                <div className="flex gap-4">
+                                  {[5,4,3,2,1].map(n => (
+                                    <div key={n} className="w-12 h-12 rounded-2xl border border-slate-200 flex items-center justify-center text-slate-400 font-bold">{n}</div>
+                                  ))}
                                 </div>
-                              ))}
+                              )}
+                              {q.secondaryType === 'YESNO' && (
+                                <div className="flex gap-4">
+                                  {['Yes', 'No'].map(opt => (
+                                    <div key={opt} className="px-8 py-3 rounded-2xl border border-slate-200 text-slate-400 font-bold">{opt}</div>
+                                  ))}
+                                </div>
+                              )}
+                              {q.secondaryType === 'TEXT' && (
+                                <div className="w-full h-24 bg-slate-50 rounded-2xl border border-slate-200 border-dashed"></div>
+                              )}
                             </div>
                           )}
-                          {q.type === 'TEXT' && (
-                            <div className="w-full h-32 bg-slate-50 rounded-2xl border border-slate-200 border-dashed"></div>
-                          )}
-                          {q.type === 'YESNO' && (
-                            <div className="flex gap-4">
-                              {['Yes', 'No'].map(opt => (
-                                <div key={opt} className="px-8 py-3 rounded-2xl border border-slate-200 text-slate-400 font-bold hover:border-indigo-600 hover:text-indigo-600 cursor-default transition-all">
-                                  {opt}
-                                </div>
-                              ))}
-                            </div>
-                          )}
+
+                          {/* Box 2 Preview (Primary) */}
+                          <div className="space-y-4">
+                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Rating 2: {q.type}</span>
+                            {q.type === 'RATING' && (
+                              <div className="flex gap-4">
+                                {[5,4,3,2,1].map(n => (
+                                  <div key={n} className="w-12 h-12 rounded-2xl border border-slate-200 flex items-center justify-center text-slate-400 font-bold">{n}</div>
+                                ))}
+                              </div>
+                            )}
+                            {q.type === 'YESNO' && (
+                              <div className="flex gap-4">
+                                {['Yes', 'No'].map(opt => (
+                                  <div key={opt} className="px-8 py-3 rounded-2xl border border-slate-200 text-slate-400 font-bold">{opt}</div>
+                                ))}
+                              </div>
+                            )}
+                            {q.type === 'TEXT' && (
+                              <div className="w-full h-32 bg-slate-50 rounded-2xl border border-slate-200 border-dashed"></div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -450,27 +505,99 @@ const AppraisalFormDesign: React.FC = () => {
                           onChange={e => updateQuestion(catIdx, qIdx, { text: e.target.value })}
                         />
                         
-                        <div className="flex items-center gap-6 pt-2">
-                           <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
-                             <select 
-                               value={q.type}
-                               onChange={e => updateQuestion(catIdx, qIdx, { type: e.target.value as any })}
-                               className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-indigo-600 outline-none p-0 pr-4"
-                             >
-                               <option value="RATING">1-5 Rating</option>
-                               <option value="TEXT">Text Area</option>
-                               <option value="YESNO">Binary Yes/No</option>
-                             </select>
-                           </div>
+                        <div className="pt-2">
+                          {formType === 'SELF_ASSESSMENT' ? (
+                            <div className="flex items-center gap-4">
+                              {/* Rating Choosing Dropdown 1 */}
+                              <div className="flex-1 flex flex-col gap-1.5">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em]">Rating Choose 1</label>
+                                <div className="flex items-center gap-3 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+                                  <select 
+                                    value={q.secondaryType || 'NONE'}
+                                    onChange={e => updateQuestion(catIdx, qIdx, { secondaryType: e.target.value as any })}
+                                    className="w-full bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-indigo-600 outline-none p-0 pr-4 cursor-pointer"
+                                  >
+                                    <option value="YESNO">Yes / No</option>
+                                    <option value="TEXT">Text</option>
+                                    <option value="RATING">1-5 Rating</option>
+                                    <option value="NONE">None</option>
+                                  </select>
+                                </div>
+                              </div>
 
-                           <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors">
-                             <input 
-                               type="checkbox" 
-                               checked={q.isRequired}
-                               onChange={e => updateQuestion(catIdx, qIdx, { isRequired: e.target.checked })}
-                               className="w-3.5 h-3.5 rounded border-slate-200 text-indigo-600 focus:ring-indigo-500"
-                             /> Is Required
-                           </label>
+                              {/* Rating Choosing Dropdown 2 */}
+                              <div className="flex-1 flex flex-col gap-1.5">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em]">Rating Choose 2</label>
+                                <div className="flex items-center gap-3 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+                                  <select 
+                                    value={q.type}
+                                    onChange={e => updateQuestion(catIdx, qIdx, { type: e.target.value as any })}
+                                    className="w-full bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-indigo-600 outline-none p-0 pr-4 cursor-pointer"
+                                  >
+                                    <option value="YESNO">Yes / No</option>
+                                    <option value="TEXT">Text</option>
+                                    <option value="RATING">1-5 Rating</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col gap-1.5 justify-end pb-1">
+                                <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={q.isRequired}
+                                    onChange={e => updateQuestion(catIdx, qIdx, { isRequired: e.target.checked })}
+                                    className="w-3.5 h-3.5 rounded border-slate-200 text-indigo-600 focus:ring-indigo-500"
+                                  /> Is Required
+                                </label>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-6">
+                              <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                                <select 
+                                  value={q.type}
+                                  onChange={e => updateQuestion(catIdx, qIdx, { type: e.target.value as any })}
+                                  className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest text-indigo-600 outline-none p-0 pr-4 cursor-pointer"
+                                >
+                                  <option value="RATING">1-5 Rating</option>
+                                  <option value="YESNO">Yes / No</option>
+                                  <option value="TEXT">Text Area</option>
+                                </select>
+                              </div>
+
+                              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors">
+                                <input 
+                                  type="checkbox" 
+                                  checked={q.isRequired}
+                                  onChange={e => updateQuestion(catIdx, qIdx, { isRequired: e.target.checked })}
+                                  className="w-3.5 h-3.5 rounded border-slate-200 text-indigo-600 focus:ring-indigo-500"
+                                /> Is Required
+                              </label>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Editor-mode Component Preview */}
+                        <div className="pt-4 flex flex-col gap-4 border-t border-slate-50">
+                          {q.secondaryType && q.secondaryType !== 'NONE' && (
+                            <div className="flex flex-col gap-2">
+                              <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Box 1: {q.secondaryType}</span>
+                              <div className="flex gap-1.5">
+                                {q.secondaryType === 'YESNO' && ['Y', 'N'].map(o => <div key={o} className="w-6 h-6 rounded border border-slate-200 bg-slate-50/50 flex items-center justify-center text-[10px] font-bold text-slate-300">{o}</div>)}
+                                {q.secondaryType === 'RATING' && [5,4,3,2,1].map(n => <div key={n} className="w-6 h-6 rounded border border-slate-200 bg-slate-50/50 flex items-center justify-center text-[9px] font-black text-slate-300">{n}</div>)}
+                                {q.secondaryType === 'TEXT' && <div className="w-full h-4 bg-slate-50/50 rounded border border-slate-200 border-dashed"></div>}
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex flex-col gap-2">
+                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Box 2: {q.type}</span>
+                            <div className="flex gap-1.5">
+                              {q.type === 'YESNO' && ['Y', 'N'].map(o => <div key={o} className="w-6 h-6 rounded border border-slate-200 bg-slate-50/50 flex items-center justify-center text-[10px] font-bold text-slate-300">{o}</div>)}
+                              {q.type === 'RATING' && [5,4,3,2,1].map(n => <div key={n} className="w-6 h-6 rounded border border-slate-200 bg-slate-50/50 flex items-center justify-center text-[9px] font-black text-slate-300">{n}</div>)}
+                              {q.type === 'TEXT' && <div className="w-full h-4 bg-slate-50/50 rounded border border-slate-200 border-dashed"></div>}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -535,11 +662,17 @@ const AppraisalFormDesign: React.FC = () => {
               <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Explore Appraisal Templates</h2>
               <p className="text-slate-400 font-medium text-sm">Choose a pre-configured template to jumpstart your form design.</p>
             </div>
-            <div className="p-10 space-y-4">
-              {libraryTemplates.map((tpl, idx) => (
+            <div className="p-10 space-y-4 max-h-[50vh] overflow-y-auto">
+              {formsLoading && <p className="text-center text-slate-400 py-10">Loading templates...</p>}
+              {!formsLoading && libraryForms.length === 0 && (
+                <div className="text-center py-10">
+                  <p className="text-slate-400 font-medium">No previous {formType.replace('_', ' ').toLowerCase()} templates found.</p>
+                </div>
+              )}
+              {libraryForms.map((tpl) => (
                 <div 
-                  key={idx}
-                  onClick={() => applyTemplate(tpl)}
+                  key={tpl.formId}
+                  onClick={() => applySystemTemplate(tpl.formId)}
                   className="group p-6 rounded-3xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all cursor-pointer flex items-center justify-between"
                 >
                   <div className="flex items-center gap-5">
@@ -547,8 +680,8 @@ const AppraisalFormDesign: React.FC = () => {
                       <Layers className="w-6 h-6" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-800">{tpl.name}</h4>
-                      <p className="text-xs text-slate-400">{tpl.categories.length} Sections • {tpl.categories.reduce((acc, c) => acc + c.questions.length, 0)} Indicators</p>
+                      <h4 className="font-bold text-slate-800">{tpl.formName}</h4>
+                      <p className="text-xs text-slate-400">{tpl.cycleName || 'Template Library'} &bull; Click to apply</p>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-200 group-hover:text-indigo-400 transition-colors" />

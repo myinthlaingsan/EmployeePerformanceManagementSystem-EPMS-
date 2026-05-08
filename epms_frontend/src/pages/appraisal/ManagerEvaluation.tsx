@@ -8,7 +8,7 @@ import {
 } from '../../features/appraisal/appraisalApi';
 import SectionCard from '../../components/appraisal/SectionCard';
 import QuestionItem from '../../components/appraisal/QuestionItem';
-import { UserCheck } from 'lucide-react';
+import { UserCheck, Cloud } from 'lucide-react';
 
 const ManagerEvaluation = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +21,7 @@ const ManagerEvaluation = () => {
 
   const [managerRatings, setManagerRatings] = useState<Record<string, number>>({});
   const [managerComment, setManagerComment] = useState('');
+  const [otherRemarks, setOtherRemarks] = useState('');
 
   useEffect(() => {
     if (formData?.categories) {
@@ -98,22 +99,6 @@ const ManagerEvaluation = () => {
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Manager Evaluation Form</h1>
             <p className="text-slate-500 text-sm font-medium mt-0.5">Evaluate the performance of {formData.employeeName || 'Employee'} for the current cycle.</p>
           </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting || isSaving || completedCount < totalQuestions || formData.submitted}
-              className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-2xl shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50"
-            >
-              {isSubmitting ? 'Submitting...' : 'Save Evaluation'}
-            </button>
-            <button
-              onClick={handleSignOff}
-              disabled={isSigningOff || !formData.submitted}
-              className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50"
-            >
-              {isSigningOff ? 'Signing off...' : 'Sign Off Appraisal'}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -146,32 +131,98 @@ const ManagerEvaluation = () => {
         {formData.categories?.map((section: any) => (
           <SectionCard key={section.categoryId} title={section.categoryName}>
             <div className="divide-y divide-slate-50">
-              {section.questions.map((q: any) => (
-                <QuestionItem
-                  key={q.questionId}
-                  question={q.questionText}
-                  value={managerRatings[q.questionId] || 0}
-                  onChange={(val) => handleRatingChange(q.questionId.toString(), val)}
-                  disabled={isSubmitting || formData.submitted}
-                  employeeRating={q.employeeRating} // This field should come from the backend DTO
-                />
-              ))}
+                {section.questions.map((q: any, qIdx: number) => (
+                  <QuestionItem
+                    key={q.questionId}
+                    index={qIdx + 1}
+                    question={q.questionText}
+                    primaryType={q.questionType || 'RATING'}
+                    secondaryType={q.secondaryQuestionType || 'NONE'}
+                    ratingValue={managerRatings[q.questionId] || 0}
+                    isCompleted={null}
+                    onRatingChange={(val) => handleRatingChange(q.questionId.toString(), val)}
+                    onCompletionChange={() => {}}
+                    disabled={isSubmitting || formData.submitted}
+                    employeeRating={q.ratingValue} // This comes from the backend DTO
+                  />
+                ))}
             </div>
           </SectionCard>
         ))}
 
-        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 mb-10">
-          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
-            Final Manager Summary
-          </h2>
-          <textarea
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-6 text-slate-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all min-h-40"
-            placeholder="Provide a final summary of performance, areas of improvement, and promotion eligibility..."
-            value={managerComment}
-            onChange={(e) => setManagerComment(e.target.value)}
-            disabled={formData.submitted}
-          />
+        {/* Remarks Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 mb-4">Other Remarks</h3>
+            <textarea
+              className="w-full bg-white border border-slate-200 rounded-xl p-4 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all min-h-32"
+              placeholder="Additional observations or notes..."
+              value={otherRemarks}
+              onChange={(e) => setOtherRemarks(e.target.value)}
+              disabled={formData.submitted}
+            />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 mb-4">Appraiser's Comment</h3>
+            <textarea
+              className="w-full bg-white border border-slate-200 rounded-xl p-4 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all min-h-32"
+              placeholder="Final summary from the evaluator..."
+              value={managerComment}
+              onChange={(e) => setManagerComment(e.target.value)}
+              disabled={formData.submitted}
+            />
+          </div>
+        </div>
+
+        {/* Signature Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+          <div className="bg-white rounded-xl border border-slate-100 p-6 shadow-sm h-40 flex flex-col justify-between">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Appraisee Signature</p>
+            <div className="flex flex-col items-center">
+                <p className="text-2xl font-serif italic text-slate-700">{formData.employeeName || 'Employee'}</p>
+                <div className="w-full border-b border-slate-200 mt-2 mb-4"></div>
+                <p className="text-[10px] text-slate-400">Digitally Signed on {new Date().toISOString().split('T')[0]}</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-6 shadow-sm h-40 flex flex-col justify-between">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Appraiser Signature</p>
+            <div className="flex flex-col items-center">
+                <div className="w-full border-b border-slate-200 mt-2 mb-4"></div>
+                <p className="text-[10px] text-slate-400">Pending Approval</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-6 shadow-sm h-40 flex flex-col justify-between">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">HR Verification</p>
+            <div className="flex flex-col items-center">
+                <div className="w-full border-b border-slate-200 mt-2 mb-4"></div>
+                <p className="text-[10px] text-slate-400">Pending Verification</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky Footer */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-8 py-4 z-50 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+            <Cloud className="w-4 h-4 text-slate-400" />
+            Last saved: 2 minutes ago
+          </div>
+          <div className="flex items-center gap-8">
+            <button 
+              onClick={() => navigate(-1)}
+              className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
+            >
+              Discard Draft
+            </button>
+            <button 
+              onClick={handleSubmit}
+              disabled={isSubmitting || isSaving || completedCount < totalQuestions || formData.submitted}
+              className="px-10 py-3 bg-[#0052CC] text-white font-bold rounded-lg hover:bg-[#0747A6] transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-indigo-100"
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit Evaluation'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

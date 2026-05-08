@@ -37,9 +37,8 @@ const ForgotPasswordPage = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow-xl rounded-3xl sm:px-10 border border-gray-100">
           {message && (
-            <div className={`mb-6 p-4 rounded-2xl text-sm font-bold ${
-              message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'
-            }`}>
+            <div className={`mb-6 p-4 rounded-2xl text-sm font-bold ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'
+              }`}>
               {message.text}
             </div>
           )}
@@ -71,7 +70,7 @@ const ForgotPasswordPage = () => {
               </button>
             </div>
           </form>
-          
+
           <div className="mt-6 text-center">
             <Link to="/login" className="font-medium text-sm text-blue-600 hover:text-blue-500 transition">
               Back to Login
