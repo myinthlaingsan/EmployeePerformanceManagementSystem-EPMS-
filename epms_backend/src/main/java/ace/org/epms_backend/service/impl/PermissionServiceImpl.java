@@ -1,14 +1,13 @@
 package ace.org.epms_backend.service.impl;
 
-import ace.org.epms_backend.dto.org.AssignPermissionRequest;
-import ace.org.epms_backend.dto.org.PermissionRequest;
-import ace.org.epms_backend.dto.org.PermissionResponse;
-import ace.org.epms_backend.dto.org.RoleLevelPermissionResponse;
+import ace.org.epms_backend.dto.org.*;
 import ace.org.epms_backend.exception.AlreadyActiveException;
 import ace.org.epms_backend.exception.CannotDeleteException;
 import ace.org.epms_backend.exception.CodeAlreadyExistsException;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.mapper.JobLevelMapper;
 import ace.org.epms_backend.mapper.PermissionMapper;
+import ace.org.epms_backend.mapper.RoleMapper;
 import ace.org.epms_backend.model.employee.JobLevel;
 import ace.org.epms_backend.model.employee.Permission;
 import ace.org.epms_backend.model.employee.Role;
@@ -26,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,6 +38,8 @@ public class PermissionServiceImpl implements PermissionService {
     private final JobLevelRepository jobLevelRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
     private final PermissionMapper permissionMapper;
+    private final RoleMapper roleMapper;
+    private final JobLevelMapper jobLevelMapper;
     private final AuditService auditService;
 
     @Override
@@ -180,5 +182,70 @@ public class PermissionServiceImpl implements PermissionService {
                         .permissionName(rlp.getPermission().getPermissionName())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public PermissionMatrixResponse getPermissionMatrix() {
+        List<Role> roles = roleRepository.findAll();
+        List<JobLevel> levels = jobLevelRepository.findAll();
+        List<Permission> permissions = permissionRepository.findAll();
+        List<RoleLevelPermission> assignments = roleLevelPermissionRepository.findAll();
+
+        List<RoleLevelMapping> matrix = new ArrayList<>();
+
+        for (Role role : roles) {
+            for (JobLevel level : levels) {
+                List<Long> assignedPermissionIds = assignments.stream()
+                        .filter(a -> a.getRole().getRoleId().equals(role.getRoleId()) &&
+                                     a.getLevel().getLevelId().equals(level.getLevelId()))
+                        .map(a -> a.getPermission().getPermissionId())
+                        .collect(Collectors.toList());
+
+                matrix.add(RoleLevelMapping.builder()
+                        .roleId(role.getRoleId())
+                        .levelId(level.getLevelId())
+                        .permissionIds(assignedPermissionIds)
+                        .build());
+            }
+        }
+
+        return PermissionMatrixResponse.builder()
+                .roles(roles.stream().map(roleMapper::toResponse).collect(Collectors.toList()))
+                .levels(levels.stream().map(jobLevelMapper::toResponse).collect(Collectors.toList()))
+                .permissions(permissions.stream().map(permissionMapper::toResponse).collect(Collectors.toList()))
+                .matrix(matrix)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void updatePermissionMatrix(UpdatePermissionMatrixRequest request) {
+        Role role = roleRepository.findById(request.getRoleId())
+                .orElseThrow(() -> new NotFoundException("Role not found"));
+        JobLevel level = jobLevelRepository.findById(request.getLevelId())
+                .orElseThrow(() -> new NotFoundException("Job level not found"));
+
+        // Remove existing assignments for this role/level combo
+        List<RoleLevelPermission> existing = roleLevelPermissionRepository.findByRole_RoleIdAndLevel_LevelId(request.getRoleId(), request.getLevelId());
+        roleLevelPermissionRepository.deleteAll(existing);
+
+        // Add new assignments
+        for (Long permissionId : request.getPermissionIds()) {
+            Permission permission = permissionRepository.findById(permissionId)
+                    .orElseThrow(() -> new NotFoundException("Permission not found with id: " + permissionId));
+            
+            RoleLevelPermission assignment = new RoleLevelPermission();
+            assignment.setRole(role);
+            assignment.setLevel(level);
+            assignment.setPermission(permission);
+            roleLevelPermissionRepository.save(assignment);
+        }
+
+        auditService.log(AuditRequest.builder()
+                .tableName("role_level_permissions")
+                .action(AuditAction.UPDATE)
+                .newState("Updated permissions for Role: " + role.getRoleName() + ", Level: " + level.getLevelName())
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 }
