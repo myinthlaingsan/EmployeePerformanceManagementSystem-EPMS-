@@ -58,7 +58,36 @@ public class KpiScoringServiceImpl implements KpiScoringService {
             }
         }
 
+        // Precondition 1: Is the appraisal cycle actually finished?
+        if (goalSet.getCycle().getIsActive()) {
+            throw new IllegalStateException("Cannot calculate final score while the appraisal cycle is still active.");
+        }
+
+        // Precondition 2: Has the manager locked the goal set?
+        if (!goalSet.getStatus().equals(ace.org.epms_backend.enums.KpiGoalStatus.LOCKED)) {
+            throw new IllegalStateException("Goal set must be LOCKED by the manager before finalizing the score.");
+        }
+
+        // Precondition 3: Is the employee still active?
+        if (goalSet.getEmployee().getIsActive() != null && !goalSet.getEmployee().getIsActive()) {
+            throw new IllegalStateException("Cannot calculate score for an inactive employee.");
+        }
+
+        // Precondition 4: Has this score already been finalized?
+        if (finalScoreRepository.findByEmployeeIdAndCycleId(employeeId, cycleId).isPresent()) {
+            throw new IllegalStateException("KPI Score has already been finalized for this cycle.");
+        }
+
         List<KpiGoalItem> items = goalItemRepository.findByGoalSetIdAndIsActiveTrue(goalSet.getId());
+
+        // Precondition 5: Are all goal items at 100% weight total?
+        BigDecimal totalWeight = items.stream()
+                .map(item -> item.getWeightPercent() != null ? item.getWeightPercent() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
+            throw new IllegalStateException("Total weight of active KPI items must be exactly 100%. Current: " + totalWeight + "%");
+        }
 
         BigDecimal totalWeightedScore = BigDecimal.ZERO;
 
@@ -80,8 +109,7 @@ public class KpiScoringServiceImpl implements KpiScoringService {
             totalWeightedScore = totalWeightedScore.add(weightedScore);
         }
 
-        KpiFinalScore finalScore = finalScoreRepository.findByEmployeeIdAndCycleId(employeeId, cycleId)
-                .orElse(new KpiFinalScore());
+        KpiFinalScore finalScore = new KpiFinalScore();
 
         finalScore.setEmployee(goalSet.getEmployee());
         finalScore.setGoalSet(goalSet);
