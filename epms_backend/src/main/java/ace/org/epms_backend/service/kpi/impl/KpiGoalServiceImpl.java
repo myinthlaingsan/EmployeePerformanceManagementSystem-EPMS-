@@ -188,13 +188,31 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             }
 
             try {
-                // Atomic archive or skip
-                if (request.isOverwriteExisting()) {
-                    goalsRepository.archiveExistingGoalSets(employeeId, cycle.getCycleId());
-                } else {
-                    List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
-                            employeeId, cycle.getCycleId());
-                    if (!existing.isEmpty()) {
+                // Check for existing goals
+                List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
+                        employeeId, cycle.getCycleId());
+
+                if (!existing.isEmpty()) {
+                    boolean hasApprovedOrLocked = existing.stream()
+                            .anyMatch(g -> g.getStatus() == KpiGoalStatus.APPROVED || g.getStatus() == KpiGoalStatus.LOCKED);
+
+                    if (hasApprovedOrLocked) {
+                        // Never overwrite Approved or Locked goals via Bulk Assign
+                        response.setSkippedCount(response.getSkippedCount() + 1);
+                        response.getResults().add(AssignmentResult.builder()
+                                .employeeId(employeeId)
+                                .employeeName(employee.getStaffName())
+                                .status("SKIPPED")
+                                .reason("Employee has APPROVED/LOCKED goals. Cannot overwrite via bulk assignment.")
+                                .build());
+                        continue;
+                    }
+
+                    if (request.isOverwriteExisting()) {
+                        // Only archives DRAFT goals (per repository update)
+                        goalsRepository.archiveExistingGoalSets(employeeId, cycle.getCycleId());
+                    } else {
+                        // Skip if overwrite not checked
                         response.setSkippedCount(response.getSkippedCount() + 1);
                         response.getResults().add(AssignmentResult.builder()
                                 .employeeId(employeeId)
@@ -202,7 +220,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                                 .status("SKIPPED")
                                 .reason("Employee already has goals assigned for this cycle")
                                 .build());
-                        continue; // Skip
+                        continue;
                     }
                 }
 

@@ -75,7 +75,7 @@ public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
 
         @Modifying
         @Query("UPDATE KpiGoals g SET g.isCurrent = false, g.status = 'ARCHIVED' " +
-                        "WHERE g.employee.id = :employeeId AND g.cycle.cycleId = :cycleId AND g.isCurrent = true")
+                        "WHERE g.employee.id = :employeeId AND g.cycle.cycleId = :cycleId AND g.isCurrent = true AND g.status = 'DRAFT'")
         void archiveExistingGoalSets(@Param("employeeId") Long employeeId, @Param("cycleId") Long cycleId);
 
         @Query("SELECT k FROM KpiGoals k WHERE k.employee.id IN " +
