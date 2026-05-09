@@ -303,6 +303,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                                 // Employee Info
                                 .employeeName(appraisal.getEmployee().getStaffName())
                                 .employeeId(appraisal.getEmployee().getId())
+                                .employeeCode(appraisal.getEmployee().getEmployeeCode())
                                 .positionName(appraisal.getEmployee().getPosition() != null
                                                 ? appraisal.getEmployee().getPosition().getPositionName()
                                                 : null)
@@ -316,12 +317,22 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                                 // Cycle Info
                                 .cycleStartDate(appraisal.getCycle().getStartDate())
                                 .cycleEndDate(appraisal.getCycle().getEndDate())
+                                .selfAssessmentDeadline(appraisal.getCycle().getSelfAssessmentDeadline())
+                                .managerEvaluationDeadline(appraisal.getCycle().getManagerEvaluationDeadline())
                                 .totalScore(eval.getTotalScore())
 
                                 .submitted(eval.getSubmitted())
                                 .lastSavedAt(eval.getLastSavedAt())
                                 .finalComment(eval.getFinalComment())
                                 .submittedAt(eval.getSubmittedAt())
+                                .employeeSignedAt(appraisal.getEmployeeSignedAt())
+                                .managerSignedAt(appraisal.getManagerSignedAt())
+                                .employeeSignature(appraisal.getEmployeeSignComment() != null 
+                                    ? java.util.Base64.getEncoder().encodeToString(appraisal.getEmployeeSignComment()) 
+                                    : null)
+                                .managerSignature(appraisal.getManagerSignComment() != null 
+                                    ? java.util.Base64.getEncoder().encodeToString(appraisal.getManagerSignComment()) 
+                                    : null)
                                 .categories(categoryDTOs)
                                 .build();
         }

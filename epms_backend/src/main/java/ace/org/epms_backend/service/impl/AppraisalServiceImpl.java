@@ -261,7 +261,10 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
         appraisal.setEmployeeSignedAt(Instant.now());
-        appraisal.setEmployeeSignComment(comment);
+        // Since employeeSignComment is byte[], we convert string to bytes if used as a comment field
+        if (comment != null) {
+            appraisal.setEmployeeSignComment(comment.getBytes());
+        }
 
         Appraisal saved = appraisalRepo.save(appraisal);
 
@@ -292,7 +295,9 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
         appraisal.setManagerSignedAt(Instant.now());
-        appraisal.setManagerSignComment(comment);
+        if (comment != null) {
+            appraisal.setManagerSignComment(comment.getBytes());
+        }
 
         Appraisal saved = appraisalRepo.save(appraisal);
 
@@ -320,5 +325,33 @@ public class AppraisalServiceImpl implements AppraisalService {
     @Override
     public List<AppraisalResponse> getByCycleId(Long cycleId) {
         return appraisalMapper.toResponseList(appraisalRepo.findByCycle_CycleId(cycleId));
+    }
+
+    @Override
+    @Transactional
+    public void uploadEmployeeSignature(Long id, org.springframework.web.multipart.MultipartFile file) {
+        Appraisal appraisal = appraisalRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+        try {
+            appraisal.setEmployeeSignComment(file.getBytes());
+            appraisal.setEmployeeSignedAt(Instant.now());
+            appraisalRepo.save(appraisal);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Upload failed", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void uploadManagerSignature(Long id, org.springframework.web.multipart.MultipartFile file) {
+        Appraisal appraisal = appraisalRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+        try {
+            appraisal.setManagerSignComment(file.getBytes());
+            appraisal.setManagerSignedAt(Instant.now());
+            appraisalRepo.save(appraisal);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Upload failed", e);
+        }
     }
 }

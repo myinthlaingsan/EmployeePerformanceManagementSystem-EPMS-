@@ -216,15 +216,23 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
                 .departmentName(empDeptRepo.findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
                         .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : null)
                         .orElse(null))
+                .managerName(appraisal.getManager() != null ? appraisal.getManager().getStaffName() : "N/A")
 
                 // Cycle Info
                 .cycleStartDate(appraisal.getCycle().getStartDate())
                 .cycleEndDate(appraisal.getCycle().getEndDate())
+                .selfAssessmentDeadline(appraisal.getCycle().getSelfAssessmentDeadline())
+                .managerEvaluationDeadline(appraisal.getCycle().getManagerEvaluationDeadline())
                 .totalScore(self.getTotalScore())
 
                 .submitted(self.getSubmitted())
                 .lastSavedAt(self.getLastSavedAt())
                 .submittedAt(self.getSubmittedAt())
+                .employeeSignedAt(appraisal.getEmployeeSignedAt())
+                .managerSignedAt(appraisal.getManagerSignedAt())
+                .employeeSignature(appraisal.getEmployeeSignComment() != null 
+                    ? java.util.Base64.getEncoder().encodeToString(appraisal.getEmployeeSignComment()) 
+                    : null)
                 .categories(categoryDTOs)
                 .build();
     }

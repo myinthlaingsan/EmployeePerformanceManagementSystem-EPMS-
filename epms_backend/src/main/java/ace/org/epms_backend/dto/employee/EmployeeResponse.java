@@ -18,6 +18,7 @@ public class EmployeeResponse {
     private String email;
     private String phoneNo;
     private String positionName;
+    private Long positionId;
     private String levelName;
     private Integer levelRank;
     private String currentDepartmentName;

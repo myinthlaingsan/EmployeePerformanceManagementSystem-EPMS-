@@ -27,6 +27,9 @@ public interface AppraisalService {
     AppraisalResponse managerSignOff(Long id, String comment);
     
     List<AppraisalResponse> getByCycleId(Long cycleId);
+
+    void uploadEmployeeSignature(Long id, org.springframework.web.multipart.MultipartFile file);
+    void uploadManagerSignature(Long id, org.springframework.web.multipart.MultipartFile file);
 }
 
 
