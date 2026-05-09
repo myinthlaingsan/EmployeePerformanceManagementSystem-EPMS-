@@ -13,6 +13,7 @@ import {
   pipRoutes,
   generalRoutes,
   kpiRoutes,
+  continuousRoutes,
   feedback360Routes
 } from "./routes";
 import { ActiveCycleProvider } from "./context/ActiveCycleContext";
@@ -35,6 +36,18 @@ const App = () => {
     }
   }, [isSuccess, userData, dispatch]);
 
+  // Sync logout across tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "accessToken" && !e.newValue) {
+        dispatch({ type: "auth/logout" });
+        window.location.href = "/login";
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [dispatch]);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -48,6 +61,11 @@ const App = () => {
           <Route element={<ActiveCycleProvider><MainLayout /></ActiveCycleProvider>}>
             {/* General Routes (Dashboard, Profile, etc.) */}
             {generalRoutes.map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* Continuous Feedback & Performance History Routes */}
+            {continuousRoutes.map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 

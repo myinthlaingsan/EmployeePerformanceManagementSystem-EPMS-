@@ -1,5 +1,6 @@
 package ace.org.epms_backend.controller.feedback360;
 
+import ace.org.epms_backend.dto.appraisal.FullFormResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackDetailsResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackSubmissionRequest;
 import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
@@ -48,7 +49,7 @@ public class FeedbackSubmissionController {
     }
 
     @GetMapping("/request/{requestId}/questions")
-    public ResponseEntity<ace.org.epms_backend.dto.appraisal.FullFormResponse> getQuestions(@PathVariable Long requestId) {
+    public ResponseEntity<FullFormResponse> getQuestions(@PathVariable Long requestId) {
         return ResponseEntity.ok(feedbackFormService.getQuestionsForRequest(requestId));
     }
 }

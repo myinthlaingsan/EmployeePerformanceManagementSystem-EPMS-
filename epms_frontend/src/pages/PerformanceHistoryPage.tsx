@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useGetDepartmentsQuery } from '../features/org/departmentApi';
 import { useGetEmployeesQuery } from '../features/employee/employeeapi';
 import { useGetPerformanceHistoryByEmployeeQuery, useGetAllPerformanceHistoryQuery } from '../features/continuous/continuousApi';
 import { format } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
 
+interface MonthData {
+  name: string;
+  month: number;
+  year: number;
+  praise: number;
+  improvement: number;
+  warning: number;
+  meetings: number;
+}
+
 const SentimentChart = ({ history, employeeName, filterType }: { history: any[], employeeName?: string, filterType: string }) => {
   // Group data by month for the last 6 months
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const last6Months = [];
+  const last6Months: MonthData[] = [];
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -108,7 +118,7 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900" />
                 </div>
 
-                <div className="w-full max-w-[40px] flex flex-col-reverse rounded-xl overflow-hidden h-48 bg-gray-50/50 shadow-inner">
+                <div className="w-full max-w-10 flex flex-col-reverse rounded-xl overflow-hidden h-48 bg-gray-50/50 shadow-inner">
                   <div style={{ height: `${height}%` }} className="bg-blue-500 transition-all duration-500 hover:brightness-110" />
                 </div>
                 <span className="text-[10px] font-black text-gray-400 uppercase">{m.name}</span>
@@ -130,7 +140,7 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900" />
               </div>
 
-              <div className="w-full max-w-[40px] flex flex-col-reverse rounded-xl overflow-hidden h-48 bg-gray-50/50 shadow-inner">
+              <div className="w-full max-w-10 flex flex-col-reverse rounded-xl overflow-hidden h-48 bg-gray-50/50 shadow-inner">
                 <div style={{ height: `${praiseH}%` }} className="bg-emerald-500 transition-all duration-500 hover:brightness-110" />
                 <div style={{ height: `${improvementH}%` }} className="bg-amber-400 transition-all duration-500 hover:brightness-110" />
                 <div style={{ height: `${warningH}%` }} className="bg-rose-500 transition-all duration-500 hover:brightness-110" />
@@ -183,7 +193,8 @@ export const PerformanceHistoryPage = () => {
   const { user, isAdmin, isHR } = useAuth();
   const isGovernanceMode = isAdmin || isHR;
   const { data: departments, isLoading: isDeptsLoading } = useGetDepartmentsQuery();
-  const { data: employees, isLoading: isEmpsLoading } = useGetEmployeesQuery();
+  const { data: employeeData, isLoading: isEmpsLoading } = useGetEmployeesQuery({ page: 0, size: 1000 });
+  const employees = employeeData?.content || [];
 
   const [selectedDeptId, setSelectedDeptId] = useState<number | ''>('');
   const [selectedEmpId, setSelectedEmpId] = useState<number | ''>('');
@@ -268,7 +279,7 @@ export const PerformanceHistoryPage = () => {
         <div className="flex-1 space-y-2">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Employee</label>
           <select
-            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
             value={selectedEmpId}
             onChange={(e) => setSelectedEmpId(e.target.value === '' ? '' : Number(e.target.value))}
             disabled={!selectedDeptId || isEmpsLoading || filteredEmployees.length === 0}

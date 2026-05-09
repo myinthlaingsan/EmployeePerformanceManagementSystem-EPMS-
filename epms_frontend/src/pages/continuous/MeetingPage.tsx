@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { useAuth } from "../hooks/useAuth";
+import React, { useState, useEffect, useRef } from "react";
+
+import { useAuth } from "../../hooks/useAuth";
 import { 
   useGetAllMeetingsQuery, 
   useGetMeetingsByEmployeeQuery, 
@@ -11,21 +12,161 @@ import {
   useAddMeetingCommentMutation,
   useDeleteCommentMutation,
   useUpdateCommentMutation
-} from "../features/continuous/continuousApi";
-import { useGetEmployeesQuery } from "../features/employee/employeeapi";
+} from "../../features/continuous/continuousApi";
+import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { format } from "date-fns";
+
+const CommentItem = ({ 
+  comment, 
+  allComments, 
+  user, 
+  isManager, 
+  highlightedCommentId,
+  editingCommentId,
+  editCommentText,
+  setEditCommentText,
+  setEditingCommentId,
+  handleUpdateComment,
+  setCommentToDelete,
+  handleScrollToParent,
+  onContextMenu,
+  onReply
+}: { 
+  comment: any; 
+  allComments: any[];
+  user: any;
+  isManager: boolean;
+  highlightedCommentId: number | null;
+  editingCommentId: number | null;
+  editCommentText: string;
+  setEditCommentText: (val: string) => void;
+  setEditingCommentId: (val: number | null) => void;
+  handleUpdateComment: (id: number) => void;
+  setCommentToDelete: (id: number | null) => void;
+  handleScrollToParent: (parentId: number) => void;
+  onContextMenu: (e: React.MouseEvent, comment: any) => void;
+  onReply: (comment: any) => void;
+}) => {
+  const isOwnComment = (isManager && comment.commentType === 'MANAGER' && comment.managerId === user?.id) || 
+                       (!isManager && comment.commentType === 'EMPLOYEE' && comment.employeeId === user?.id);
+
+  return (
+    <div 
+      id={`comment-${comment.id}`} 
+      className={`space-y-2`}
+      onContextMenu={(e) => onContextMenu(e, comment)}
+    >
+      <div className={`flex gap-3 group transition-all duration-500 rounded-2xl relative ${
+        highlightedCommentId === comment.id 
+          ? 'bg-blue-50 ring-4 ring-blue-300 scale-[1.02] shadow-lg p-3 -m-3' 
+          : isOwnComment ? 'flex-row-reverse' : ''
+      }`}>
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-sm transition-colors duration-500 ${
+          highlightedCommentId === comment.id
+            ? 'bg-blue-600 text-white'
+            : isOwnComment ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 border border-gray-100'
+        }`}>
+          {(comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)?.charAt(0)}
+        </div>
+        
+        <div className={`max-w-[85%] ${isOwnComment ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-gray-900 uppercase tracking-tight">
+              {isOwnComment ? 'You' : (comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)}
+            </span>
+            {comment.commentType === 'MANAGER' && <span className="px-1.5 py-0.5 bg-gray-900 text-white text-[8px] font-black rounded uppercase tracking-widest leading-none">Manager</span>}
+            <span className="text-[10px] text-gray-400 font-medium">{comment.createdAt ? format(new Date(comment.createdAt), 'h:mm a') : ''}</span>
+          </div>
+
+          <div className={`px-3 py-2 rounded-2xl text-sm transition-all shadow-sm relative min-w-[120px] ${
+            isOwnComment 
+              ? 'bg-[#e7f9f2] text-gray-800 rounded-tr-none border border-[#d1f0e4]' 
+              : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
+          }`}>
+            <button 
+              onClick={(e) => onContextMenu(e as any, comment)}
+              className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+            </button>
+
+            {comment.parentId && (
+              (() => {
+                const parent = allComments?.find(c => String(c.id) === String(comment.parentId));
+                if (!parent) return null;
+                const parentName = parent.commentType === 'MANAGER' ? parent.managerName : parent.employeeName;
+                return (
+                  <div 
+                    onClick={() => handleScrollToParent(parent.id)}
+                    className={`mb-2 p-2 rounded-lg border-l-4 flex flex-col gap-1 shadow-sm cursor-pointer hover:opacity-80 transition-opacity ${
+                      isOwnComment ? 'bg-[#d1f0e4] border-[#4bb08b]' : 'bg-gray-100 border-gray-400'
+                    }`}
+                  >
+                    <div className={`text-[10px] font-black uppercase tracking-tight ${isOwnComment ? 'text-[#3e8e71]' : 'text-gray-600'}`}>
+                      {parentName}
+                    </div>
+                    <div className={`text-[11px] leading-tight ${isOwnComment ? 'text-gray-700' : 'text-gray-500'} italic line-clamp-2`}>
+                      "{parent.comment}"
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+
+            <div className="flex flex-col gap-1">
+              {editingCommentId === comment.id ? (
+                <div className="space-y-2 py-1">
+                  <textarea
+                    className="bg-white border border-gray-200 p-2 rounded-lg text-sm w-full text-gray-900 outline-none focus:ring-2 focus:ring-indigo-400 h-16 resize-none shadow-inner"
+                    value={editCommentText}
+                    onChange={(e) => setEditCommentText(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button onClick={() => setEditingCommentId(null)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600">Cancel</button>
+                    <button onClick={() => handleUpdateComment(comment.id)} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800">Save</button>
+                  </div>
+                </div>
+              ) : (
+                <span className="leading-relaxed">{comment.comment}</span>
+              )}
+
+              <div className="flex justify-end items-center gap-1 mt-0.5">
+                {isOwnComment && (
+                  <svg className="w-3 h-3 text-[#4bb08b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const MeetingPage = () => {
   const { user, isManager, isAdmin, isHR } = useAuth();
   const canSchedule = isManager;
 
-  const { data: allMeetings, isLoading } = useGetAllMeetingsQuery(undefined, { skip: !user });
-  const { data: employees } = useGetEmployeesQuery();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [goToPage, setGoToPage] = useState("");
+
+  const { data: meetingResponse, isLoading } = useGetAllMeetingsQuery(
+    { page: currentPage - 1, size: itemsPerPage },
+    { skip: !user }
+  );
+  const meetings = meetingResponse?.content || [];
+  const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000 });
+  const employees = employeeData?.content || [];
 
   const filteredEmployees = (isAdmin || isHR)
     ? employees
     : employees?.filter(emp => 
-        emp.currentDepartmentId === user?.currentDepartmentId && 
+        emp.currentDepartmentName && user?.currentDepartmentName &&
+        emp.currentDepartmentName === user?.currentDepartmentName && 
         emp.id !== user?.id
       );
   const [scheduleMeeting, { isLoading: isScheduling }] = useScheduleMeetingMutation();
@@ -48,7 +189,6 @@ const MeetingPage = () => {
     isPrivateNote: false
   });
 
-  const meetings = (isAdmin || isHR) ? allMeetings : allMeetings?.filter(m => m.employeeId === user?.id || m.managerId === user?.id);
 
   const handleSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +251,34 @@ const MeetingPage = () => {
     }
   };
 
-  if (isLoading) return <div className="p-8 text-center">Loading Meetings...</div>;
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      setGoToPage("");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleGoToPage = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pageNum = parseInt(goToPage);
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+      handlePageChange(pageNum);
+    } else {
+      setGoToPage("");
+    }
+  };
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+    </div>
+  );
+
+  const totalItems = meetingResponse?.totalElements || 0;
+  const totalPages = meetingResponse?.totalPages || 0;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + meetings.length;
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
@@ -140,7 +307,7 @@ const MeetingPage = () => {
           </div>
           <div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Scheduled Meetings</p>
-            <h3 className="text-2xl font-bold text-gray-900">{meetings?.length || 0}</h3>
+            <h3 className="text-2xl font-bold text-gray-900">{totalItems}</h3>
           </div>
         </div>
 
@@ -155,7 +322,12 @@ const MeetingPage = () => {
         </div>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-6 pb-24 relative min-h-[600px]">
+        {meetings?.length === 0 && (
+          <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+            <p className="text-gray-400 font-medium">No meetings scheduled yet.</p>
+          </div>
+        )}
         {meetings?.map((m) => (
           <div key={m.meetingId} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition group">
             <div className="flex justify-between items-start mb-6">
@@ -236,10 +408,61 @@ const MeetingPage = () => {
             </div>
 
             {expandedMeetingId === m.meetingId && (
-              <MeetingComments meetingId={m.meetingId} />
+              <MeetingComments meetingId={m.meetingId} isManager={isManager} />
             )}
           </div>
         ))}
+
+        {/* Fixed Pagination Bar */}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40">
+          <div className="bg-white/80 backdrop-blur-md border border-gray-200/50 rounded-2xl shadow-2xl p-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30 rounded-xl transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              
+              <div className="flex items-center gap-1 px-2">
+                <span className="text-sm font-bold text-gray-900">{currentPage}</span>
+                <span className="text-sm font-bold text-gray-400">/</span>
+                <span className="text-sm font-bold text-gray-400">{totalPages || 1}</span>
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30 rounded-xl transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+
+            <div className="h-6 w-px bg-gray-200" />
+
+            <div className="hidden sm:flex items-center gap-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              Showing {totalItems === 0 ? 0 : startIndex + 1}-{endIndex} of {totalItems}
+            </div>
+
+            <form onSubmit={handleGoToPage} className="flex items-center gap-2">
+              <input
+                type="number"
+                placeholder="Go to..."
+                className="w-16 px-3 py-1.5 bg-gray-50 border-none rounded-lg text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                value={goToPage}
+                onChange={(e) => setGoToPage(e.target.value)}
+              />
+              <button
+                type="submit"
+                className="p-1.5 bg-gray-900 text-white rounded-lg hover:bg-black transition-all shadow-lg shadow-gray-200"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
 
       {showModal && (
@@ -409,8 +632,21 @@ const MeetingPage = () => {
   );
 };
 
-const MeetingComments = ({ meetingId }: { meetingId: number }) => {
-  const { user, isManager } = useAuth();
+const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManager: boolean }) => {
+  const { user } = useAuth();
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, comment: any } | null>(null);
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
+
+  const handleContextMenu = (e: React.MouseEvent, comment: any) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, comment });
+  };
+
   const { data: comments, isLoading } = useGetMeetingCommentsQuery(meetingId);
   const [addComment, { isLoading: isCommenting }] = useAddMeetingCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
@@ -418,10 +654,12 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
   
   const [newComment, setNewComment] = useState("");
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
+  const [replyTarget, setReplyTarget] = useState<{ id: number; name: string; text: string } | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
   const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
+  const mainInputRef = useRef<HTMLInputElement>(null);
 
   const handleScrollToParent = (parentId: number) => {
     const element = document.getElementById(`comment-${parentId}`);
@@ -432,32 +670,38 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
     }
   };
 
-  const handleComment = async (e: React.FormEvent, parentId?: number) => {
+  const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const text = parentId ? editCommentText : newComment;
-    if (!text.trim() || !user) return;
-
+    if (!newComment.trim() || !user) return;
     try {
       await addComment({
         meetingId,
         body: {
-          comment: text,
+          comment: newComment,
           commentType: isManager ? 'MANAGER' : 'EMPLOYEE',
           managerId: isManager ? user.id : undefined,
           employeeId: !isManager ? user.id : undefined,
-          parentId
+          parentId: replyingToId ?? undefined
         }
       }).unwrap();
-      
-      if (parentId) {
-        setReplyingToId(null);
-        setEditCommentText("");
-      } else {
-        setNewComment("");
-      }
+      setNewComment("");
+      setReplyingToId(null);
+      setReplyTarget(null);
     } catch (err) {
       console.error("Failed to add comment", err);
     }
+  };
+
+  const startReply = (comment: any) => {
+    const name = comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName;
+    setReplyingToId(comment.id);
+    setReplyTarget({ id: comment.id, name, text: comment.comment });
+    setTimeout(() => mainInputRef.current?.focus(), 50);
+  };
+
+  const cancelReply = () => {
+    setReplyingToId(null);
+    setReplyTarget(null);
   };
 
   const handleUpdateComment = async (commentId: number) => {
@@ -490,125 +734,6 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
     }
   };
 
-  const CommentItem = ({ comment, allComments }: { comment: any; allComments: any[] }) => {
-    const isOwnComment = (isManager && comment.commentType === 'MANAGER' && comment.managerId === user?.id) || 
-                         (!isManager && comment.commentType === 'EMPLOYEE' && comment.employeeId === user?.id);
-
-    return (
-      <div id={`comment-${comment.id}`} className={`space-y-2`}>
-        <div className={`flex gap-3 group transition-all duration-500 rounded-2xl ${
-          highlightedCommentId === comment.id 
-            ? 'bg-blue-50 ring-4 ring-blue-300 scale-[1.02] shadow-lg p-3 -m-3' 
-            : isOwnComment ? 'flex-row-reverse' : ''
-        }`}>
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-sm transition-colors duration-500 ${
-            highlightedCommentId === comment.id
-              ? 'bg-blue-600 text-white'
-              : isOwnComment ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 border border-gray-100'
-          }`}>
-            {(comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)?.charAt(0)}
-          </div>
-          
-          <div className={`max-w-[85%] ${isOwnComment ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-gray-900 uppercase tracking-tight">
-                {isOwnComment ? 'You' : (comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)}
-              </span>
-              {comment.commentType === 'MANAGER' && <span className="px-1.5 py-0.5 bg-gray-900 text-white text-[8px] font-black rounded uppercase tracking-widest leading-none">Manager</span>}
-              <span className="text-[10px] text-gray-400 font-medium">{comment.createdAt ? format(new Date(comment.createdAt), 'h:mm a') : ''}</span>
-            </div>
-
-            <div className={`px-3 py-2 rounded-2xl text-sm transition-all shadow-sm relative min-w-[120px] ${
-              isOwnComment 
-                ? 'bg-[#e7f9f2] text-gray-800 rounded-tr-none border border-[#d1f0e4]' 
-                : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
-            }`}>
-              {comment.parentId && (
-                (() => {
-                  const parent = allComments?.find(c => String(c.id) === String(comment.parentId));
-                  if (!parent) return null;
-                  const parentName = parent.commentType === 'MANAGER' ? parent.managerName : parent.employeeName;
-                  return (
-                    <div 
-                      onClick={() => handleScrollToParent(parent.id)}
-                      className={`mb-2 p-2 rounded-lg border-l-4 flex flex-col gap-1 shadow-sm cursor-pointer hover:opacity-80 transition-opacity ${
-                        isOwnComment ? 'bg-[#d1f0e4] border-[#4bb08b]' : 'bg-gray-100 border-gray-400'
-                      }`}
-                    >
-                      <div className={`text-[10px] font-black uppercase tracking-tight ${isOwnComment ? 'text-[#3e8e71]' : 'text-gray-600'}`}>
-                        {parentName}
-                      </div>
-                      <div className={`text-[11px] leading-tight ${isOwnComment ? 'text-gray-700' : 'text-gray-500'} italic line-clamp-2`}>
-                        "{parent.comment}"
-                      </div>
-                    </div>
-                  );
-                })()
-              )}
-
-              <div className="flex flex-col gap-1">
-                {editingCommentId === comment.id ? (
-                  <div className="space-y-2 py-1">
-                    <textarea
-                      className="bg-white border border-gray-200 p-2 rounded-lg text-sm w-full text-gray-900 outline-none focus:ring-2 focus:ring-indigo-400 h-16 resize-none shadow-inner"
-                      value={editCommentText}
-                      onChange={(e) => setEditCommentText(e.target.value)}
-                      autoFocus
-                    />
-                    <div className="flex gap-2 justify-end">
-                      <button onClick={() => setEditingCommentId(null)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600">Cancel</button>
-                      <button onClick={() => handleUpdateComment(comment.id)} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800">Save</button>
-                    </div>
-                  </div>
-                ) : (
-                  <span className="leading-relaxed">{comment.comment}</span>
-                )}
-
-                <div className="flex justify-end items-center gap-1 mt-0.5">
-                  {isOwnComment && (
-                    <svg className="w-3 h-3 text-[#4bb08b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 px-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-all">
-               {!editingCommentId && (
-                 <button onClick={() => { setReplyingToId(comment.id); setEditCommentText(""); }} className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700">Reply</button>
-               )}
-               {isOwnComment && !editingCommentId && (
-                 <div className="flex items-center gap-2">
-                   <button onClick={() => { setEditingCommentId(comment.id); setEditCommentText(comment.comment); }} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-indigo-500 transition">Edit</button>
-                   <button onClick={() => setCommentToDelete(comment.id)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-rose-500 transition">Delete</button>
-                 </div>
-               )}
-            </div>
-
-            {replyingToId === comment.id && (
-              <form onSubmit={(e) => handleComment(e, comment.id)} className="mt-2 flex gap-2 w-full animate-in slide-in-from-top-2">
-                <input
-                  placeholder="Type your reply..."
-                  className="flex-1 px-3 py-1.5 bg-white border border-gray-100 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner"
-                  value={editCommentText}
-                  onChange={(e) => setEditCommentText(e.target.value)}
-                  autoFocus
-                />
-                <button type="submit" className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                </button>
-                <button onClick={() => setReplyingToId(null)} className="p-1.5 bg-gray-100 text-gray-400 rounded-lg">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   if (isLoading) return <div className="mt-8 text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">Fetching discussions...</div>;
 
   const sortedComments = [...(comments || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -618,7 +743,23 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
       <div className="space-y-6">
         {sortedComments.length > 0 ? (
           sortedComments.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} allComments={sortedComments} />
+            <CommentItem 
+              key={comment.id} 
+              comment={comment} 
+              allComments={sortedComments}
+              user={user}
+              isManager={isManager}
+              highlightedCommentId={highlightedCommentId}
+              editingCommentId={editingCommentId}
+              editCommentText={editCommentText}
+              setEditCommentText={setEditCommentText}
+              setEditingCommentId={setEditingCommentId}
+              handleUpdateComment={handleUpdateComment}
+              setCommentToDelete={setCommentToDelete}
+              handleScrollToParent={handleScrollToParent}
+              onContextMenu={handleContextMenu}
+              onReply={startReply}
+            />
           ))
         ) : (
           <div className="text-center py-6 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-100">
@@ -627,26 +768,92 @@ const MeetingComments = ({ meetingId }: { meetingId: number }) => {
         )}
       </div>
 
-      <form onSubmit={(e) => handleComment(e)} className="flex gap-3 pt-6">
-        <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-xs font-bold text-indigo-600 border border-indigo-100 shrink-0">
-          {user?.staffName?.charAt(0) || '?'}
-        </div>
-        <div className="flex-1 flex gap-2">
-          <input
-            className="flex-1 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition shadow-sm"
-            placeholder="Write a comment..."
-            value={newComment}
-            onChange={e => setNewComment(e.target.value)}
-          />
+      {contextMenu && (
+        <div 
+          className="fixed z-[1000] w-48 bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-150 overflow-hidden"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <button 
-            type="submit"
-            disabled={isCommenting || !newComment.trim()}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
+            onClick={() => { startReply(contextMenu.comment); setContextMenu(null); }}
+            className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-indigo-50 flex items-center gap-3 transition"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+            <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+            Reply
           </button>
+          
+          <button 
+            onClick={() => { navigator.clipboard.writeText(contextMenu.comment.comment); setContextMenu(null); }}
+            className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition"
+          >
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+            Copy Text
+          </button>
+
+          {((isManager && contextMenu.comment.commentType === 'MANAGER' && contextMenu.comment.managerId === user?.id) || 
+            (!isManager && contextMenu.comment.commentType === 'EMPLOYEE' && contextMenu.comment.employeeId === user?.id)) && (
+            <>
+              <div className="h-px bg-gray-100 my-1" />
+              <button 
+                onClick={() => { setEditingCommentId(contextMenu.comment.id); setEditCommentText(contextMenu.comment.comment); setContextMenu(null); }}
+                className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 hover:bg-blue-50 flex items-center gap-3 transition"
+              >
+                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                Edit
+              </button>
+              <button 
+                onClick={() => { setCommentToDelete(contextMenu.comment.id); setContextMenu(null); }}
+                className="w-full px-4 py-2 text-left text-sm font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-3 transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                Delete
+              </button>
+            </>
+          )}
         </div>
-      </form>
+      )}
+
+      <div className="border-t border-gray-100 pt-6">
+        <div
+          className={`overflow-hidden transition-all duration-200 ease-out ${
+            replyTarget ? 'max-h-16 opacity-100 mb-2' : 'max-h-0 opacity-0 mb-0'
+          }`}
+        >
+          <div className="flex items-center gap-2 bg-indigo-50/70 rounded-xl px-3 py-2 border-l-4 border-indigo-500">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-0.5">{replyTarget?.name}</p>
+              <p className="text-xs text-gray-500 truncate italic">{replyTarget?.text}</p>
+            </div>
+            <button
+              onClick={cancelReply}
+              className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-gray-200 hover:bg-rose-100 hover:text-rose-500 text-gray-400 transition"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+        <form onSubmit={handleComment} className="flex gap-3">
+          <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-xs font-bold text-indigo-600 border border-indigo-100 shrink-0">
+            {user?.staffName?.charAt(0) || '?'}
+          </div>
+          <div className="flex-1 flex gap-2">
+            <input
+              ref={mainInputRef}
+              className="flex-1 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition shadow-sm"
+              placeholder={replyTarget ? `Replying to ${replyTarget.name}...` : "Write a comment..."}
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+            />
+            <button 
+              type="submit"
+              disabled={isCommenting || !newComment.trim()}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+            </button>
+          </div>
+        </form>
+      </div>
 
       {commentToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">

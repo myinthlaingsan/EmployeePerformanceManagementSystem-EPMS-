@@ -14,6 +14,12 @@ public interface AppraisalService {
 
     List<AppraisalResponse> getTeamEvaluations();
 
+    List<AppraisalResponse> getDepartmentAppraisals();
+
+    List<AppraisalResponse> getAppraisalsToEvaluate();
+
+    EmployeeSelfAssessmentViewResponse getEmployeeView(Long appraisalId);
+
     AppraisalResponse getById(Long id);
 
     ScoreBreakdownResponse calculate(Long id);
@@ -25,6 +31,8 @@ public interface AppraisalService {
     AppraisalResponse employeeSignOff(Long id, String comment);
 
     AppraisalResponse managerSignOff(Long id, String comment);
+ 
+    void deleteAppraisal(Long id);
 }
 
 

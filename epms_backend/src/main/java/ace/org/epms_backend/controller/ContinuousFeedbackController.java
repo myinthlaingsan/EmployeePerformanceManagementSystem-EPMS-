@@ -1,5 +1,6 @@
 package ace.org.epms_backend.controller;
 
+import ace.org.epms_backend.dto.PagedResponse;
 import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.continuous.ContinuousFeedbackRequest;
 import ace.org.epms_backend.dto.continuous.ContinuousFeedbackResponse;
@@ -24,8 +25,10 @@ public class ContinuousFeedbackController {
     // --- CONTINUOUS FEEDBACK APIs ---
     
     @GetMapping("/feedbacks")
-    public ResponseEntity<ApiResponse<List<ContinuousFeedbackResponse>>> getAllFeedbacks() {
-        List<ContinuousFeedbackResponse> responses = feedbackService.getAllFeedbacks();
+    public ResponseEntity<ApiResponse<PagedResponse<ContinuousFeedbackResponse>>> getAllFeedbacks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getAllFeedbacks(page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -45,16 +48,20 @@ public class ContinuousFeedbackController {
     }
 
     @GetMapping("/feedbacks/employee/{employeeId}")
-    public ResponseEntity<ApiResponse<List<ContinuousFeedbackResponse>>> getFeedbacksByEmployee(
-            @PathVariable Long employeeId) {
-        List<ContinuousFeedbackResponse> responses = feedbackService.getFeedbacksByEmployee(employeeId);
+    public ResponseEntity<ApiResponse<PagedResponse<ContinuousFeedbackResponse>>> getFeedbacksByEmployee(
+            @PathVariable Long employeeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getFeedbacksByEmployee(employeeId, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
     @GetMapping("/feedbacks/manager/{managerId}")
-    public ResponseEntity<ApiResponse<List<ContinuousFeedbackResponse>>> getFeedbacksByManager(
-            @PathVariable Long managerId) {
-        List<ContinuousFeedbackResponse> responses = feedbackService.getFeedbacksByManager(managerId);
+    public ResponseEntity<ApiResponse<PagedResponse<ContinuousFeedbackResponse>>> getFeedbacksByManager(
+            @PathVariable Long managerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getFeedbacksByManager(managerId, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 

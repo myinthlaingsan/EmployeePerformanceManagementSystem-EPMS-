@@ -8,8 +8,13 @@ import lombok.experimental.SuperBuilder;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
 @Entity
 @Table(name = "one_on_one_meeting")
+@SQLDelete(sql = "UPDATE one_on_one_meeting SET is_deleted = true, deleted_at = NOW() WHERE meeting_id = ?")
+@SQLRestriction("is_deleted = false OR is_deleted IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
