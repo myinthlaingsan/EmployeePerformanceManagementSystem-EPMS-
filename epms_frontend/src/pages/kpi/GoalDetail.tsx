@@ -33,7 +33,7 @@ const GoalDetail: React.FC = () => {
   const [showRevisionModal, setShowRevisionModal] = useState(false);
 
   const isOwner = user?.id === parseInt(employeeId!);
-  const isManager = user?.roles.includes('MANAGER') || user?.roles.includes('ADMIN');
+  const isManager = user?.roles.includes('MANAGER') || user?.roles.includes('ADMIN') || user?.roles.includes('HR');
 
   const handleApprove = async () => {
     if (!goalSet) return;
