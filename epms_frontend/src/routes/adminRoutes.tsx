@@ -7,8 +7,9 @@ import PositionList from "../pages/admin/PositionList";
 import HRDashboard from "../pages/admin/HRDashboard";
 import TeamList from "../pages/admin/TeamList";
 import PermissionList from "../pages/admin/PermissionList";
-import RoleLevelPermissionManager from "../pages/admin/org/RoleLevelPermissionManager";
+import PermissionMatrixView from "../pages/admin/org/PermissionMatrixView";
 import EmployeeDepartmentHistory from "../pages/admin/org/EmployeeDepartmentHistory";
+import RoleLevelPermissionManager from "../pages/admin/org/RoleLevelPermissionManager";
 
 export const adminRoutes = [
   { path: "/hr", element: <HRDashboard /> },
@@ -21,6 +22,7 @@ export const adminRoutes = [
   { path: "/job-levels", element: <JobLevelList /> },
   { path: "/positions", element: <PositionList /> },
   { path: "/teams", element: <TeamList /> },
-  {path: "/permissions", element: <PermissionList />},
-  {path : "/permissions/matrix", element: <RoleLevelPermissionManager />}
+  { path: "/permissions", element: <PermissionList /> },
+  { path: "/permissions/matrix", element: <PermissionMatrixView /> },
+  { path: "/permissions/assign", element: <RoleLevelPermissionManager /> }
 ];
