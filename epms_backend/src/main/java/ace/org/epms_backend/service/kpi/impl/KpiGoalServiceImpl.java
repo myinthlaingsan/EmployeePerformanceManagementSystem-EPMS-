@@ -487,94 +487,88 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional
     public GoalSetResponse reviseKpi(Long itemId, KpiRevisionRequest request) {
-        KpiGoalItem oldItem = goalItemRepository.findById(itemId).orElseThrow();
-        KpiGoals oldGoalSet = oldItem.getGoalSet();
+        KpiGoalItem item = goalItemRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundException("Goal item not found"));
+        KpiGoals goalSet = item.getGoalSet();
 
-        // 1. lock old version
-        oldGoalSet.setIsCurrent(false);
-        oldGoalSet.setStatus(KpiGoalStatus.ARCHIVED);
-        goalsRepository.save(oldGoalSet);
+        Employee currentUser = getCurrentEmployee();
 
-        // 2. create new version
-        final KpiGoals savedGoalSet = goalsRepository.save(
-                KpiGoals.builder()
-                        .employee(oldGoalSet.getEmployee())
-                        .manager(oldGoalSet.getManager())
-                        .cycle(oldGoalSet.getCycle())
-                        .version(oldGoalSet.getVersion() + 1)
-                        .isCurrent(true)
-                        .status(KpiGoalStatus.DRAFT)
-                        .build());
-
-        // 3. copy items
-        List<KpiGoalItem> newItems = oldGoalSet.getItems()
-                .stream()
-                .map(i -> {
-                    KpiGoalItem item = new KpiGoalItem();
-                    item.setGoalSet(savedGoalSet);
-                    item.setIsActive(true);
-
-                    if (i.getId().equals(itemId)) {
-                        // Revised item: update target/title/weight/category but PRESERVE progress
-                        item.setTitle(request.getUpdatedDetails().getGoalTitle());
-                        item.setTargetValue(request.getUpdatedDetails().getTargetValue());
-                        item.setWeightPercent(request.getUpdatedDetails().getWeightPercent());
-                        item.setUnit(i.getUnit());
-                        item.setCategory(categoryRepository
-                                .findById(request.getUpdatedDetails().getCategoryId())
-                                .orElseThrow(() -> new NotFoundException("Category not found")));
-                        // Preserve employee's actual progress
-                        item.setActualValue(i.getActualValue());
-                        item.setStatus(i.getActualValue() != null
-                                && i.getActualValue().compareTo(java.math.BigDecimal.ZERO) > 0
-                                ? KpiItemStatus.IN_PROGRESS : KpiItemStatus.NOT_STARTED);
-                    } else {
-                        // Non-revised items: full copy including progress
-                        item.setTitle(i.getTitle());
-                        item.setTargetValue(i.getTargetValue());
-                        item.setWeightPercent(i.getWeightPercent());
-                        item.setUnit(i.getUnit());
-                        item.setCategory(i.getCategory());
-                        item.setActualValue(i.getActualValue());
-                        item.setStatus(i.getStatus());
-                    }
-                    return item;
-                })
-                .toList();
-
-        List<KpiGoalItem> savedNewItems = goalItemRepository.saveAll(newItems);
-
-        // 4. Carry over progress history for ALL items (including the revised one)
-        for (int index = 0; index < oldGoalSet.getItems().size(); index++) {
-            KpiGoalItem oldItemEntity = oldGoalSet.getItems().get(index);
-            KpiGoalItem newItemEntity = savedNewItems.get(index);
-
-            List<KpiProgress> oldProgress = progressRepository
-                    .findByGoalItemIdOrderByIdDesc(oldItemEntity.getId());
-            List<KpiProgress> clonedProgress = oldProgress.stream().map(op -> {
-                return KpiProgress.builder()
-                        .goalItem(newItemEntity)
-                        .actualValue(op.getActualValue())
-                        .progressPercent(op.getProgressPercent())
-                        .evidenceNote(op.getEvidenceNote())
-                        .updatedBy(op.getUpdatedBy())
-                        .build();
-            }).collect(Collectors.toList());
-            progressRepository.saveAll(clonedProgress);
+        // Only the assigned manager (or HR/Admin) can revise
+        boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication()
+                .getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_HR")
+                        || a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isHrOrAdmin && !goalSet.getManager().getId().equals(currentUser.getId())) {
+            throw new SecurityException("You are not authorized to revise this goal item.");
         }
 
-        // 5. history log
+        // Only APPROVED or DRAFT goal sets can be revised
+        if (!goalSet.getStatus().equals(KpiGoalStatus.APPROVED)
+                && !goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
+            throw new IllegalStateException(
+                    "Cannot revise a goal item on a " + goalSet.getStatus() + " goal set.");
+        }
+
+        // Build change details for audit trail (old → new)
+        StringBuilder changes = new StringBuilder();
+        KpiLibraryDetailRequest details = request.getUpdatedDetails();
+
+        if (details.getGoalTitle() != null && !details.getGoalTitle().equals(item.getTitle())) {
+            changes.append("Title: '").append(item.getTitle()).append("' → '")
+                    .append(details.getGoalTitle()).append("'; ");
+            item.setTitle(details.getGoalTitle());
+        }
+
+        if (details.getTargetValue() != null
+                && details.getTargetValue().compareTo(item.getTargetValue()) != 0) {
+            changes.append("Target: ").append(item.getTargetValue()).append(" → ")
+                    .append(details.getTargetValue()).append("; ");
+            item.setTargetValue(details.getTargetValue());
+        }
+
+        if (details.getWeightPercent() != null
+                && details.getWeightPercent().compareTo(item.getWeightPercent()) != 0) {
+            changes.append("Weight: ").append(item.getWeightPercent()).append("% → ")
+                    .append(details.getWeightPercent()).append("%; ");
+            item.setWeightPercent(details.getWeightPercent());
+        }
+
+        if (details.getCategoryId() != null
+                && (item.getCategory() == null
+                    || !details.getCategoryId().equals(item.getCategory().getId()))) {
+            String oldCategoryName = item.getCategory() != null
+                    ? item.getCategory().getName() : "None";
+            KpiCategory newCategory = categoryRepository.findById(details.getCategoryId())
+                    .orElseThrow(() -> new NotFoundException("Category not found"));
+            changes.append("Category: '").append(oldCategoryName).append("' → '")
+                    .append(newCategory.getName()).append("'; ");
+            item.setCategory(newCategory);
+        }
+
+        if (changes.length() == 0) {
+            throw new IllegalArgumentException("No changes detected in the revision request.");
+        }
+
+        // Save the in-place updated item — progress history stays intact
+        goalItemRepository.save(item);
+
+        // Bump goal set version to track that a revision occurred
+        goalSet.setVersion(goalSet.getVersion() + 1);
+        goalsRepository.save(goalSet);
+
+        // Detailed audit log
         historyRepo.save(
                 KpiHistoryLog.builder()
-                        .employeeId(oldGoalSet.getEmployee().getId())
-                        .oldVersionId(oldGoalSet.getId())
-                        .newVersionId(savedGoalSet.getId())
-                        .action("REVISION")
+                        .employeeId(goalSet.getEmployee().getId())
+                        .goalSetId(goalSet.getId())
+                        .itemId(itemId)
+                        .action("ITEM_REVISED")
                         .changeReason(request.getChangeReason())
-                        .changedBy(oldGoalSet.getManager().getId())
+                        .changeDetails(changes.toString().trim())
+                        .changedBy(currentUser.getId())
                         .build());
 
-        return kpiMapper.toGoalSetResponse(savedGoalSet);
+        return kpiMapper.toGoalSetResponse(goalSet);
     }
 
     @Override
