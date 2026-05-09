@@ -55,13 +55,33 @@ export const appraisalApi = api.injectEndpoints({
     // Appraisal Cycles
     getCycles: builder.query<AppraisalCycle[], void>({
       query: () => '/appraisal-cycles',
-      transformResponse: (response: { data: AppraisalCycle[] }) => response.data,
+      transformResponse: (response: any) => {
+        const data = response.data || response;
+        if (Array.isArray(data)) {
+          return data.map((c: any) => ({
+            ...c,
+            id: c.cycleId || c.id,
+            name: c.cycleName || c.name
+          }));
+        }
+        return data;
+      },
       providesTags: ['Cycle'],
     }),
     //Active Cycle
     getActiveCycle: builder.query<AppraisalCycle, void>({
       query: () => '/appraisal-cycles/active',
-      transformResponse: (response: { data: AppraisalCycle }) => response.data,
+      transformResponse: (response: any) => {
+        const data = response.data || response;
+        if (data && typeof data === 'object') {
+          return {
+            ...data,
+            id: data.cycleId || data.id,
+            name: data.cycleName || data.name
+          };
+        }
+        return data;
+      },
       providesTags: ['Cycle'],
     }),
     createCycle: builder.mutation<AppraisalCycle, CycleRequest>({
@@ -83,7 +103,7 @@ export const appraisalApi = api.injectEndpoints({
 
     getAppraisalForm: builder.query<AppraisalForm, string>({
       query: (id) => `/appraisal-forms/${id}`,
-      transformResponse: (response: { data: AppraisalForm }) => response.data,
+      transformResponse: (response: any) => response.data || response,
       providesTags: ['Form'],
     }),
 

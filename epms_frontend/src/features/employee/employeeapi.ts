@@ -14,8 +14,13 @@ import type {
 export const employeeApi = api.injectEndpoints({
   endpoints: (builder) => ({
 
-    getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page: number; size: number }>({
-      query: ({ page, size }) => `/emp?page=${page}&size=${size}`,
+    getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page?: number; size?: number } | void>({
+      query: (params) => {
+        const p = params as { page?: number; size?: number } | undefined;
+        const page = p?.page ?? 0;
+        const size = p?.size ?? 10;
+        return `/emp?page=${page}&size=${size}`;
+      },
       transformResponse: (response: ApiResponse<PagedResponse<EmployeeResponse>>) =>
         response.data,
       providesTags: ["Employee"],

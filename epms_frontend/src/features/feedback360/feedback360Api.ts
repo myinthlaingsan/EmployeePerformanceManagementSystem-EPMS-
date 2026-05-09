@@ -21,6 +21,12 @@ export const feedback360Api = api.injectEndpoints({
       providesTags: ['FeedbackRequest'],
     }),
 
+    getFeedbackRequest: builder.query<FeedbackRequestResponse, string | number>({
+      query: (id) => `/feedback/requests/${id}`,
+      transformResponse,
+      providesTags: (result, error, id) => [{ type: 'FeedbackRequest', id }],
+    }),
+
     // ── EMPLOYEE: Get Questions for a specific request ────────────────────
     getFeedbackQuestions: builder.query<FullFormResponse, number>({
       query: (requestId) => `/360-feedback/feedbacks/request/${requestId}/questions`,
@@ -162,6 +168,7 @@ export const feedback360Api = api.injectEndpoints({
 
 export const {
   useGetFeedbackTasksQuery,
+  useGetFeedbackRequestQuery,
   useGetFeedbackQuestionsQuery,
   useSubmitFeedbackMutation,
   useGetMyFeedbackSummaryQuery,

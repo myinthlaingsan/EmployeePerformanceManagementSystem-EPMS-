@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useGetFeedbackSummaryQuery } from '../../features/feedback360/feedback360Api';
+import { useGetMyFeedbackSummaryQuery } from '../../features/feedback360/feedback360Api';
 import { useGetActiveCycleQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
 import { 
@@ -27,8 +27,8 @@ const FeedbackResultsPage: React.FC = () => {
   const employeeId = subjectId ? parseInt(subjectId, 10) : user?.id;
   const cycleId = activeCycle?.id ? parseInt(activeCycle.id, 10) : null;
 
-  const { data: summary, isLoading, error } = useGetFeedbackSummaryQuery(
-    { employeeId: employeeId as number, cycleId: cycleId as number },
+  const { data: summary, isLoading, error } = useGetMyFeedbackSummaryQuery(
+    { targetUserId: employeeId as number, cycleId: cycleId as number },
     { skip: !employeeId || !cycleId }
   );
 
@@ -67,9 +67,9 @@ const FeedbackResultsPage: React.FC = () => {
     );
   }
 
-  const radarData = summary.categoryScores.map(cat => ({
+  const radarData = summary.scores.map(cat => ({
     subject: cat.categoryName,
-    A: cat.score,
+    A: cat.averageScore,
     fullMark: 5
   }));
 
@@ -104,7 +104,7 @@ const FeedbackResultsPage: React.FC = () => {
           </div>
           <div>
             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Average Score</p>
-            <p className="text-3xl font-black text-text-title">{summary.averageScore.toFixed(1)} / 5.0</p>
+            <p className="text-3xl font-black text-text-title">{summary.totalAverageScore.toFixed(1)} / 5.0</p>
           </div>
         </div>
 
@@ -114,7 +114,7 @@ const FeedbackResultsPage: React.FC = () => {
           </div>
           <div>
             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Total Respondents</p>
-            <p className="text-3xl font-black text-text-title">{summary.totalEvaluations}</p>
+            <p className="text-3xl font-black text-text-title">{summary.totalEvaluators}</p>
           </div>
         </div>
 
@@ -156,16 +156,16 @@ const FeedbackResultsPage: React.FC = () => {
         <section className="bg-white p-10 rounded-[3rem] border border-surface-border shadow-premium">
            <h2 className="text-2xl font-bold text-text-title mb-8 tracking-tight">Category Breakdown</h2>
            <div className="space-y-6">
-              {summary.categoryScores.map(cat => (
+              {summary.scores.map(cat => (
                 <div key={cat.categoryName} className="space-y-2">
                    <div className="flex justify-between items-end">
                       <span className="text-sm font-bold text-text-title">{cat.categoryName}</span>
-                      <span className="text-xs font-black text-brand-primary">{cat.score.toFixed(1)}</span>
+                      <span className="text-xs font-black text-brand-primary">{cat.averageScore.toFixed(1)}</span>
                    </div>
                    <div className="h-2 w-full bg-surface-base rounded-full overflow-hidden border border-surface-border">
                       <div 
                         className="h-full bg-brand-primary transition-all duration-1000"
-                        style={{ width: `${(cat.score / 5) * 100}%` }}
+                        style={{ width: `${(cat.averageScore / 5) * 100}%` }}
                       />
                    </div>
                 </div>
@@ -184,18 +184,19 @@ const FeedbackResultsPage: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Example comments (in real implementation, these would come from the API) */}
-          {[
-            "Demonstrates exceptional technical leadership and always supports peers during complex sprints.",
-            "Communication during cross-departmental projects could be more proactive.",
-            "Strong analytical skills, but sometimes focuses too much on details at the expense of deadlines.",
-            "An inspiring mentor who consistently helps junior developers grow."
-          ].map((comment, i) => (
-            <div key={i} className="p-6 bg-surface-base rounded-3xl border border-surface-border italic text-text-muted text-sm relative">
-               <span className="absolute -top-2 -left-2 w-8 h-8 bg-white border border-surface-border rounded-full flex items-center justify-center text-brand-primary font-serif text-xl shadow-sm">"</span>
-               {comment}
+          {summary.detailedComments && summary.detailedComments.length > 0 ? (
+            summary.detailedComments.map((item, i) => (
+              <div key={i} className="p-6 bg-surface-base rounded-3xl border border-surface-border italic text-text-muted text-sm relative">
+                <span className="absolute -top-2 -left-2 w-8 h-8 bg-white border border-surface-border rounded-full flex items-center justify-center text-brand-primary font-serif text-xl shadow-sm">"</span>
+                <div className="mb-2 font-bold text-text-title not-italic">{item.categoryName} — {item.evaluatorRole}</div>
+                {item.comment}
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full p-10 text-center bg-surface-base rounded-3xl border border-dashed border-surface-border">
+              <p className="text-text-subtitle italic">No qualitative feedback has been provided yet.</p>
             </div>
-          ))}
+          )}
         </div>
       </section>
     </div>

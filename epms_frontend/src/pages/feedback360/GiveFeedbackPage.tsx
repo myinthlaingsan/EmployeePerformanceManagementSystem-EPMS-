@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   useGetFeedbackRequestQuery, 
@@ -9,8 +9,6 @@ import QuestionRenderer from '../../components/appraisal/QuestionRenderer';
 import { 
   ArrowLeft, 
   Send, 
-  Save, 
-  User, 
   Info,
   ChevronRight,
   ChevronLeft
@@ -23,7 +21,7 @@ const GiveFeedbackPage: React.FC = () => {
   const [responses, setResponses] = useState<Record<string, { rating?: number; comment?: string }>>({});
 
   const { data: task, isLoading: loadingTask } = useGetFeedbackRequestQuery(id!);
-  const { data: form, isLoading: loadingForm } = useGetAppraisalFormQuery(task?.formTemplateId || '', {
+  const { data: form, isLoading: loadingForm } = useGetAppraisalFormQuery(task?.formTemplateId?.toString() || '', {
     skip: !task?.formTemplateId
   });
 
@@ -48,15 +46,16 @@ const GiveFeedbackPage: React.FC = () => {
 
     try {
       const payload = {
-        requestId: id,
+        requestId: parseInt(id),
         responses: Object.entries(responses).map(([questionId, data]) => ({
-          questionId,
-          ...data
+          questionId: parseInt(questionId),
+          score: data.rating || 0,
+          comment: data.comment
         }))
       };
 
       await submitFeedback(payload as any).unwrap();
-      navigate('/feedback-360', { state: { success: true, message: 'Feedback submitted successfully' } });
+      navigate('/360-feedback', { state: { success: true, message: 'Feedback submitted successfully' } });
     } catch (err) {
       console.error('Failed to submit feedback:', err);
     }
@@ -102,10 +101,10 @@ const GiveFeedbackPage: React.FC = () => {
         <div className="flex items-center gap-4">
            <div className="text-right hidden sm:block">
              <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Evaluating</p>
-             <p className="text-sm font-bold text-text-title">{task.subjectName}</p>
+             <p className="text-sm font-bold text-text-title">{task.targetUserName}</p>
            </div>
            <div className="w-10 h-10 rounded-xl bg-brand-primary text-white flex items-center justify-center font-black">
-             {task.subjectName.charAt(0)}
+             {task.targetUserName.charAt(0)}
            </div>
         </div>
       </div>

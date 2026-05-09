@@ -2,10 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetFeedbackTasksQuery } from '../../features/feedback360/feedback360Api';
 import { format } from 'date-fns';
-import { 
-  ClipboardList, 
-  User, 
-  Calendar, 
+import {
+  ClipboardList,
+  User,
+  Calendar,
   ArrowRight,
   Clock,
   CheckCircle2
@@ -67,7 +67,7 @@ const MyFeedbackTasksPage: React.FC = () => {
           <h1 className="text-4xl font-bold text-text-title tracking-tight">My Feedback Tasks</h1>
           <p className="text-text-muted mt-2 font-medium">Provide constructive feedback to your colleagues and team members.</p>
         </div>
-        
+
         <div className="bg-white px-6 py-3 rounded-2xl border border-surface-border shadow-premium flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
             <ClipboardList className="w-5 h-5" />
@@ -87,7 +87,7 @@ const MyFeedbackTasksPage: React.FC = () => {
             const isPending = task.status === 'PENDING';
 
             return (
-              <div 
+              <div
                 key={task.id}
                 className={`group bg-white rounded-[2.5rem] border border-surface-border p-8 shadow-premium hover:shadow-hover transition-all duration-500 relative overflow-hidden flex flex-col ${!isPending ? 'opacity-75 grayscale-[0.5]' : ''}`}
               >
@@ -108,7 +108,7 @@ const MyFeedbackTasksPage: React.FC = () => {
                     <User className="w-8 h-8" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-text-title tracking-tight">{task.subjectName}</h3>
+                    <h3 className="text-xl font-bold text-text-title tracking-tight">{task.targetUserName}</h3>
                     <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-0.5">Evaluation Subject</p>
                   </div>
                 </div>
@@ -117,19 +117,18 @@ const MyFeedbackTasksPage: React.FC = () => {
                 <div className="space-y-4 mb-8">
                   <div className="flex items-center gap-3 text-text-muted">
                     <Calendar className="w-4 h-4 text-brand-primary/50" />
-                    <span className="text-sm font-medium">Due: {format(new Date(task.dueDate), 'MMM dd, yyyy')}</span>
+                    {/* <span className="text-sm font-medium">Due: {format(new Date(task.dueDate), 'MMM dd, yyyy')}</span> */}
                   </div>
                 </div>
 
                 {/* Action Button */}
-                <button 
+                <button
                   disabled={!isPending}
                   onClick={() => navigate(`/feedback-360/give/${task.id}`)}
-                  className={`w-full mt-auto flex items-center justify-between px-6 py-4 rounded-2xl font-bold text-sm transition-all duration-300 ${
-                    isPending 
-                    ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20 hover:bg-brand-primary/90' 
+                  className={`w-full mt-auto flex items-center justify-between px-6 py-4 rounded-2xl font-bold text-sm transition-all duration-300 ${isPending
+                    ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20 hover:bg-brand-primary/90'
                     : 'bg-surface-base text-text-muted cursor-not-allowed border border-surface-border'
-                  }`}
+                    }`}
                 >
                   {isPending ? (
                     <>

@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { 
-  useGetFeedbackConfigsQuery, 
+import {
+  useGetFeedbackConfigsQuery,
   useGenerateFeedbackRequestsMutation,
   useUpdateFeedbackConfigMutation
 } from '../../features/feedback360/feedback360Api';
 import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
 import { useGetJobLevelsQuery, useGetJobLevelsByDepartmentQuery } from '../../features/org/jobLevelApi';
-import { 
-  Settings, 
-  Zap, 
-  BarChart3, 
-  Users, 
-  RefreshCcw, 
+import {
+  Settings,
+  Zap,
+  BarChart3,
+  Users,
+  RefreshCcw,
   AlertCircle,
   CheckCircle2,
   ArrowRight,
@@ -131,7 +131,7 @@ const FeedbackAdminDashboard: React.FC = () => {
             </div>
             <h2 className="text-xl font-bold text-text-title">Request Generation</h2>
           </div>
-          
+
           <p className="text-sm text-text-muted leading-relaxed">
             Trigger the automated generation of 360-degree feedback requests based on organizational hierarchy and anti-reciprocity rules.
           </p>
@@ -139,7 +139,7 @@ const FeedbackAdminDashboard: React.FC = () => {
           <div className="space-y-4 pt-4">
             <div>
               <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block mb-2">Select Appraisal Cycle</label>
-              <select 
+              <select
                 value={selectedCycle}
                 onChange={(e) => setSelectedCycle(e.target.value)}
                 className="w-full bg-surface-base border border-surface-border rounded-xl px-4 py-3 text-sm font-bold text-text-title focus:ring-2 focus:ring-brand-primary/20 transition-all outline-none"
@@ -185,40 +185,40 @@ const FeedbackAdminDashboard: React.FC = () => {
           {/* Configs List */}
           <section className="bg-white p-8 rounded-[2.5rem] border border-surface-border shadow-premium">
             <div className="flex items-center justify-between mb-8">
-               <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                    <Settings className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-xl font-bold text-text-title tracking-tight">System Configurations</h2>
-               </div>
-               <button 
-                 onClick={handleAddNew}
-                 className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-brand-primary/20 transition-colors"
-               >
-                 <Plus className="w-4 h-4" />
-                 Add New
-               </button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-bold text-text-title tracking-tight">System Configurations</h2>
+              </div>
+              <button
+                onClick={handleAddNew}
+                className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-brand-primary/20 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add New
+              </button>
             </div>
 
             <div className="space-y-4">
               {loadingConfigs ? (
                 <div className="py-10 text-center text-text-muted">Loading settings...</div>
               ) : Array.isArray(configs) && configs.length > 0 ? configs.map((config, idx) => (
-                <div key={config.id || `${config.departmentId}-${config.levelId}-${idx}`} className="flex items-center justify-between p-5 bg-surface-base rounded-2xl border border-surface-border group hover:border-brand-primary transition-all">
+                <div key={`${config.departmentId}-${config.levelId}-${idx}`} className="flex items-center justify-between p-5 bg-surface-base rounded-2xl border border-surface-border group hover:border-brand-primary transition-all">
                   <div>
                     <div className="flex items-center gap-2">
-                       <p className="font-bold text-text-title text-sm">{config.departmentName || 'Global Settings'}</p>
-                       {config.levelName && (
-                         <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-md uppercase">
-                           {config.levelName}
-                         </span>
-                       )}
+                      <p className="font-bold text-text-title text-sm">{config.departmentName || 'Global Settings'}</p>
+                      {config.levelName && (
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-md uppercase">
+                          {config.levelName}
+                        </span>
+                      )}
                     </div>
                     <p className="text-[10px] text-text-muted uppercase tracking-widest mt-1">
                       Peers: {config.minPeers}-{config.maxPeers} | Subs: {config.minSubordinates}-{config.maxSubordinates}
                     </p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => handleEditConfig(config)}
                     className="bg-white px-4 py-2 rounded-lg text-xs font-bold text-text-title border border-surface-border hover:bg-gray-50 shadow-sm transition-colors"
                   >
@@ -243,7 +243,7 @@ const FeedbackAdminDashboard: React.FC = () => {
               <h3 className="text-2xl font-bold text-text-title">
                 {editingConfig ? 'Edit Configuration' : 'New Configuration'}
               </h3>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="w-10 h-10 rounded-full bg-surface-base flex items-center justify-center text-text-muted hover:text-text-title transition-colors"
               >
@@ -253,24 +253,26 @@ const FeedbackAdminDashboard: React.FC = () => {
 
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-2 gap-4">
+
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block">Department</label>
-                  <select 
+                  <select
                     value={formData.departmentId}
-                    onChange={(e) => setFormData({...formData, departmentId: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, departmentId: e.target.value, levelId: '' })}
                     className="w-full bg-surface-base border border-surface-border rounded-xl px-4 py-3 text-sm font-bold text-text-title outline-none focus:ring-2 focus:ring-brand-primary/20"
                   >
-                    <option value="">Global (All Departments)</option>
-                    {departments?.map(dept => (
-                      <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
+                    <option value="">All Departments</option>
+                    {departments?.map(d => (
+                      <option key={d.id} value={d.id}>{d.departmentName}</option>
                     ))}
                   </select>
                 </div>
+
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-text-muted uppercase tracking-widest block">Job Level</label>
-                  <select 
+                  <select
                     value={formData.levelId}
-                    onChange={(e) => setFormData({...formData, levelId: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, levelId: e.target.value })}
                     className="w-full bg-surface-base border border-surface-border rounded-xl px-4 py-3 text-sm font-bold text-text-title outline-none focus:ring-2 focus:ring-brand-primary/20"
                     disabled={loadingDeptLevels}
                   >
@@ -288,19 +290,19 @@ const FeedbackAdminDashboard: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] text-text-muted font-bold">Min</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={formData.minPeers}
-                        onChange={(e) => setFormData({...formData, minPeers: parseInt(e.target.value)})}
+                        onChange={(e) => setFormData({ ...formData, minPeers: parseInt(e.target.value) })}
                         className="w-full bg-surface-base border border-surface-border rounded-lg px-3 py-2 text-sm font-bold"
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] text-text-muted font-bold">Max</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={formData.maxPeers}
-                        onChange={(e) => setFormData({...formData, maxPeers: parseInt(e.target.value)})}
+                        onChange={(e) => setFormData({ ...formData, maxPeers: parseInt(e.target.value) })}
                         className="w-full bg-surface-base border border-surface-border rounded-lg px-3 py-2 text-sm font-bold"
                       />
                     </div>
@@ -312,19 +314,19 @@ const FeedbackAdminDashboard: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] text-text-muted font-bold">Min</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={formData.minSubordinates}
-                        onChange={(e) => setFormData({...formData, minSubordinates: parseInt(e.target.value)})}
+                        onChange={(e) => setFormData({ ...formData, minSubordinates: parseInt(e.target.value) })}
                         className="w-full bg-surface-base border border-surface-border rounded-lg px-3 py-2 text-sm font-bold"
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] text-text-muted font-bold">Max</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={formData.maxSubordinates}
-                        onChange={(e) => setFormData({...formData, maxSubordinates: parseInt(e.target.value)})}
+                        onChange={(e) => setFormData({ ...formData, maxSubordinates: parseInt(e.target.value) })}
                         className="w-full bg-surface-base border border-surface-border rounded-lg px-3 py-2 text-sm font-bold"
                       />
                     </div>
@@ -333,11 +335,11 @@ const FeedbackAdminDashboard: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-3">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   id="crossDept"
                   checked={formData.allowCrossDepartment}
-                  onChange={(e) => setFormData({...formData, allowCrossDepartment: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, allowCrossDepartment: e.target.checked })}
                   className="w-5 h-5 rounded-lg border-surface-border text-brand-primary focus:ring-brand-primary/20"
                 />
                 <label htmlFor="crossDept" className="text-sm font-bold text-text-title">Allow Cross-Department Evaluations</label>
@@ -345,13 +347,13 @@ const FeedbackAdminDashboard: React.FC = () => {
             </div>
 
             <div className="p-8 bg-surface-base border-t border-surface-border flex items-center justify-end gap-4">
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="px-6 py-3 rounded-xl font-bold text-sm text-text-muted hover:text-text-title transition-colors"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleSaveConfig}
                 disabled={updating}
                 className="bg-brand-primary text-white px-10 py-3 rounded-xl font-bold text-sm shadow-xl shadow-brand-primary/20 hover:bg-brand-primary/90 transition-all flex items-center gap-2"

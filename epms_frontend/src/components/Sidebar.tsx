@@ -33,7 +33,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck },
   { label: "Self-Assessment", to: "/appraisal/self", icon: User },
-  { label: "360 Feedback", to: "/feedback-360", icon: Users },
   { label: "1-on-1s", to: "/appraisal/1-on-1", icon: MessageSquare },
   { label: "PIP", to: "/pip", icon: TrendingUp },
   { label: "Analytics", to: "/hr", icon: BarChart3, adminOnly: true },
@@ -55,6 +54,8 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const [mgmtOpen, setMgmtOpen] = useState(false);
   const [perfOpen, setPerfOpen] = useState(true);
+
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const activeClass = "bg-blue-50 text-blue-600 border-r-4 border-blue-600";
   const inactiveClass = "text-gray-500 hover:bg-gray-50 hover:text-gray-900";
@@ -160,6 +161,68 @@ const Sidebar = () => {
                       KPI Categories
                     </NavLink>
                   </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 360 Feedback Accordion */}
+          <div>
+            <button
+              onClick={() => setFeedbackOpen(!feedbackOpen)}
+              className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5" strokeWidth={2} />
+                360 Feedback
+              </div>
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${feedbackOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {feedbackOpen && (
+              <div className="bg-gray-50/50 py-1">
+                <NavLink
+                  to="/360-feedback"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                  }
+                >
+                  Dashboard
+                </NavLink>
+                <NavLink
+                  to="/360-feedback/my-summary"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                  }
+                >
+                  My Feedback
+                </NavLink>
+                <NavLink
+                  to="/360-feedback"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                  }
+                >
+                  Assignments
+                </NavLink>
+                <NavLink
+                  to="/360-feedback/analytics"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                  }
+                >
+                  Reports
+                </NavLink>
+                
+                {(isAdmin || isHR) && (
+                  <NavLink
+                    to="/360-feedback/admin"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
+                    }
+                  >
+                    Admin Panel
+                  </NavLink>
                 )}
               </div>
             )}

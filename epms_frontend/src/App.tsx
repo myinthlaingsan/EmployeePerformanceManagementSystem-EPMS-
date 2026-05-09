@@ -61,8 +61,8 @@ const App = () => {
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
-            {/* Feedback 360 Routes */}
-            {feedback360Routes.map((route) => (
+            {/* Feedback 360 General Routes */}
+            {feedback360Routes.filter(r => !r.adminOnly).map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
@@ -81,6 +81,11 @@ const App = () => {
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
               {adminRoutes.map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+
+              {/* Feedback 360 Admin Routes */}
+              {feedback360Routes.filter(r => r.adminOnly).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
 

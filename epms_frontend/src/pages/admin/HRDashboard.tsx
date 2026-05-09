@@ -95,7 +95,7 @@ const HRDashboard = () => {
       {/* Appraisal Management Section */}
       <section className="bg-white p-10 rounded-[2.5rem] border border-surface-border shadow-premium">
         <h2 className="text-xl font-black text-brand-primary tracking-tight mb-8">Appraisal Orchestration</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="p-8 border border-surface-border rounded-[2rem] bg-surface-base flex flex-col justify-between group hover:border-brand-primary transition-all">
             <div>
               <h3 className="font-black text-brand-primary text-lg mb-2 tracking-tight">Form Frameworks</h3>
@@ -114,13 +114,6 @@ const HRDashboard = () => {
               Monitor Live <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 8l4 4m0 0l-4 4m4-4H3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </Link>
           </div>
-          <div className="p-8 border border-surface-border rounded-[2rem] bg-surface-base flex flex-col justify-between group hover:border-emerald-600 transition-all">
-            <div>
-              <h3 className="font-bold text-gray-900 text-lg mb-1">360 Feedback</h3>
-              <p className="text-sm text-gray-500 mb-4">Manage peer evaluation requests, configurations, and review aggregated results.</p>
-            </div>
-            <Link to="/hr/feedback" className="text-blue-600 font-bold hover:underline self-start">Manage Feedback &rarr;</Link>
-          </div>
         </div>
       </section>
     </div>
@@ -128,3 +121,5 @@ const HRDashboard = () => {
 };
 
 export default HRDashboard;
+
+//Global (All Departments) လို့နှိပ်ရင်ကျ Level01-Chairman (L01) လို့ပေါ် ပြီး  
