@@ -42,9 +42,9 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
         },
       }).unwrap();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to revise KPI:', err);
-      alert('Failed to revise KPI');
+      alert(`Failed to revise KPI: ${err?.data?.message || err.message}`);
     }
   };
 
@@ -93,8 +93,11 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
                   type="number"
                   min="0"
                   required
-                  value={formData.targetValue}
-                  onChange={(e) => setFormData({ ...formData, targetValue: Math.max(0, parseFloat(e.target.value)) })}
+                  value={formData.targetValue || ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value));
+                    setFormData({ ...formData, targetValue: val });
+                  }}
                   className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
@@ -106,8 +109,11 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
                   min="0"
                   max={35}
                   required
-                  value={formData.weightPercent}
-                  onChange={(e) => setFormData({ ...formData, weightPercent: Math.max(0, parseFloat(e.target.value)) })}
+                  value={formData.weightPercent || ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value));
+                    setFormData({ ...formData, weightPercent: val });
+                  }}
                   className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>

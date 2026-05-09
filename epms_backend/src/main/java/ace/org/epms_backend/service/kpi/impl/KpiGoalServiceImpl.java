@@ -513,8 +513,21 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_HR")
                         || a.getAuthority().equals("ROLE_ADMIN"));
-        if (!isHrOrAdmin && !goalSet.getManager().getId().equals(currentUser.getId())) {
-            throw new SecurityException("You are not authorized to revise this goal item.");
+
+        if (!isHrOrAdmin) {
+            boolean isCreatorManager = goalSet.getManager() != null && goalSet.getManager().getId().equals(currentUser.getId());
+            
+            boolean isDirectManager = false;
+            if (!isCreatorManager && goalSet.getEmployee() != null) {
+                ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(goalSet.getEmployee()).orElse(null);
+                if (rl != null && rl.getManager() != null && rl.getManager().getId().equals(currentUser.getId())) {
+                    isDirectManager = true;
+                }
+            }
+
+            if (!isCreatorManager && !isDirectManager) {
+                throw new SecurityException("You are not authorized to revise this goal item.");
+            }
         }
 
         // Only APPROVED or DRAFT goal sets can be revised

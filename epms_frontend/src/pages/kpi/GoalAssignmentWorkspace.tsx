@@ -433,8 +433,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
                             type="number"
                             min="0"
                             className="w-16 bg-gray-50/50 border border-gray-100 rounded-lg py-1 px-1 text-center text-xs font-black text-gray-900 disabled:opacity-50"
-                            value={item.targetValue}
-                            onChange={(e) => handleLocalUpdate(item.id, { targetValue: Math.max(0, Number(e.target.value)) })}
+                            value={item.targetValue || ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                              handleLocalUpdate(item.id, { targetValue: val });
+                            }}
                             disabled={goalSet?.status === 'APPROVED'}
                           />
                         </td>
@@ -457,8 +460,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
                                 ? 'bg-red-50 border border-red-300 text-red-700'
                                 : 'bg-blue-50/50 border border-blue-100 text-blue-700'
                                 }`}
-                              value={item.weightPercent}
-                              onChange={(e) => handleLocalUpdate(item.id, { weightPercent: Math.max(0, Number(e.target.value)) })}
+                              value={item.weightPercent || ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                                handleLocalUpdate(item.id, { weightPercent: val });
+                              }}
                               disabled={goalSet?.status === 'APPROVED'}
                             />
                             <span className={`text-[10px] font-bold ${Number(item.weightPercent) > 35 ? 'text-red-400' : 'text-blue-300'}`}>%</span>
