@@ -153,6 +153,11 @@ export const appraisalApi = api.injectEndpoints({
       transformResponse,
       providesTags: ['Appraisal'],
     }),
+    getTeamEvaluations: builder.query<any[], void>({
+      query: () => '/appraisals/team-evaluations',
+      transformResponse,
+      providesTags: ['Appraisal'],
+    }),
     createAppraisal: builder.mutation<any, any>({
       query: (body) => ({
         url: '/appraisals',
@@ -228,10 +233,19 @@ export const appraisalApi = api.injectEndpoints({
       invalidatesTags: ['Appraisal'],
     }),
 
-    saveDraft: builder.mutation<any, { selfAssessmentId: string }>({
-      query: ({ selfAssessmentId }) => ({
+    saveDraft: builder.mutation<any, string>({
+      query: (selfAssessmentId) => ({
         url: `/self-assessments/${selfAssessmentId}/draft`,
         method: 'POST',
+      }),
+      invalidatesTags: ['Appraisal'],
+    }),
+
+    saveManagerDraft: builder.mutation<any, { evaluationId: string; finalComment: string }>({
+      query: ({ evaluationId, finalComment }) => ({
+        url: `/manager-evaluations/${evaluationId}/draft`,
+        method: 'POST',
+        params: { finalComment },
       }),
       invalidatesTags: ['Appraisal'],
     }),
@@ -270,6 +284,12 @@ export const appraisalApi = api.injectEndpoints({
       invalidatesTags: ['Appraisal'],
     }),
 
+    getActiveCycle: builder.query<AppraisalCycle, void>({
+      query: () => '/appraisal-cycles/active',
+      transformResponse,
+      providesTags: ['Cycle'],
+    }),
+
     activateCycle: builder.mutation<AppraisalCycle, number>({
       query: (id) => ({
         url: `/appraisal-cycles/${id}/activate`,
@@ -287,11 +307,38 @@ export const appraisalApi = api.injectEndpoints({
       transformResponse,
       invalidatesTags: ['Cycle'],
     }),
+
+    uploadEmployeeSignature: builder.mutation<void, { id: string, file: File }>({
+      query: ({ id, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/appraisals/${id}/employee-signature`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['Appraisal']
+    }),
+
+    uploadManagerSignature: builder.mutation<void, { id: string, file: File }>({
+      query: ({ id, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/appraisals/${id}/manager-signature`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['Appraisal']
+    }),
   }),
 });
 
 export const {
   useGetCyclesQuery,
+  useGetActiveCycleQuery,
   useCreateCycleMutation,
   useUpdateCycleMutation,
   useActivateCycleMutation,
@@ -303,6 +350,7 @@ export const {
   useUpdateAppraisalFormMutation,
   useGetCategoriesQuery,
   useGetAppraisalsQuery,
+  useGetTeamEvaluationsQuery,
   useGetAppraisalsByCycleQuery,
   useCreateAppraisalMutation,
   useGetEmployeeAssessmentQuery,
@@ -315,9 +363,12 @@ export const {
   useSaveManagerEvaluationAnswersMutation,
   useSubmitManagerEvaluationMutation,
   useSaveDraftMutation,
+  useSaveManagerDraftMutation,
   useLazyGetEmployeeAssessmentQuery,
   useGetDiagnosticHealthQuery,
   useAddCategoryMutation,
   useAddQuestionMutation,
   useAssignBulkMutation,
+  useUploadEmployeeSignatureMutation,
+  useUploadManagerSignatureMutation,
 } = appraisalApi;

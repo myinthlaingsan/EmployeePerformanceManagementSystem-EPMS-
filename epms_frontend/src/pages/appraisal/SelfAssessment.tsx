@@ -4,11 +4,23 @@ import {
   useGetSelfAssessmentFormQuery,
   useSaveSelfAssessmentAnswersMutation,
   useSubmitSelfAssessmentMutation,
-  useSaveDraftMutation
+  useSaveDraftMutation,
+  useUploadEmployeeSignatureMutation
 } from '../../features/appraisal/appraisalApi';
 import SectionCard from '../../components/appraisal/SectionCard';
 import QuestionItem from '../../components/appraisal/QuestionItem';
-import { User } from 'lucide-react';
+import { 
+  User, 
+  UserCheck, 
+  Cloud, 
+  ChevronLeft, 
+  Target, 
+  Image as ImageIcon, 
+  Calendar, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle 
+} from 'lucide-react';
 
 const SelfAssessment = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,20 +30,22 @@ const SelfAssessment = () => {
   const [saveAnswers, { isLoading: isSaving }] = useSaveSelfAssessmentAnswersMutation();
   const [submitSelfAssessment, { isLoading: isSubmitting }] = useSubmitSelfAssessmentMutation();
   const [saveDraftMutation, { isLoading: isDrafting }] = useSaveDraftMutation();
+  const [uploadSignature, { isLoading: isUploadingSignature }] = useUploadEmployeeSignatureMutation();
 
-  const [responses, setResponses] = useState<Record<string, { ratingValue: number, isCompleted: boolean | null }>>({});
+  const [responses, setResponses] = useState<Record<string, { ratingValue: number, isCompleted: boolean | null, comment?: string }>>({});
   const [comment, setComment] = useState('');
 
   const formData = formResp;
 
   useEffect(() => {
     if (formData?.categories) {
-      const initial: Record<string, { ratingValue: number, isCompleted: boolean | null }> = {};
+      const initial: Record<string, { ratingValue: number, isCompleted: boolean | null, comment?: string }> = {};
       formData.categories.forEach((cat: any) => {
         cat.questions.forEach((q: any) => {
           initial[q.questionId] = {
             ratingValue: q.ratingValue || 0,
-            isCompleted: q.isCompleted ?? null
+            isCompleted: q.isCompleted ?? null,
+            comment: q.comment || ''
           };
         });
       });
@@ -78,7 +92,7 @@ const SelfAssessment = () => {
         comment: responses[qId].comment || null
       }));
       await saveAnswers({ id: formData.selfAssessmentId, answers: answersPayload }).unwrap();
-      await saveDraftMutation({ selfAssessmentId: formData.selfAssessmentId }).unwrap();
+      await saveDraftMutation(formData.selfAssessmentId).unwrap();
       alert('Draft saved successfully!');
     } catch (err: any) {
       alert(err?.data?.message || 'Operation failed. Please try again.');
@@ -156,13 +170,34 @@ const SelfAssessment = () => {
               <p className="font-bold text-slate-800">{formData?.employeeCode || 'N/A'}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Position</p>
-              <p className="font-bold text-slate-800">{formData?.positionName || 'N/A'}</p>
-            </div>
-            <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Department</p>
               <p className="font-bold text-slate-800">{formData?.departmentName || 'N/A'}</p>
             </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Manager</p>
+              <p className="font-bold text-indigo-600">{formData?.managerName || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Rating Scale Legend */}
+        <div className="bg-indigo-50/50 rounded-2xl p-6 border border-indigo-100/50 mb-10">
+          <h3 className="text-xs font-black text-indigo-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <Target className="w-4 h-4" /> Rating Scale Guide
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              { v: 5, l: 'Outstanding', d: 'Exceptional' },
+              { v: 4, l: 'Exceeds', d: 'Above Avg' },
+              { v: 3, l: 'Meets', d: 'Satisfactory' },
+              { v: 2, l: 'Below', d: 'Needs Imp' },
+              { v: 1, l: 'Unsatisfactory', d: 'Poor' },
+            ].map(s => (
+              <div key={s.v} className="bg-white/60 p-3 rounded-xl border border-white flex flex-col items-center text-center">
+                <span className="text-lg font-black text-indigo-600">{s.v}</span>
+                <span className="text-[10px] font-bold text-slate-700 uppercase">{s.l}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -217,16 +252,97 @@ const SelfAssessment = () => {
           />
         </div>
 
-        <div className="flex justify-end gap-4">
-          <button
-            className="px-8 py-3.5 bg-white text-slate-600 font-bold rounded-2xl border border-slate-200 hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50"
-            onClick={handleSaveDraft}
-            disabled={isDrafting || isSaving || formData?.submitted}
-          >
-            Save Draft
-          </button>
+        {/* Signature Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
+          <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-sm flex flex-col justify-between">
+            <div className="flex justify-between items-start mb-6">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee Signature</p>
+              {formData?.employeeSignature && (
+                <div className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-black uppercase">Verified</div>
+              )}
+            </div>
+            
+            <div className="flex flex-col items-center justify-center min-h-[140px] bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100 relative group transition-all">
+              {formData?.employeeSignature ? (
+                <img 
+                  src={`data:image/png;base64,${formData.employeeSignature}`} 
+                  alt="Signature" 
+                  className="max-h-24 object-contain mix-blend-multiply"
+                />
+              ) : (
+                <>
+                  <ImageIcon className="w-8 h-8 text-slate-300 mb-2 group-hover:text-indigo-400 transition-colors" />
+                  <p className="text-[10px] font-bold text-slate-400">Click to upload signature photo</p>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file && id) {
+                        try {
+                          await uploadSignature({ id, file }).unwrap();
+                          alert("Signature photo uploaded successfully!");
+                        } catch (err) {
+                          alert("Failed to upload signature photo.");
+                        }
+                      }
+                    }}
+                    disabled={formData?.submitted || isUploadingSignature}
+                  />
+                  {isUploadingSignature && (
+                    <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-2xl">
+                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            
+            <div className="mt-8 text-center border-t border-slate-50 pt-6">
+                <p className="text-xl font-serif italic text-slate-700">{formData?.employeeName}</p>
+                <p className="text-[10px] text-slate-400 mt-2">Date: {new Date().toISOString().split('T')[0]}</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-50/30 rounded-3xl border border-slate-100 p-8 flex flex-col justify-between opacity-60">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Manager Verification</p>
+            <div className="flex flex-col items-center justify-center min-h-[140px]">
+                <div className="w-16 h-1 bg-slate-200 rounded-full mb-4"></div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Pending manager review</p>
+            </div>
+            <div className="mt-8 h-10"></div>
+          </div>
         </div>
       </div>
+
+      {/* Sticky Footer */}
+      {!formData?.submitted && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-8 py-4 z-50 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+              <Cloud className="w-4 h-4 text-slate-400" />
+              Progress: {completedCount} / {totalQuestions} Answered
+            </div>
+            <div className="flex items-center gap-8">
+              <button 
+                onClick={handleSaveDraft}
+                disabled={isSaving || isDrafting}
+                className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-50"
+              >
+                Save Progress
+              </button>
+              <button 
+                onClick={handleSubmit}
+                disabled={isSubmitting || completedCount < totalQuestions}
+                className="px-10 py-3 bg-[#0052CC] text-white font-bold rounded-lg hover:bg-[#0747A6] transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-indigo-100"
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Assessment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

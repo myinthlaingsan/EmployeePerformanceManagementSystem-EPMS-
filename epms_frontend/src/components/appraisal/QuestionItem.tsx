@@ -36,6 +36,9 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
 }) => {
   
   const renderAssessment = (type: string, isSecondary: boolean) => {
+    const isLockedByYesNo = !isSecondary && secondaryType === 'YESNO' && isCompleted === null;
+    const effectivelyDisabled = disabled || isLockedByYesNo;
+
     switch (type) {
       case 'YESNO':
         return (
@@ -60,12 +63,12 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
         );
       case 'RATING':
         return (
-          <div className="flex gap-1 items-center justify-center h-full px-1">
+          <div className={`flex gap-1 items-center justify-center h-full px-1 transition-opacity ${isLockedByYesNo ? 'opacity-30' : 'opacity-100'}`}>
             {[5, 4, 3, 2, 1].map((rating) => (
               <button
                 key={rating}
                 type="button"
-                disabled={disabled}
+                disabled={effectivelyDisabled}
                 onClick={() => onRatingChange(rating)}
                 className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border-2 transition-all ${ratingValue === rating ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-100 text-slate-300 hover:border-slate-200'}`}
               >
@@ -76,13 +79,13 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
         );
       case 'TEXT':
         return (
-          <div className="px-2 py-2 h-full flex items-center">
+          <div className={`px-2 py-2 h-full flex items-center transition-opacity ${isLockedByYesNo ? 'opacity-30' : 'opacity-100'}`}>
             <input 
               type="text"
               value={textValue}
-              disabled={disabled}
+              disabled={effectivelyDisabled}
               onChange={(e) => onTextChange?.(e.target.value)}
-              placeholder="Your note..."
+              placeholder={isLockedByYesNo ? "Select Yes/No first" : "Your note..."}
               className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>

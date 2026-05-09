@@ -106,6 +106,7 @@ export interface EmployeeResponse {
   email: string;
   phoneNo: string;
   positionName: string;
+  positionId: number;
   levelName: string;
   levelRank: number;
   currentDepartmentName?: string;

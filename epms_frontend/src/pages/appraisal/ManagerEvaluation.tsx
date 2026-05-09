@@ -1,14 +1,27 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import {
   useGetManagerEvaluationFormQuery,
   useSaveManagerEvaluationAnswersMutation,
   useSubmitManagerEvaluationMutation,
-  useSubmitAppraisalManagerMutation
+  useSubmitAppraisalManagerMutation,
+  useUploadManagerSignatureMutation
 } from '../../features/appraisal/appraisalApi';
 import SectionCard from '../../components/appraisal/SectionCard';
 import QuestionItem from '../../components/appraisal/QuestionItem';
-import { UserCheck, Cloud } from 'lucide-react';
+import { 
+  UserCheck, 
+  Cloud, 
+  ChevronLeft, 
+  Target, 
+  Image as ImageIcon, 
+  Calendar, 
+  Clock, 
+  AlertCircle,
+  FileText,
+  CheckCircle2
+} from 'lucide-react';
 
 const ManagerEvaluation = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +31,7 @@ const ManagerEvaluation = () => {
   const [saveAnswers, { isLoading: isSaving }] = useSaveManagerEvaluationAnswersMutation();
   const [submitEvaluation, { isLoading: isSubmitting }] = useSubmitManagerEvaluationMutation();
   const [signOffAppraisal, { isLoading: isSigningOff }] = useSubmitAppraisalManagerMutation();
+  const [uploadSignature, { isLoading: isUploadingSignature }] = useUploadManagerSignatureMutation();
 
   const [managerRatings, setManagerRatings] = useState<Record<string, number>>({});
   const [managerComment, setManagerComment] = useState('');
@@ -128,27 +142,83 @@ const ManagerEvaluation = () => {
           </div>
         </div>
 
-        {formData.categories?.map((section: any) => (
-          <SectionCard key={section.categoryId} title={section.categoryName}>
-            <div className="divide-y divide-slate-50">
-                {section.questions.map((q: any, qIdx: number) => (
-                  <QuestionItem
-                    key={q.questionId}
-                    index={qIdx + 1}
-                    question={q.questionText}
-                    primaryType={q.questionType || 'RATING'}
-                    secondaryType={q.secondaryQuestionType || 'NONE'}
-                    ratingValue={managerRatings[q.questionId] || 0}
-                    isCompleted={null}
-                    onRatingChange={(val) => handleRatingChange(q.questionId.toString(), val)}
-                    onCompletionChange={() => {}}
-                    disabled={isSubmitting || formData.submitted}
-                    employeeRating={q.ratingValue} // This comes from the backend DTO
-                  />
-                ))}
-            </div>
-          </SectionCard>
-        ))}
+        {/* Rating Scale Legend */}
+        <div className="bg-indigo-50/50 rounded-2xl p-6 border border-indigo-100/50 mb-10">
+          <h3 className="text-xs font-black text-indigo-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <Target className="w-4 h-4" /> Rating Scale Guide
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              { v: 5, l: 'Outstanding', d: 'Exceptional' },
+              { v: 4, l: 'Exceeds', d: 'Above Avg' },
+              { v: 3, l: 'Meets', d: 'Satisfactory' },
+              { v: 2, l: 'Below', d: 'Needs Imp' },
+              { v: 1, l: 'Unsatisfactory', d: 'Poor' },
+            ].map(s => (
+              <div key={s.v} className="bg-white/60 p-3 rounded-xl border border-white flex flex-col items-center text-center">
+                <span className="text-lg font-black text-indigo-600">{s.v}</span>
+                <span className="text-[10px] font-bold text-slate-700 uppercase">{s.l}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 items-start">
+          {/* LEFT: Employee Self-Assessment Results */}
+          <div className="space-y-10">
+            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-4">
+              <FileText className="w-4 h-4" /> Employee Self-Assessment
+            </h3>
+            {formData.categories?.map((section: any) => (
+              <SectionCard key={section.categoryId} title={section.categoryName} noPadding={true}>
+                <div className="divide-y divide-slate-100">
+                    {section.questions.map((q: any, qIdx: number) => (
+                      <QuestionItem
+                        key={q.questionId}
+                        index={qIdx + 1}
+                        question={q.questionText}
+                        primaryType={q.questionType}
+                        secondaryType={q.secondaryQuestionType || 'NONE'}
+                        ratingValue={q.employeeRating || 0}
+                        isCompleted={q.employeeCompletion ?? null}
+                        textValue={q.employeeComment || ''}
+                        onRatingChange={() => {}}
+                        onCompletionChange={() => {}}
+                        disabled={true}
+                      />
+                    ))}
+                </div>
+              </SectionCard>
+            ))}
+          </div>
+
+          {/* RIGHT: Manager Evaluation Form */}
+          <div className="space-y-10">
+            <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2 px-4">
+              <UserCheck className="w-4 h-4" /> Your Evaluation
+            </h3>
+            {formData.categories?.map((section: any) => (
+              <SectionCard key={section.categoryId} title={section.categoryName} noPadding={true}>
+                <div className="divide-y divide-slate-100">
+                    {section.questions.map((q: any, qIdx: number) => (
+                      <QuestionItem
+                        key={q.questionId}
+                        index={qIdx + 1}
+                        question={q.questionText}
+                        primaryType={q.questionType}
+                        secondaryType={q.secondaryQuestionType || 'NONE'}
+                        ratingValue={managerRatings[q.questionId.toString()] || 0}
+                        isCompleted={null}
+                        onRatingChange={(val) => handleRatingChange(q.questionId.toString(), val)}
+                        onCompletionChange={() => {}}
+                        disabled={isSubmitting || formData.submitted}
+                      />
+                    ))}
+                </div>
+              </SectionCard>
+            ))}
+          </div>
+        </div>
 
         {/* Remarks Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
@@ -175,27 +245,83 @@ const ManagerEvaluation = () => {
         </div>
 
         {/* Signature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
-          <div className="bg-white rounded-xl border border-slate-100 p-6 shadow-sm h-40 flex flex-col justify-between">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Appraisee Signature</p>
-            <div className="flex flex-col items-center">
-                <p className="text-2xl font-serif italic text-slate-700">{formData.employeeName || 'Employee'}</p>
-                <div className="w-full border-b border-slate-200 mt-2 mb-4"></div>
-                <p className="text-[10px] text-slate-400">Digitally Signed on {new Date().toISOString().split('T')[0]}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
+          {/* Employee Signature */}
+          <div className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm flex flex-col justify-between">
+            <div className="flex justify-between items-start mb-6">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Appraisee Signature</p>
+              {formData.employeeSignature && (
+                <div className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-black uppercase">Verified</div>
+              )}
+            </div>
+            
+            <div className="flex flex-col items-center justify-center min-h-[140px] bg-slate-50/50 rounded-2xl border border-slate-100 relative transition-all">
+              {formData.employeeSignature ? (
+                <img 
+                  src={`data:image/png;base64,${formData.employeeSignature}`} 
+                  alt="Employee Signature" 
+                  className="max-h-24 object-contain mix-blend-multiply"
+                />
+              ) : (
+                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Signature Pending</p>
+              )}
+            </div>
+            
+            <div className="mt-8 text-center border-t border-slate-50 pt-6">
+                <p className="text-xl font-serif italic text-slate-700">{formData.employeeName}</p>
+                <p className="text-[10px] text-slate-400 mt-2">Date: {formData.employeeSignedAt ? format(new Date(formData.employeeSignedAt), 'yyyy-MM-dd') : 'N/A'}</p>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-6 shadow-sm h-40 flex flex-col justify-between">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Appraiser Signature</p>
-            <div className="flex flex-col items-center">
-                <div className="w-full border-b border-slate-200 mt-2 mb-4"></div>
-                <p className="text-[10px] text-slate-400">Pending Approval</p>
+
+          {/* Manager Signature */}
+          <div className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm flex flex-col justify-between">
+            <div className="flex justify-between items-start mb-6">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Appraiser Signature</p>
+              {formData.managerSignature && (
+                <div className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-black uppercase">Verified</div>
+              )}
             </div>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-6 shadow-sm h-40 flex flex-col justify-between">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">HR Verification</p>
-            <div className="flex flex-col items-center">
-                <div className="w-full border-b border-slate-200 mt-2 mb-4"></div>
-                <p className="text-[10px] text-slate-400">Pending Verification</p>
+            
+            <div className="flex flex-col items-center justify-center min-h-[140px] bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100 relative group transition-all">
+              {formData.managerSignature ? (
+                <img 
+                  src={`data:image/png;base64,${formData.managerSignature}`} 
+                  alt="Manager Signature" 
+                  className="max-h-24 object-contain mix-blend-multiply"
+                />
+              ) : (
+                <>
+                  <ImageIcon className="w-8 h-8 text-slate-300 mb-2 group-hover:text-indigo-400 transition-colors" />
+                  <p className="text-[10px] font-bold text-slate-400">Click to upload signature photo</p>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={async (e) => {
+                       const file = e.target.files?.[0];
+                       if (file && id) {
+                         try {
+                           await uploadSignature({ id, file }).unwrap();
+                           alert("Signature photo uploaded successfully!");
+                         } catch (err) {
+                           alert("Failed to upload signature photo.");
+                         }
+                       }
+                    }}
+                    disabled={formData.submitted || isUploadingSignature}
+                  />
+                  {isUploadingSignature && (
+                    <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-2xl">
+                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            
+            <div className="mt-8 text-center border-t border-slate-50 pt-6">
+                <p className="text-xl font-serif italic text-slate-700">Evaluator Sign-off</p>
+                <p className="text-[10px] text-slate-400 mt-2">Date: {new Date().toISOString().split('T')[0]}</p>
             </div>
           </div>
         </div>

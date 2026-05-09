@@ -33,7 +33,7 @@ const AppraisalCycleCreate: React.FC = () => {
     finalizationDeadline: '',
     evaluationPeriod: 'Q1-Q4 2024',
     status: 'PLANNING',
-    isActive: true,
+    isActive: false,
     // Weights
     kpiWeight: 40,
     managerWeight: 30,
