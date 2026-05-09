@@ -512,10 +512,10 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .map(i -> {
                     KpiGoalItem item = new KpiGoalItem();
                     item.setGoalSet(savedGoalSet);
-                    item.setStatus(KpiItemStatus.NOT_STARTED);
                     item.setIsActive(true);
 
                     if (i.getId().equals(itemId)) {
+                        // Revised item: update target/title/weight/category but PRESERVE progress
                         item.setTitle(request.getUpdatedDetails().getGoalTitle());
                         item.setTargetValue(request.getUpdatedDetails().getTargetValue());
                         item.setWeightPercent(request.getUpdatedDetails().getWeightPercent());
@@ -523,7 +523,13 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         item.setCategory(categoryRepository
                                 .findById(request.getUpdatedDetails().getCategoryId())
                                 .orElseThrow(() -> new NotFoundException("Category not found")));
+                        // Preserve employee's actual progress
+                        item.setActualValue(i.getActualValue());
+                        item.setStatus(i.getActualValue() != null
+                                && i.getActualValue().compareTo(java.math.BigDecimal.ZERO) > 0
+                                ? KpiItemStatus.IN_PROGRESS : KpiItemStatus.NOT_STARTED);
                     } else {
+                        // Non-revised items: full copy including progress
                         item.setTitle(i.getTitle());
                         item.setTargetValue(i.getTargetValue());
                         item.setWeightPercent(i.getWeightPercent());
@@ -538,25 +544,23 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         List<KpiGoalItem> savedNewItems = goalItemRepository.saveAll(newItems);
 
-        // 4. Carry over progress history
+        // 4. Carry over progress history for ALL items (including the revised one)
         for (int index = 0; index < oldGoalSet.getItems().size(); index++) {
             KpiGoalItem oldItemEntity = oldGoalSet.getItems().get(index);
             KpiGoalItem newItemEntity = savedNewItems.get(index);
 
-            if (!oldItemEntity.getId().equals(itemId)) {
-                List<KpiProgress> oldProgress = progressRepository
-                        .findByGoalItemIdOrderByIdDesc(oldItemEntity.getId());
-                List<KpiProgress> clonedProgress = oldProgress.stream().map(op -> {
-                    return KpiProgress.builder()
-                            .goalItem(newItemEntity)
-                            .actualValue(op.getActualValue())
-                            .progressPercent(op.getProgressPercent())
-                            .evidenceNote(op.getEvidenceNote())
-                            .updatedBy(op.getUpdatedBy())
-                            .build();
-                }).collect(Collectors.toList());
-                progressRepository.saveAll(clonedProgress);
-            }
+            List<KpiProgress> oldProgress = progressRepository
+                    .findByGoalItemIdOrderByIdDesc(oldItemEntity.getId());
+            List<KpiProgress> clonedProgress = oldProgress.stream().map(op -> {
+                return KpiProgress.builder()
+                        .goalItem(newItemEntity)
+                        .actualValue(op.getActualValue())
+                        .progressPercent(op.getProgressPercent())
+                        .evidenceNote(op.getEvidenceNote())
+                        .updatedBy(op.getUpdatedBy())
+                        .build();
+            }).collect(Collectors.toList());
+            progressRepository.saveAll(clonedProgress);
         }
 
         // 5. history log
