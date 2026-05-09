@@ -21,12 +21,8 @@ import {
   LayoutTemplate,
   Target,
   Save,
-  Edit3,
-  Undo2
+  Edit3
 } from 'lucide-react';
-import {
-  PRIORITY_MAP
-} from '../../utils/kpiCalculations';
 
 const GoalAssignmentWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -257,7 +253,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                 <h1 className="text-2xl font-black text-gray-900 tracking-tight">{employee?.staffName}</h1>
                 <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${goalSet?.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
                   goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
-                    goalSet?.status === 'SUBMITTED' ? 'bg-yellow-50 text-yellow-600' :
+                    goalSet?.status === 'LOCKED' ? 'bg-gray-900 text-white' :
                       'bg-gray-100 text-gray-400'
                   }`}>
                   {goalSet ? goalSet.status : 'Not Assigned'}
