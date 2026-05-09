@@ -293,7 +293,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                   className="px-8 py-4 bg-gray-900 text-white text-[11px] font-black rounded-xl hover:bg-black disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition shadow-xl uppercase tracking-widest flex items-center gap-3"
                 >
                   <Lock className="w-4 h-4" />
-                  Approve & Lock
+                  Approve Goal Set
                 </button>
               </>
             )}
