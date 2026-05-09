@@ -75,15 +75,7 @@ const GoalManagement: React.FC = () => {
             <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Drafting</span>
           </div>
         );
-      case 'SUBMITTED':
-        return (
-          <div className="flex items-center gap-1.5">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-50 text-amber-600">
-              <RefreshCw className="w-3.5 h-3.5" />
-            </span>
-            <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Awaiting Review</span>
-          </div>
-        );
+
       case 'APPROVED':
         return (
           <div className="flex items-center gap-1.5">
@@ -102,15 +94,7 @@ const GoalManagement: React.FC = () => {
             <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Locked (Active)</span>
           </div>
         );
-      case 'REJECTED':
-        return (
-          <div className="flex items-center gap-1.5">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-50 text-rose-600">
-              <XCircle className="w-3.5 h-3.5" />
-            </span>
-            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Rejected</span>
-          </div>
-        );
+
       default:
         return (
           <div className="flex items-center gap-1.5">

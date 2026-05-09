@@ -235,13 +235,7 @@ export const kpiApi = api.injectEndpoints({
       providesTags: ['GoalSet'],
     }),
 
-    submitGoalSet: builder.mutation<ApiResponse<GoalSetResponse>, number>({
-      query: (id) => ({
-        url: `/kpi/goal-set/${id}/submit`,
-        method: 'POST',
-      }),
-      invalidatesTags: ['GoalSet'],
-    }),
+
   }),
 });
 
@@ -271,6 +265,6 @@ export const {
   useUpdateLibraryMutation,
   useGetTeamGoalSetsQuery,
   useGetDepartmentGoalSetsQuery,
-  useSubmitGoalSetMutation,
+
   useBulkAssignKpiMutation,
 } = kpiApi;

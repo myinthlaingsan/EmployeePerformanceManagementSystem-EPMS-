@@ -81,7 +81,7 @@ const GoalDetail: React.FC = () => {
             {goalSet.status}
           </span>
 
-          {isManager && (goalSet.status === 'DRAFT' || goalSet.status === 'SUBMITTED' || goalSet.status === 'APPROVED') && (
+          {isManager && (goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
             <div className="flex gap-2">
               <button
                 onClick={() => navigate(`/kpi/assign/${employeeId}`)}

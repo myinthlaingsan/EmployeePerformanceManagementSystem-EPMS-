@@ -303,8 +303,7 @@ const TeamKpiDashboard: React.FC = () => {
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                         emp.goalSet?.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
                         emp.goalSet?.status === 'LOCKED' ? 'bg-gray-900 text-white' :
-                        emp.goalSet?.status === 'SUBMITTED' ? 'bg-yellow-50 text-yellow-600' :
-                        emp.goalSet?.status === 'REJECTED' ? 'bg-red-50 text-red-600' :
+
                         emp.goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
                         'bg-gray-50 text-gray-400'
                       }`}>
