@@ -440,36 +440,36 @@ public class EmployeeServiceImpl implements EmployeeService {
                 EmployeeResponse response = employeeMapper.toResponse(emp);
                 List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(emp.getId());
                 List<String> roleNames = roles.stream()
-                                .map(role -> role.getRoleName().name())
-                                .toList();
+                        .map(role -> role.getRoleName().name())
+                        .toList();
                 response.setRoles(roleNames);
 
                 // Fetch permissions based on roles and level
                 List<String> permissions = roleLevelPermissionRepository
-                                .findPermissionsByRolesAndLevel(roles, emp.getLevel())
-                                .stream()
-                                .map(Permission::getPermissionName)
-                                .toList();
+                        .findPermissionsByRolesAndLevel(roles, emp.getLevel())
+                        .stream()
+                        .map(Permission::getPermissionName)
+                        .toList();
                 response.setPermissions(permissions);
 
                 // Set Department Name
                 employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
-                                .ifPresent(ed -> {
-                                        response.setCurrentDepartmentName(
-                                                        ed.getCurrentDepartment().getDepartmentName());
-                                        response.setCurrentDepartmentId(
-                                                        ed.getCurrentDepartment().getId());
-                                        response.setParentDepartmentName(
-                                                        ed.getParentDepartment().getDepartmentName());
-                                        response.setParentDepartmentId(
-                                                        ed.getParentDepartment().getId());
-                                });
+                        .ifPresent(ed -> {
+                                response.setCurrentDepartmentName(
+                                        ed.getCurrentDepartment().getDepartmentName());
+                                response.setCurrentDepartmentId(
+                                        ed.getCurrentDepartment().getId());
+                                response.setParentDepartmentName(
+                                        ed.getParentDepartment().getDepartmentName());
+                                response.setParentDepartmentId(
+                                        ed.getParentDepartment().getId());
+                        });
                 // Set Manager Info
                 reportingLineRepository.findByEmployeeAndIsActiveTrue(emp)
-                                .ifPresent(line -> {
-                                        response.setDirectManagerId(line.getManager().getId());
-                                        response.setDirectManagerName(line.getManager().getStaffName());
-                                });
+                        .ifPresent(line -> {
+                                response.setDirectManagerId(line.getManager().getId());
+                                response.setDirectManagerName(line.getManager().getStaffName());
+                        });
                 return response;
         }
 }

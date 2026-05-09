@@ -19,7 +19,8 @@ import {
   Zap,
   Target,
   Library,
-  History
+  History,
+  Calendar
 } from "lucide-react";
 
 interface NavItem {
@@ -52,6 +53,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { label: "Permissions", to: "/permissions", icon: ShieldCheck, end: true },
   { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck },
   { label: "Assign Permissions", to: "/permissions/assign", icon: Zap },
+  { label: "Financial Years", to: "/financial-years", icon: Calendar },
 ];
 
 const Sidebar = () => {

@@ -4,7 +4,7 @@ import {
   useGetCyclesQuery,
   useAssignBulkMutation
 } from '../../features/appraisal/appraisalApi';
-import { useGetEmployeesQuery } from '../../features/employee/employeeApi';
+import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import {
   Users,
   CheckCircle2,
@@ -19,7 +19,7 @@ import {
 const AppraisalAssignment: React.FC = () => {
   const navigate = useNavigate();
   const { data: cycles = [] } = useGetCyclesQuery();
-  const { data: employeePaged, isLoading: empsLoading } = useGetEmployeesQuery({ page: 0, size: 100 } as any);
+  const { data: employeePaged, isLoading: empsLoading } = useGetEmployeesQuery({ page: 0, size: 100 });
   const [assignBulk, { isLoading: isAssigning }] = useAssignBulkMutation();
 
   // State

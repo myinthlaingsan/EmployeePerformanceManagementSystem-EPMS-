@@ -22,7 +22,8 @@ const PipListPage: React.FC = () => {
     const { isHR, isAdmin, isManager, user } = useAuth();
 
     // Filters State
-    const { data: employees } = useGetEmployeesQuery();
+    const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000 });
+    const employees = employeeData?.content;
 
     // Filters State
     const [deptFilter, setDeptFilter] = useState('All Departments');

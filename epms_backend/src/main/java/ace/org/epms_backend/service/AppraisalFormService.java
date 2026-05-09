@@ -17,4 +17,5 @@ public interface AppraisalFormService {
     void updateForm(Long formId, AppraisalFormRequest request);
     void updateCategory(Long categoryId, CategoryRequest request);
     void updateQuestion(Long questionId, QuestionRequest request);
+    List<AppraisalFormResponse> getAllForms();
 }

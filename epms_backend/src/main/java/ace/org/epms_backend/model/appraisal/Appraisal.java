@@ -62,11 +62,13 @@ public class Appraisal extends BaseEntity {
 
     private Instant lockedAt;
 
-    @Column(columnDefinition = "TEXT")
-    private String employeeSignComment;
+    @Lob
+    @Column(name = "employee_sign_comment", columnDefinition = "LONGBLOB")
+    private byte[] employeeSignComment;
 
-    @Column(columnDefinition = "TEXT")
-    private String managerSignComment;
+    @Lob
+    @Column(name = "manager_sign_comment", columnDefinition = "LONGBLOB")
+    private byte[] managerSignComment;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by")

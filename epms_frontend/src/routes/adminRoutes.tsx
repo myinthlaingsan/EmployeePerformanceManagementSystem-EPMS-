@@ -10,6 +10,7 @@ import PermissionList from "../pages/admin/PermissionList";
 import PermissionMatrixView from "../pages/admin/org/PermissionMatrixView";
 import EmployeeDepartmentHistory from "../pages/admin/org/EmployeeDepartmentHistory";
 import RoleLevelPermissionManager from "../pages/admin/org/RoleLevelPermissionManager";
+import FinancialYearManagement from "../pages/appraisal/FinancialYearManagement";
 
 export const adminRoutes = [
   { path: "/hr", element: <HRDashboard /> },
@@ -24,5 +25,6 @@ export const adminRoutes = [
   { path: "/teams", element: <TeamList /> },
   { path: "/permissions", element: <PermissionList /> },
   { path: "/permissions/matrix", element: <PermissionMatrixView /> },
-  { path: "/permissions/assign", element: <RoleLevelPermissionManager /> }
+  { path: "/permissions/assign", element: <RoleLevelPermissionManager /> },
+  { path: "/financial-years", element: <FinancialYearManagement /> }
 ];

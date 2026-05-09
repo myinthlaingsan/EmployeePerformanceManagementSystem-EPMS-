@@ -13,7 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/self-assessments")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN', 'HR')")
+@PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN', 'HR')")
 public class SelfAssessmentController {
 
     private final SelfAssessmentService service;

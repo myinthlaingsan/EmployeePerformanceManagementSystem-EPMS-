@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useWebSocket } from "../hooks/useWebSocket";
+import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 
 const MainLayout = () => {
   // Initialize WebSocket connection when the layout is mounted
@@ -29,3 +30,5 @@ const MainLayout = () => {
 };
 
 export default MainLayout;
+
+
