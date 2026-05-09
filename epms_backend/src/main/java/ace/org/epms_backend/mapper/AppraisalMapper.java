@@ -14,18 +14,19 @@ public interface AppraisalMapper {
     @Mapping(target = "employeeId", source = "employee.id")
     @Mapping(target = "employeeName", source = "employee.staffName")
     @Mapping(target = "employeeCode", source = "employee.employeeCode")
-
     @Mapping(target = "managerId", source = "manager.id")
     @Mapping(target = "managerName", source = "manager.staffName")
     @Mapping(target = "cycleId", source = "cycle.cycleId")
     @Mapping(target = "cycleName", source = "cycle.cycleName")
     @Mapping(target = "formId", source = "form.formId")
     @Mapping(target = "formName", source = "form.formName")
+    @Mapping(target = "employeeSignComment", expression = "java(toBase64(appraisal.getEmployeeSignComment()))")
+    @Mapping(target = "managerSignComment", expression = "java(toBase64(appraisal.getManagerSignComment()))")
     AppraisalResponse toResponse(Appraisal appraisal);
 
     List<AppraisalResponse> toResponseList(List<Appraisal> appraisals);
 
-    default String map(byte[] value) {
-        return value != null ? new String(value, StandardCharsets.UTF_8) : null;
+    default String toBase64(byte[] value) {
+        return value != null ? java.util.Base64.getEncoder().encodeToString(value) : null;
     }
 }

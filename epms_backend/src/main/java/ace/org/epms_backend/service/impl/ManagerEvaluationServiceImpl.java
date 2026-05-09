@@ -221,17 +221,24 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
         }
 
         private FullManagerEvaluationResponse buildFullResponse(Appraisal appraisal, ManagerEvaluation eval) {
-                // Use the specific form linked to the appraisal
-                AppraisalForm form = appraisal.getForm();
+                AppraisalForm form = null;
+                if (appraisal.getForm() != null) {
+                        // Find a MANAGER_EVALUATION form with the SAME name as the appraisal's form in the same cycle
+                        form = appraisal.getCycle().getForms().stream()
+                                        .filter(f -> f.getFormType() == FormType.MANAGER_EVALUATION 
+                                                && f.getFormName().equals(appraisal.getForm().getFormName()))
+                                        .findFirst()
+                                        .orElse(null);
+                }
 
                 if (form == null) {
-                        // Fallback: Find the first MANAGER_EVALUATION form in the cycle if none linked
+                        // Fallback: Find the first MANAGER_EVALUATION form in the cycle
                         form = appraisal.getCycle().getForms().stream()
                                         .filter(f -> f.getFormType() == FormType.MANAGER_EVALUATION)
                                         .findFirst()
                                         .orElseThrow(() -> new NotFoundException(
                                                         "No MANAGER_EVALUATION form found for appraisal: "
-                                                                        + appraisal.getAppraisalId()));
+                                                                         + appraisal.getAppraisalId()));
                 }
 
                 List<FormCategory> categories = categoryRepo.findByForm_FormId(form.getFormId());
@@ -272,12 +279,12 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                                                                                 : null)
                                                                 .isRequired(q.getIsRequired())
                                                                 .employeeRatingValue(
-                                                                                empAns != null ? empAns.getRatingValue()
+                                                                                self != null && Boolean.TRUE.equals(self.getSubmitted()) && empAns != null ? empAns.getRatingValue()
                                                                                                 : null)
                                                                 .employeeIsCompleted(
-                                                                                empAns != null ? empAns.getIsCompleted()
+                                                                                self != null && Boolean.TRUE.equals(self.getSubmitted()) && empAns != null ? empAns.getIsCompleted()
                                                                                                 : null)
-                                                                .employeeComment(empAns != null ? empAns.getComment()
+                                                                .employeeComment(self != null && Boolean.TRUE.equals(self.getSubmitted()) && empAns != null ? empAns.getComment()
                                                                                 : null)
                                                                 .answerId(mgrAns != null ? mgrAns.getId() : null)
                                                                 .managerRatingValue(
@@ -298,6 +305,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 return FullManagerEvaluationResponse.builder()
                                 .evaluationId(eval.getEvaluationId())
                                 .appraisalId(appraisal.getAppraisalId())
+                                .managerId(appraisal.getManager().getId())
                                 .formName(form.getFormName())
                                 .formType(form.getFormType())
                                 // Employee Info
@@ -325,6 +333,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                                 .lastSavedAt(eval.getLastSavedAt())
                                 .finalComment(eval.getFinalComment())
                                 .submittedAt(eval.getSubmittedAt())
+                                .isSelfSubmitted(self != null && Boolean.TRUE.equals(self.getSubmitted()))
                                 .employeeSignedAt(appraisal.getEmployeeSignedAt())
                                 .managerSignedAt(appraisal.getManagerSignedAt())
                                 .employeeSignature(appraisal.getEmployeeSignComment() != null 

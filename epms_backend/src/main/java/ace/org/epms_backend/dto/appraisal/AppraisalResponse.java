@@ -40,4 +40,7 @@ public class AppraisalResponse {
     private String managerSignComment;
     private String approvalComment;
     private Boolean isLocked;
+    
+    private java.math.BigDecimal finalScore;
+    private String finalGrade;
 }

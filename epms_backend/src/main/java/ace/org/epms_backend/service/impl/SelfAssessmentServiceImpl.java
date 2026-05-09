@@ -208,6 +208,7 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
                 .formName(form.getFormName())
                 .formType(form.getFormType())
                 // Employee Info
+                .employeeId(appraisal.getEmployee().getId())
                 .employeeName(appraisal.getEmployee().getStaffName())
                 .employeeCode(appraisal.getEmployee().getEmployeeCode())
                 .positionName(appraisal.getEmployee().getPosition() != null

@@ -21,6 +21,7 @@ public class FullSelfAssessmentResponse {
     private FormType formType;
 
     // Employee Info
+    private Long employeeId;
     private String employeeName;
     private String employeeCode;
     private String positionName;

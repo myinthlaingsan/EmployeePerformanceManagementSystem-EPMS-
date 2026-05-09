@@ -42,6 +42,7 @@ public class AppraisalServiceImpl implements AppraisalService {
     private final ReportingLineRepository reportingLineRepo;
     private final AppraisalMapper appraisalMapper;
     private final AppraisalCalculationService calculationService;
+    private final AppraisalSummaryRepository summaryRepo;
     private final AuditService auditService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -77,6 +78,10 @@ public class AppraisalServiceImpl implements AppraisalService {
 
         AppraisalCycle cycle = cycleRepo.findById(cycleId)
                 .orElseThrow(() -> new NotFoundException("Cycle not found"));
+
+        if (!Boolean.TRUE.equals(cycle.getIsActive())) {
+            throw new RuntimeException("Cannot assign appraisal to an inactive cycle: " + cycle.getCycleName());
+        }
 
         // Resolve form
         AppraisalForm form = null;
@@ -148,26 +153,43 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
-        return appraisalMapper.toResponse(saved);
+        return enhanceResponse(appraisalMapper.toResponse(saved));
+    }
+
+    private AppraisalResponse enhanceResponse(AppraisalResponse response) {
+        if (response == null) return null;
+        summaryRepo.findByEmployee_IdAndCycle_CycleId(response.getEmployeeId(), response.getCycleId())
+                .ifPresent(summary -> {
+                    response.setFinalScore(summary.getTotalScore());
+                    if (summary.getFinalGrade() != null) {
+                        response.setFinalGrade(summary.getFinalGrade().name());
+                    }
+                });
+        return response;
+    }
+
+    private List<AppraisalResponse> enhanceResponseList(List<AppraisalResponse> responses) {
+        responses.forEach(this::enhanceResponse);
+        return responses;
     }
 
     @Override
     public List<AppraisalResponse> getMyAssessments() {
         Long currentUserId = getCurrentUserId();
-        return appraisalMapper.toResponseList(appraisalRepo.findByEmployee_Id(currentUserId));
+        return enhanceResponseList(appraisalMapper.toResponseList(appraisalRepo.findByEmployee_Id(currentUserId)));
     }
 
     @Override
     public List<AppraisalResponse> getTeamEvaluations() {
         Long currentUserId = getCurrentUserId();
-        return appraisalMapper.toResponseList(appraisalRepo.findByManager_Id(currentUserId));
+        return enhanceResponseList(appraisalMapper.toResponseList(appraisalRepo.findByManager_Id(currentUserId)));
     }
 
     @Override
     public AppraisalResponse getById(Long id) {
         Appraisal appraisal = appraisalRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
-        return appraisalMapper.toResponse(appraisal);
+        return enhanceResponse(appraisalMapper.toResponse(appraisal));
     }
 
     @Override
@@ -218,7 +240,7 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
-        return appraisalMapper.toResponse(saved);
+        return enhanceResponse(appraisalMapper.toResponse(saved));
     }
 
     @Override
@@ -251,7 +273,7 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
-        return appraisalMapper.toResponse(saved);
+        return enhanceResponse(appraisalMapper.toResponse(saved));
     }
 
     @Override
@@ -285,7 +307,7 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
-        return appraisalMapper.toResponse(saved);
+        return enhanceResponse(appraisalMapper.toResponse(saved));
     }
 
     @Override
@@ -320,11 +342,11 @@ public class AppraisalServiceImpl implements AppraisalService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
-        return appraisalMapper.toResponse(saved);
+        return enhanceResponse(appraisalMapper.toResponse(saved));
     }
     @Override
     public List<AppraisalResponse> getByCycleId(Long cycleId) {
-        return appraisalMapper.toResponseList(appraisalRepo.findByCycle_CycleId(cycleId));
+        return enhanceResponseList(appraisalMapper.toResponseList(appraisalRepo.findByCycle_CycleId(cycleId)));
     }
 
     @Override
