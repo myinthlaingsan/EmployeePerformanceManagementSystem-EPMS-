@@ -29,12 +29,14 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     private final EmployeeRoleRepository employeeRoleRepository;
 
     @Override
-    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId) {
+    public ace.org.epms_backend.dto.PagedResponse<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId, SourceType sourceType, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
         boolean privileged = isPrivileged(currentUser);
 
-        // Find records where this person is the subject, the manager, the performer, or the creator.
-        return historyRepository.findByEmployee_IdOrManager_IdOrPerformer_IdOrCreatedBy(employeeId, employeeId, employeeId, employeeId).stream()
+        org.springframework.data.domain.Page<PerformanceHistory> historyPage = historyRepository.findByEmployeeAndOptionalSource(employeeId, sourceType, pageable);
+        
+        List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> content = historyPage.getContent().stream()
                 .filter(h -> privileged || 
                              (currentUser.getId().equals(h.getCreatedBy())) || 
                              (!Boolean.TRUE.equals(h.getIsPrivate()) && (currentUser.getId().equals(h.getEmployee().getId()) || (h.getManager() != null && currentUser.getId().equals(h.getManager().getId())))))
@@ -50,18 +52,39 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
                 })
                 .map(this::mapToResponseWithFallback)
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                historyPage.getNumber(),
+                historyPage.getSize(),
+                historyPage.getTotalElements(),
+                historyPage.getTotalPages(),
+                historyPage.isLast()
+        );
     }
 
     @Override
-    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getAllHistory() {
+    public ace.org.epms_backend.dto.PagedResponse<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getAllHistory(SourceType sourceType, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
         if (!isPrivileged(currentUser)) {
             throw new ace.org.epms_backend.exception.AccessDeniedException("Only Admin or HR can view global pulse.");
         }
 
-        return historyRepository.findAllByOrderByCreatedAtDesc().stream()
+        org.springframework.data.domain.Page<PerformanceHistory> historyPage = historyRepository.findAllByOptionalSource(sourceType, pageable);
+
+        List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> content = historyPage.getContent().stream()
                 .map(this::mapToResponseWithFallback)
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                historyPage.getNumber(),
+                historyPage.getSize(),
+                historyPage.getTotalElements(),
+                historyPage.getTotalPages(),
+                historyPage.isLast()
+        );
     }
 
     private ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse mapToResponseWithFallback(PerformanceHistory h) {
@@ -79,15 +102,27 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     }
 
     @Override
-    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryBySource(SourceType sourceType, Long sourceId) {
+    public ace.org.epms_backend.dto.PagedResponse<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryBySource(SourceType sourceType, Long sourceId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
         boolean privileged = isPrivileged(currentUser);
 
-        return historyRepository.findBySourceTypeAndSourceId(sourceType, sourceId).stream()
+        org.springframework.data.domain.Page<PerformanceHistory> historyPage = historyRepository.findBySourceTypeAndSourceId(sourceType, sourceId, pageable);
+
+        List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> content = historyPage.getContent().stream()
                 .filter(h -> privileged || (currentUser.getId().equals(h.getCreatedBy())) || 
                              (!Boolean.TRUE.equals(h.getIsPrivate()) && currentUser.getId().equals(h.getEmployee().getId())))
                 .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
+
+        return new ace.org.epms_backend.dto.PagedResponse<>(
+                content,
+                historyPage.getNumber(),
+                historyPage.getSize(),
+                historyPage.getTotalElements(),
+                historyPage.getTotalPages(),
+                historyPage.isLast()
+        );
     }
 
     @Override
@@ -113,6 +148,31 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
         }
         
         return historyMapper.toResponse(history);
+    }
+
+    @Override
+    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryByEmployeeRaw(Long employeeId) {
+        Employee currentUser = authService.getCurrentUser();
+        boolean privileged = isPrivileged(currentUser);
+
+        return historyRepository.findByEmployeeAndOptionalSource(employeeId, null, org.springframework.data.domain.Pageable.unpaged()).getContent().stream()
+                .filter(h -> privileged || 
+                             (currentUser.getId().equals(h.getCreatedBy())) || 
+                             (!Boolean.TRUE.equals(h.getIsPrivate()) && (currentUser.getId().equals(h.getEmployee().getId()) || (h.getManager() != null && currentUser.getId().equals(h.getManager().getId())))))
+                .map(this::mapToResponseWithFallback)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getAllHistoryRaw() {
+        Employee currentUser = authService.getCurrentUser();
+        if (!isPrivileged(currentUser)) {
+            throw new ace.org.epms_backend.exception.AccessDeniedException("Only Admin or HR can view global pulse.");
+        }
+
+        return historyRepository.findAll(org.springframework.data.domain.Sort.by("createdAt").descending()).stream()
+                .map(this::mapToResponseWithFallback)
+                .collect(Collectors.toList());
     }
 
     private boolean isPrivileged(Employee employee) {

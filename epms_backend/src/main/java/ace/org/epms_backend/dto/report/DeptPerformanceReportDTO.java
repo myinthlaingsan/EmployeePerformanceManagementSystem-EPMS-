@@ -13,6 +13,9 @@ import java.math.BigDecimal;
 public class DeptPerformanceReportDTO {
     private String departmentName;
     private BigDecimal averageKpiScore;
+    private BigDecimal averageAppraisalScore;
     private int employeeCount;
     private int topPerformersCount;
+    private int lowPerformersCount;
+    private int rank;
 }

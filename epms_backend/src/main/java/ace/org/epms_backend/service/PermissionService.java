@@ -1,9 +1,6 @@
 package ace.org.epms_backend.service;
 
-import ace.org.epms_backend.dto.org.AssignPermissionRequest;
-import ace.org.epms_backend.dto.org.PermissionRequest;
-import ace.org.epms_backend.dto.org.PermissionResponse;
-import ace.org.epms_backend.dto.org.RoleLevelPermissionResponse;
+import ace.org.epms_backend.dto.org.*;
 
 import java.util.List;
 
@@ -17,4 +14,7 @@ public interface PermissionService {
     void assignPermission(AssignPermissionRequest request);
     void removeAssignedPermission(Long roleLevelPermissionId);
     List<RoleLevelPermissionResponse> getAssignedPermissions(Long roleId, Long levelId);
+
+    PermissionMatrixResponse getPermissionMatrix();
+    void updatePermissionMatrix(UpdatePermissionMatrixRequest request);
 }

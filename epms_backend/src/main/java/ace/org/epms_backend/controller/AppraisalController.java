@@ -38,27 +38,27 @@ public class AppraisalController {
         Map<String, Object> report = new HashMap<>();
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         report.put("currentUserEmail", email);
-        
+
         Employee employee = employeeRepo.findByEmail(email).orElse(null);
         report.put("employeeRecordFound", employee != null);
-        
+
         if (employee != null) {
             report.put("employeeId", employee.getId());
             report.put("staffName", employee.getStaffName());
             List<Appraisal> appraisals = appraisalRepo.findByEmployee_Id(employee.getId());
             report.put("appraisalCount", appraisals.size());
-            
+
             if (!appraisals.isEmpty()) {
                 Map<String, Object> firstAppraisal = new HashMap<>();
                 Appraisal a = appraisals.get(0);
                 firstAppraisal.put("id", a.getAppraisalId());
                 firstAppraisal.put("status", a.getStatus());
                 firstAppraisal.put("cycleId", a.getCycle() != null ? a.getCycle().getCycleId() : "NULL");
-                
+
                 if (a.getCycle() != null) {
                     firstAppraisal.put("cycleName", a.getCycle().getCycleName());
                     firstAppraisal.put("formCount", a.getCycle().getForms() != null ? a.getCycle().getForms().size() : 0);
-                    
+
                     boolean hasSelfForm = a.getCycle().getForms().stream()
                             .anyMatch(f -> f.getFormType().name().equals("SELF_ASSESSMENT"));
                     firstAppraisal.put("hasSelfAssessmentForm", hasSelfForm);
@@ -157,6 +157,14 @@ public class AppraisalController {
                 appraisalService.managerSignOff(id, comment)
         ));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        appraisalService.deleteAppraisal(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     @GetMapping("/cycle/{cycleId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getByCycleId(@PathVariable Long cycleId) {

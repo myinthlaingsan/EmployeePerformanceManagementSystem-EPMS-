@@ -4,7 +4,9 @@ import type {
   PermissionRequest, 
   PermissionResponse, 
   AssignPermissionRequest, 
-  RoleLevelPermissionResponse 
+  RoleLevelPermissionResponse,
+  PermissionMatrixResponse,
+  UpdatePermissionMatrixRequest
 } from "./orgTypes";
 
 export const permissionApi = api.injectEndpoints({
@@ -63,6 +65,21 @@ export const permissionApi = api.injectEndpoints({
       }),
       invalidatesTags: ["RoleLevelPermission"],
     }),
+
+    getPermissionMatrix: builder.query<PermissionMatrixResponse, void>({
+      query: () => "/permissions/matrix",
+      transformResponse: (response: ApiResponse<PermissionMatrixResponse>) => response.data,
+      providesTags: ["Permission", "RoleLevelPermission"],
+    }),
+
+    updatePermissionMatrix: builder.mutation<void, UpdatePermissionMatrixRequest>({
+      query: (body) => ({
+        url: "/permissions/matrix",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["RoleLevelPermission"],
+    }),
   }),
 });
 
@@ -74,4 +91,6 @@ export const {
   useGetAssignedPermissionsQuery,
   useAssignPermissionMutation,
   useRemoveAssignedPermissionMutation,
+  useGetPermissionMatrixQuery,
+  useUpdatePermissionMatrixMutation,
 } = permissionApi;

@@ -42,31 +42,36 @@ public class ReportController {
     }
 
     @GetMapping("/appraisal-status/download")
-    public ResponseEntity<byte[]> downloadAppraisalStatusReport(@RequestParam Long cycleId, @RequestParam(defaultValue = "pdf") String format) {
+    public ResponseEntity<byte[]> downloadAppraisalStatusReport(@RequestParam Long cycleId,
+            @RequestParam(defaultValue = "pdf") String format) {
         byte[] reportContent = reportService.exportAppraisalStatusReport(cycleId, format);
         return createDownloadResponse(reportContent, "Appraisal_Status_Report", format);
     }
 
     // Performance Trend
     @GetMapping("/performance-trend")
-    public ResponseEntity<ApiResponse<PerformanceTrendReportDTO>> getPerformanceTrendReport(@RequestParam Long employeeId) {
+    public ResponseEntity<ApiResponse<PerformanceTrendReportDTO>> getPerformanceTrendReport(
+            @RequestParam Long employeeId) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getPerformanceTrendReport(employeeId)));
     }
 
     @GetMapping("/performance-trend/download")
-    public ResponseEntity<byte[]> downloadPerformanceTrendReport(@RequestParam Long employeeId, @RequestParam(defaultValue = "pdf") String format) {
+    public ResponseEntity<byte[]> downloadPerformanceTrendReport(@RequestParam Long employeeId,
+            @RequestParam(defaultValue = "pdf") String format) {
         byte[] reportContent = reportService.exportPerformanceTrendReport(employeeId, format);
         return createDownloadResponse(reportContent, "Performance_Trend_Report", format);
     }
 
     // 360 Feedback
     @GetMapping("/feedback-participation")
-    public ResponseEntity<ApiResponse<FeedbackParticipationReportDTO>> getFeedbackParticipationReport(@RequestParam Long cycleId) {
+    public ResponseEntity<ApiResponse<FeedbackParticipationReportDTO>> getFeedbackParticipationReport(
+            @RequestParam Long cycleId) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getFeedbackParticipationReport(cycleId)));
     }
 
     @GetMapping("/feedback-participation/download")
-    public ResponseEntity<byte[]> downloadFeedbackParticipationReport(@RequestParam Long cycleId, @RequestParam(defaultValue = "pdf") String format) {
+    public ResponseEntity<byte[]> downloadFeedbackParticipationReport(@RequestParam Long cycleId,
+            @RequestParam(defaultValue = "pdf") String format) {
         byte[] reportContent = reportService.exportFeedbackParticipationReport(cycleId, format);
         return createDownloadResponse(reportContent, "Feedback_Participation_Report", format);
     }
@@ -102,12 +107,14 @@ public class ReportController {
 
     // Department Comparison
     @GetMapping("/dept-comparison")
-    public ResponseEntity<ApiResponse<List<DeptPerformanceReportDTO>>> getDeptPerformanceComparison(@RequestParam Long cycleId) {
+    public ResponseEntity<ApiResponse<List<DeptPerformanceReportDTO>>> getDeptPerformanceComparison(
+            @RequestParam Long cycleId) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getDeptPerformanceComparison(cycleId)));
     }
 
     @GetMapping("/dept-comparison/download")
-    public ResponseEntity<byte[]> downloadDeptPerformanceComparison(@RequestParam Long cycleId, @RequestParam(defaultValue = "pdf") String format) {
+    public ResponseEntity<byte[]> downloadDeptPerformanceComparison(@RequestParam Long cycleId,
+            @RequestParam(defaultValue = "pdf") String format) {
         byte[] reportContent = reportService.exportDeptPerformanceComparison(cycleId, format);
         return createDownloadResponse(reportContent, "Dept_Performance_Comparison", format);
     }
@@ -124,10 +131,42 @@ public class ReportController {
         return createDownloadResponse(reportContent, "Promotion_Readiness_Report", format);
     }
 
+    // Employee Performance Summary
+    @GetMapping("/performance-summary")
+    public ResponseEntity<ApiResponse<EmployeePerformanceSummaryDTO>> getEmployeePerformanceSummary(
+            @RequestParam Long employeeId,
+            @RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getEmployeePerformanceSummary(employeeId, cycleId)));
+    }
+
+    @GetMapping("/performance-summary/download")
+    public ResponseEntity<byte[]> downloadEmployeePerformanceSummary(
+            @RequestParam Long employeeId,
+            @RequestParam Long cycleId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportEmployeePerformanceSummary(employeeId, cycleId, format);
+        return createDownloadResponse(reportContent, "Performance_Summary_Report", format);
+    }
+
+    // High/Low Performers
+    @GetMapping("/performance-ranking")
+    public ResponseEntity<ApiResponse<List<PerformanceRankingReportDTO>>> getPerformanceRankingReport(
+            @RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getPerformanceRankingReport(cycleId)));
+    }
+
+    @GetMapping("/performance-ranking/download")
+    public ResponseEntity<byte[]> downloadPerformanceRankingReport(
+            @RequestParam Long cycleId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportPerformanceRankingReport(cycleId, format);
+        return createDownloadResponse(reportContent, "Performance_Ranking_Report", format);
+    }
+
     private ResponseEntity<byte[]> createDownloadResponse(byte[] content, String baseName, String format) {
         String fileName = baseName + "." + format.toLowerCase();
-        MediaType mediaType = "pdf".equalsIgnoreCase(format) ? MediaType.APPLICATION_PDF : 
-                              MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        MediaType mediaType = "pdf".equalsIgnoreCase(format) ? MediaType.APPLICATION_PDF
+                : MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")

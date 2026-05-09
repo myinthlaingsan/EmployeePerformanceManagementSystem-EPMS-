@@ -1,10 +1,7 @@
 package ace.org.epms_backend.controller;
 
 import ace.org.epms_backend.dto.ApiResponse;
-import ace.org.epms_backend.dto.org.AssignPermissionRequest;
-import ace.org.epms_backend.dto.org.PermissionRequest;
-import ace.org.epms_backend.dto.org.PermissionResponse;
-import ace.org.epms_backend.dto.org.RoleLevelPermissionResponse;
+import ace.org.epms_backend.dto.org.*;
 import ace.org.epms_backend.service.PermissionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -91,5 +88,22 @@ public class PermissionController {
         return ResponseEntity.ok(
                 ApiResponse.success(
                         permissionService.getAssignedPermissions(roleId, levelId)));
+    }
+
+    @GetMapping("/matrix")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    public ResponseEntity<ApiResponse<PermissionMatrixResponse>> getPermissionMatrix() {
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        permissionService.getPermissionMatrix()));
+    }
+
+    @PostMapping("/matrix")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> updatePermissionMatrix(
+            @Valid @RequestBody UpdatePermissionMatrixRequest request) {
+        permissionService.updatePermissionMatrix(request);
+        return ResponseEntity.ok(
+                ApiResponse.success(null));
     }
 }

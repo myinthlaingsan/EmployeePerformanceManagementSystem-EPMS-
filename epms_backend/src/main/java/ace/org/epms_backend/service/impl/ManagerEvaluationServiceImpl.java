@@ -28,321 +28,322 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
 
-        private final AppraisalRepository appraisalRepo;
-        private final ManagerEvaluationRepository evalRepo;
-        private final ManagerEvaluationAnswerRepository answerRepo;
-        private final SelfAssessmentRepository selfRepo;
-        private final SelfAssessmentAnswerRepository selfAnswerRepo;
-        private final QuestionRepository questionRepo;
-        private final FormCategoryRepository categoryRepo;
-        private final ManagerEvaluationMapper evalMapper;
-        private final EmployeeDepartmentRepository empDeptRepo;
-        private final SelfAssessmentService selfService;
+    private final AppraisalRepository appraisalRepo;
+    private final ManagerEvaluationRepository evalRepo;
+    private final ManagerEvaluationAnswerRepository answerRepo;
+    private final SelfAssessmentRepository selfRepo;
+    private final SelfAssessmentAnswerRepository selfAnswerRepo;
+    private final QuestionRepository questionRepo;
+    private final FormCategoryRepository categoryRepo;
+    private final ManagerEvaluationMapper evalMapper;
+    private final EmployeeDepartmentRepository empDeptRepo;
+    private final SelfAssessmentService selfService;
 
-        private final AuditService auditService;
-        private final ApplicationEventPublisher eventPublisher;
+    private final AuditService auditService;
+    private final ApplicationEventPublisher eventPublisher;
 
-        @Override
-        @Transactional
-        public ManagerEvaluationResponse create(ManagerEvaluationRequest request) {
-                Appraisal appraisal = appraisalRepo.findById(request.getAppraisalId())
-                                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+    @Override
+    @Transactional
+    public ManagerEvaluationResponse create(ManagerEvaluationRequest request) {
+        Appraisal appraisal = appraisalRepo.findById(request.getAppraisalId())
+                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
-                ManagerEvaluation eval = evalRepo.findByAppraisal_AppraisalId(request.getAppraisalId())
-                                .orElseGet(() -> {
-                                        ManagerEvaluation newEval = new ManagerEvaluation();
-                                        newEval.setAppraisal(appraisal);
-                                        newEval.setSubmitted(false);
-                                        return evalRepo.save(newEval);
-                                });
+        ManagerEvaluation eval = evalRepo.findByAppraisal_AppraisalId(request.getAppraisalId())
+                .orElseGet(() -> {
+                    ManagerEvaluation newEval = new ManagerEvaluation();
+                    newEval.setAppraisal(appraisal);
+                    newEval.setSubmitted(false);
+                    return evalRepo.save(newEval);
+                });
 
-                return evalMapper.toResponse(eval);
+        return evalMapper.toResponse(eval);
+    }
+
+    @Override
+    public FullManagerEvaluationResponse getEvaluationForm(Long appraisalId) {
+        Appraisal appraisal = appraisalRepo.findById(appraisalId)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+
+        ManagerEvaluation eval = evalRepo.findByAppraisal_AppraisalId(appraisalId)
+                .orElseGet(() -> {
+                    ManagerEvaluation newEval = new ManagerEvaluation();
+                    newEval.setAppraisal(appraisal);
+                    newEval.setSubmitted(false);
+                    return evalRepo.save(newEval);
+                });
+
+        return buildFullResponse(appraisal, eval);
+    }
+
+    @Override
+    @Transactional
+    public void saveAnswers(Long evaluationId, List<ManagerEvaluationAnswerRequest> answers) {
+        ManagerEvaluation eval = evalRepo.findById(evaluationId)
+                .orElseThrow(() -> new NotFoundException("Evaluation not found"));
+
+        if (Boolean.TRUE.equals(eval.getSubmitted())) {
+            throw new RuntimeException("Cannot modify a submitted manager evaluation");
         }
 
-        @Override
-        public FullManagerEvaluationResponse getEvaluationForm(Long appraisalId) {
-                Appraisal appraisal = appraisalRepo.findById(appraisalId)
-                                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+        for (ManagerEvaluationAnswerRequest req : answers) {
+            Question question = questionRepo.findById(req.getQuestionId())
+                    .orElseThrow(() -> new NotFoundException(
+                            "Question not found: " + req.getQuestionId()));
 
-                ManagerEvaluation eval = evalRepo.findByAppraisal_AppraisalId(appraisalId)
-                                .orElseGet(() -> {
-                                        ManagerEvaluation newEval = new ManagerEvaluation();
-                                        newEval.setAppraisal(appraisal);
-                                        newEval.setSubmitted(false);
-                                        return evalRepo.save(newEval);
-                                });
+            ManagerEvaluationAnswer answer = answerRepo.findByEvaluation_EvaluationIdAndQuestion_QuestionId(
+                            evaluationId, req.getQuestionId())
+                    .orElseGet(() -> {
+                        ManagerEvaluationAnswer newAnswer = new ManagerEvaluationAnswer();
+                        newAnswer.setEvaluation(eval);
+                        newAnswer.setQuestion(question);
+                        return newAnswer;
+                    });
 
-                return buildFullResponse(appraisal, eval);
+            answer.setRatingValue(req.getRatingValue());
+            answer.setComment(req.getComment());
+            answerRepo.save(answer);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void saveDraft(Long evaluationId, String finalComment) {
+        ManagerEvaluation eval = evalRepo.findById(evaluationId)
+                .orElseThrow(() -> new NotFoundException("Evaluation not found"));
+
+        eval.setFinalComment(finalComment);
+        eval.setLastSavedAt(Instant.now());
+        evalRepo.save(eval);
+    }
+
+    @Override
+    @Transactional
+    public void submitFinal(Long evaluationId) {
+        ManagerEvaluation eval = evalRepo.findById(evaluationId)
+                .orElseThrow(() -> new NotFoundException("Evaluation not found"));
+
+        if (Boolean.TRUE.equals(eval.getSubmitted())) {
+            throw new RuntimeException("Manager evaluation is already submitted");
         }
 
-        @Override
-        @Transactional
-        public void saveAnswers(Long evaluationId, List<ManagerEvaluationAnswerRequest> answers) {
-                ManagerEvaluation eval = evalRepo.findById(evaluationId)
-                                .orElseThrow(() -> new NotFoundException("Evaluation not found"));
+        // Calculate total score based on formula: (Total Point * 100) / (Number of Questions Answered * 5)
+        List<ManagerEvaluationAnswer> answers = answerRepo.findByEvaluation_EvaluationId(evaluationId);
+        BigDecimal sum = BigDecimal.ZERO;
+        int answeredCount = 0;
 
-                if (Boolean.TRUE.equals(eval.getSubmitted())) {
-                        throw new RuntimeException("Cannot modify a submitted manager evaluation");
-                }
-
-                for (ManagerEvaluationAnswerRequest req : answers) {
-                        Question question = questionRepo.findById(req.getQuestionId())
-                                        .orElseThrow(() -> new NotFoundException(
-                                                        "Question not found: " + req.getQuestionId()));
-
-                        ManagerEvaluationAnswer answer = answerRepo.findByEvaluation_EvaluationIdAndQuestion_QuestionId(
-                                        evaluationId, req.getQuestionId())
-                                        .orElseGet(() -> {
-                                                ManagerEvaluationAnswer newAnswer = new ManagerEvaluationAnswer();
-                                                newAnswer.setEvaluation(eval);
-                                                newAnswer.setQuestion(question);
-                                                return newAnswer;
-                                        });
-
-                        answer.setRatingValue(req.getRatingValue());
-                        answer.setComment(req.getComment());
-                        answerRepo.save(answer);
-                }
+        for (ManagerEvaluationAnswer ans : answers) {
+            if (ans.getRatingValue() != null) {
+                sum = sum.add(BigDecimal.valueOf(ans.getRatingValue()));
+                answeredCount++;
+            }
         }
 
-        @Override
-        @Transactional
-        public void saveDraft(Long evaluationId, String finalComment) {
-                ManagerEvaluation eval = evalRepo.findById(evaluationId)
-                                .orElseThrow(() -> new NotFoundException("Evaluation not found"));
-
-                eval.setFinalComment(finalComment);
-                eval.setLastSavedAt(Instant.now());
-                evalRepo.save(eval);
+        BigDecimal finalScore = BigDecimal.ZERO;
+        if (answeredCount > 0) {
+            BigDecimal maxPossiblePoints = BigDecimal.valueOf(answeredCount).multiply(BigDecimal.valueOf(5));
+            finalScore = sum.multiply(BigDecimal.valueOf(100))
+                    .divide(maxPossiblePoints, 2, java.math.RoundingMode.HALF_UP);
         }
 
-        @Override
-        @Transactional
-        public void submitFinal(Long evaluationId) {
-                ManagerEvaluation eval = evalRepo.findById(evaluationId)
-                                .orElseThrow(() -> new NotFoundException("Evaluation not found"));
+        eval.setTotalScore(finalScore);
+        eval.setSubmitted(true);
+        eval.setSubmittedAt(Instant.now());
+        evalRepo.save(eval);
 
-                if (Boolean.TRUE.equals(eval.getSubmitted())) {
-                        throw new RuntimeException("Manager evaluation is already submitted");
-                }
+        // Update Appraisal status
+        Appraisal appraisal = eval.getAppraisal();
+        appraisal.setStatus(AppraisalStatus.EVALUATED);
+        appraisal.setManagerSubmittedAt(Instant.now());
+        appraisalRepo.save(appraisal);
 
-                // Calculate total score (sum of ratings)
-                List<ManagerEvaluationAnswer> answers = answerRepo.findByEvaluation_EvaluationId(evaluationId);
-                BigDecimal totalScore = BigDecimal.ZERO;
-                for (ManagerEvaluationAnswer ans : answers) {
-                        if (ans.getRatingValue() != null) {
-                                totalScore = totalScore.add(BigDecimal.valueOf(ans.getRatingValue()));
-                        }
-                }
+        // Notify HR
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .broadcast(true)
+                .type(NotificationType.MANAGER_EVALUATION_SUBMITTED)
+                .title("Evaluation Submitted")
+                .message("Manager " + appraisal.getManager().getStaffName()
+                        + " has submitted evaluation for "
+                        + appraisal.getEmployee().getStaffName())
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(appraisal.getAppraisalId())
+                .build());
 
-                eval.setTotalScore(totalScore);
-                eval.setSubmitted(true);
-                eval.setSubmittedAt(Instant.now());
-                evalRepo.save(eval);
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("manager_evaluations")
+                .recordId(evaluationId)
+                .action(AuditAction.UPDATE)
+                .newState(eval)
+                .status(AuditStatus.SUCCESS)
+                .build());
+    }
 
-                // Update Appraisal status
-                Appraisal appraisal = eval.getAppraisal();
-                appraisal.setStatus(AppraisalStatus.EVALUATED);
-                appraisal.setManagerSubmittedAt(Instant.now());
-                appraisalRepo.save(appraisal);
+    @Override
+    public EmployeeSelfAssessmentViewResponse getEmployeeView(Long appraisalId) {
+        Appraisal appraisal = appraisalRepo.findById(appraisalId)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
-                // Notify HR
-                eventPublisher.publishEvent(NotificationEvent.builder()
-                                .broadcast(true)
-                                .type(NotificationType.MANAGER_EVALUATION_SUBMITTED)
-                                .title("Evaluation Submitted")
-                                .message("Manager " + appraisal.getManager().getStaffName()
-                                                + " has submitted evaluation for "
-                                                + appraisal.getEmployee().getStaffName())
-                                .referenceType(ReferenceType.APPRAISAL)
-                                .referenceId(appraisal.getAppraisalId())
-                                .build());
+        FullSelfAssessmentResponse fullSelf = selfService.getMyAssessmentForm(appraisalId);
 
-                // Log Audit
-                auditService.log(AuditRequest.builder()
-                                .tableName("manager_evaluations")
-                                .recordId(evaluationId)
-                                .action(AuditAction.UPDATE)
-                                .newState(eval)
-                                .status(AuditStatus.SUCCESS)
-                                .build());
+        List<CategoryViewDTO> categoryViews = fullSelf.getCategories().stream().map(cat -> {
+            List<QuestionViewDTO> questionViews = cat.getQuestions().stream().map(q -> {
+                return QuestionViewDTO.builder()
+                        .questionText(q.getQuestionText())
+                        .questionType(q.getQuestionType())
+                        .ratingValue(q.getRatingValue())
+                        .isCompleted(q.getIsCompleted())
+                        .comment(q.getComment())
+                        .build();
+            }).toList();
+
+            return CategoryViewDTO.builder()
+                    .categoryName(cat.getCategoryName())
+                    .questions(questionViews)
+                    .build();
+        }).toList();
+
+        // Get Department/Position info
+        String departmentName = "N/A";
+        String positionName = appraisal.getEmployee().getPosition() != null
+                ? appraisal.getEmployee().getPosition().getPositionName()
+                : "N/A";
+
+        EmployeeDepartment ed = empDeptRepo
+                .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
+                .orElse(null);
+
+        if (ed != null && ed.getCurrentDepartment() != null) {
+            departmentName = ed.getCurrentDepartment().getDepartmentName();
         }
 
-        @Override
-        public EmployeeSelfAssessmentViewResponse getEmployeeView(Long appraisalId) {
-                Appraisal appraisal = appraisalRepo.findById(appraisalId)
-                                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+        return EmployeeSelfAssessmentViewResponse.builder()
+                .selfAssessmentId(fullSelf.getSelfAssessmentId())
+                .appraisalId(fullSelf.getAppraisalId())
+                .employeeName(appraisal.getEmployee().getStaffName())
+                .employeeCode(appraisal.getEmployee().getEmployeeCode())
+                .departmentName(departmentName)
+                .positionName(positionName)
+                .totalScore(fullSelf.getTotalScore())
+                .submittedAt(fullSelf.getSubmittedAt())
+                .categories(categoryViews)
 
-                FullSelfAssessmentResponse fullSelf = selfService.getMyAssessmentForm(appraisalId);
+                .build();
+    }
 
-                List<CategoryViewDTO> categoryViews = fullSelf.getCategories().stream().map(cat -> {
-                        List<QuestionViewDTO> questionViews = cat.getQuestions().stream().map(q -> {
-                                return QuestionViewDTO.builder()
-                                                .questionText(q.getQuestionText())
-                                                .questionType(q.getQuestionType())
-                                                .ratingValue(q.getRatingValue())
-                                                .isCompleted(q.getIsCompleted())
-                                                .comment(q.getComment())
-                                                .build();
-                        }).toList();
+    private FullManagerEvaluationResponse buildFullResponse(Appraisal appraisal, ManagerEvaluation eval) {
+        // Use the specific form linked to the appraisal
+        AppraisalForm form = appraisal.getForm();
 
-                        return CategoryViewDTO.builder()
-                                        .categoryName(cat.getCategoryName())
-                                        .questions(questionViews)
-                                        .build();
-                }).toList();
-
-                // Get Department/Position info
-                String departmentName = "N/A";
-                String positionName = appraisal.getEmployee().getPosition() != null
-                                ? appraisal.getEmployee().getPosition().getPositionName()
-                                : "N/A";
-
-                EmployeeDepartment ed = empDeptRepo
-                                .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
-                                .orElse(null);
-
-                if (ed != null && ed.getCurrentDepartment() != null) {
-                        departmentName = ed.getCurrentDepartment().getDepartmentName();
-                }
-
-                return EmployeeSelfAssessmentViewResponse.builder()
-                                .selfAssessmentId(fullSelf.getSelfAssessmentId())
-                                .appraisalId(fullSelf.getAppraisalId())
-                                .employeeName(appraisal.getEmployee().getStaffName())
-                                .employeeCode(appraisal.getEmployee().getEmployeeCode())
-                                .departmentName(departmentName)
-                                .positionName(positionName)
-                                .totalScore(fullSelf.getTotalScore())
-                                .submittedAt(fullSelf.getSubmittedAt())
-                                .categories(categoryViews)
-
-                                .build();
+        if (form == null) {
+            // Fallback: Find the first MANAGER_EVALUATION form in the cycle if none linked
+            form = appraisal.getCycle().getForms().stream()
+                    .filter(f -> f.getFormType() == FormType.MANAGER_EVALUATION)
+                    .findFirst()
+                    .orElseThrow(() -> new NotFoundException(
+                            "No MANAGER_EVALUATION form found for appraisal: "
+                                    + appraisal.getAppraisalId()));
         }
 
-        private FullManagerEvaluationResponse buildFullResponse(Appraisal appraisal, ManagerEvaluation eval) {
-                AppraisalForm form = null;
-                if (appraisal.getForm() != null) {
-                        // Find a MANAGER_EVALUATION form with the SAME name as the appraisal's form in the same cycle
-                        form = appraisal.getCycle().getForms().stream()
-                                        .filter(f -> f.getFormType() == FormType.MANAGER_EVALUATION 
-                                                && f.getFormName().equals(appraisal.getForm().getFormName()))
-                                        .findFirst()
-                                        .orElse(null);
-                }
+        List<FormCategory> categories = categoryRepo.findByForm_FormId(form.getFormId());
+        List<Question> questions = questionRepo.findByCategory_Form_FormId(form.getFormId());
 
-                if (form == null) {
-                        // Fallback: Find the first MANAGER_EVALUATION form in the cycle
-                        form = appraisal.getCycle().getForms().stream()
-                                        .filter(f -> f.getFormType() == FormType.MANAGER_EVALUATION)
-                                        .findFirst()
-                                        .orElseThrow(() -> new NotFoundException(
-                                                        "No MANAGER_EVALUATION form found for appraisal: "
-                                                                         + appraisal.getAppraisalId()));
-                }
+        Map<Long, List<ManagerEvaluationAnswer>> mgrAnswersMap = answerRepo
+                .findByEvaluation_EvaluationId(eval.getEvaluationId())
+                .stream()
+                .collect(Collectors.groupingBy(a -> a.getQuestion().getQuestionId()));
 
-                List<FormCategory> categories = categoryRepo.findByForm_FormId(form.getFormId());
-                List<Question> questions = questionRepo.findByCategory_Form_FormId(form.getFormId());
+        SelfAssessment self = selfRepo.findByAppraisal_AppraisalId(appraisal.getAppraisalId()).orElse(null);
+        Map<Long, List<SelfAssessmentAnswer>> empAnswersMap = java.util.Collections.emptyMap();
+        if (self != null) {
+            empAnswersMap = selfAnswerRepo.findBySelfAssessment_SelfAssessmentId(self.getSelfAssessmentId())
+                    .stream()
+                    .collect(Collectors.groupingBy(a -> a.getQuestion().getQuestionId()));
+        }
 
-                Map<Long, List<ManagerEvaluationAnswer>> mgrAnswersMap = answerRepo
-                                .findByEvaluation_EvaluationId(eval.getEvaluationId())
-                                .stream()
-                                .collect(Collectors.groupingBy(a -> a.getQuestion().getQuestionId()));
+        final Map<Long, List<SelfAssessmentAnswer>> finalEmpAnswersMap = empAnswersMap;
 
-                SelfAssessment self = selfRepo.findByAppraisal_AppraisalId(appraisal.getAppraisalId()).orElse(null);
-                Map<Long, List<SelfAssessmentAnswer>> empAnswersMap = java.util.Collections.emptyMap();
-                if (self != null) {
-                        empAnswersMap = selfAnswerRepo.findBySelfAssessment_SelfAssessmentId(self.getSelfAssessmentId())
-                                        .stream()
-                                        .collect(Collectors.groupingBy(a -> a.getQuestion().getQuestionId()));
-                }
+        List<CategoryWithManagerAnswersDTO> categoryDTOs = categories.stream().map(cat -> {
+            List<QuestionWithManagerAnswerDTO> questionDTOs = questions.stream()
+                    .filter(q -> q.getCategory().getCategoryId().equals(cat.getCategoryId()))
+                    .map(q -> {
+                        ManagerEvaluationAnswer mgrAns = mgrAnswersMap
+                                .getOrDefault(q.getQuestionId(), new ArrayList<>())
+                                .stream().findFirst().orElse(null);
 
-                final Map<Long, List<SelfAssessmentAnswer>> finalEmpAnswersMap = empAnswersMap;
-
-                List<CategoryWithManagerAnswersDTO> categoryDTOs = categories.stream().map(cat -> {
-                        List<QuestionWithManagerAnswerDTO> questionDTOs = questions.stream()
-                                        .filter(q -> q.getCategory().getCategoryId().equals(cat.getCategoryId()))
-                                        .map(q -> {
-                                                ManagerEvaluationAnswer mgrAns = mgrAnswersMap
-                                                                .getOrDefault(q.getQuestionId(), new ArrayList<>())
-                                                                .stream().findFirst().orElse(null);
-
-                                                SelfAssessmentAnswer empAns = finalEmpAnswersMap
-                                                                .getOrDefault(q.getQuestionId(), new ArrayList<>())
-                                                                .stream().findFirst().orElse(null);
-
-                                                return QuestionWithManagerAnswerDTO.builder()
-                                                                .questionId(q.getQuestionId())
-                                                                .questionText(q.getQuestionText())
-                                                                .questionType(q.getQuestionType() != null
-                                                                                ? q.getQuestionType().name()
-                                                                                : null)
-                                                                .isRequired(q.getIsRequired())
-                                                                .employeeRatingValue(
-                                                                                self != null && Boolean.TRUE.equals(self.getSubmitted()) && empAns != null ? empAns.getRatingValue()
-                                                                                                : null)
-                                                                .employeeIsCompleted(
-                                                                                self != null && Boolean.TRUE.equals(self.getSubmitted()) && empAns != null ? empAns.getIsCompleted()
-                                                                                                : null)
-                                                                .employeeComment(self != null && Boolean.TRUE.equals(self.getSubmitted()) && empAns != null ? empAns.getComment()
-                                                                                : null)
-                                                                .answerId(mgrAns != null ? mgrAns.getId() : null)
-                                                                .managerRatingValue(
-                                                                                mgrAns != null ? mgrAns.getRatingValue()
-                                                                                                : null)
-                                                                .managerComment(mgrAns != null ? mgrAns.getComment()
-                                                                                : null)
-                                                                .build();
-                                        }).toList();
-
-                        return CategoryWithManagerAnswersDTO.builder()
-                                        .categoryId(cat.getCategoryId())
-                                        .categoryName(cat.getCategoryName())
-                                        .questions(questionDTOs)
-                                        .build();
-                }).toList();
-
-                return FullManagerEvaluationResponse.builder()
-                                .evaluationId(eval.getEvaluationId())
-                                .appraisalId(appraisal.getAppraisalId())
-                                .managerId(appraisal.getManager().getId())
-                                .formName(form.getFormName())
-                                .formType(form.getFormType())
-                                // Employee Info
-                                .employeeName(appraisal.getEmployee().getStaffName())
-                                .employeeId(appraisal.getEmployee().getId())
-                                .employeeCode(appraisal.getEmployee().getEmployeeCode())
-                                .positionName(appraisal.getEmployee().getPosition() != null
-                                                ? appraisal.getEmployee().getPosition().getPositionName()
+                        SelfAssessmentAnswer empAns = finalEmpAnswersMap
+                                .getOrDefault(q.getQuestionId(), new ArrayList<>())
+                                .stream().findFirst().orElse(null);
+                        return QuestionWithManagerAnswerDTO.builder()
+                                .questionId(q.getQuestionId())
+                                .questionText(q.getQuestionText())
+                                .questionType(q.getQuestionType() != null
+                                        ? q.getQuestionType().name()
+                                        : null)
+                                .isRequired(q.getIsRequired())
+                                .employeeRatingValue(
+                                        empAns != null ? empAns.getRatingValue()
                                                 : null)
-                                .departmentName(empDeptRepo
-                                                .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
-                                                .map(ed -> ed.getCurrentDepartment() != null
-                                                                ? ed.getCurrentDepartment().getDepartmentName()
-                                                                : null)
-                                                .orElse(null))
-
-                                // Cycle Info
-                                .cycleStartDate(appraisal.getCycle().getStartDate())
-                                .cycleEndDate(appraisal.getCycle().getEndDate())
-                                .selfAssessmentDeadline(appraisal.getCycle().getSelfAssessmentDeadline())
-                                .managerEvaluationDeadline(appraisal.getCycle().getManagerEvaluationDeadline())
-                                .totalScore(eval.getTotalScore())
-
-                                .submitted(eval.getSubmitted())
-                                .lastSavedAt(eval.getLastSavedAt())
-                                .finalComment(eval.getFinalComment())
-                                .submittedAt(eval.getSubmittedAt())
-                                .isSelfSubmitted(self != null && Boolean.TRUE.equals(self.getSubmitted()))
-                                .employeeSignedAt(appraisal.getEmployeeSignedAt())
-                                .managerSignedAt(appraisal.getManagerSignedAt())
-                                .employeeSignature(appraisal.getEmployeeSignComment() != null 
-                                    ? java.util.Base64.getEncoder().encodeToString(appraisal.getEmployeeSignComment()) 
-                                    : null)
-                                .managerSignature(appraisal.getManagerSignComment() != null 
-                                    ? java.util.Base64.getEncoder().encodeToString(appraisal.getManagerSignComment()) 
-                                    : null)
-                                .categories(categoryDTOs)
+                                .employeeIsCompleted(
+                                        empAns != null ? empAns.getIsCompleted()
+                                                : null)
+                                .employeeComment(empAns != null ? empAns.getComment()
+                                        : null)
+                                .answerId(mgrAns != null ? mgrAns.getId() : null)
+                                .managerRatingValue(
+                                        mgrAns != null ? mgrAns.getRatingValue()
+                                                : null)
+                                .managerComment(mgrAns != null ? mgrAns.getComment()
+                                        : null)
                                 .build();
-        }
+                    }).toList();
+
+            return CategoryWithManagerAnswersDTO.builder()
+                    .categoryId(cat.getCategoryId())
+                    .categoryName(cat.getCategoryName())
+                    .questions(questionDTOs)
+                    .build();
+        }).toList();
+
+        return FullManagerEvaluationResponse.builder()
+                .evaluationId(eval.getEvaluationId())
+                .appraisalId(appraisal.getAppraisalId())
+                .formName(form.getFormName())
+                .formType(form.getFormType())
+                // Employee Info
+                .employeeName(appraisal.getEmployee().getStaffName())
+                .employeeId(appraisal.getEmployee().getId())
+                .employeeCode(appraisal.getEmployee().getEmployeeCode())
+                .positionName(appraisal.getEmployee().getPosition() != null
+                        ? appraisal.getEmployee().getPosition().getPositionName()
+                        : null)
+                .departmentName(empDeptRepo
+                        .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
+                        .map(ed -> ed.getCurrentDepartment() != null
+                                ? ed.getCurrentDepartment().getDepartmentName()
+                                : null)
+                        .orElse(null))
+
+                // Cycle Info
+                .cycleStartDate(appraisal.getCycle().getStartDate())
+                .cycleEndDate(appraisal.getCycle().getEndDate())
+                .selfAssessmentDeadline(appraisal.getCycle().getSelfAssessmentDeadline())
+                .managerEvaluationDeadline(appraisal.getCycle().getManagerEvaluationDeadline())
+                .totalScore(eval.getTotalScore())
+
+                .submitted(eval.getSubmitted())
+                .lastSavedAt(eval.getLastSavedAt())
+                .finalComment(eval.getFinalComment())
+                .submittedAt(eval.getSubmittedAt())
+                .employeeSignedAt(appraisal.getEmployeeSignedAt())
+                .managerSignedAt(appraisal.getManagerSignedAt())
+                .employeeSignature(appraisal.getEmployeeSignComment() != null
+                        ? java.util.Base64.getEncoder().encodeToString(appraisal.getEmployeeSignComment())
+                        : null)
+                .managerSignature(appraisal.getManagerSignComment() != null
+                        ? java.util.Base64.getEncoder().encodeToString(appraisal.getManagerSignComment())
+                        : null)
+                .categories(categoryDTOs)
+                .build();
+
+    }
 }
