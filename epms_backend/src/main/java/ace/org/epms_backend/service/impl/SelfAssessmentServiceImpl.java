@@ -103,16 +103,26 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
             throw new RuntimeException("Self-assessment is already submitted");
         }
 
-        // Calculate total score (sum of ratings)
+        // Calculate total score based on formula: (Total Point * 100) / (Number of Questions Answered * 5)
         List<SelfAssessmentAnswer> answers = answerRepo.findBySelfAssessment_SelfAssessmentId(selfAssessmentId);
-        BigDecimal totalScore = BigDecimal.ZERO;
+        BigDecimal sum = BigDecimal.ZERO;
+        int answeredCount = 0;
+        
         for (SelfAssessmentAnswer ans : answers) {
             if (ans.getRatingValue() != null) {
-                totalScore = totalScore.add(BigDecimal.valueOf(ans.getRatingValue()));
+                sum = sum.add(BigDecimal.valueOf(ans.getRatingValue()));
+                answeredCount++;
             }
         }
 
-        self.setTotalScore(totalScore);
+        BigDecimal finalScore = BigDecimal.ZERO;
+        if (answeredCount > 0) {
+            BigDecimal maxPossiblePoints = BigDecimal.valueOf(answeredCount).multiply(BigDecimal.valueOf(5));
+            finalScore = sum.multiply(BigDecimal.valueOf(100))
+                    .divide(maxPossiblePoints, 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        self.setTotalScore(finalScore);
         self.setSubmitted(true);
         self.setSubmittedAt(Instant.now());
         selfRepo.save(self);

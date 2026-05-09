@@ -126,16 +126,26 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
             throw new RuntimeException("Manager evaluation is already submitted");
         }
 
-        // Calculate total score (sum of ratings)
+        // Calculate total score based on formula: (Total Point * 100) / (Number of Questions Answered * 5)
         List<ManagerEvaluationAnswer> answers = answerRepo.findByEvaluation_EvaluationId(evaluationId);
-        BigDecimal totalScore = BigDecimal.ZERO;
+        BigDecimal sum = BigDecimal.ZERO;
+        int answeredCount = 0;
+        
         for (ManagerEvaluationAnswer ans : answers) {
             if (ans.getRatingValue() != null) {
-                totalScore = totalScore.add(BigDecimal.valueOf(ans.getRatingValue()));
+                sum = sum.add(BigDecimal.valueOf(ans.getRatingValue()));
+                answeredCount++;
             }
         }
 
-        eval.setTotalScore(totalScore);
+        BigDecimal finalScore = BigDecimal.ZERO;
+        if (answeredCount > 0) {
+            BigDecimal maxPossiblePoints = BigDecimal.valueOf(answeredCount).multiply(BigDecimal.valueOf(5));
+            finalScore = sum.multiply(BigDecimal.valueOf(100))
+                    .divide(maxPossiblePoints, 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        eval.setTotalScore(finalScore);
         eval.setSubmitted(true);
         eval.setSubmittedAt(Instant.now());
         evalRepo.save(eval);
