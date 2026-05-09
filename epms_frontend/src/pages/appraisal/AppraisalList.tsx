@@ -104,8 +104,7 @@ const AppraisalList: React.FC = () => {
           key={appraisal.appraisalId}
           className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
           onClick={() => {
-            const isSelf = user?.id === appraisal.employeeId;
-            navigate(`/appraisal/${appraisal.appraisalId}/${isSelf ? 'self-assessment' : 'manager-evaluation'}`);
+            navigate(`/appraisal/${appraisal.appraisalId}/self-assessment`);
           }}
         >
           {/* Background Accent */}
@@ -173,7 +172,7 @@ const AppraisalList: React.FC = () => {
         <div
           key={appraisal.appraisalId}
           className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
-          onClick={() => navigate(`/appraisal/${appraisal.appraisalId}/manager-evaluation`)}
+          onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}
         >
           {/* Background Accent */}
           <div className="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full bg-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity blur-3xl"></div>

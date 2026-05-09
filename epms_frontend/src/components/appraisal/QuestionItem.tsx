@@ -1,5 +1,4 @@
 import React from 'react';
-import RatingInput from './RatingInput';
 
 interface QuestionItemProps {
   index: number;
@@ -30,100 +29,97 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
   onCompletionChange,
   onTextChange,
   disabled,
-  employeeRating,
-  employeeCompletion,
-  employeeText,
 }) => {
-  
-  const renderAssessment = (type: string, isSecondary: boolean) => {
-    const isLockedByYesNo = !isSecondary && secondaryType === 'YESNO' && isCompleted === null;
-    const effectivelyDisabled = disabled || isLockedByYesNo;
+  const hasYesNo = primaryType === 'YESNO' || secondaryType === 'YESNO';
+  const hasRating = primaryType === 'RATING' || secondaryType === 'RATING';
 
-    switch (type) {
-      case 'YESNO':
-        return (
-          <div className="flex gap-2 items-center justify-center h-full px-2">
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => onCompletionChange(true)}
-              className={`w-8 h-8 rounded-lg border-2 transition-all flex items-center justify-center ${isCompleted === true ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'border-slate-200 hover:border-indigo-400 text-slate-300'}`}
-            >
-              <span className="text-[10px] font-black">Y</span>
-            </button>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => onCompletionChange(false)}
-              className={`w-8 h-8 rounded-lg border-2 transition-all flex items-center justify-center ${isCompleted === false ? 'bg-rose-500 border-rose-500 text-white shadow-sm' : 'border-slate-200 hover:border-rose-400 text-slate-300'}`}
-            >
-              <span className="text-[10px] font-black">N</span>
-            </button>
-          </div>
-        );
-      case 'RATING':
-        return (
-          <div className={`flex gap-1 items-center justify-center h-full px-1 transition-opacity ${isLockedByYesNo ? 'opacity-30' : 'opacity-100'}`}>
-            {[5, 4, 3, 2, 1].map((rating) => (
-              <button
-                key={rating}
-                type="button"
-                disabled={effectivelyDisabled}
-                onClick={() => onRatingChange(rating)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border-2 transition-all ${ratingValue === rating ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-100 text-slate-300 hover:border-slate-200'}`}
-              >
-                {rating}
-              </button>
-            ))}
-          </div>
-        );
-      case 'TEXT':
-        return (
-          <div className={`px-2 py-2 h-full flex items-center transition-opacity ${isLockedByYesNo ? 'opacity-30' : 'opacity-100'}`}>
-            <input 
-              type="text"
-              value={textValue}
-              disabled={effectivelyDisabled}
-              onChange={(e) => onTextChange?.(e.target.value)}
-              placeholder={isLockedByYesNo ? "Select Yes/No first" : "Your note..."}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
+  // Rating is locked until Yes/No is answered when both exist
+  const ratingLocked = hasYesNo && hasRating && isCompleted === null;
 
   return (
-    <div className="grid grid-cols-[40px_1fr_auto_auto] items-stretch border-b border-slate-200 hover:bg-slate-50/50 transition-colors min-h-[64px]">
-      {/* Index */}
-      <div className="py-4 px-2 text-slate-400 font-bold text-xs border-r border-slate-100 flex items-center justify-center italic bg-slate-50/30">
+    <div
+      className="flex items-start gap-4 px-5 py-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/60 transition-colors"
+      style={{ borderLeft: '3px solid #3b82f6' }}
+    >
+      {/* Index badge */}
+      <div className="flex-shrink-0 w-7 h-7 rounded-md bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 mt-0.5">
         {index}
       </div>
 
-      {/* Question */}
-      <div className="py-4 px-6 text-slate-700 font-semibold text-sm leading-relaxed border-r border-slate-100 flex items-center">
-        {question}
-      </div>
+      {/* Question text + controls */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-slate-700 leading-snug mb-3">
+          {question}
+        </p>
 
-      {/* Box 1 (Secondary) */}
-      {secondaryType !== 'NONE' && (
-        <div className="border-r border-slate-100 min-w-[120px] bg-slate-50/10">
-          {renderAssessment(secondaryType, true)}
+        {/* Inline controls row */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Yes / No buttons */}
+          {hasYesNo && (
+            <>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onCompletionChange(true)}
+                className={`px-4 py-1.5 rounded-md text-sm font-semibold border transition-all
+                  ${isCompleted === true
+                    ? 'bg-slate-700 text-white border-slate-700'
+                    : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                  }
+                  ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onCompletionChange(false)}
+                className={`px-4 py-1.5 rounded-md text-sm font-semibold border transition-all
+                  ${isCompleted === false
+                    ? 'bg-slate-700 text-white border-slate-700'
+                    : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                  }
+                  ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+              >
+                No
+              </button>
+            </>
+          )}
+
+          {/* Rating 1–5 buttons */}
+          {hasRating && (
+            <>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={disabled || ratingLocked}
+                  onClick={() => onRatingChange(n)}
+                  className={`w-9 h-9 rounded-md text-sm font-bold border-2 transition-all
+                    ${ratingValue === n
+                      ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                    }
+                    ${disabled || ratingLocked ? 'cursor-not-allowed opacity-40' : ''}`}
+                >
+                  {n}
+                </button>
+              ))}
+            </>
+          )}
+
+          {/* Text input */}
+          {(primaryType === 'TEXT' || secondaryType === 'TEXT') && (
+            <input
+              type="text"
+              value={textValue}
+              disabled={disabled || ratingLocked}
+              onChange={(e) => onTextChange?.(e.target.value)}
+              placeholder={ratingLocked ? 'Select Yes/No first' : 'Your note...'}
+              className="flex-1 min-w-[160px] bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 outline-none focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400 transition-all"
+            />
+          )}
         </div>
-      )}
-
-      {/* Box 2 (Primary) */}
-      <div className="min-w-[150px] relative">
-        {renderAssessment(primaryType, false)}
-        
-        {/* Employee Rating Indicator */}
-        {employeeRating !== undefined && employeeRating > 0 && (
-          <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black rounded-md border border-amber-200">
-            Self: {employeeRating}
-          </div>
-        )}
       </div>
     </div>
   );
