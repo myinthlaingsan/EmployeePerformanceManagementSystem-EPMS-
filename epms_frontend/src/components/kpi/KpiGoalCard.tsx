@@ -54,11 +54,15 @@ const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
           <div className="flex flex-wrap items-center gap-6 pt-2">
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Target</p>
-              <p className="text-sm font-bold text-gray-900">{kpi.targetValue} <span className="text-xs font-normal text-gray-500">{kpi.unit}</span></p>
+              <p className="text-sm font-bold text-gray-900">{kpi.targetValue}</p>
             </div>
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Actual</p>
-              <p className="text-sm font-bold text-blue-600">{kpi.currentProgress} <span className="text-xs font-normal text-blue-400">{kpi.unit}</span></p>
+              <p className="text-sm font-bold text-blue-600">{kpi.currentProgress}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Unit</p>
+              <p className="text-sm font-bold text-gray-600">{kpi.unit || '-'}</p>
             </div>
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Status</p>
