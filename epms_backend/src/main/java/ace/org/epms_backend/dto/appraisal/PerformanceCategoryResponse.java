@@ -1,33 +1,23 @@
-package ace.org.epms_backend.model;
-
+package ace.org.epms_backend.dto.appraisal;
+ 
 import ace.org.epms_backend.enums.PerformanceGrade;
-import jakarta.persistence.*;
-import lombok.*;
-
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+ 
 import java.math.BigDecimal;
-
-@Entity
-@Table(name = "performance_category")
-@Getter
-@Setter
+ 
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PerformanceCategory {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class PerformanceCategoryResponse {
     private Long id;
-
     private String name;
-
     private BigDecimal minScore;
     private BigDecimal maxScore;
-
     private Integer ratingValue;
-
-    @Enumerated(EnumType.STRING)
     private PerformanceGrade grade;
-
-    @Column(columnDefinition = "TEXT")
     private String description;
 }
