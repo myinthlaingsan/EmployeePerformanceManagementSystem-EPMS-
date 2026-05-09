@@ -59,13 +59,14 @@ public class KpiScoringServiceImpl implements KpiScoringService {
         }
 
         // Precondition 1: Is the appraisal cycle actually finished?
-        if (goalSet.getCycle().getIsActive()) {
-            throw new IllegalStateException("Cannot calculate final score while the appraisal cycle is still active.");
-        }
+        // if (goalSet.getCycle().getIsActive()) {
+        //     throw new IllegalStateException("Cannot calculate final score while the appraisal cycle is still active.");
+        // }
 
         // Precondition 2: Has the manager locked the goal set?
-        if (!goalSet.getStatus().equals(ace.org.epms_backend.enums.KpiGoalStatus.LOCKED)) {
-            throw new IllegalStateException("Goal set must be LOCKED by the manager before finalizing the score.");
+        if (!goalSet.getStatus().equals(ace.org.epms_backend.enums.KpiGoalStatus.LOCKED) && 
+            !goalSet.getStatus().equals(ace.org.epms_backend.enums.KpiGoalStatus.APPROVED)) {
+            throw new IllegalStateException("Goal set must be APPROVED or LOCKED before finalizing the score.");
         }
 
         // Precondition 3: Is the employee still active?
