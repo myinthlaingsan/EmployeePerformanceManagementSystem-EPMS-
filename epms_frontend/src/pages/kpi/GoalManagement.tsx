@@ -14,13 +14,14 @@ import {
   XCircle,
 } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
-import { useGetActiveCycleQuery, useGetDepartmentGoalSetsQuery } from '../../services/kpiApi';
+import { useGetActiveCycleQuery, useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isManager, isHR } = useAuth();
   const [page, setPage] = useState(0);
   const [size] = useState(10);
+  const isAdminOrHr = isAdmin || isHR;
 
   // Selection State
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -42,17 +43,24 @@ const GoalManagement: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // KPI Status Fetching
+  // KPI Status Fetching - Adaptive based on role
   const { data: activeCycleResponse } = useGetActiveCycleQuery();
   const activeCycleId = activeCycleResponse?.data?.cycleId;
 
   const effectiveCycleId = selectedCycle === 'All' ? activeCycleId : Number(selectedCycle);
 
-  const { data: goalSetsResponse } = useGetDepartmentGoalSetsQuery(
+  // Fetch statuses based on permission level
+  const { data: deptGoalSetsResponse } = useGetDepartmentGoalSetsQuery(
     { cycleId: effectiveCycleId! },
-    { skip: !effectiveCycleId }
+    { skip: !effectiveCycleId || !isAdminOrHr }
   );
-  const goalSets = goalSetsResponse?.data || [];
+
+  const { data: teamGoalSetsResponse } = useGetTeamGoalSetsQuery(
+    { managerId: Number(user?.id), cycleId: effectiveCycleId! },
+    { skip: !effectiveCycleId || isAdminOrHr || !user?.id }
+  );
+
+  const goalSets = isAdminOrHr ? (deptGoalSetsResponse?.data || []) : (teamGoalSetsResponse?.data || []);
   const goalStatusMap = new Map<number, string>(goalSets.map(gs => [gs.employeeId, gs.status]));
 
   const getStatusBadge = (status: string | undefined) => {
@@ -124,9 +132,12 @@ const GoalManagement: React.FC = () => {
     return matchesSearch && matchesDept && matchesPosition;
   });
 
-  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
+  // Server-side paging is already happening, so we don't need additional client-side slicing
+  // unless we are filtering locally on the paged results. 
+  // For a better experience with large datasets, server-side filtering should be implemented.
+  const currentEmployees = filteredEmployees;
+  const totalElements = pagedData?.totalElements || 0;
+  const totalPages = pagedData?.totalPages || 0;
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
@@ -312,19 +323,19 @@ const GoalManagement: React.FC = () => {
               </div>
               <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">
-                  Showing <strong className="text-slate-900">{filteredEmployees.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + itemsPerPage, filteredEmployees.length)}</strong> of <strong className="text-slate-900">{filteredEmployees.length}</strong> employees
+                  Showing <strong className="text-slate-900">{totalElements > 0 ? (page * size) + 1 : 0}-{Math.min((page + 1) * size, totalElements)}</strong> of <strong className="text-slate-900">{totalElements}</strong> employees
                 </span>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
+                    onClick={() => setPage(prev => Math.max(prev - 1, 0))}
+                    disabled={page === 0}
                     className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages || totalPages === 0}
+                    onClick={() => setPage(prev => Math.min(prev + 1, totalPages - 1))}
+                    disabled={page >= totalPages - 1 || totalPages === 0}
                     className="px-3 py-1.5 bg-[#0052CC] text-white text-[10px] font-bold rounded-lg hover:bg-[#0747A6] shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next

@@ -13,6 +13,7 @@ import {
 } from '../../services/kpiApi';
 import { useGetEmployeeByIdQuery } from '../../features/employee/employeeapi';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
+import { useAuth } from '../../hooks/useAuth';
 import {
   Search,
   Plus,
@@ -28,6 +29,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const { activeCycleId, activeCycleName } = useActiveCycle();
+  const { isAdmin, isHR } = useAuth();
 
   const { data: employee } = useGetEmployeeByIdQuery(Number(employeeId), { skip: !employeeId });
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
@@ -224,7 +226,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
     try {
       await approveGoalSet(goalSet.id).unwrap();
       alert("Goals approved and locked!");
-      navigate('/kpi/team');
+      if (isAdmin || isHR) {
+        navigate('/kpi/manage');
+      } else {
+        navigate('/kpi/team');
+      }
     } catch (err) {
       console.error('Failed to approve goals:', err);
     } finally {
