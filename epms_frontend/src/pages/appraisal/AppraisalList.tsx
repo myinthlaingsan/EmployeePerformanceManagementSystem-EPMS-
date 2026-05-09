@@ -104,7 +104,7 @@ const AppraisalList: React.FC = () => {
           key={appraisal.appraisalId}
           className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
           onClick={() => {
-            navigate(`/appraisal/${appraisal.appraisalId}/self-assessment`);
+            navigate(`/appraisal/${appraisal.appraisalId}`);
           }}
         >
           {/* Background Accent */}

@@ -333,6 +333,33 @@ export const appraisalApi = api.injectEndpoints({
       },
       invalidatesTags: ['Appraisal']
     }),
+    calculateScore: builder.mutation<any, string>({
+      query: (id) => ({
+        url: `/appraisals/${id}/calculate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Appraisal'],
+    }),
+    approveAppraisal: builder.mutation<any, { id: string; comment?: string }>({
+      query: ({ id, comment }) => ({
+        url: `/appraisals/${id}/approve`,
+        method: 'POST',
+        params: { comment },
+      }),
+      invalidatesTags: ['Appraisal'],
+    }),
+    finalizeAppraisal: builder.mutation<any, string>({
+      query: (id) => ({
+        url: `/appraisals/${id}/finalize`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Appraisal'],
+    }),
+    getScoreBreakdown: builder.query<any, string>({
+      query: (id) => `/appraisals/${id}/calculate`,
+      transformResponse,
+      providesTags: ['Appraisal'],
+    }),
   }),
 });
 
@@ -371,4 +398,8 @@ export const {
   useAssignBulkMutation,
   useUploadEmployeeSignatureMutation,
   useUploadManagerSignatureMutation,
+  useCalculateScoreMutation,
+  useApproveAppraisalMutation,
+  useFinalizeAppraisalMutation,
+  useGetScoreBreakdownQuery,
 } = appraisalApi;

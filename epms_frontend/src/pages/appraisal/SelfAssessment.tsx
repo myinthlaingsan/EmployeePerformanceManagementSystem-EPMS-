@@ -5,16 +5,15 @@ import {
   useSaveSelfAssessmentAnswersMutation,
   useSubmitSelfAssessmentMutation,
   useSaveDraftMutation,
-  useUploadEmployeeSignatureMutation
 } from '../../features/appraisal/appraisalApi';
 import {
   User,
   Cloud,
   ChevronLeft,
   Target,
-  Image as ImageIcon,
   Save,
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 /* ─── Shared rating scale (mirrors ManagerEvaluation) ───────── */
 const RATING_SCALE = [
@@ -28,17 +27,15 @@ const RATING_SCALE = [
 const SelfAssessment = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, isHR, isAdmin } = useAuth();
 
   const { data: formResp, isLoading: appraisalLoading } = useGetSelfAssessmentFormQuery(id || '', { skip: !id });
   const [saveAnswers,          { isLoading: isSaving }]    = useSaveSelfAssessmentAnswersMutation();
   const [submitSelfAssessment, { isLoading: isSubmitting }] = useSubmitSelfAssessmentMutation();
   const [saveDraftMutation,    { isLoading: isDrafting }]   = useSaveDraftMutation();
-  const [uploadSignature]                                    = useUploadEmployeeSignatureMutation();
 
   const [responses, setResponses] = useState<Record<string, { ratingValue: number; isCompleted: boolean | null; comment?: string }>>({});
-  const [comment,          setComment]          = useState('');
-  const [signatureFile,    setSignatureFile]    = useState<File | null>(null);
-  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [comment, setComment] = useState('');
 
   const formData = formResp;
 
@@ -95,7 +92,6 @@ const SelfAssessment = () => {
     }
     try {
       await saveAnswers({ id: formData.selfAssessmentId, answers: buildPayload() }).unwrap();
-      if (signatureFile && id) await uploadSignature({ id, file: signatureFile }).unwrap();
       await submitSelfAssessment(formData.selfAssessmentId).unwrap();
       alert('Self-assessment submitted successfully!');
       navigate('/appraisal');
@@ -115,7 +111,14 @@ const SelfAssessment = () => {
     </div>
   );
 
-  const isDisabled = isSubmitting || !!formData.submitted;
+  const isEmployee = Number(user?.id) === Number(formData.employeeId);
+  const isPrivileged = isHR || isAdmin;
+  
+  // A form is read-only if:
+  // 1. It is already submitted
+  // 2. The viewer is HR/Admin (they should never edit employee's self-assessment)
+  const isReadOnly = !!formData.submitted || (isPrivileged && !isEmployee);
+  const isDisabled = isSubmitting || isReadOnly;
 
   return (
     <div className="min-h-screen pb-10" style={{ background: 'linear-gradient(135deg, #f5f0ff 0%, #f8fafc 60%, #eef2f7 100%)' }}>
@@ -143,7 +146,7 @@ const SelfAssessment = () => {
               <span className="text-sm font-black text-indigo-700">{completedCount}</span>
               <span className="text-sm text-indigo-400 font-medium">/ {totalQuestions}</span>
             </div>
-            {!formData.submitted && (
+            {!isReadOnly && (
               <>
                 <button
                   onClick={handleSaveDraft}
@@ -385,7 +388,7 @@ const SelfAssessment = () => {
         })}
 
         {/* ── Overall Reflection ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-6">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-6 mb-8">
           <h2 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-3 flex items-center gap-2">
             <span className="w-1 h-4 bg-indigo-500 rounded-full inline-block" />
             Overall Self-Reflection
@@ -397,54 +400,6 @@ const SelfAssessment = () => {
             onChange={e => setComment(e.target.value)}
             disabled={isDisabled}
           />
-        </div>
-
-        {/* ── Signature ── */}
-        <div className="flex justify-end pb-10">
-          <div className="w-full md:w-80 bg-white rounded-2xl border border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-6">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 flex items-center justify-between">
-              Employee Signature
-              {(formData.employeeSignature || signaturePreview) && (
-                <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5 text-[8px] font-black uppercase">Ready</span>
-              )}
-            </p>
-
-            <div className="flex flex-col items-center justify-center min-h-[100px] bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 relative group transition-all hover:border-indigo-300 hover:bg-indigo-50/20 mb-4 cursor-pointer">
-              {formData.employeeSignature ? (
-                <img src={`data:image/png;base64,${formData.employeeSignature}`} alt="Signature" className="max-h-16 object-contain mix-blend-multiply" />
-              ) : signaturePreview ? (
-                <>
-                  <img src={signaturePreview} alt="Signature Preview" className="max-h-16 object-contain mix-blend-multiply" />
-                  {!formData.submitted && (
-                    <button
-                      onClick={() => { setSignatureFile(null); setSignaturePreview(null); }}
-                      className="absolute top-1 right-1 text-[9px] font-black text-slate-400 hover:text-red-500 bg-white rounded-full px-1.5 py-0.5 border border-slate-200"
-                    >✕</button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <ImageIcon className="w-6 h-6 text-slate-300 mb-1.5 group-hover:text-indigo-400 transition-colors" />
-                  <p className="text-[10px] font-bold text-slate-400">Click to choose photo</p>
-                  <p className="text-[9px] text-slate-300 mt-0.5">Will be submitted with the form</p>
-                  <input
-                    type="file" accept="image/*"
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) { setSignatureFile(file); setSignaturePreview(URL.createObjectURL(file)); }
-                    }}
-                    disabled={isDisabled}
-                  />
-                </>
-              )}
-            </div>
-
-            <div className="border-t border-slate-100 pt-4 text-center">
-              <p className="text-sm font-black text-slate-700">{formData.employeeName}</p>
-              <p className="text-[10px] text-slate-400 mt-1">Date: {new Date().toISOString().split('T')[0]}</p>
-            </div>
-          </div>
         </div>
 
       </div>
