@@ -37,7 +37,8 @@ const MyKpiDashboard: React.FC = () => {
   const [selectedKpi, setSelectedKpi] = useState<any>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
-  const kpis = goalSetResponse?.data?.items || [];
+  const isDraft = goalSetResponse?.data?.status === 'DRAFT';
+  const kpis = isDraft ? [] : (goalSetResponse?.data?.items || []);
 
   // Calculate Overall Progress
   const overallProgress = useMemo(() => {
@@ -103,8 +104,12 @@ const MyKpiDashboard: React.FC = () => {
                     <Target className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-base font-bold text-gray-900">No goals assigned yet</p>
-                    <p className="text-sm text-gray-500">Wait for your manager to set up your objectives for this cycle.</p>
+                    <p className="text-base font-bold text-gray-900">
+                      {isDraft ? "Goals are being drafted" : "No goals assigned yet"}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {isDraft ? "Your manager is currently working on your goals for this cycle." : "Wait for your manager to set up your objectives for this cycle."}
+                    </p>
                   </div>
                 </div>
               )}
