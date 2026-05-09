@@ -21,7 +21,8 @@ const KpiHub: React.FC = () => {
   }, { skip: !user });
 
   const myGoals = myGoalsResponse?.data;
-  const items = myGoals?.items || [];
+  const isDraft = myGoals?.status === 'DRAFT';
+  const items = isDraft ? [] : (myGoals?.items || []);
 
   const overallProgress = items.length > 0
     ? Math.floor(items.reduce((acc, item) => acc + ((item.currentProgress || 0) / item.targetValue * item.weightPercent), 0))
