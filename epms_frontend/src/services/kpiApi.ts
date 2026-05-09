@@ -13,6 +13,7 @@ import type {
   KpiScoreResponse,
   KpiGoalBulkUpdateRequest,
   BulkGoalAssignmentRequest,
+  BulkAssignmentResponse,
 } from '../features/kpi/kpiTypes';
 
 export const kpiApi = api.injectEndpoints({
