@@ -285,11 +285,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
               <>
                 <button
                   onClick={handleSaveDraft}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isModified}
                   className="px-8 py-4 bg-blue-600 hover:bg-blue-700 shadow-blue-200 text-white text-[11px] font-black rounded-xl transition shadow-xl uppercase tracking-widest flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="w-4 h-4" />
-                  Save Draft
+                  {isModified ? 'Save Draft' : 'Draft Saved'}
                 </button>
                 <button
                   onClick={handleApprove}
