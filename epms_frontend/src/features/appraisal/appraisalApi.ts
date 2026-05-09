@@ -1,26 +1,39 @@
 import { api } from "../../services/api";
 
 export interface Section {
-  id: string;
-  title: string;
+  categoryId?: number;
+  categoryName?: string;
+  id?: string;
+  title?: string;
   description?: string;
   questions: FormField[];
   weightage?: number;
 }
 
 export interface FormField {
-  id: string;
-  text: string;
-  type: 'RATING' | 'TEXT' | 'NUMBER';
-  required: boolean;
+  questionId?: number;
+  questionText?: string;
+  id?: string;
+  text?: string;
+  type?: 'RATING' | 'TEXT' | 'NUMBER' | 'YESNO';
+  questionType?: string;
+  secondaryQuestionType?: string;
+  required?: boolean;
+  isRequired?: boolean;
   weightage?: number;
 }
 
 export interface AppraisalForm {
-  id: string;
-  title: string;
+  formId: number;
+  formName: string;
+  formType: string;
+  cycleId?: number;
+  cycleName?: string;
+  id?: string;
+  title?: string;
   description?: string;
-  sections: Section[];
+  categories?: Section[];
+  sections?: Section[];
 }
 
 export interface AppraisalCycle {
@@ -30,6 +43,16 @@ export interface AppraisalCycle {
   endDate: string;
   evaluationPeriod: string;
   status: string;
+  isActive: boolean;
+  selfAssessmentDeadline?: string;
+  managerEvaluationDeadline?: string;
+  finalizationDeadline?: string;
+  kpiWeight?: number;
+  managerWeight?: number;
+  selfWeight?: number;
+  feedbackWeight?: number;
+  financialYearId?: number;
+  financialYearTitle?: string;
 }
 
 export interface CycleRequest {
@@ -43,6 +66,10 @@ export interface CycleRequest {
   managerWeight?: number;
   selfWeight?: number;
   feedbackWeight?: number;
+  financialYearId?: number;
+  selfAssessmentDeadline?: string;
+  managerEvaluationDeadline?: string;
+  finalizationDeadline?: string;
 }
 
 const transformResponse = (response: any) => response.data;
@@ -77,14 +104,17 @@ export const appraisalApi = api.injectEndpoints({
     getAppraisalForm: builder.query<AppraisalForm, string>({
       query: (id) => `/appraisal-forms/${id}`,
       transformResponse,
-      providesTags: ['Form'],
+      providesTags: (_result, _error, id) => [{ type: 'Form', id }],
     }),
 
     // Appraisal Forms
     getAppraisalForms: builder.query<AppraisalForm[], void>({
       query: () => '/appraisal-forms',
       transformResponse,
-      providesTags: ['Form'],
+      providesTags: (result) =>
+        result
+          ? [...result.map(({ formId }) => ({ type: 'Form' as const, id: formId })), { type: 'Form', id: 'LIST' }]
+          : [{ type: 'Form', id: 'LIST' }],
     }),
     createAppraisalForm: builder.mutation<number, any>({
       query: (body) => ({
@@ -92,7 +122,8 @@ export const appraisalApi = api.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Form'],
+      transformResponse,
+      invalidatesTags: [{ type: 'Form', id: 'LIST' }],
     }),
     updateAppraisalForm: builder.mutation<AppraisalForm, { id: string; body: any }>({
       query: ({ id, body }) => ({
@@ -101,7 +132,7 @@ export const appraisalApi = api.injectEndpoints({
         body,
       }),
       transformResponse,
-      invalidatesTags: ['Form'],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Form', id }, { type: 'Form', id: 'LIST' }],
     }),
 
     // Categories
@@ -114,6 +145,16 @@ export const appraisalApi = api.injectEndpoints({
     // Appraisals
     getAppraisals: builder.query<any[], void>({
       query: () => '/appraisals/my-assessments',
+      transformResponse,
+      providesTags: ['Appraisal'],
+    }),
+    getAppraisalsByCycle: builder.query<any[], number>({
+      query: (cycleId) => `/appraisals/cycle/${cycleId}`,
+      transformResponse,
+      providesTags: ['Appraisal'],
+    }),
+    getTeamEvaluations: builder.query<any[], void>({
+      query: () => '/appraisals/team-evaluations',
       transformResponse,
       providesTags: ['Appraisal'],
     }),
@@ -192,10 +233,19 @@ export const appraisalApi = api.injectEndpoints({
       invalidatesTags: ['Appraisal'],
     }),
 
-    saveDraft: builder.mutation<any, { selfAssessmentId: string }>({
-      query: ({ selfAssessmentId }) => ({
+    saveDraft: builder.mutation<any, string>({
+      query: (selfAssessmentId) => ({
         url: `/self-assessments/${selfAssessmentId}/draft`,
         method: 'POST',
+      }),
+      invalidatesTags: ['Appraisal'],
+    }),
+
+    saveManagerDraft: builder.mutation<any, { evaluationId: string; finalComment: string }>({
+      query: ({ evaluationId, finalComment }) => ({
+        url: `/manager-evaluations/${evaluationId}/draft`,
+        method: 'POST',
+        params: { finalComment },
       }),
       invalidatesTags: ['Appraisal'],
     }),
@@ -211,14 +261,18 @@ export const appraisalApi = api.injectEndpoints({
         method: 'POST',
         body: { categoryName },
       }),
+      transformResponse,
+      invalidatesTags: (_result, _error, { formId }) => [{ type: 'Form', id: formId }],
     }),
 
-    addQuestion: builder.mutation<number, { categoryId: number; questionText: string; questionType: string; isRequired: boolean }>({
+    addQuestion: builder.mutation<number, { categoryId: number; questionText: string; questionType: string; secondaryQuestionType?: string | null; isRequired: boolean }>({
       query: ({ categoryId, ...body }) => ({
-        url: `/categories/${categoryId}/questions`,
+        url: `/appraisal-forms/categories/${categoryId}/questions`,
         method: 'POST',
         body: { ...body, categoryId },
       }),
+      transformResponse,
+      invalidatesTags: ['Form'], // Invalidate all forms since we don't have formId here
     }),
 
     assignBulk: builder.mutation<any, { cycleId: number; employeeIds: number[]; departmentIds?: number[]; formId?: number }>({
@@ -229,19 +283,75 @@ export const appraisalApi = api.injectEndpoints({
       }),
       invalidatesTags: ['Appraisal'],
     }),
+
+    getActiveCycle: builder.query<AppraisalCycle, void>({
+      query: () => '/appraisal-cycles/active',
+      transformResponse,
+      providesTags: ['Cycle'],
+    }),
+
+    activateCycle: builder.mutation<AppraisalCycle, number>({
+      query: (id) => ({
+        url: `/appraisal-cycles/${id}/activate`,
+        method: 'PUT',
+      }),
+      transformResponse,
+      invalidatesTags: ['Cycle'],
+    }),
+
+    closeCycle: builder.mutation<AppraisalCycle, number>({
+      query: (id) => ({
+        url: `/appraisal-cycles/${id}/close`,
+        method: 'PUT',
+      }),
+      transformResponse,
+      invalidatesTags: ['Cycle'],
+    }),
+
+    uploadEmployeeSignature: builder.mutation<void, { id: string, file: File }>({
+      query: ({ id, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/appraisals/${id}/employee-signature`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['Appraisal']
+    }),
+
+    uploadManagerSignature: builder.mutation<void, { id: string, file: File }>({
+      query: ({ id, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/appraisals/${id}/manager-signature`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['Appraisal']
+    }),
   }),
 });
 
 export const {
   useGetCyclesQuery,
+  useGetActiveCycleQuery,
   useCreateCycleMutation,
   useUpdateCycleMutation,
+  useActivateCycleMutation,
+  useCloseCycleMutation,
   useGetAppraisalFormQuery,
+  useLazyGetAppraisalFormQuery,
   useGetAppraisalFormsQuery,
   useCreateAppraisalFormMutation,
   useUpdateAppraisalFormMutation,
   useGetCategoriesQuery,
   useGetAppraisalsQuery,
+  useGetTeamEvaluationsQuery,
+  useGetAppraisalsByCycleQuery,
   useCreateAppraisalMutation,
   useGetEmployeeAssessmentQuery,
   useSubmitAppraisalSelfMutation,
@@ -253,9 +363,12 @@ export const {
   useSaveManagerEvaluationAnswersMutation,
   useSubmitManagerEvaluationMutation,
   useSaveDraftMutation,
+  useSaveManagerDraftMutation,
   useLazyGetEmployeeAssessmentQuery,
   useGetDiagnosticHealthQuery,
   useAddCategoryMutation,
   useAddQuestionMutation,
   useAssignBulkMutation,
+  useUploadEmployeeSignatureMutation,
+  useUploadManagerSignatureMutation,
 } = appraisalApi;

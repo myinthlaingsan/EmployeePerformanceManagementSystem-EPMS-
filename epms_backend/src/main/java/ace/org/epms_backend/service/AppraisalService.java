@@ -1,6 +1,7 @@
 package ace.org.epms_backend.service;
 
 import ace.org.epms_backend.dto.appraisal.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -33,6 +34,12 @@ public interface AppraisalService {
     AppraisalResponse managerSignOff(Long id, String comment);
  
     void deleteAppraisal(Long id);
+
+    List<AppraisalResponse> getByCycleId(Long cycleId);
+
+    void uploadEmployeeSignature(Long id, MultipartFile file);
+
+    void uploadManagerSignature(Long id, MultipartFile file);
 }
 
 

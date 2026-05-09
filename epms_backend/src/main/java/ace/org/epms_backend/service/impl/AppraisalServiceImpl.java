@@ -28,6 +28,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -295,7 +296,6 @@ public class AppraisalServiceImpl implements AppraisalService {
 
                 appraisal.setStatus(AppraisalStatus.FINALIZED);
                 appraisal.setFinalizedAt(Instant.now());
-
                 Appraisal saved = appraisalRepo.save(appraisal);
 
                 // Notify Finalized/Locked
@@ -325,9 +325,10 @@ public class AppraisalServiceImpl implements AppraisalService {
         public AppraisalResponse employeeSignOff(Long id, String comment) {
                 Appraisal appraisal = appraisalRepo.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
-
-                appraisal.setEmployeeSignedAt(Instant.now());
-                appraisal.setEmployeeSignComment(comment);
+        appraisal.setManagerSignedAt(Instant.now());
+        if (comment != null) {
+            appraisal.setManagerSignComment(comment.getBytes());
+        }
 
                 Appraisal saved = appraisalRepo.save(appraisal);
 
@@ -358,7 +359,9 @@ public class AppraisalServiceImpl implements AppraisalService {
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
                 appraisal.setManagerSignedAt(Instant.now());
-                appraisal.setManagerSignComment(comment);
+            if (comment != null) {
+                appraisal.setManagerSignComment(comment.getBytes());
+            }
 
                 Appraisal saved = appraisalRepo.save(appraisal);
 
@@ -407,4 +410,37 @@ public class AppraisalServiceImpl implements AppraisalService {
                                 .status(AuditStatus.SUCCESS)
                                 .build());
         }
+
+    @Override
+    public List<AppraisalResponse> getByCycleId(Long cycleId) {
+        return appraisalMapper.toResponseList(appraisalRepo.findByCycle_CycleId(cycleId));
+    }
+
+    @Override
+    @Transactional
+    public void uploadEmployeeSignature(Long id, MultipartFile file) {
+        Appraisal appraisal = appraisalRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+        try {
+            appraisal.setEmployeeSignComment(file.getBytes());
+            appraisal.setEmployeeSignedAt(Instant.now());
+            appraisalRepo.save(appraisal);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Upload failed", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void uploadManagerSignature(Long id, MultipartFile file) {
+        Appraisal appraisal = appraisalRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+        try {
+            appraisal.setManagerSignComment(file.getBytes());
+            appraisal.setManagerSignedAt(Instant.now());
+            appraisalRepo.save(appraisal);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Upload failed", e);
+        }
+    }
 }

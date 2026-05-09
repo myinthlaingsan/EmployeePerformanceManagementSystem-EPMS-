@@ -6,6 +6,7 @@ import lombok.Data;
 public class QuestionRequest {
     private String questionText;
     private String questionType;
+    private String secondaryQuestionType;
     private Boolean isRequired;
     private Long categoryId;
 }
