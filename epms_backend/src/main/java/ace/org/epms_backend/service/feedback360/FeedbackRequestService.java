@@ -22,7 +22,9 @@ public interface FeedbackRequestService {
 
     List<FeedbackRequestResponse> getRequestsByCycle(Long cycleId);
 
+    */
     FeedbackRequestResponse getRequest(Long requestId);
+    /*
 
     void updateRequestStatus(Long requestId, FeedbackStatus status);
 

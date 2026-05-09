@@ -13,6 +13,7 @@ public interface FeedbackMapper {
     @Mapping(target = "evaluatorId", source = "evaluator.id")
     @Mapping(target = "evaluatorName", source = "evaluator.staffName")
     @Mapping(target = "cycleId", source = "cycle.cycleId")
+    @Mapping(target = "formTemplateId", source = "form.formId")
     FeedbackRequestResponse toRequestResponse(FeedbackRequest request);
 
     @Mapping(target = "requestId", source = "request.id")

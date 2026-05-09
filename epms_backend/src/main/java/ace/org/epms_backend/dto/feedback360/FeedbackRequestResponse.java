@@ -25,4 +25,5 @@ public class FeedbackRequestResponse {
     private Boolean isAnonymous;
 
     private Boolean isReciprocalFallback;
+    private Long formTemplateId;
 }

@@ -89,6 +89,11 @@ public class Feedback360Controller {
         return ResponseEntity.ok(ApiResponse.success(summary));
     }
 
+    @GetMapping("/requests/{requestId}")
+    public ResponseEntity<ApiResponse<FeedbackRequestResponse>> getRequest(@PathVariable Long requestId) {
+        return ResponseEntity.ok(ApiResponse.success(feedbackRequestService.getRequest(requestId)));
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Evaluator Rotation Rule Endpoints  (L01-L03 → L04 Top Management Logic)
     // ─────────────────────────────────────────────────────────────────────────

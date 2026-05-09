@@ -10,9 +10,9 @@ import lombok.*;
 public class DepartmentFeedbackConfigDTO {
 //    private Long id;
     private Long departmentId;
-//    private String departmentName;
+    private String departmentName;
     private Long levelId;
-//    private String levelName;
+    private String levelName;
     private Integer minPeers;
     private Integer maxPeers;
     private Integer minSubordinates;

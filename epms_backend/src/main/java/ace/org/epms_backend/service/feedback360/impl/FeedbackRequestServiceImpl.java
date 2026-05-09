@@ -333,6 +333,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         int targetRank = getLevelRank(target);
         return employeeRepository.findAll().stream()
                 .filter(e -> !e.getId().equals(target.getId()) && getLevelRank(e) == targetRank)
+                .filter(e -> e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE)
                 .collect(Collectors.toList());
     }
 
@@ -432,6 +433,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                             .stream()
                             .map(ace.org.epms_backend.model.employee.EmployeeDepartment::getEmployee)
                             .filter(e -> e != null && !e.getId().equals(employee.getId()) && getLevelRank(e) == targetRank)
+                            .filter(e -> e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE)
                             .collect(Collectors.toList());
                 }).orElse(Collections.emptyList());
     }
@@ -446,6 +448,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                             .stream()
                             .map(ace.org.epms_backend.model.employee.EmployeeDepartment::getEmployee)
                             .filter(e -> e != null && getLevelRank(e) == (targetRank + 1))
+                            .filter(e -> e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE)
                             .collect(Collectors.toList());
                 }).orElse(Collections.emptyList());
     }
@@ -458,6 +461,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     teamPeers.addAll(teamRepository.findByTeamTeamId(et.getTeam().getTeamId()).stream()
                             .map(ace.org.epms_backend.model.employee.EmployeeTeam::getEmployee)
                             .filter(e -> e != null && !e.getId().equals(target.getId()) && getLevelRank(e) == targetRank)
+                            .filter(e -> e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE)
                             .collect(Collectors.toList()));
                 });
         return teamPeers;
@@ -470,6 +474,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     teamMembers.addAll(teamRepository.findByTeamTeamId(et.getTeam().getTeamId()).stream()
                             .map(ace.org.epms_backend.model.employee.EmployeeTeam::getEmployee)
                             .filter(e -> e != null && getLevelRank(e) == (getLevelRank(target) + 1))
+                            .filter(e -> e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE)
                             .collect(Collectors.toList()));
                 });
         return teamMembers;
@@ -606,12 +611,14 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                 .collect(Collectors.toList());
     }
 
+    */
     @Override
     public FeedbackRequestResponse getRequest(Long requestId) {
         return requestRepository.findById(requestId)
                 .map(feedbackMapper::toRequestResponse)
                 .orElseThrow(() -> new NotFoundException("Request not found"));
     }
+    /*
 
     @Override
     @Transactional

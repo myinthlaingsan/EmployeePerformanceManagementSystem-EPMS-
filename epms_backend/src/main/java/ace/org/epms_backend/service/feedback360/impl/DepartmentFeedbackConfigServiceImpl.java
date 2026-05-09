@@ -70,7 +70,9 @@ public class DepartmentFeedbackConfigServiceImpl implements DepartmentFeedbackCo
     private DepartmentFeedbackConfigDTO mapToDTO(DepartmentFeedbackConfig entity) {
         return DepartmentFeedbackConfigDTO.builder()
                 .departmentId(entity.getDepartment().getId())
+                .departmentName(entity.getDepartment().getDepartmentName())
                 .levelId(entity.getJobLevel().getLevelId())
+                .levelName(entity.getJobLevel().getLevelName())
                 .minPeers(entity.getMinPeers())
                 .maxPeers(entity.getMaxPeers())
                 .minSubordinates(entity.getMinSubordinates())
