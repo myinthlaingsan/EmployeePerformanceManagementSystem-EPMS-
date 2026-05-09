@@ -5,6 +5,7 @@ import ace.org.epms_backend.model.appraisal.Appraisal;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Mapper(componentModel = "spring")
@@ -23,4 +24,8 @@ public interface AppraisalMapper {
     AppraisalResponse toResponse(Appraisal appraisal);
 
     List<AppraisalResponse> toResponseList(List<Appraisal> appraisals);
+
+    default String map(byte[] value) {
+        return value != null ? new String(value, StandardCharsets.UTF_8) : null;
+    }
 }

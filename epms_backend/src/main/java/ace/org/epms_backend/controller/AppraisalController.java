@@ -1,22 +1,22 @@
 package ace.org.epms_backend.controller;
 
 import ace.org.epms_backend.dto.ApiResponse;
-import ace.org.epms_backend.dto.appraisal.AppraisalAssignRequest;
-import ace.org.epms_backend.dto.appraisal.AppraisalBulkAssignRequest;
-import ace.org.epms_backend.dto.appraisal.AppraisalResponse;
-import ace.org.epms_backend.dto.appraisal.ScoreBreakdownResponse;
+import ace.org.epms_backend.dto.appraisal.*;
 import ace.org.epms_backend.model.appraisal.Appraisal;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.repository.AppraisalRepository;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.service.AppraisalService;
+import ace.org.epms_backend.service.appraisal.AppraisalIntegrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +31,7 @@ public class AppraisalController {
     private final AppraisalService appraisalService;
     private final EmployeeRepository employeeRepo;
     private final AppraisalRepository appraisalRepo;
+    private final AppraisalIntegrationService appraisalIntegrationService;
 
     @GetMapping("/diagnostics/health")
     public ResponseEntity<ApiResponse<Map<String, Object>>> checkHealth() {
@@ -160,6 +161,44 @@ public class AppraisalController {
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<List<AppraisalResponse>>> getByCycleId(@PathVariable Long cycleId) {
         return ResponseEntity.ok(ApiResponse.success(appraisalService.getByCycleId(cycleId)));
+    }
+
+    @PostMapping(value = "/{id}/employee-signature", consumes = "multipart/form-data")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> uploadEmployeeSignature(
+            @PathVariable("id") Long id,
+            @RequestParam("file") MultipartFile file
+    ) {
+        appraisalService.uploadEmployeeSignature(id, file);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping(value = "/{id}/manager-signature", consumes = "multipart/form-data")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> uploadManagerSignature(
+            @PathVariable("id") Long id,
+            @RequestParam("file") MultipartFile file
+    ) {
+        appraisalService.uploadManagerSignature(id, file);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    // Merged from AppraisalIntegrationController to resolve conflict
+    @PostMapping("/sync-feedback")
+    public ResponseEntity<Void> syncFeedback(@RequestBody AppraisalSyncRequest request) {
+        appraisalIntegrationService.syncFeedbackToAppraisal(request.getCycleId());
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/employee/{employeeId}/cycle/{cycleId}")
+    public ResponseEntity<Appraisal> getAppraisalIntegration(@PathVariable Long employeeId, @PathVariable Long cycleId) {
+        return ResponseEntity.ok(appraisalIntegrationService.getAppraisal(employeeId, cycleId));
+    }
+
+    @PutMapping("/{appraisalId}/score")
+    public ResponseEntity<Void> updateScore(@PathVariable Long appraisalId, @RequestParam BigDecimal score) {
+        appraisalIntegrationService.updateFormScore(appraisalId, score);
+        return ResponseEntity.ok().build();
     }
 }
 
