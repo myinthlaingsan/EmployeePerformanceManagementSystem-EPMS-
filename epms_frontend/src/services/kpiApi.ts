@@ -95,7 +95,7 @@ export const kpiApi = api.injectEndpoints({
       }),
       invalidatesTags: ['GoalSet'],
     }),
-    bulkAssignKpi: builder.mutation<ApiResponse<void>, BulkGoalAssignmentRequest>({
+    bulkAssignKpi: builder.mutation<ApiResponse<BulkAssignmentResponse>, BulkGoalAssignmentRequest>({
       query: (body) => ({
         url: '/kpi/bulk-assign',
         method: 'POST',

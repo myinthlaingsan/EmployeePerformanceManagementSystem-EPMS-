@@ -151,7 +151,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
     @Override
     @Transactional
-    public void bulkAssignKpi(BulkGoalAssignmentRequest request) {
+    public BulkAssignmentResponse bulkAssignKpi(BulkGoalAssignmentRequest request) {
         KpiLibrary library = libraryRepository.findById(request.getLibraryId())
                 .orElseThrow(() -> new NotFoundException("Library not found"));
 
@@ -166,63 +166,103 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         Employee currentManager = getCurrentEmployee();
 
-        for (Long employeeId : request.getEmployeeIds()) {
-            Employee employee = employeeRepository.findById(employeeId)
-                    .orElseThrow(() -> new NotFoundException(
-                            "Employee not found with ID: " + employeeId));
+        BulkAssignmentResponse response = new BulkAssignmentResponse();
+        response.setResults(new java.util.ArrayList<>());
+        response.setTotalProcessed(request.getEmployeeIds().size());
 
-            // Atomic archive or skip
-            if (request.isOverwriteExisting()) {
-                goalsRepository.archiveExistingGoalSets(employeeId, cycle.getCycleId());
-            } else {
-                List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
-                        employeeId, cycle.getCycleId());
-                if (!existing.isEmpty()) {
-                    continue; // Skip
-                }
+        for (Long employeeId : request.getEmployeeIds()) {
+            Employee employee = employeeRepository.findById(employeeId).orElse(null);
+            
+            if (employee == null) {
+                response.setFailedCount(response.getFailedCount() + 1);
+                response.getResults().add(AssignmentResult.builder()
+                        .employeeId(employeeId)
+                        .employeeName("Unknown")
+                        .status("FAILED")
+                        .reason("Employee not found")
+                        .build());
+                continue;
             }
 
-            // Create Draft Goal Set
-            KpiGoals goalSet = KpiGoals.builder()
-                    .employee(employee)
-                    .manager(currentManager)
-                    .cycle(cycle)
-                    .status(KpiGoalStatus.DRAFT)
-                    .version(1)
-                    .isCurrent(true)
-                    .build();
+            try {
+                // Atomic archive or skip
+                if (request.isOverwriteExisting()) {
+                    goalsRepository.archiveExistingGoalSets(employeeId, cycle.getCycleId());
+                } else {
+                    List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
+                            employeeId, cycle.getCycleId());
+                    if (!existing.isEmpty()) {
+                        response.setSkippedCount(response.getSkippedCount() + 1);
+                        response.getResults().add(AssignmentResult.builder()
+                                .employeeId(employeeId)
+                                .employeeName(employee.getStaffName())
+                                .status("SKIPPED")
+                                .reason("Employee already has goals assigned for this cycle")
+                                .build());
+                        continue; // Skip
+                    }
+                }
 
-            KpiGoals savedGoalSet = goalsRepository.save(goalSet);
-
-            // Copy library details
-            List<KpiGoalItem> goalItems = library.getDetails().stream().map(libDetail -> {
-                return KpiGoalItem.builder()
-                        .goalSet(savedGoalSet)
-                        .title(libDetail.getGoalTitle())
-                        .targetValue(libDetail.getTargetValue())
-                        .unit(libDetail.getUnit())
-                        .weightPercent(libDetail.getWeightPercent())
-                        .category(libDetail.getCategory())
-                        .status(KpiItemStatus.NOT_STARTED)
-                        .isActive(true)
+                // Create Draft Goal Set
+                KpiGoals goalSet = KpiGoals.builder()
+                        .employee(employee)
+                        .manager(currentManager)
+                        .cycle(cycle)
+                        .status(KpiGoalStatus.DRAFT)
+                        .version(1)
+                        .isCurrent(true)
                         .build();
-            }).collect(Collectors.toList());
 
-            goalItemRepository.saveAll(goalItems);
+                KpiGoals savedGoalSet = goalsRepository.save(goalSet);
 
-            // Trigger Notification
-            eventPublisher.publishEvent(NotificationEvent.builder()
-                    .recipientId(employee.getId())
-                    .senderId(currentManager.getId())
-                    .type(NotificationType.KPI_ASSIGNED)
-                    .title("New KPI Assigned (Bulk)")
-                    .message("A new KPI set has been bulk-assigned to you from library: "
-                            + library.getTitle())
-                    .referenceType(ReferenceType.KPI)
-                    .referenceId(savedGoalSet.getId())
-                    .actionUrl("/kpis/my-goals")
-                    .build());
+                // Copy library details
+                List<KpiGoalItem> goalItems = library.getDetails().stream().map(libDetail -> {
+                    return KpiGoalItem.builder()
+                            .goalSet(savedGoalSet)
+                            .title(libDetail.getGoalTitle())
+                            .targetValue(libDetail.getTargetValue())
+                            .unit(libDetail.getUnit())
+                            .weightPercent(libDetail.getWeightPercent())
+                            .category(libDetail.getCategory())
+                            .status(KpiItemStatus.NOT_STARTED)
+                            .isActive(true)
+                            .build();
+                }).collect(Collectors.toList());
+
+                goalItemRepository.saveAll(goalItems);
+
+                // Trigger Notification
+                eventPublisher.publishEvent(NotificationEvent.builder()
+                        .recipientId(employee.getId())
+                        .senderId(currentManager.getId())
+                        .type(NotificationType.KPI_ASSIGNED)
+                        .title("New KPI Assigned (Bulk)")
+                        .message("A new KPI set has been bulk-assigned to you from library: "
+                                + library.getTitle())
+                        .referenceType(ReferenceType.KPI)
+                        .referenceId(savedGoalSet.getId())
+                        .actionUrl("/kpis/my-goals")
+                        .build());
+
+                response.setSuccessfulCount(response.getSuccessfulCount() + 1);
+                response.getResults().add(AssignmentResult.builder()
+                        .employeeId(employeeId)
+                        .employeeName(employee.getStaffName())
+                        .status("SUCCESS")
+                        .reason("Goals assigned successfully")
+                        .build());
+            } catch (Exception e) {
+                response.setFailedCount(response.getFailedCount() + 1);
+                response.getResults().add(AssignmentResult.builder()
+                        .employeeId(employeeId)
+                        .employeeName(employee.getStaffName())
+                        .status("FAILED")
+                        .reason(e.getMessage() != null ? e.getMessage() : "Unknown error occurred")
+                        .build());
+            }
         }
+        
+        return response;
     }
 
     @Override

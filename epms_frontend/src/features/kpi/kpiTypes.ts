@@ -67,6 +67,21 @@ export interface BulkGoalAssignmentRequest {
   overwriteExisting?: boolean;
 }
 
+export interface AssignmentResult {
+  employeeId: number;
+  employeeName: string;
+  status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
+  reason: string;
+}
+
+export interface BulkAssignmentResponse {
+  totalProcessed: number;
+  successfulCount: number;
+  failedCount: number;
+  skippedCount: number;
+  results: AssignmentResult[];
+}
+
 // ==================== Goal Items ====================
 export interface KpiGoalItemRequest {
   title: string;

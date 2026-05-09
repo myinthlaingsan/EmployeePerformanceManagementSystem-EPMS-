@@ -8,7 +8,7 @@ public interface KpiGoalService {
     AppraisalCycleResponse getActiveCycle();
     
     GoalSetResponse assignKpiToEmployee(GoalAssignmentRequest request);
-    void bulkAssignKpi(BulkGoalAssignmentRequest request);
+    BulkAssignmentResponse bulkAssignKpi(BulkGoalAssignmentRequest request);
     
     GoalSetResponse addGoalItem(Long goalSetId, KpiGoalItemRequest request);
     GoalSetResponse updateGoalItem(Long itemId, KpiGoalItemRequest request);

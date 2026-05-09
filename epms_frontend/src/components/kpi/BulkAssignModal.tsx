@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Search, LayoutTemplate, CheckCircle2, Loader2 } from 'lucide-react';
+import { X, Search, LayoutTemplate, CheckCircle2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useGetAllLibrariesQuery, useBulkAssignKpiMutation } from '../../services/kpiApi';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
+import type { BulkAssignmentResponse } from '../../features/kpi/kpiTypes';
 
 interface BulkAssignModalProps {
   selectedEmployeeIds: number[];
@@ -17,6 +18,7 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLibraryId, setSelectedLibraryId] = useState<number | null>(null);
   const [overwriteExisting, setOverwriteExisting] = useState(false);
+  const [assignmentResult, setAssignmentResult] = useState<BulkAssignmentResponse | null>(null);
 
   const libraries = librariesResponse?.data || [];
   const filteredLibraries = libraries.filter(lib => 
@@ -28,15 +30,14 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
     if (!selectedLibraryId || !activeCycleId) return;
     
     try {
-      await bulkAssign({
+      const response = await bulkAssign({
         employeeIds: selectedEmployeeIds,
         libraryId: selectedLibraryId,
         appraisalCycleId: activeCycleId,
         overwriteExisting: overwriteExisting
       }).unwrap();
       
-      alert(`Successfully assigned template to ${selectedEmployeeIds.length} employees!`);
-      onSuccess();
+      setAssignmentResult(response.data);
     } catch (err: any) {
       console.error('Bulk assignment failed:', err);
       alert(`Failed to assign: ${err?.data?.message || 'Network error'}`);
@@ -51,18 +52,69 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
         {/* Header */}
         <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Bulk Goal Assignment</h2>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">
+              {assignmentResult ? 'Assignment Report' : 'Bulk Goal Assignment'}
+            </h2>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
-              Assigning to {selectedEmployeeIds.length} selected employees
+              {assignmentResult 
+                ? `Processed ${assignmentResult.totalProcessed} employees`
+                : `Assigning to ${selectedEmployeeIds.length} selected employees`}
             </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+          <button onClick={assignmentResult ? onSuccess : onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-8 space-y-6">
+        {assignmentResult ? (
+          <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Success</p>
+                <p className="text-2xl font-black text-green-700">{assignmentResult.successfulCount}</p>
+              </div>
+              <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-1"><RefreshCw className="w-3 h-3"/> Skipped</p>
+                <p className="text-2xl font-black text-amber-700">{assignmentResult.skippedCount}</p>
+              </div>
+              <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Failed</p>
+                <p className="text-2xl font-black text-red-700">{assignmentResult.failedCount}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">Details</h3>
+              <div className="space-y-2">
+                {assignmentResult.results.map((res, idx) => (
+                  <div key={idx} className={`p-3 rounded-lg border text-sm flex justify-between items-center ${
+                    res.status === 'SUCCESS' ? 'bg-green-50/50 border-green-100 text-green-900' :
+                    res.status === 'SKIPPED' ? 'bg-amber-50/50 border-amber-100 text-amber-900' :
+                    'bg-red-50/50 border-red-100 text-red-900'
+                  }`}>
+                    <div>
+                      <span className="font-bold">{res.employeeName}</span> 
+                      <span className="text-xs opacity-70 ml-2">({res.status})</span>
+                    </div>
+                    <span className="text-xs font-medium">{res.reason}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex justify-end pt-4">
+              <button 
+                onClick={onSuccess}
+                className="px-8 py-3 bg-gray-900 text-white text-xs font-black rounded-xl hover:bg-black transition-all shadow-xl uppercase tracking-widest"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="p-8 space-y-6">
           <div className="space-y-4">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select KPI Template</label>
             <div className="relative">
@@ -141,6 +193,8 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
             Confirm Assignment
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

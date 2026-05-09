@@ -57,9 +57,8 @@ public class KpiController {
 
     @PostMapping("/bulk-assign")
     @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> bulkAssignKpi(@Valid @RequestBody BulkGoalAssignmentRequest request) {
-        goalService.bulkAssignKpi(request);
-        return ResponseEntity.ok(ApiResponse.success(null));
+    public ResponseEntity<ApiResponse<BulkAssignmentResponse>> bulkAssignKpi(@Valid @RequestBody BulkGoalAssignmentRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(goalService.bulkAssignKpi(request)));
     }
 
     // 3. Goal Item Management (Manager/HR/Admin - Pre-Approval)
