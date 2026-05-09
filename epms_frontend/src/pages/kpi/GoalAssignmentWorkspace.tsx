@@ -238,7 +238,14 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <div className="p-8 max-w-[1600px] mx-auto space-y-8">
+      <div className="p-8 max-w-[1600px] mx-auto space-y-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="text-xs font-bold text-gray-400 hover:text-blue-600 flex items-center gap-1 uppercase tracking-wider transition-colors"
+        >
+          ← Back
+        </button>
+
         {/* Header Section */}
         <div className="bg-white rounded-2xl px-8 py-6 border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-6">
