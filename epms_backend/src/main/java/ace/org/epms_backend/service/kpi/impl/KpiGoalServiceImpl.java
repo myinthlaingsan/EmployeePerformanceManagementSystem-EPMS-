@@ -11,6 +11,8 @@ import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.kpi.*;
 import ace.org.epms_backend.repository.*;
+import ace.org.epms_backend.repository.employee.ReportingLineRepository;
+import ace.org.epms_backend.model.employee.ReportingLine;
 import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.kpi.KpiGoalService;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     private final KpiMapper kpiMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
+    private final ReportingLineRepository reportingLineRepo;
 
     @Override
     @Transactional(readOnly = true)
@@ -389,9 +392,21 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     .anyMatch(a -> a.getAuthority().equals("ROLE_HR")
                             || a.getAuthority().equals("ROLE_ADMIN"));
 
-            if (!isHrOrAdmin && (goalSet.getManager() == null
-                    || !goalSet.getManager().getId().equals(getCurrentEmployee().getId()))) {
-                throw new SecurityException("Only the assigned manager or HR/Admin can approve this goal set");
+            if (!isHrOrAdmin) {
+                Long currentUserId = getCurrentEmployee().getId();
+                boolean isCreatorManager = goalSet.getManager() != null && goalSet.getManager().getId().equals(currentUserId);
+                
+                boolean isDirectManager = false;
+                if (!isCreatorManager && goalSet.getEmployee() != null) {
+                    ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(goalSet.getEmployee()).orElse(null);
+                    if (rl != null && rl.getManager() != null && rl.getManager().getId().equals(currentUserId)) {
+                        isDirectManager = true;
+                    }
+                }
+
+                if (!isCreatorManager && !isDirectManager) {
+                    throw new SecurityException("Only the assigned manager or HR/Admin can approve this goal set");
+                }
             }
 
             if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
