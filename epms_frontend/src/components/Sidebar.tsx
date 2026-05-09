@@ -51,6 +51,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { label: "Teams", to: "/teams", icon: Users },
   { label: "Permissions", to: "/permissions", icon: ShieldCheck, end: true },
   { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck },
+  { label: "Assign Permissions", to: "/permissions/assign", icon: Zap },
 ];
 
 const Sidebar = () => {

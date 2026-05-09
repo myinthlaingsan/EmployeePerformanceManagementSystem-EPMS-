@@ -4,8 +4,7 @@ import { useGetJobLevelsQuery } from "../../../features/org/jobLevelApi";
 import { 
   useGetPermissionsQuery, 
   useGetAssignedPermissionsQuery, 
-  useAssignPermissionMutation, 
-  useRemoveAssignedPermissionMutation 
+  useUpdatePermissionMatrixMutation
 } from "../../../features/org/permissionApi";
 
 const RoleLevelPermissionManager = () => {
@@ -22,34 +21,61 @@ const RoleLevelPermissionManager = () => {
     { skip: selectedRoleId === 0 || selectedLevelId === 0 }
   );
 
-  const [assignPermission] = useAssignPermissionMutation();
-  const [removeAssignment] = useRemoveAssignedPermissionMutation();
+  const [updateMatrix] = useUpdatePermissionMatrixMutation();
+  
+  // Define logical grouping (matching the Matrix view)
+  const getRelevantLevelsForRole = (roleName: string | undefined) => {
+    if (!roleName || !levels) return [];
+    switch (roleName.toUpperCase()) {
+      case 'ADMIN':
+        return levels.filter(l => [1, 2, 3].includes(l.levelRank));
+      case 'HR':
+        return levels.filter(l => [4, 7].includes(l.levelRank));
+      case 'MANAGER':
+        return levels.filter(l => [4, 5, 6].includes(l.levelRank));
+      case 'EMPLOYEE':
+        return levels.filter(l => [7, 8, 9].includes(l.levelRank));
+      default:
+        return levels;
+    }
+  };
+
+  const selectedRoleName = roles?.find(r => r.roleId === selectedRoleId)?.roleName;
+  const filteredLevels = getRelevantLevelsForRole(selectedRoleName);
+
+  const handleRoleChange = (roleId: number) => {
+    setSelectedRoleId(roleId);
+    setSelectedLevelId(0); // Reset level when role changes
+  };
 
   const handleTogglePermission = async (permissionId: number) => {
     if (selectedRoleId === 0 || selectedLevelId === 0) return;
 
-    const existingAssignment = assignments?.find(a => a.permissionId === permissionId);
+    const currentPermissionIds = assignments?.map(a => a.permissionId) || [];
+    let newPermissionIds: number[];
+
+    if (currentPermissionIds.includes(permissionId)) {
+      newPermissionIds = currentPermissionIds.filter(id => id !== permissionId);
+    } else {
+      newPermissionIds = [...currentPermissionIds, permissionId];
+    }
 
     try {
-      if (existingAssignment) {
-        await removeAssignment(existingAssignment.id).unwrap();
-      } else {
-        await assignPermission({
-          roleId: selectedRoleId,
-          levelId: selectedLevelId,
-          permissionId
-        }).unwrap();
-      }
+      await updateMatrix({
+        roleId: selectedRoleId,
+        levelId: selectedLevelId,
+        permissionIds: newPermissionIds
+      }).unwrap();
     } catch (err) {
-      console.error("Failed to toggle permission", err);
+      console.error("Failed to update permissions", err);
     }
   };
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Role-Level Access Matrix</h1>
-        <p className="text-gray-500 mt-2 text-lg">Define exactly what each role can do at specific job seniority levels.</p>
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Assign Permissions</h1>
+        <p className="text-gray-500 mt-2 text-lg">Select a role and its valid seniority levels to manage access.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
@@ -58,7 +84,7 @@ const RoleLevelPermissionManager = () => {
           <select 
             className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition font-bold text-gray-700"
             value={selectedRoleId}
-            onChange={(e) => setSelectedRoleId(Number(e.target.value))}
+            onChange={(e) => handleRoleChange(Number(e.target.value))}
           >
             <option value={0}>Choose a Role...</option>
             {roles?.map(role => <option key={role.roleId} value={role.roleId}>{role.roleName}</option>)}
@@ -66,14 +92,21 @@ const RoleLevelPermissionManager = () => {
         </div>
 
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">2. Select Job Level</label>
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">2. Select Valid Job Level</label>
           <select 
-            className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition font-bold text-gray-700"
+            className={`w-full px-5 py-4 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition font-bold ${
+              selectedRoleId === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-50 text-gray-700'
+            }`}
             value={selectedLevelId}
+            disabled={selectedRoleId === 0}
             onChange={(e) => setSelectedLevelId(Number(e.target.value))}
           >
-            <option value={0}>Choose a Seniority Level...</option>
-            {levels?.map(level => <option key={level.levelId} value={level.levelId}>{level.levelName} ({level.levelCode})</option>)}
+            <option value={0}>{selectedRoleId === 0 ? "Select a Role first" : "Choose a Level..."}</option>
+            {filteredLevels.map(level => (
+              <option key={level.levelId} value={level.levelId}>
+                {level.levelName} ({level.levelCode})
+              </option>
+            ))}
           </select>
         </div>
       </div>

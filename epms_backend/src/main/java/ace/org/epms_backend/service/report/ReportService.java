@@ -35,4 +35,12 @@ public interface ReportService {
     // Promotion Readiness
     List<PromotionReadinessReportDTO> getPromotionReadinessReport();
     byte[] exportPromotionReadinessReport(String format);
+
+    // Employee Performance Summary
+    EmployeePerformanceSummaryDTO getEmployeePerformanceSummary(Long employeeId, Long cycleId);
+    byte[] exportEmployeePerformanceSummary(Long employeeId, Long cycleId, String format);
+
+    // High/Low Performers
+    List<PerformanceRankingReportDTO> getPerformanceRankingReport(Long cycleId);
+    byte[] exportPerformanceRankingReport(Long cycleId, String format);
 }

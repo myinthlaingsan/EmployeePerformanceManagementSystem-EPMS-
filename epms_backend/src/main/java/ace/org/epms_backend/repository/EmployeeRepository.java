@@ -15,19 +15,20 @@ import java.util.Optional;
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     boolean existsByEmail(String email);
 
-    @Query("SELECT e FROM Employee e JOIN FETCH e.position p JOIN FETCH p.level WHERE e.email = :email")
+    @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.position p LEFT JOIN FETCH p.level LEFT JOIN FETCH e.level WHERE LOWER(TRIM(e.email)) = LOWER(:email)")
     Optional<Employee> findByEmail(String email);
 
-    @Query("SELECT e FROM Employee e JOIN FETCH e.position p JOIN FETCH p.level")
+    @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.position p LEFT JOIN FETCH p.level LEFT JOIN FETCH e.level")
     List<Employee> findAll();
 
-    @Query(value = "SELECT e FROM Employee e JOIN FETCH e.position p JOIN FETCH p.level",
+    @Query(value = "SELECT e FROM Employee e LEFT JOIN FETCH e.position p LEFT JOIN FETCH p.level LEFT JOIN FETCH e.level",
            countQuery = "SELECT COUNT(e) FROM Employee e")
     Page<Employee> findAllPaginated(Pageable pageable);
 
     @Query(value = "SELECT e FROM Employee e " +
-           "JOIN FETCH e.position p " +
-           "JOIN FETCH p.level " +
+           "LEFT JOIN FETCH e.position p " +
+           "LEFT JOIN FETCH p.level " +
+           "LEFT JOIN FETCH e.level " +
            "WHERE (:query IS NULL OR LOWER(e.staffName) LIKE LOWER(CONCAT('%', :query, '%')) " +
            "OR LOWER(e.employeeCode) LIKE LOWER(CONCAT('%', :query, '%')) " +
            "OR LOWER(e.email) LIKE LOWER(CONCAT('%', :query, '%')))",
@@ -37,7 +38,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
                         "OR LOWER(e.email) LIKE LOWER(CONCAT('%', :query, '%')))")
     Page<Employee> searchEmployees(@Param("query") String query, Pageable pageable);
 
-    @Query("SELECT e FROM Employee e JOIN FETCH e.position p JOIN FETCH p.level WHERE e.id = :id")
+    @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.position p LEFT JOIN FETCH p.level LEFT JOIN FETCH e.level WHERE e.id = :id")
     Optional<Employee> findById(Long id);
 
     boolean existsByLevel(ace.org.epms_backend.model.employee.JobLevel level);
