@@ -14,7 +14,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
-import { useGetActiveCycleQuery, useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
+import { useActiveCycle } from '../../context/ActiveCycleContext';
+import { useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -44,9 +45,7 @@ const GoalManagement: React.FC = () => {
   const itemsPerPage = 10;
 
   // KPI Status Fetching - Adaptive based on role
-  const { data: activeCycleResponse } = useGetActiveCycleQuery();
-  const activeCycleId = activeCycleResponse?.data?.cycleId;
-
+  const { activeCycleId, activeCycleName } = useActiveCycle();
   const effectiveCycleId = selectedCycle === 'All' ? activeCycleId : Number(selectedCycle);
 
   // Fetch statuses based on permission level
