@@ -19,7 +19,8 @@ import {
   Zap,
   Target,
   History,
-  Calendar
+  Calendar,
+  Layers
 } from "lucide-react";
 
 interface NavItem {
@@ -39,7 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare },
   { label: "1-on-1 Meetings", to: "/meetings", icon: Users },
   { label: "PIP", to: "/pip", icon: TrendingUp },
-  { label: "Analytics", to: "/hr", icon: BarChart3, adminOnly: true },
+  { label: "Analytics", to: "/analytics", icon: BarChart3, adminOnly: true },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
@@ -53,6 +54,8 @@ const ADMIN_ITEMS: NavItem[] = [
   { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck },
   { label: "Assign Permissions", to: "/permissions/assign", icon: Zap },
   { label: "Financial Years", to: "/financial-years", icon: Calendar },
+  { label: "Performance Categories", to: "/performance-categories", icon: Layers },
+  { label: "Strategic Analytics", to: "/analytics", icon: TrendingUp },
 ];
 
 const Sidebar = () => {

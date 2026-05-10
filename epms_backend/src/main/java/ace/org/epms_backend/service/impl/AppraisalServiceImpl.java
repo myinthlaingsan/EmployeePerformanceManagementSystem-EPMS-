@@ -96,7 +96,7 @@ public class AppraisalServiceImpl implements AppraisalService {
                 Employee manager = null;
                 if (formType == FormType.SELF_ASSESSMENT) {
                         // Employee fills the form → their manager must exist via ReportingLine
-                        manager = reportingLineRepo.findByEmployee_IdAndIsActiveTrue(employeeId)
+                        manager = reportingLineRepo.findFirstByEmployee_IdAndIsActiveTrue(employeeId)
                                         .map(ReportingLine::getManager)
                                         .orElseThrow(() -> new RuntimeException(
                                                         "No active manager found for employee: "
@@ -106,7 +106,7 @@ public class AppraisalServiceImpl implements AppraisalService {
                         manager = null;
                 } else if (formType == FormType.FEEDBACK) {
                         // Feedback forms: manager is optional, look up if available
-                        manager = reportingLineRepo.findByEmployee_IdAndIsActiveTrue(employeeId)
+                        manager = reportingLineRepo.findFirstByEmployee_IdAndIsActiveTrue(employeeId)
                                         .map(ReportingLine::getManager)
                                         .orElse(null);
                 }
