@@ -36,6 +36,7 @@ export const api = createApi({
     "Score",
     "Category",
     "FinancialYear",
+    "PerformanceCategory",
   ],
   endpoints: () => ({}),
   // This adds more context to traces

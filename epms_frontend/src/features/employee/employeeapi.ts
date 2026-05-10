@@ -21,8 +21,14 @@ export const employeeApi = api.injectEndpoints({
       providesTags: ["Employee"],
     }),
 
-    searchEmployees: builder.query<PagedResponse<EmployeeResponse>, { query: string; page: number; size: number }>({
-      query: ({ query, page, size }) => `/emp/search?query=${query}&page=${page}&size=${size}`,
+    searchEmployees: builder.query<PagedResponse<EmployeeResponse>, { query?: string; departmentId?: string; teamId?: string; page: number; size: number }>({
+      query: ({ query, departmentId, teamId, page, size }) => {
+        let url = `/emp/search?page=${page}&size=${size}`;
+        if (query) url += `&query=${encodeURIComponent(query)}`;
+        if (departmentId) url += `&departmentId=${departmentId}`;
+        if (teamId) url += `&teamId=${teamId}`;
+        return url;
+      },
       transformResponse: (response: ApiResponse<PagedResponse<EmployeeResponse>>) =>
         response.data,
       providesTags: ["Employee"],
