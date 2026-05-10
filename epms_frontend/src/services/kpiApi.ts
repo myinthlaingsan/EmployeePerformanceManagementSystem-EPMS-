@@ -12,6 +12,8 @@ import type {
   KpiRevisionRequest,
   KpiScoreResponse,
   KpiGoalBulkUpdateRequest,
+  BulkGoalAssignmentRequest,
+  BulkAssignmentResponse,
 } from '../features/kpi/kpiTypes';
 
 export const kpiApi = api.injectEndpoints({
@@ -89,6 +91,14 @@ export const kpiApi = api.injectEndpoints({
     assignKpiToEmployee: builder.mutation<ApiResponse<GoalSetResponse>, GoalAssignmentRequest>({
       query: (body) => ({
         url: '/kpi/assign',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['GoalSet'],
+    }),
+    bulkAssignKpi: builder.mutation<ApiResponse<BulkAssignmentResponse>, BulkGoalAssignmentRequest>({
+      query: (body) => ({
+        url: '/kpi/bulk-assign',
         method: 'POST',
         body,
       }),
@@ -217,14 +227,16 @@ export const kpiApi = api.injectEndpoints({
       query: ({ managerId, cycleId }) => `/kpi/goal-set/team?managerId=${managerId}&cycleId=${cycleId}`,
       providesTags: ['GoalSet'],
     }),
-
-    submitGoalSet: builder.mutation<ApiResponse<GoalSetResponse>, number>({
-      query: (id) => ({
-        url: `/kpi/goal-set/${id}/submit`,
-        method: 'POST',
-      }),
-      invalidatesTags: ['GoalSet'],
+    getDepartmentGoalSets: builder.query<ApiResponse<GoalSetResponse[]>, { departmentId?: number; cycleId: number }>({
+      query: ({ departmentId, cycleId }) => {
+        let url = `/kpi/goal-set/department?cycleId=${cycleId}`;
+        if (departmentId) url += `&departmentId=${departmentId}`;
+        return url;
+      },
+      providesTags: ['GoalSet'],
     }),
+
+
   }),
 });
 
@@ -253,5 +265,7 @@ export const {
   useGetLibraryByIdQuery,
   useUpdateLibraryMutation,
   useGetTeamGoalSetsQuery,
-  useSubmitGoalSetMutation,
+  useGetDepartmentGoalSetsQuery,
+
+  useBulkAssignKpiMutation,
 } = kpiApi;

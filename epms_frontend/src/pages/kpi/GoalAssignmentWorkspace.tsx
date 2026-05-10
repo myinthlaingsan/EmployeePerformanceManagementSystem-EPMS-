@@ -11,8 +11,9 @@ import {
   useGetKpiCategoriesQuery,
   useAssignKpiToEmployeeMutation
 } from '../../services/kpiApi';
-import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetEmployeeByIdQuery } from '../../features/employee/employeeapi';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
+import { useAuth } from '../../hooks/useAuth';
 import {
   Search,
   Plus,
@@ -21,26 +22,16 @@ import {
   LayoutTemplate,
   Target,
   Save,
-  Edit3,
-  Undo2
+  Edit3
 } from 'lucide-react';
-import {
-  PRIORITY_MAP
-} from '../../utils/kpiCalculations';
 
 const GoalAssignmentWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const { activeCycleId, activeCycleName } = useActiveCycle();
-  
-  const { data } = useGetEmployeesQuery({ page: 0, size: 10 });
+  const { isAdmin, isHR } = useAuth();
 
-  const employees = data?.content ?? [];
-
-  const employee = employees.find(
-    e => e.id === Number(employeeId)
-  );
-  
+  const { data: employee } = useGetEmployeeByIdQuery(Number(employeeId), { skip: !employeeId });
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
     employeeId: Number(employeeId),
     cycleId: activeCycleId
@@ -62,6 +53,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const goalSet = goalSetResponse?.data;
   const [localItems, setLocalItems] = React.useState<any[]>([]);
   const [isModified, setIsModified] = useState(false);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
 
   // Sync local items with server data when it loads
   React.useEffect(() => {
@@ -92,13 +84,15 @@ const GoalAssignmentWorkspace: React.FC = () => {
     if (!activeCycleId) return;
     setIsSubmitting(true);
     try {
-      if (!goalSet) {
+      if (!goalSet || overwriteExisting) {
         await assignLibrary({
           employeeId: Number(employeeId),
           libraryId: library.id,
-          appraisalCycleId: activeCycleId
+          appraisalCycleId: activeCycleId,
+          overwriteExisting: overwriteExisting
         }).unwrap();
       } else {
+        // Default behavior: Append to existing
         for (const detail of library.details) {
           await addGoalItem({
             goalSetId: goalSet.id,
@@ -113,6 +107,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
         }
       }
       refetchGoals();
+      alert(overwriteExisting ? "Goals replaced successfully!" : "Template items appended successfully!");
     } catch (err: any) {
       console.error('Failed to apply template:', err);
       const errorMsg = err?.data?.message || err?.message || "Check network/permissions";
@@ -231,7 +226,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
     try {
       await approveGoalSet(goalSet.id).unwrap();
       alert("Goals approved and locked!");
-      navigate('/kpi/team');
+      if (isAdmin || isHR) {
+        navigate('/kpi/manage');
+      } else {
+        navigate('/kpi/team');
+      }
     } catch (err) {
       console.error('Failed to approve goals:', err);
     } finally {
@@ -241,7 +240,14 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <div className="p-8 max-w-[1600px] mx-auto space-y-8">
+      <div className="p-8 max-w-[1600px] mx-auto space-y-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="text-xs font-bold text-gray-400 hover:text-blue-600 flex items-center gap-1 uppercase tracking-wider transition-colors"
+        >
+          ← Back
+        </button>
+
         {/* Header Section */}
         <div className="bg-white rounded-2xl px-8 py-6 border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-6">
@@ -253,7 +259,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                 <h1 className="text-2xl font-black text-gray-900 tracking-tight">{employee?.staffName}</h1>
                 <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${goalSet?.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
                   goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
-                    goalSet?.status === 'SUBMITTED' ? 'bg-yellow-50 text-yellow-600' :
+                    goalSet?.status === 'LOCKED' ? 'bg-gray-900 text-white' :
                       'bg-gray-100 text-gray-400'
                   }`}>
                   {goalSet ? goalSet.status : 'Not Assigned'}
@@ -281,11 +287,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
               <>
                 <button
                   onClick={handleSaveDraft}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isModified}
                   className="px-8 py-4 bg-blue-600 hover:bg-blue-700 shadow-blue-200 text-white text-[11px] font-black rounded-xl transition shadow-xl uppercase tracking-widest flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Save className="w-4 h-4" />
-                  Save Draft
+                  {isModified ? 'Save Draft' : 'Draft Saved'}
                 </button>
                 <button
                   onClick={handleApprove}
@@ -293,7 +299,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                   className="px-8 py-4 bg-gray-900 text-white text-[11px] font-black rounded-xl hover:bg-black disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition shadow-xl uppercase tracking-widest flex items-center gap-3"
                 >
                   <Lock className="w-4 h-4" />
-                  Approve & Lock
+                  Approve Goal Set
                 </button>
               </>
             )}
@@ -307,6 +313,21 @@ const GoalAssignmentWorkspace: React.FC = () => {
               <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">KPI Templates</h3>
               <LayoutTemplate className="w-4 h-4 text-gray-400" />
             </div>
+
+            {goalSet && (
+              <div className="mb-6 p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="overwriteToggle"
+                  className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500/20 cursor-pointer"
+                  checked={overwriteExisting}
+                  onChange={(e) => setOverwriteExisting(e.target.checked)}
+                />
+                <label htmlFor="overwriteToggle" className="text-[9px] font-black text-amber-900 uppercase tracking-widest cursor-pointer">
+                  Replace Existing Goals
+                </label>
+              </div>
+            )}
 
             <div className="relative mb-6">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -416,9 +437,13 @@ const GoalAssignmentWorkspace: React.FC = () => {
                         <td className="px-4 py-3 border border-gray-100 text-center">
                           <input
                             type="number"
+                            min="0"
                             className="w-16 bg-gray-50/50 border border-gray-100 rounded-lg py-1 px-1 text-center text-xs font-black text-gray-900 disabled:opacity-50"
-                            value={item.targetValue}
-                            onChange={(e) => handleLocalUpdate(item.id, { targetValue: Number(e.target.value) })}
+                            value={item.targetValue || ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                              handleLocalUpdate(item.id, { targetValue: val });
+                            }}
                             disabled={goalSet?.status === 'APPROVED'}
                           />
                         </td>
@@ -435,13 +460,17 @@ const GoalAssignmentWorkspace: React.FC = () => {
                           <div className="flex items-center justify-end gap-2">
                             <input
                               type="number"
-                              className={`w-16 rounded-lg py-1.5 px-2 text-right text-xs font-black focus:bg-white disabled:opacity-50 ${
-                                Number(item.weightPercent) > 35
-                                  ? 'bg-red-50 border border-red-300 text-red-700'
-                                  : 'bg-blue-50/50 border border-blue-100 text-blue-700'
-                              }`}
-                              value={item.weightPercent}
-                              onChange={(e) => handleLocalUpdate(item.id, { weightPercent: Number(e.target.value) })}
+                              min="0"
+                              max="35"
+                              className={`w-16 rounded-lg py-1.5 px-2 text-right text-xs font-black focus:bg-white disabled:opacity-50 ${Number(item.weightPercent) > 35
+                                ? 'bg-red-50 border border-red-300 text-red-700'
+                                : 'bg-blue-50/50 border border-blue-100 text-blue-700'
+                                }`}
+                              value={item.weightPercent || ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                                handleLocalUpdate(item.id, { weightPercent: val });
+                              }}
                               disabled={goalSet?.status === 'APPROVED'}
                             />
                             <span className={`text-[10px] font-bold ${Number(item.weightPercent) > 35 ? 'text-red-400' : 'text-blue-300'}`}>%</span>
@@ -497,14 +526,13 @@ const GoalAssignmentWorkspace: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-right space-y-1">
-                  <p className={`text-xs font-black uppercase tracking-widest ${
-                    totalWeight === 100 && overweightItems.length === 0 ? 'text-green-400' :
+                  <p className={`text-xs font-black uppercase tracking-widest ${totalWeight === 100 && overweightItems.length === 0 ? 'text-green-400' :
                     totalWeight > 100 || overweightItems.length > 0 ? 'text-red-400' : 'text-blue-400'
-                  }`}>
-                    {totalWeight === 100 && overweightItems.length === 0 
-                      ? 'Verified' 
-                      : totalWeight > 100 
-                        ? `Exceeded by ${totalWeight - 100}%` 
+                    }`}>
+                    {totalWeight === 100 && overweightItems.length === 0
+                      ? 'Verified'
+                      : totalWeight > 100
+                        ? `Exceeded by ${totalWeight - 100}%`
                         : `${100 - totalWeight}% Remaining`}
                   </p>
                   {overweightItems.length > 0 && (

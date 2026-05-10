@@ -1,4 +1,4 @@
-import {api} from "../../services/api"
+import { api } from "../../services/api"
 import type { ApiResponse } from "../../services/ApiResponse";
 import type {
   EmployeeResponse,
@@ -13,6 +13,12 @@ import type {
 // Extend base API
 export const employeeApi = api.injectEndpoints({
   endpoints: (builder) => ({
+
+    getAllEmployees: builder.query<EmployeeResponse[], void>({
+      query: () => `/emp/all`,
+      transformResponse: (response: ApiResponse<EmployeeResponse[]>) => response.data,
+      providesTags: ["Employee"],
+    }),
 
     getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page: number; size: number }>({
       query: ({ page, size }) => `/emp?page=${page}&size=${size}`,
@@ -153,6 +159,8 @@ export const employeeApi = api.injectEndpoints({
         body,
       }),
     }),
+
+
   }),
 });
 
@@ -171,4 +179,5 @@ export const {
   useUpdateProfileMutation,
   useChangePasswordMutation,
   useSetPasswordMutation,
+  useGetAllEmployeesQuery,
 } = employeeApi;

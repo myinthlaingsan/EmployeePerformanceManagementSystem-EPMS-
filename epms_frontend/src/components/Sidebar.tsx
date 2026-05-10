@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import React, { useState } from "react";
 
@@ -62,8 +62,9 @@ const ADMIN_ITEMS: NavItem[] = [
 const Sidebar = () => {
   const { logout, isAdmin, isHR, isManager } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
-  const [perfOpen, setPerfOpen] = useState(true);
+  const [perfOpen, setPerfOpen] = useState(false);
 
   const activeClass = "bg-blue-50 text-blue-600 border-r-4 border-blue-600";
   const inactiveClass = "text-gray-500 hover:bg-gray-50 hover:text-gray-900";
@@ -121,22 +122,18 @@ const Sidebar = () => {
                     `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
                   }
                 >
-                  Intelligence Hub
+                  KPI Intelligence Hub
                 </NavLink>
                 <NavLink
                   to="/kpi/my"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                  }
+                  className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/my' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                 >
                   My Goals
                 </NavLink>
                 {isManager && (
                   <NavLink
                     to="/kpi/team"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                    }
+                    className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/team' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                   >
                     Team Performance
                   </NavLink>
@@ -145,9 +142,7 @@ const Sidebar = () => {
                 {(isAdmin || isHR) && (
                   <NavLink
                     to="/kpi/manage"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                    }
+                    className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/manage' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                   >
                     Goal Management
                   </NavLink>
@@ -156,17 +151,13 @@ const Sidebar = () => {
                   <>
                     <NavLink
                       to="/kpi/library"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                      }
+                      className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/library' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                     >
                       KPI Library
                     </NavLink>
                     <NavLink
                       to="/kpi/categories"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                      }
+                      className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/categories' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                     >
                       KPI Categories
                     </NavLink>

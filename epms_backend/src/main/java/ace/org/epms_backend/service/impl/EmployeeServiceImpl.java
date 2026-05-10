@@ -99,9 +99,24 @@ public class EmployeeServiceImpl implements EmployeeService {
                 resetToken.setToken(token);
                 resetToken.setEmployee(savedEmployee);
                 resetToken.setExpiryDate(LocalDateTime.now().plusHours(24));
+                employee.setEmail(email);
+                employee.setPosition(position);
+                employee.setLevel(position.getLevel()); // Set level from position
 
                 tokenRepository.save(resetToken);
 
+                // Assign Manager (Reporting Line)
+                // if (request.getDirectManagerId() != null) {
+                // Employee manager = employeeRepository.findById(request.getDirectManagerId())
+                // .orElseThrow(() -> new NotFoundException("Manager not found"));
+                //
+                // ReportingLine reportingLine = ReportingLine.builder()
+                // .employee(savedEmployee)
+                // .manager(manager)
+                // .isActive(true)
+                // .build();
+                // reportingLineRepository.save(reportingLine);
+                // }
                 // Assign Manager (Reporting Line)
                 if (request.getDirectManagerId() != null) {
                         Employee manager = employeeRepository.findById(request.getDirectManagerId())
@@ -117,7 +132,16 @@ public class EmployeeServiceImpl implements EmployeeService {
 
                 applicationEventPublisher.publishEvent(
                                 new EmployeeCreatedEvent(savedEmployee.getId(), token));
+                applicationEventPublisher.publishEvent(
+                                new EmployeeCreatedEvent(savedEmployee.getId(), token));
 
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(savedEmployee.getId())
+                                .action(AuditAction.INSERT)
+                                .newState(savedEmployee)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
                 auditService.log(AuditRequest.builder()
                                 .tableName("employees")
                                 .recordId(savedEmployee.getId())
@@ -169,7 +193,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         public EmployeeResponse getById(Long id) {
                 Employee emp = employeeRepository.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
-
                 return mapToResponse(emp);
         }
 

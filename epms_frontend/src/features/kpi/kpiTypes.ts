@@ -1,5 +1,5 @@
 // ==================== Enums ====================
-export type KpiGoalStatus = 'DRAFT' | 'SUBMITTED' | 'REJECTED' | 'APPROVED' | 'LOCKED' | 'ARCHIVED';
+export type KpiGoalStatus = 'DRAFT' | 'APPROVED' | 'LOCKED' | 'ARCHIVED';
 
 export type KpiItemStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 
@@ -57,6 +57,29 @@ export interface GoalAssignmentRequest {
   employeeId: number;
   libraryId?: number;
   appraisalCycleId: number;
+  overwriteExisting?: boolean;
+}
+
+export interface BulkGoalAssignmentRequest {
+  employeeIds: number[];
+  libraryId: number;
+  appraisalCycleId: number;
+  overwriteExisting?: boolean;
+}
+
+export interface AssignmentResult {
+  employeeId: number;
+  employeeName: string;
+  status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
+  reason: string;
+}
+
+export interface BulkAssignmentResponse {
+  totalProcessed: number;
+  successfulCount: number;
+  failedCount: number;
+  skippedCount: number;
+  results: AssignmentResult[];
 }
 
 // ==================== Goal Items ====================
