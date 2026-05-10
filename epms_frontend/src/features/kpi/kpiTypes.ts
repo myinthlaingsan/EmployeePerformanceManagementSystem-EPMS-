@@ -171,6 +171,7 @@ export interface KpiHistoryLog {
   newVersionId: number;
   action: string;
   changeReason: string;
+  changeDetails?: string;
   changedBy: number;
   createdAt: string;
 }

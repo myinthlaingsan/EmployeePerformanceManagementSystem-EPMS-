@@ -14,6 +14,7 @@ import type {
   KpiGoalBulkUpdateRequest,
   BulkGoalAssignmentRequest,
   BulkAssignmentResponse,
+  KpiHistoryLog,
 } from '../features/kpi/kpiTypes';
 
 export const kpiApi = api.injectEndpoints({
@@ -235,8 +236,14 @@ export const kpiApi = api.injectEndpoints({
       },
       providesTags: ['GoalSet'],
     }),
-
-
+    getEmployeeKpiHistory: builder.query<ApiResponse<GoalSetResponse[]>, number>({
+      query: (employeeId) => `/kpi-history/employee/${employeeId}`,
+      providesTags: ['GoalSet'],
+    }),
+    getGoalSetAuditTrail: builder.query<ApiResponse<KpiHistoryLog[]>, number>({
+      query: (goalSetId) => `/kpi-history/goal-set/${goalSetId}/audit`,
+      providesTags: ['GoalSet'],
+    }),
   }),
 });
 
@@ -268,4 +275,6 @@ export const {
   useGetDepartmentGoalSetsQuery,
 
   useBulkAssignKpiMutation,
+  useGetEmployeeKpiHistoryQuery,
+  useGetGoalSetAuditTrailQuery,
 } = kpiApi;

@@ -22,7 +22,8 @@ import {
   LayoutTemplate,
   Target,
   Save,
-  Edit3
+  Edit3,
+  History
 } from 'lucide-react';
 
 const GoalAssignmentWorkspace: React.FC = () => {
@@ -271,6 +272,13 @@ const GoalAssignmentWorkspace: React.FC = () => {
                 <span>Cycle: {activeCycleName}</span>
               </div>
             </div>
+            <button
+              onClick={() => navigate(`/kpi/history/${employeeId}`)}
+              className="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-[10px] font-black rounded-xl hover:bg-gray-50 transition shadow-sm uppercase tracking-widest flex items-center gap-2"
+            >
+              <History className="w-4 h-4" />
+              View History
+            </button>
           </div>
 
           <div className="flex items-center gap-4">

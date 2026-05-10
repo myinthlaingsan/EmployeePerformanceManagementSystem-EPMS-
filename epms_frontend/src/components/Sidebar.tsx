@@ -18,7 +18,6 @@ import {
   Briefcase,
   Zap,
   Target,
-  Library,
   History,
   Calendar
 } from "lucide-react";
@@ -57,7 +56,7 @@ const ADMIN_ITEMS: NavItem[] = [
 ];
 
 const Sidebar = () => {
-  const { logout, isAdmin, isHR, isManager } = useAuth();
+  const { logout, isAdmin, isHR, isManager, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
@@ -133,6 +132,14 @@ const Sidebar = () => {
                     className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/team' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                   >
                     Team Performance
+                  </NavLink>
+                )}
+                {user && (
+                  <NavLink
+                    to={`/kpi/history/${user.id}`}
+                    className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname.startsWith('/kpi/history/') ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
+                  >
+                    KPI Journey
                   </NavLink>
                 )}
 
