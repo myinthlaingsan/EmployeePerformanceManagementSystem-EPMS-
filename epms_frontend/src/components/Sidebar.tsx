@@ -61,7 +61,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
-  const [perfOpen, setPerfOpen] = useState(true);
+  const [perfOpen, setPerfOpen] = useState(false);
 
   const activeClass = "bg-blue-50 text-blue-600 border-r-4 border-blue-600";
   const inactiveClass = "text-gray-500 hover:bg-gray-50 hover:text-gray-900";
