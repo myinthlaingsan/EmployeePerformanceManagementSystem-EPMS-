@@ -6,6 +6,8 @@ import ace.org.epms_backend.model.appraisal.Appraisal;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.employee.EmployeeDepartment;
+import ace.org.epms_backend.model.employee.EmployeeTeam;
+import ace.org.epms_backend.model.employee.ReportingLine;
 import ace.org.epms_backend.model.feedback360.FeedbackRequest;
 import ace.org.epms_backend.model.feedback360.FeedbackSummary;
 import ace.org.epms_backend.model.appraisal.AppraisalSummary;
@@ -14,6 +16,8 @@ import ace.org.epms_backend.model.appraisal.ManagerEvaluation;
 import ace.org.epms_backend.model.kpi.*;
 import ace.org.epms_backend.model.pip.PipRecord;
 import ace.org.epms_backend.repository.*;
+import ace.org.epms_backend.repository.employee.EmployeeTeamRepository;
+import ace.org.epms_backend.repository.employee.ReportingLineRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository;
 import ace.org.epms_backend.service.report.ReportService;
@@ -49,6 +53,8 @@ public class ReportServiceImpl implements ReportService {
     private final ManagerEvaluationRepository managerEvaluationRepository;
     private final FeedbackSummaryRepository feedbackSummaryRepository;
     private final AppraisalSummaryRepository appraisalSummaryRepository;
+    private final ReportingLineRepository reportingLineRepository;
+    private final EmployeeTeamRepository employeeTeamRepository;
     private final JasperReportUtil jasperReportUtil;
 
     @Override
@@ -601,6 +607,48 @@ public class ReportServiceImpl implements ReportService {
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("reportTitle", "High and Low Performers Report");
         String jrxmlPath = "reports/performance_ranking_report.jrxml";
+        return generateReport(jrxmlPath, parameters, data, format);
+    }
+
+    @Override
+    public byte[] exportEmployeeMasterReport(Long departmentId, Long teamId, String format) {
+        List<Employee> employees;
+
+        if (teamId != null) {
+            // Filter by formal Team (from employee_team table)
+            employees = employeeTeamRepository.findByTeamTeamId(teamId)
+                    .stream().map(EmployeeTeam::getEmployee).collect(Collectors.toList());
+        } else if (departmentId != null) {
+            // Filter by Department
+            employees = employeeDepartmentRepository.findByCurrentDepartmentIdAndIsCurrentTrue(departmentId)
+                    .stream().map(EmployeeDepartment::getEmployee).collect(Collectors.toList());
+        } else {
+            // All Employees
+            employees = employeeRepository.findAll();
+        }
+
+        List<EmployeeReportDTO> data = employees.stream().map(e -> {
+            EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(e.getId()).orElse(null);
+            ReportingLine rl = reportingLineRepository.findFirstByEmployee_IdAndIsActiveTrue(e.getId()).orElse(null);
+            EmployeeTeam et = employeeTeamRepository.findFirstByEmployeeIdAndIsPrimaryTrue(e.getId()).orElse(null);
+
+            return EmployeeReportDTO.builder()
+                    .employeeCode(e.getEmployeeCode())
+                    .staffName(e.getStaffName())
+                    .email(e.getEmail())
+                    .departmentName(ed != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                    .positionName(e.getPosition() != null ? e.getPosition().getPositionName() : "N/A")
+                    .levelName(e.getLevel() != null ? e.getLevel().getLevelName() : "N/A")
+                    .teamName(et != null ? et.getTeam().getTeamName() : "N/A")
+                    .directManagerName(rl != null ? rl.getManager().getStaffName() : "N/A")
+                    .status(e.getIsActive() ? "Active" : "Inactive")
+                    .joinedDate(e.getDateOfAppointment() != null ? e.getDateOfAppointment().toString() : "N/A")
+                    .build();
+        }).collect(Collectors.toList());
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "Employee Master List");
+        String jrxmlPath = "reports/employee_master_report.jrxml";
         return generateReport(jrxmlPath, parameters, data, format);
     }
 

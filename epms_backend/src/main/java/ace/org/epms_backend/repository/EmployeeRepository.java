@@ -31,12 +31,21 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
            "LEFT JOIN FETCH e.level " +
            "WHERE (:query IS NULL OR LOWER(e.staffName) LIKE LOWER(CONCAT('%', :query, '%')) " +
            "OR LOWER(e.employeeCode) LIKE LOWER(CONCAT('%', :query, '%')) " +
-           "OR LOWER(e.email) LIKE LOWER(CONCAT('%', :query, '%')))",
+           "OR LOWER(e.email) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+           "AND (:departmentId IS NULL OR EXISTS (SELECT 1 FROM EmployeeDepartment ed WHERE ed.employee = e AND ed.currentDepartment.id = :departmentId AND ed.isCurrent = true)) " +
+           "AND (:teamId IS NULL OR EXISTS (SELECT 1 FROM EmployeeTeam et WHERE et.employee = e AND et.team.teamId = :teamId AND et.isPrimary = true))",
            countQuery = "SELECT COUNT(e) FROM Employee e " +
                         "WHERE (:query IS NULL OR LOWER(e.staffName) LIKE LOWER(CONCAT('%', :query, '%')) " +
                         "OR LOWER(e.employeeCode) LIKE LOWER(CONCAT('%', :query, '%')) " +
-                        "OR LOWER(e.email) LIKE LOWER(CONCAT('%', :query, '%')))")
-    Page<Employee> searchEmployees(@Param("query") String query, Pageable pageable);
+                        "OR LOWER(e.email) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+                        "AND (:departmentId IS NULL OR EXISTS (SELECT 1 FROM EmployeeDepartment ed WHERE ed.employee = e AND ed.currentDepartment.id = :departmentId AND ed.isCurrent = true)) " +
+                        "AND (:teamId IS NULL OR EXISTS (SELECT 1 FROM EmployeeTeam et WHERE et.employee = e AND et.team.teamId = :teamId AND et.isPrimary = true))")
+    Page<Employee> searchEmployees(
+            @Param("query") String query, 
+            @Param("departmentId") Long departmentId, 
+            @Param("teamId") Long teamId, 
+            Pageable pageable);
+
 
     @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.position p LEFT JOIN FETCH p.level LEFT JOIN FETCH e.level WHERE e.id = :id")
     Optional<Employee> findById(Long id);

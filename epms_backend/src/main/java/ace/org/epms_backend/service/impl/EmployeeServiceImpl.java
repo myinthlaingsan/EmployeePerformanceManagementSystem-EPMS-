@@ -205,13 +205,13 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         @Override
-        public PagedResponse<EmployeeResponse> search(String query, int page, int size) {
+        public PagedResponse<EmployeeResponse> search(String query, Long departmentId, Long teamId, int page, int size) {
                 Pageable pageable = PageRequest.of(
                                 page,
                                 size,
                                 Sort.by("id").descending());
 
-                Page<Employee> employeePage = employeeRepository.searchEmployees(query, pageable);
+                Page<Employee> employeePage = employeeRepository.searchEmployees(query, departmentId, teamId, pageable);
 
                 List<EmployeeResponse> content = employeePage.getContent()
                                 .stream()
