@@ -140,6 +140,16 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .actionUrl("/kpis/my-goals")
                 .build());
 
+        // Log KPI Journey
+        historyRepo.save(KpiHistoryLog.builder()
+                .employeeId(savedGoalSet.getEmployee().getId())
+                .goalSetId(savedGoalSet.getId())
+                .action("KPI_ASSIGNED")
+                .changeDetails(
+                        "Goal set assigned to " + employee.getStaffName() + " for cycle: " + cycle.getCycleName())
+                .changedBy(currentManager.getId())
+                .build());
+
         // Log Audit
         auditService.log(AuditRequest.builder()
                 .tableName("kpi_goals")
@@ -175,7 +185,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         for (Long employeeId : request.getEmployeeIds()) {
             Employee employee = employeeRepository.findById(employeeId).orElse(null);
-            
+
             if (employee == null) {
                 response.setFailedCount(response.getFailedCount() + 1);
                 response.getResults().add(AssignmentResult.builder()
@@ -194,7 +204,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
                 if (!existing.isEmpty()) {
                     boolean hasApprovedOrLocked = existing.stream()
-                            .anyMatch(g -> g.getStatus() == KpiGoalStatus.APPROVED || g.getStatus() == KpiGoalStatus.LOCKED);
+                            .anyMatch(g -> g.getStatus() == KpiGoalStatus.APPROVED
+                                    || g.getStatus() == KpiGoalStatus.LOCKED);
 
                     if (hasApprovedOrLocked) {
                         // Never overwrite Approved or Locked goals via Bulk Assign
@@ -282,7 +293,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         .build());
             }
         }
-        
+
         return response;
     }
 
@@ -402,82 +413,82 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional
     public GoalSetResponse approveGoalSet(Long goalSetId) {
-        try {
-            KpiGoals goalSet = goalsRepository.findById(goalSetId)
-                    .orElseThrow(() -> new NotFoundException("Goal set not found"));
+        KpiGoals goalSet = goalsRepository.findById(goalSetId)
+                .orElseThrow(() -> new NotFoundException("Goal set not found"));
 
-            boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_HR")
-                            || a.getAuthority().equals("ROLE_ADMIN"));
+        boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_HR")
+                        || a.getAuthority().equals("ROLE_ADMIN"));
 
-            if (!isHrOrAdmin) {
-                Long currentUserId = getCurrentEmployee().getId();
-                boolean isCreatorManager = goalSet.getManager() != null && goalSet.getManager().getId().equals(currentUserId);
-                
-                boolean isDirectManager = false;
-                if (!isCreatorManager && goalSet.getEmployee() != null) {
-                    ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(goalSet.getEmployee()).orElse(null);
-                    if (rl != null && rl.getManager() != null && rl.getManager().getId().equals(currentUserId)) {
-                        isDirectManager = true;
-                    }
-                }
+        if (!isHrOrAdmin) {
+            Long currentUserId = getCurrentEmployee().getId();
+            boolean isCreatorManager = goalSet.getManager() != null
+                    && goalSet.getManager().getId().equals(currentUserId);
 
-                if (!isCreatorManager && !isDirectManager) {
-                    throw new SecurityException("Only the assigned manager or HR/Admin can approve this goal set");
+            boolean isDirectManager = false;
+            if (!isCreatorManager && goalSet.getEmployee() != null) {
+                ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(goalSet.getEmployee()).orElse(null);
+                if (rl != null && rl.getManager() != null && rl.getManager().getId().equals(currentUserId)) {
+                    isDirectManager = true;
                 }
             }
 
-            if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
-                throw new IllegalStateException("Only DRAFT goals can be approved");
+            if (!isCreatorManager && !isDirectManager) {
+                throw new SecurityException("Only the assigned manager or HR/Admin can approve this goal set");
             }
-
-            BigDecimal totalWeight = goalSet.getItems().stream()
-                    .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
-                    .map(item -> item.getWeightPercent() != null ? item.getWeightPercent() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
-                throw new IllegalArgumentException("Total weight of active goal items must be exactly 100%");
-            }
-
-            goalSet.setStatus(KpiGoalStatus.APPROVED);
-            goalSet.setApprovedAt(Instant.now());
-            goalSet.setApprovedBy(getCurrentEmployee().getId());
-            KpiGoals savedGoalSet = goalsRepository.save(goalSet);
-
-            // Trigger Notification
-            if (goalSet.getEmployee() != null) {
-                eventPublisher.publishEvent(NotificationEvent.builder()
-                        .recipientId(goalSet.getEmployee().getId())
-                        .senderId(getCurrentEmployee().getId())
-                        .type(NotificationType.KPI_APPROVED)
-                        .title("KPI Approved")
-                        .message("Your Manager has approved your KPI goals.")
-                        .referenceType(ReferenceType.KPI)
-                        .referenceId(goalSet.getId())
-                        .actionUrl("/kpis/my-goals")
-                        .build());
-            }
-
-            // Log Audit
-            auditService.log(AuditRequest.builder()
-                    .tableName("kpi_goals")
-                    .recordId(savedGoalSet.getId())
-                    .action(AuditAction.UPDATE)
-                    .newState(savedGoalSet)
-                    .status(AuditStatus.SUCCESS)
-                    .build());
-
-            return kpiMapper.toGoalSetResponse(savedGoalSet);
-        } catch (Throwable t) {
-            t.printStackTrace();
-            try {
-                java.nio.file.Files.writeString(java.nio.file.Path.of("error_approve.txt"),
-                        t.toString() + "\n" + java.util.Arrays.toString(t.getStackTrace()));
-            } catch (Exception ex) {
-            }
-            throw t;
         }
+
+        if (!goalSet.getStatus().equals(KpiGoalStatus.DRAFT)) {
+            throw new IllegalStateException("Only DRAFT goals can be approved");
+        }
+
+        BigDecimal totalWeight = goalSet.getItems().stream()
+                .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+                .map(item -> item.getWeightPercent() != null ? item.getWeightPercent() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
+            throw new IllegalArgumentException("Total weight of active goal items must be exactly 100%");
+        }
+
+        goalSet.setStatus(KpiGoalStatus.APPROVED);
+        goalSet.setApprovedAt(Instant.now());
+        goalSet.setApprovedBy(getCurrentEmployee().getId());
+        KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+        // Trigger Notification
+        if (goalSet.getEmployee() != null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(goalSet.getEmployee().getId())
+                    .senderId(getCurrentEmployee().getId())
+                    .type(NotificationType.KPI_APPROVED)
+                    .title("KPI Approved")
+                    .message("Your Manager has approved your KPI goals.")
+                    .referenceType(ReferenceType.KPI)
+                    .referenceId(goalSet.getId())
+                    .actionUrl("/kpis/my-goals")
+                    .build());
+        }
+
+        // Log KPI Journey
+        historyRepo.save(KpiHistoryLog.builder()
+                .employeeId(goalSet.getEmployee().getId())
+                .goalSetId(goalSet.getId())
+                .action("KPI_APPROVED")
+                .changeDetails("Goal set approved for cycle: " + goalSet.getCycle().getCycleName())
+                .changedBy(getCurrentEmployee().getId())
+                .build());
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("kpi_goals")
+                .recordId(savedGoalSet.getId())
+                .action(AuditAction.UPDATE)
+                .newState(savedGoalSet)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
     @Override
@@ -514,6 +525,16 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         goalSet.setStatus(KpiGoalStatus.LOCKED);
         KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+        // Log KPI Journey
+        historyRepo.save(KpiHistoryLog.builder()
+                .employeeId(goalSet.getEmployee().getId())
+                .goalSetId(goalSet.getId())
+                .action("KPI_LOCKED")
+                .changeDetails("Performance goals locked for review.")
+                .changedBy(getCurrentEmployee().getId())
+                .build());
+
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
@@ -533,8 +554,9 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         || a.getAuthority().equals("ROLE_ADMIN"));
 
         if (!isHrOrAdmin) {
-            boolean isCreatorManager = goalSet.getManager() != null && goalSet.getManager().getId().equals(currentUser.getId());
-            
+            boolean isCreatorManager = goalSet.getManager() != null
+                    && goalSet.getManager().getId().equals(currentUser.getId());
+
             boolean isDirectManager = false;
             if (!isCreatorManager && goalSet.getEmployee() != null) {
                 ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(goalSet.getEmployee()).orElse(null);
@@ -581,9 +603,10 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         if (details.getCategoryId() != null
                 && (item.getCategory() == null
-                    || !details.getCategoryId().equals(item.getCategory().getId()))) {
+                        || !details.getCategoryId().equals(item.getCategory().getId()))) {
             String oldCategoryName = item.getCategory() != null
-                    ? item.getCategory().getName() : "None";
+                    ? item.getCategory().getName()
+                    : "None";
             KpiCategory newCategory = categoryRepository.findById(details.getCategoryId())
                     .orElseThrow(() -> new NotFoundException("Category not found"));
             changes.append("Category: '").append(oldCategoryName).append("' → '")
@@ -666,4 +689,22 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         return employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Current user not found"));
     }
+
 }
+
+    
+
+    
+    
+    
+        
+                
+                
+    
+
+    
+        
+        
+                
+    
+

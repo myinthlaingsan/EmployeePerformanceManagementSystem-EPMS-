@@ -8,8 +8,6 @@ import {
   TrendingUp,
   Clock,
   AlertCircle,
-  FileText,
-  User,
   MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -57,182 +55,184 @@ const EmployeeKpiHistory: React.FC = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Cycle List */}
-        <div className="lg:col-span-4 space-y-4">
-          <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest px-1">Past Cycles</h2>
-          <div className="space-y-3">
-            {goalSets.map((gs) => (
-              <button
-                key={gs.id}
-                onClick={() => setSelectedGoalSetId(gs.id)}
-                className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 ${selectedGoalSetId === gs.id
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100 scale-[1.02]'
-                    : 'bg-white border-gray-100 text-gray-900 hover:border-blue-200 hover:shadow-md'
-                  }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <Calendar className={`w-4 h-4 ${selectedGoalSetId === gs.id ? 'text-blue-100' : 'text-gray-400'}`} />
-                    <span className="text-sm font-bold">{gs.appraisalCycleName || 'Annual Cycle'}</span>
-                  </div>
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${selectedGoalSetId === gs.id ? 'bg-blue-500/50 text-white' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                    {gs.status}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className={`text-xs ${selectedGoalSetId === gs.id ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {gs.items?.length || 0} Objectives
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <TrendingUp className={`w-3 h-3 ${selectedGoalSetId === gs.id ? 'text-blue-100' : 'text-emerald-500'}`} />
-                    <span className="text-sm font-black">
-                      {calculateGoalSetMetrics(gs).finalScore.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              </button>
-            ))}
-
-            {goalSets.length === 0 && (
-              <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                <Clock className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">No history found</p>
+      {/* Cycle Selector (Modern Horizontal Timeline) */}
+      <div className="bg-white p-2 rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 px-1 no-scrollbar scroll-smooth">
+          {goalSets.map((gs) => (
+            <button
+              key={gs.id}
+              onClick={() => setSelectedGoalSetId(gs.id)}
+              className={`flex-shrink-0 flex items-center gap-3 px-6 py-4 rounded-2xl transition-all duration-300 border ${selectedGoalSetId === gs.id
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-100 scale-[1.02]'
+                  : 'bg-white border-transparent text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              <Calendar className={`w-5 h-5 ${selectedGoalSetId === gs.id ? 'text-blue-100' : 'text-gray-400'}`} />
+              <div className="text-left pr-4">
+                <p className={`text-[10px] font-black uppercase tracking-widest ${selectedGoalSetId === gs.id ? 'text-blue-200' : 'text-gray-400'}`}>
+                  {gs.status}
+                </p>
+                <p className="text-sm font-bold whitespace-nowrap">
+                  {gs.appraisalCycleName || 'Annual Cycle'}
+                </p>
               </div>
-            )}
-          </div>
+              <div className={`h-8 w-[1px] ${selectedGoalSetId === gs.id ? 'bg-blue-400' : 'bg-gray-100'}`} />
+              <div className="text-right pl-2">
+                <p className="text-lg font-black leading-none">
+                  {calculateGoalSetMetrics(gs).finalScore.toFixed(0)}%
+                </p>
+                <p className={`text-[10px] font-medium ${selectedGoalSetId === gs.id ? 'text-blue-200' : 'text-emerald-500'}`}>Score</p>
+              </div>
+            </button>
+          ))}
+
+          {goalSets.length === 0 && (
+            <div className="flex items-center gap-3 px-8 py-4 text-gray-400 italic">
+              <AlertCircle className="w-5 h-5" />
+              <span>No historical cycles found for this employee.</span>
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Right Column: Details & Audit Trail */}
-        <div className="lg:col-span-8">
-          {selectedGoalSetId ? (
-            <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
-              {/* Summary Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Final Score</p>
-                  <div className="flex items-end gap-2">
-                    <span className="text-3xl font-black text-gray-900">{metrics?.finalScore.toFixed(1)}%</span>
-                    <span className="text-xs text-emerald-500 font-bold mb-1.5 flex items-center">
-                      <TrendingUp className="w-3 h-3 mr-0.5" />
-                      Achievement
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Completion Rate</p>
-                  <div className="flex items-end gap-2">
-                    <span className="text-3xl font-black text-gray-900">{metrics?.completionRate.toFixed(1)}%</span>
-                    <span className="text-xs text-blue-500 font-bold mb-1.5">Goals Met</span>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Status</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                    <span className="text-xl font-black text-gray-900 uppercase tracking-tight">{selectedGoalSet?.status}</span>
-                  </div>
-                </div>
+      {selectedGoalSet ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-4 duration-500">
+          {/* Detailed Statistics */}
+          <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                <TrendingUp className="w-24 h-24 text-blue-600" />
               </div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Cycle Performance Score</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-black text-gray-900 tracking-tighter">{metrics?.finalScore.toFixed(1)}%</span>
+                <div className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg uppercase tracking-widest">Target Met</div>
+              </div>
+            </div>
 
-              {/* Objectives List */}
+            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                <Target className="w-24 h-24 text-indigo-600" />
+              </div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Goal Completion Rate</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-black text-gray-900 tracking-tighter">{metrics?.completionRate.toFixed(1)}%</span>
+                <span className="text-gray-400 font-bold text-sm">/ 100%</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                <Clock className="w-24 h-24 text-purple-600" />
+              </div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Cycle Status</p>
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-4xl font-black text-gray-900 uppercase tracking-tight">{selectedGoalSet.status}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Grid: Objectives & Audit Trail */}
+          <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Objectives Column */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-1">Assigned Objectives</h3>
               <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-8 py-6 border-b border-gray-50 flex items-center justify-between">
-                  <h3 className="text-lg font-black text-gray-900">Assigned Objectives</h3>
-                  <Target className="w-5 h-5 text-gray-400" />
-                </div>
                 <div className="divide-y divide-gray-50">
                   {selectedGoalSet?.items?.map((item) => (
-                    <div key={item.id} className="px-8 py-5 hover:bg-gray-50/50 transition-colors">
-                      <div className="flex justify-between items-start mb-2">
+                    <div key={item.id} className="px-8 py-6 hover:bg-gray-50/50 transition-colors">
+                      <div className="flex justify-between items-start mb-3">
                         <div>
-                          <h4 className="font-bold text-gray-900">{item.title}</h4>
-                          <p className="text-xs text-gray-500 font-medium">Weight: {item.weightPercent}% • Target: {item.targetValue} {item.unit}</p>
+                          <h4 className="font-bold text-gray-900 leading-tight">{item.title}</h4>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Weight: {item.weightPercent}%</p>
                         </div>
                         <div className="text-right">
-                          <span className="text-sm font-black text-gray-900">{item.currentProgress} {item.unit}</span>
-                          <p className="text-[10px] font-bold text-emerald-500 uppercase">
-                            {Math.min(((item.currentProgress || 0) / (item.targetValue || 1)) * 100, 100).toFixed(0)}% Done
-                          </p>
+                          <span className="text-sm font-black text-gray-900">{item.currentProgress} <span className="text-[10px] text-gray-400 font-bold uppercase">{item.unit}</span></span>
                         </div>
                       </div>
-                      <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                        <div
-                          className="bg-blue-600 h-full rounded-full transition-all duration-1000"
-                          style={{ width: `${Math.min(((item.currentProgress || 0) / (item.targetValue || 1)) * 100, 100)}%` }}
-                        />
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[10px] font-black uppercase tracking-tighter">
+                          <span className="text-gray-400">Progress</span>
+                          <span className="text-blue-600">{Math.min(((item.currentProgress || 0) / (item.targetValue || 1)) * 100, 100).toFixed(0)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                          <div
+                            className="bg-blue-600 h-full rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(37,99,235,0.3)]"
+                            style={{ width: `${Math.min(((item.currentProgress || 0) / (item.targetValue || 1)) * 100, 100)}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
+            </div>
 
-              {/* Audit Trail (The Journey) */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-1">Goal Audit Trail</h3>
-                <div className="relative border-l-2 border-gray-100 ml-4 space-y-6 pb-4">
+            {/* Audit Trail Column */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-1">Goal Journey</h3>
+              <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm min-h-full">
+                <div className="relative border-l-2 border-blue-50 ml-2 space-y-8 pb-4">
                   {auditLoading ? (
-                    <div className="pl-8 py-4 text-gray-400 text-xs font-bold animate-pulse">Loading journey logs...</div>
-                  ) : auditLogs.map((log) => (
-                    <div key={log.id} className="relative pl-8 group">
-                      <div className="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full border-4 border-white bg-blue-500 shadow-sm" />
-                      <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 group-hover:bg-white group-hover:shadow-lg transition-all duration-300">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-white border border-gray-200 rounded-md text-gray-600">
-                              {log.action}
+                    <div className="pl-8 py-4 space-y-4">
+                      {[1, 2, 3].map(i => <div key={i} className="h-20 bg-gray-50 rounded-2xl animate-pulse" />)}
+                    </div>
+                  ) : (
+                    auditLogs.map((log) => (
+                      <div key={log.id} className="relative pl-8 group">
+                        <div className="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full border-4 border-white bg-blue-500 shadow-lg group-hover:scale-125 transition-transform" />
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                              log.action === 'PROGRESS_UPDATE' 
+                                ? 'bg-emerald-50 text-emerald-600' 
+                                : log.action.includes('ITEM') 
+                                  ? 'bg-indigo-50 text-indigo-600'
+                                  : 'bg-blue-50 text-blue-600'
+                            }`}>
+                              {log.action.replace('_', ' ')}
                             </span>
                             <span className="text-[10px] font-bold text-gray-400">
-                              {format(new Date(log.createdAt), 'MMM d, yyyy • p')}
+                              {format(new Date(log.createdAt), 'MMM d, h:mm a')}
                             </span>
                           </div>
-                          <User className="w-3 h-3 text-gray-300" />
-                        </div>
-
-                        {log.changeDetails && (
-                          <div className="flex items-center gap-3 mb-3 bg-white p-2.5 rounded-xl border border-gray-100/50">
-                            <div className="flex-1 text-center">
-                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Details</p>
-                              <p className="text-xs font-bold text-gray-700">{log.changeDetails}</p>
+                          {log.changeDetails && (
+                            <p className="text-sm font-bold text-gray-700 leading-snug">{log.changeDetails}</p>
+                          )}
+                          {log.changeReason && (
+                            <div className="flex gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                              <MessageSquare className="w-3 h-3 text-gray-400 mt-0.5" />
+                              <p className="text-xs text-gray-600 italic">"{log.changeReason}"</p>
                             </div>
-                          </div>
-                        )}
-
-                        {log.changeReason && (
-                          <div className="flex gap-2">
-                            <MessageSquare className="w-3 h-3 text-gray-400 mt-0.5" />
-                            <p className="text-xs text-gray-600 italic leading-relaxed">"{log.changeReason}"</p>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
 
                   {auditLogs.length === 0 && !auditLoading && (
-                    <div className="pl-8 py-4">
-                      <div className="bg-gray-50 p-4 rounded-xl border border-dashed border-gray-200 flex items-center gap-3">
-                        <AlertCircle className="w-4 h-4 text-gray-300" />
-                        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No detailed logs for this cycle</p>
-                      </div>
+                    <div className="pl-8 py-4 flex flex-col items-center justify-center text-center space-y-3">
+                      <Clock className="w-12 h-12 text-gray-100" />
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No history logs available</p>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="h-full min-h-[400px] flex flex-col items-center justify-center bg-gray-50/50 rounded-[3rem] border-2 border-dashed border-gray-100 space-y-4">
-              <div className="w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center shadow-sm text-gray-200">
-                <FileText className="w-10 h-10" />
-              </div>
-              <div className="text-center">
-                <p className="text-gray-400 font-black uppercase tracking-widest">Select a cycle to view history</p>
-                <p className="text-xs text-gray-400 mt-1">Detailed performance audit logs will appear here.</p>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[3rem] border border-gray-100 shadow-sm space-y-6 animate-in zoom-in-95 duration-500">
+          <div className="w-24 h-24 bg-blue-50 rounded-[2.5rem] flex items-center justify-center text-blue-600">
+            <Target className="w-12 h-12" />
+          </div>
+          <div className="text-center space-y-2">
+            <h3 className="text-2xl font-black text-gray-900 tracking-tight">Select a Cycle</h3>
+            <p className="text-gray-500 max-w-xs mx-auto">Pick a performance cycle from the timeline above to explore detailed scores and history.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
