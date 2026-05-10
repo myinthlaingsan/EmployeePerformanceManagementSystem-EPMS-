@@ -55,45 +55,43 @@ const EmployeeKpiHistory: React.FC = () => {
         </div>
       </header>
 
-      {/* Cycle Selector (Modern Horizontal Timeline) */}
-      <div className="bg-white p-2 rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 px-1 no-scrollbar scroll-smooth">
-          {goalSets.map((gs) => (
-            <button
-              key={gs.id}
-              onClick={() => setSelectedGoalSetId(gs.id)}
-              className={`flex-shrink-0 flex items-center gap-3 px-6 py-4 rounded-2xl transition-all duration-300 border ${selectedGoalSetId === gs.id
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-100 scale-[1.02]'
-                  : 'bg-white border-transparent text-gray-600 hover:bg-gray-50'
-                }`}
-            >
-              <Calendar className={`w-5 h-5 ${selectedGoalSetId === gs.id ? 'text-blue-100' : 'text-gray-400'}`} />
-              <div className="text-left pr-4">
-                <p className={`text-[10px] font-black uppercase tracking-widest ${selectedGoalSetId === gs.id ? 'text-blue-200' : 'text-gray-400'}`}>
-                  {gs.status}
-                </p>
-                <p className="text-sm font-bold whitespace-nowrap">
-                  {gs.appraisalCycleName || 'Annual Cycle'}
-                </p>
-              </div>
-              <div className={`h-8 w-[1px] ${selectedGoalSetId === gs.id ? 'bg-blue-400' : 'bg-gray-100'}`} />
-              <div className="text-right pl-2">
-                <p className="text-lg font-black leading-none">
-                  {calculateGoalSetMetrics(gs).finalScore.toFixed(0)}%
-                </p>
-                <p className={`text-[10px] font-medium ${selectedGoalSetId === gs.id ? 'text-blue-200' : 'text-emerald-500'}`}>Score</p>
-              </div>
-            </button>
-          ))}
-
-          {goalSets.length === 0 && (
-            <div className="flex items-center gap-3 px-8 py-4 text-gray-400 italic">
-              <AlertCircle className="w-5 h-5" />
-              <span>No historical cycles found for this employee.</span>
-            </div>
-          )}
+      {/* Cycle Selector (Modern Dropdown) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
+        <div>
+          <h2 className="text-xl font-black text-gray-900 tracking-tight">Performance Timeline</h2>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Select an appraisal cycle to view details</p>
+        </div>
+        
+        <div className="relative min-w-[300px]">
+          <select
+            value={selectedGoalSetId || ''}
+            onChange={(e) => setSelectedGoalSetId(Number(e.target.value))}
+            className="w-full appearance-none bg-gray-50 border border-gray-100 text-gray-900 font-bold py-4 px-6 pr-14 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+          >
+            <option value="" disabled>Choose a performance cycle...</option>
+            {goalSets.map((gs) => (
+              <option key={gs.id} value={gs.id}>
+                {gs.appraisalCycleName || 'Annual Cycle'} ({gs.status}) — {calculateGoalSetMetrics(gs).finalScore.toFixed(0)}%
+              </option>
+            ))}
+          </select>
+          <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
+            <Calendar className="w-5 h-5 text-gray-400" />
+          </div>
         </div>
       </div>
+
+      {goalSets.length === 0 && (
+        <div className="bg-white p-12 rounded-[3rem] border border-dashed border-gray-200 flex flex-col items-center text-center space-y-4">
+          <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-black text-gray-900">No History Found</h3>
+            <p className="text-sm text-gray-500 max-w-xs">This employee doesn't have any past performance cycles recorded in the system yet.</p>
+          </div>
+        </div>
+      )}
 
       {selectedGoalSet ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-4 duration-500">
