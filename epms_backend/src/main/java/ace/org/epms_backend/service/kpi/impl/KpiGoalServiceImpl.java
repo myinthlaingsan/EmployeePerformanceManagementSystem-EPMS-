@@ -120,6 +120,9 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         .unit(libDetail.getUnit())
                         .weightPercent(libDetail.getWeightPercent())
                         .category(libDetail.getCategory())
+                        .actualValue(BigDecimal.ZERO)
+                        .scorePercent(BigDecimal.ZERO)
+                        .weightedScore(BigDecimal.ZERO)
                         .status(KpiItemStatus.NOT_STARTED)
                         .isActive(true)
                         .build();
@@ -256,6 +259,9 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                             .unit(libDetail.getUnit())
                             .weightPercent(libDetail.getWeightPercent())
                             .category(libDetail.getCategory())
+                            .actualValue(BigDecimal.ZERO)
+                            .scorePercent(BigDecimal.ZERO)
+                            .weightedScore(BigDecimal.ZERO)
                             .status(KpiItemStatus.NOT_STARTED)
                             .isActive(true)
                             .build();
@@ -319,6 +325,9 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .weightPercent(request.getWeightPercent())
                 .category(categoryRepository.findById(request.getCategoryId())
                         .orElseThrow(() -> new NotFoundException("Category not found")))
+                .actualValue(BigDecimal.ZERO)
+                .scorePercent(BigDecimal.ZERO)
+                .weightedScore(BigDecimal.ZERO)
                 .status(KpiItemStatus.NOT_STARTED)
                 .isActive(true)
                 .build();

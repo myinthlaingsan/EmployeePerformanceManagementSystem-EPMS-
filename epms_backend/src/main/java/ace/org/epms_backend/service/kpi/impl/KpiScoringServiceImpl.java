@@ -90,25 +90,9 @@ public class KpiScoringServiceImpl implements KpiScoringService {
             throw new IllegalStateException("Total weight of active KPI items must be exactly 100%. Current: " + totalWeight + "%");
         }
 
-        BigDecimal totalWeightedScore = BigDecimal.ZERO;
-
-        for (KpiGoalItem item : items) {
-            List<KpiProgress> progressList = progressRepository.findByGoalItemIdOrderByIdDesc(item.getId());
-            BigDecimal latestActual = progressList.isEmpty() ? BigDecimal.ZERO
-                    : progressList.get(0).getActualValue();
-
-            BigDecimal score = BigDecimal.ZERO;
-            if (item.getTargetValue() != null && item.getTargetValue().compareTo(BigDecimal.ZERO) != 0) {
-                score = latestActual.divide(item.getTargetValue(), 4, RoundingMode.HALF_UP)
-                        .multiply(new BigDecimal("100"));
-            }
-
-            BigDecimal weightedScore = score
-                    .multiply(item.getWeightPercent().divide(new BigDecimal("100"), 4,
-                            RoundingMode.HALF_UP));
-
-            totalWeightedScore = totalWeightedScore.add(weightedScore);
-        }
+        BigDecimal totalWeightedScore = items.stream()
+                .map(item -> item.getWeightedScore() != null ? item.getWeightedScore() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         KpiFinalScore finalScore = new KpiFinalScore();
 
