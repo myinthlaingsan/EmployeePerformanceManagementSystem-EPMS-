@@ -18,10 +18,10 @@ import { useAuth } from '../../hooks/useAuth';
 /* ─── Shared rating scale (mirrors ManagerEvaluation) ───────── */
 const RATING_SCALE = [
   { v: 1, label: 'Unsatisfactory', color: '#ef4444' },
-  { v: 2, label: 'Below Average',  color: '#f97316' },
-  { v: 3, label: 'Meets Expects',  color: '#eab308' },
-  { v: 4, label: 'Exceeds',        color: '#22c55e' },
-  { v: 5, label: 'Outstanding',    color: '#0052CC' },
+  { v: 2, label: 'Below Average', color: '#f97316' },
+  { v: 3, label: 'Meets Expects', color: '#eab308' },
+  { v: 4, label: 'Exceeds', color: '#22c55e' },
+  { v: 5, label: 'Outstanding', color: '#0052CC' },
 ];
 
 const SelfAssessment = () => {
@@ -30,9 +30,9 @@ const SelfAssessment = () => {
   const { user, isHR, isAdmin } = useAuth();
 
   const { data: formResp, isLoading: appraisalLoading } = useGetSelfAssessmentFormQuery(id || '', { skip: !id });
-  const [saveAnswers,          { isLoading: isSaving }]    = useSaveSelfAssessmentAnswersMutation();
+  const [saveAnswers, { isLoading: isSaving }] = useSaveSelfAssessmentAnswersMutation();
   const [submitSelfAssessment, { isLoading: isSubmitting }] = useSubmitSelfAssessmentMutation();
-  const [saveDraftMutation,    { isLoading: isDrafting }]   = useSaveDraftMutation();
+  const [saveDraftMutation, { isLoading: isDrafting }] = useSaveDraftMutation();
 
   const [responses, setResponses] = useState<Record<string, { ratingValue: number; isCompleted: boolean | null; comment?: string }>>({});
   const [comment, setComment] = useState('');
@@ -45,9 +45,9 @@ const SelfAssessment = () => {
       formData.categories.forEach((cat: any) => {
         cat.questions.forEach((q: any) => {
           initial[q.questionId] = {
-            ratingValue:  q.ratingValue  || 0,
-            isCompleted:  q.isCompleted  ?? null,
-            comment:      q.comment      || '',
+            ratingValue: q.ratingValue || 0,
+            isCompleted: q.isCompleted ?? null,
+            comment: q.comment || '',
           };
         });
       });
@@ -64,15 +64,15 @@ const SelfAssessment = () => {
     Object.values(responses).filter(r => r.ratingValue > 0 && r.isCompleted !== null).length,
     [responses]);
 
-  const handleRatingChange     = (qId: string, val: number)  => setResponses(p => ({ ...p, [qId]: { ...p[qId], ratingValue: val } }));
+  const handleRatingChange = (qId: string, val: number) => setResponses(p => ({ ...p, [qId]: { ...p[qId], ratingValue: val } }));
   const handleCompletionChange = (qId: string, val: boolean) => setResponses(p => ({ ...p, [qId]: { ...p[qId], isCompleted: val } }));
-  const handleCommentChange    = (qId: string, val: string)  => setResponses(p => ({ ...p, [qId]: { ...p[qId], comment: val } }));
+  const handleCommentChange = (qId: string, val: string) => setResponses(p => ({ ...p, [qId]: { ...p[qId], comment: val } }));
 
   const buildPayload = () => Object.keys(responses).map(qId => ({
-    questionId:  Number(qId),
+    questionId: Number(qId),
     ratingValue: responses[qId].ratingValue,
     isCompleted: responses[qId].isCompleted,
-    comment:     responses[qId].comment || null,
+    comment: responses[qId].comment || null,
   }));
 
   const handleSaveDraft = async () => {
@@ -114,7 +114,7 @@ const SelfAssessment = () => {
   );
 
   const isOwner = Number(user?.id) === Number(formData.employeeId);
-  
+
   // A form is read-only if:
   // 1. It is already submitted
   // 2. The viewer is NOT the employee who owns the form (Manager, HR, Admin)
@@ -133,7 +133,7 @@ const SelfAssessment = () => {
           <p className="text-slate-500 font-medium leading-relaxed mb-8">
             You are not authorized to view this self-assessment until <strong>{formData.employeeName}</strong> has completed and submitted it.
           </p>
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="px-8 py-3 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg"
           >
@@ -192,7 +192,7 @@ const SelfAssessment = () => {
             )}
             {formData.submitted && (
               <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl px-4 py-2 text-sm font-black">
-                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                 Submitted
               </div>
             )}
@@ -210,9 +210,9 @@ const SelfAssessment = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-10 gap-y-3 flex-1">
             {[
               { label: 'Employee Name', value: formData.employeeName },
-              { label: 'Employee ID',   value: formData.employeeCode },
-              { label: 'Department',    value: formData.departmentName },
-              { label: 'Manager',       value: formData.managerName },
+              { label: 'Employee ID', value: formData.employeeCode },
+              { label: 'Department', value: formData.departmentName },
+              { label: 'Manager', value: formData.managerName },
             ].map(({ label, value }) => (
               <div key={label}>
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-0.5">{label}</p>
@@ -244,7 +244,7 @@ const SelfAssessment = () => {
 
         {/* ── Assessment Sections ── */}
         {formData.categories?.map((section: any, sIdx: number) => {
-          const sectionMax   = section.questions.length * 5;
+          const sectionMax = section.questions.length * 5;
           const sectionScore = section.questions.reduce((acc: number, q: any) =>
             acc + (responses[q.questionId.toString()]?.ratingValue || 0), 0);
           const pct = sectionMax > 0 ? (sectionScore / sectionMax) * 100 : 0;
@@ -288,9 +288,9 @@ const SelfAssessment = () => {
               {/* Questions */}
               <div className="divide-y divide-slate-50">
                 {section.questions.map((q: any, qIdx: number) => {
-                  const qId     = q.questionId.toString();
-                  const resp    = responses[qId] || { ratingValue: 0, isCompleted: null };
-                  const hasYN   = q.questionType === 'YESNO' || q.secondaryQuestionType === 'YESNO';
+                  const qId = q.questionId.toString();
+                  const resp = responses[qId] || { ratingValue: 0, isCompleted: null };
+                  const hasYN = q.questionType === 'YESNO' || q.secondaryQuestionType === 'YESNO';
                   const hasRating = q.questionType === 'RATING' || q.secondaryQuestionType === 'RATING';
                   const hasText = q.questionType === 'TEXT' || q.secondaryQuestionType === 'TEXT';
                   const selectedScale = resp.ratingValue ? RATING_SCALE.find(s => s.v === resp.ratingValue) : null;
@@ -343,7 +343,7 @@ const SelfAssessment = () => {
                               <>
                                 {[1, 2, 3, 4, 5].map(n => {
                                   const scale = RATING_SCALE.find(s => s.v === n)!;
-                                  const sel   = resp.ratingValue === n;
+                                  const sel = resp.ratingValue === n;
                                   return (
                                     <button
                                       key={n}
@@ -360,7 +360,7 @@ const SelfAssessment = () => {
                                         ${isDisabled || ratingLocked ? 'cursor-not-allowed opacity-50 !scale-100' : 'cursor-pointer'}`}
                                       style={sel ? {
                                         background: `linear-gradient(135deg, ${scale.color}cc, ${scale.color})`,
-                                        boxShadow:  `0 4px 12px ${scale.color}55`,
+                                        boxShadow: `0 4px 12px ${scale.color}55`,
                                       } : {}}
                                     >
                                       {n}
@@ -368,7 +368,7 @@ const SelfAssessment = () => {
                                         <span className="absolute -top-1 -right-1 w-3 h-3 rounded-sm flex items-center justify-center shadow"
                                           style={{ background: scale.color }}>
                                           <svg viewBox="0 0 10 10" className="w-2 h-2" fill="none">
-                                            <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                            <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                           </svg>
                                         </span>
                                       )}

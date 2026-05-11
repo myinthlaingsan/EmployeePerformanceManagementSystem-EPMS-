@@ -9,9 +9,7 @@ import {
   useCloseCycleMutation,
   useGetTeamEvaluationsQuery,
   useCreateFormSetMutation,
-  useGetAppraisalFormSetsQuery,
-  useUpdateFormSetMutation,
-  useDeleteFormSetMutation
+  useGetAppraisalFormSetsQuery
 } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
 import {
@@ -64,8 +62,6 @@ const AppraisalList: React.FC = () => {
   const [closeCycle, { isLoading: isClosing }] = useCloseCycleMutation();
   const [createFormSet] = useCreateFormSetMutation();
   const { data: formSets = [] } = useGetAppraisalFormSetsQuery(undefined, { skip: !isPrivileged });
-  const [updateFormSet] = useUpdateFormSetMutation();
-  const [deleteFormSet] = useDeleteFormSetMutation();
 
   const isLoading = loadingAppraisals || loadingTeam || (isPrivileged && (loadingCycles || loadingForms || (selectedCycleId && loadingCycleData)));
 
@@ -637,37 +633,37 @@ const AppraisalList: React.FC = () => {
     );
   };
 
-    const renderForms = () => {
-      // Group Form Sets by cycle
-      const groupedSets: Record<string, any[]> = {};
-      cycles.forEach((c: any) => { groupedSets[c.cycleName] = []; });
-      formSets.forEach((set: any) => {
-        const cycleName = set.cycleName || 'Unassigned';
-        if (!groupedSets[cycleName]) groupedSets[cycleName] = [];
-        groupedSets[cycleName].push(set);
+  const renderForms = () => {
+    // Group Form Sets by cycle
+    const groupedSets: Record<string, any[]> = {};
+    cycles.forEach((c: any) => { groupedSets[c.cycleName] = []; });
+    formSets.forEach((set: any) => {
+      const cycleName = set.cycleName || 'Unassigned';
+      if (!groupedSets[cycleName]) groupedSets[cycleName] = [];
+      groupedSets[cycleName].push(set);
+    });
+
+    // Helper: Map set to the UI structure
+    const getSetDetails = (set: any) => {
+      const self = forms.find(f => f.formId === set.selfAssessmentFormId);
+      const manager = forms.find(f => f.formId === set.managerEvaluationFormId);
+      return { self, manager, id: set.id };
+    };
+
+    const buildSetMap = (cycleName: string) => {
+      const setsForCycle = groupedSets[cycleName] || [];
+      const setMap = new Map<string, { self: any, manager: any, id: number }>();
+      setsForCycle.forEach(set => {
+        setMap.set(set.name, getSetDetails(set));
       });
-
-      // Helper: Map set to the UI structure
-      const getSetDetails = (set: any) => {
-        const self = forms.find(f => f.formId === set.selfAssessmentFormId);
-        const manager = forms.find(f => f.formId === set.managerEvaluationFormId);
-        return { self, manager, id: set.id };
-      };
-
-      const buildSetMap = (cycleName: string) => {
-        const setsForCycle = groupedSets[cycleName] || [];
-        const setMap = new Map<string, { self: any, manager: any, id: number }>();
-        setsForCycle.forEach(set => {
-          setMap.set(set.name, getSetDetails(set));
-        });
-        return setMap;
-      };
+      return setMap;
+    };
 
     // Î“Ã¶Ã‡Î“Ã¶Ã‡ LEVEL 3: Inside a Form Set Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡
     if (expandedCycle && expandedSet) {
       const cycleData = cycles.find((c: any) => c.cycleName === expandedCycle);
       const setMap = buildSetMap(expandedCycle);
-      const thisSet = setMap.get(expandedSet) || { self: null, manager: null, id: 0, isAssigned: false };
+      const thisSet = setMap.get(expandedSet) || { self: null, manager: null, id: 0 };
 
       return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -680,15 +676,8 @@ const AppraisalList: React.FC = () => {
                 <ChevronRight className="w-3 h-3" />
                 <span>{expandedSet}</span>
               </nav>
-              <div className="flex items-center gap-4">
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight">{expandedSet}</h2>
-                {thisSet.isAssigned && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                    <AlertCircle className="w-3 h-3" /> Assigned
-                  </div>
-                )}
-              </div>
-              <p className="text-slate-400 text-sm font-medium mt-1">Configure evaluation templates for this position group.</p>
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight">Design Form Set</h2>
+              <p className="text-slate-400 text-sm font-medium mt-1">Configure evaluation templates for the {expandedSet} group.</p>
             </div>
 
             <button
@@ -712,15 +701,8 @@ const AppraisalList: React.FC = () => {
                     <Icon className="w-7 h-7" />
                   </div>
                   {form && (
-                    <div className="flex flex-col items-end gap-2">
-                       <div className="px-4 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full text-[10px] font-black uppercase tracking-widest">
-                        Ready to use
-                      </div>
-                      {thisSet.isAssigned && (
-                        <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-400 rounded-md text-[8px] font-bold uppercase tracking-tighter">
-                          <Clock className="w-2.5 h-2.5" /> Live
-                        </div>
-                      )}
+                    <div className="px-4 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full text-[10px] font-black uppercase tracking-widest">
+                      Ready to use
                     </div>
                   )}
                 </div>
@@ -736,22 +718,14 @@ const AppraisalList: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="pt-8 border-t border-slate-50 relative z-10 flex flex-col gap-3">
+                <div className="pt-8 border-t border-slate-50 relative z-10">
                   {form ? (
-                    <>
-                      <button
-                        onClick={() => navigate(`/appraisal/forms/${form.formId}`)}
-                        className="w-full py-4 bg-slate-50 text-slate-700 font-black rounded-2xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
-                      >
-                        Preview Template <ChevronRight className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}&edit=true&formId=${form.formId}`)}
-                        className="w-full py-4 border border-indigo-200 text-indigo-600 font-black rounded-2xl hover:bg-indigo-50 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Settings className="w-4 h-4" /> Edit Template
-                      </button>
-                    </>
+                    <button
+                      onClick={() => navigate(`/appraisal/forms/${form.formId}`)}
+                      className="w-full py-4 bg-slate-50 text-slate-700 font-black rounded-2xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 group-hover:shadow-lg"
+                    >
+                      View Full Template <ChevronRight className="w-4 h-4" />
+                    </button>
                   ) : (
                     <button
                       onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}`)}
@@ -855,38 +829,8 @@ const AppraisalList: React.FC = () => {
                     <div className={`p-4 rounded-xl ${isComplete ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
                       <Layers className="w-6 h-6" />
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${isComplete ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
-                        {isComplete ? 'Ready' : 'Incomplete'}
-                      </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const newName = prompt('Enter new name for form set:', setName);
-                            if (newName && newName !== setName) {
-                              const cycleData = cycles.find((c: any) => c.cycleName === expandedCycle);
-                              updateFormSet({ id: set.id, body: { name: newName, cycleId: cycleData.cycleId } });
-                            }
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                        >
-                          <Settings className="w-3.5 h-3.5" />
-                        </button>
-                        {!set.isAssigned && (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm(`Delete form set "${setName}"?`)) {
-                                deleteFormSet(set.id);
-                              }
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
-                          >
-                            <AlertCircle className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                    <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${isComplete ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                      {isComplete ? 'Ready' : 'Incomplete'}
                     </div>
                   </div>
                   <h3 className="text-xl font-black text-slate-900 mb-6 group-hover:text-indigo-600 transition-colors">{setName}</h3>

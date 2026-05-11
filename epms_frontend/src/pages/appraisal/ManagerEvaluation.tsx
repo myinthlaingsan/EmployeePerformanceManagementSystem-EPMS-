@@ -211,8 +211,8 @@ const ManagerEvaluation = () => {
                   className="px-7 py-2.5 text-white font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 text-sm shadow-lg order-2"
                   style={{ background: 'linear-gradient(135deg, #0052CC, #0747A6)', boxShadow: '0 4px 14px rgba(0,82,204,0.35)' }}
                 >
-                  {!formData.isSelfSubmitted 
-                    ? 'Awaiting Employee' 
+                  {!formData.isSelfSubmitted
+                    ? 'Awaiting Employee'
                     : (isSubmitting ? 'Submitting...' : 'Submit Evaluation')}
                 </button>
                 <button
@@ -264,7 +264,7 @@ const ManagerEvaluation = () => {
             ))}
           </div>
         </div>
- 
+
         {/* Rating Scale */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-5">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 flex items-center gap-2">

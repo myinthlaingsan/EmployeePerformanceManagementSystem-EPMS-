@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  useGetEmployeeAssessmentQuery, 
+import {
+  useGetEmployeeAssessmentQuery,
   useCalculateScoreMutation,
   useApproveAppraisalMutation,
   useFinalizeAppraisalMutation
 } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
-import { 
-  ClipboardList, 
-  FileText, 
-  ChevronLeft, 
-  User, 
-  CheckCircle2, 
-  Clock, 
-  Target, 
+import {
+  ClipboardList,
+  FileText,
+  ChevronLeft,
+  User,
+  CheckCircle2,
+  Clock,
+  Target,
   ArrowRight,
   ArrowUpRight,
   Lock,
@@ -30,7 +30,7 @@ const AppraisalDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isAdmin, isHR } = useAuth();
-  
+
   const { data: appraisal, isLoading } = useGetEmployeeAssessmentQuery(id || '', { skip: !id });
   const [calculateScore, { isLoading: isCalculating }] = useCalculateScoreMutation();
   const [approveAppraisal, { isLoading: isApproving }] = useApproveAppraisalMutation();
@@ -61,7 +61,7 @@ const AppraisalDetail: React.FC = () => {
   // HR/Admin can only view if submitted, unless they are the direct manager/employee
   // HR/Admin can view any self-assessment to monitor progress or test
   const canViewSelfAssessment = isEmployee || isManager || isPrivileged;
-  const canViewManagerEvaluation = isManager || isPrivileged;
+  const canViewManagerEvaluation = isManager || isPrivileged || (isEmployee && !!appraisal.managerSubmittedAt);
 
   const handleCalculate = async () => {
     try {
@@ -109,8 +109,8 @@ const AppraisalDetail: React.FC = () => {
       <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-4 sticky top-0 z-30 shadow-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate('/appraisal')} 
+            <button
+              onClick={() => navigate('/appraisal')}
               className="p-2.5 bg-white text-slate-500 rounded-xl hover:bg-slate-50 transition-all active:scale-95 border border-slate-200 shadow-sm"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -120,7 +120,7 @@ const AppraisalDetail: React.FC = () => {
               <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-0.5">{appraisal.cycleName}</p>
             </div>
           </div>
-          
+
           <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border flex items-center gap-2 shadow-sm ${statusInfo.color}`}>
             <statusInfo.icon className="w-3.5 h-3.5" />
             {statusInfo.label}
@@ -129,7 +129,7 @@ const AppraisalDetail: React.FC = () => {
       </div>
 
       <div className="max-w-6xl mx-auto px-8 pt-8 space-y-8">
-        
+
         {/* Profile & Score Card */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 bg-white rounded-[2.5rem] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex items-center gap-8">
@@ -166,8 +166,8 @@ const AppraisalDetail: React.FC = () => {
             </div>
             <div className="mt-4 flex items-center gap-2">
               <div className="h-2 flex-1 bg-white/10 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-indigo-400 to-blue-400 transition-all duration-1000" 
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-400 to-blue-400 transition-all duration-1000"
                   style={{ width: `${appraisal.finalScore || 0}%` }}
                 ></div>
               </div>
@@ -182,7 +182,7 @@ const AppraisalDetail: React.FC = () => {
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-indigo-600" /> HR Administrator Controls
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Calculate Score */}
               <div className={`p-6 rounded-2xl border transition-all ${appraisal.status === 'EVALUATED' ? 'border-indigo-200 bg-indigo-50/30' : 'border-slate-100 bg-slate-50/50 opacity-60'}`}>
@@ -196,7 +196,7 @@ const AppraisalDetail: React.FC = () => {
                 </div>
                 <h4 className="text-sm font-black text-slate-900 mb-1">Score Calculation</h4>
                 <p className="text-[11px] text-slate-400 font-medium mb-4">Process all form ratings into the final weighted score.</p>
-                <button 
+                <button
                   disabled={isCalculating || (appraisal.status !== 'EVALUATED' && appraisal.status !== 'HR_APPROVED')}
                   onClick={handleCalculate}
                   className="w-full py-2.5 bg-white border border-indigo-200 text-indigo-600 text-xs font-black rounded-xl hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-50"
@@ -218,15 +218,15 @@ const AppraisalDetail: React.FC = () => {
                 <h4 className="text-sm font-black text-slate-900 mb-1">HR Approval</h4>
                 <p className="text-[11px] text-slate-400 font-medium mb-4">Review results and approve for final sign-off.</p>
                 <div className="space-y-3">
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Approval comment..."
                     className="w-full px-3 py-2 bg-white border border-purple-100 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-purple-400/20"
                     value={approvalComment}
                     onChange={(e) => setApprovalComment(e.target.value)}
                     disabled={appraisal.status !== 'EVALUATED'}
                   />
-                  <button 
+                  <button
                     disabled={isApproving || appraisal.status !== 'EVALUATED'}
                     onClick={handleApprove}
                     className="w-full py-2.5 bg-white border border-purple-200 text-purple-600 text-xs font-black rounded-xl hover:bg-purple-600 hover:text-white transition-all disabled:opacity-50"
@@ -248,7 +248,7 @@ const AppraisalDetail: React.FC = () => {
                 </div>
                 <h4 className="text-sm font-black text-slate-900 mb-1">Finalize & Lock</h4>
                 <p className="text-[11px] text-slate-400 font-medium mb-4">Complete the cycle and archive the record.</p>
-                <button 
+                <button
                   disabled={isFinalizing || appraisal.status !== 'HR_APPROVED'}
                   onClick={handleFinalize}
                   className="w-full py-2.5 bg-white border border-emerald-200 text-emerald-600 text-xs font-black rounded-xl hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50"
@@ -262,7 +262,7 @@ const AppraisalDetail: React.FC = () => {
 
         {/* Results & Sign-off Banner */}
         {(appraisal.status === 'HR_APPROVED' || appraisal.status === 'FINALIZED') && (
-          <div 
+          <div
             onClick={() => navigate(`/appraisal/${id}/results`)}
             className="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-[2rem] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all group"
           >
@@ -273,8 +273,8 @@ const AppraisalDetail: React.FC = () => {
               <div>
                 <h3 className="text-2xl font-black tracking-tight">Final Results & Formal Sign-off</h3>
                 <p className="text-indigo-200 text-sm font-medium">
-                  {appraisal.status === 'FINALIZED' 
-                    ? 'The appraisal process is complete. View the final signed report.' 
+                  {appraisal.status === 'FINALIZED'
+                    ? 'The appraisal process is complete. View the final signed report.'
                     : 'HR has approved the results. Review the performance summary and provide your digital signature.'}
                 </p>
               </div>
@@ -290,12 +290,12 @@ const AppraisalDetail: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Manager Evaluation Card */}
           {canViewManagerEvaluation ? (
-            <div 
+            <div
               onClick={() => navigate(`/appraisal/${id}/manager-evaluation`)}
               className="group bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm hover:shadow-2xl hover:border-indigo-200 transition-all duration-500 cursor-pointer flex flex-col relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-40 h-40 -mr-10 -mt-10 rounded-full bg-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity blur-3xl"></div>
-              
+
               <div className="flex justify-between items-start mb-8 relative z-10">
                 <div className="p-5 rounded-3xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                   <FileText className="w-8 h-8" />
@@ -341,12 +341,12 @@ const AppraisalDetail: React.FC = () => {
 
           {/* Self Assessment Card */}
           {canViewSelfAssessment ? (
-            <div 
+            <div
               onClick={() => navigate(`/appraisal/${id}/self-assessment`)}
               className="group bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm hover:shadow-2xl hover:border-blue-200 transition-all duration-500 cursor-pointer flex flex-col relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-40 h-40 -mr-10 -mt-10 rounded-full bg-blue-600 opacity-0 group-hover:opacity-10 transition-opacity blur-3xl"></div>
-              
+
               <div className="flex justify-between items-start mb-8 relative z-10">
                 <div className="p-5 rounded-3xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
                   <ClipboardList className="w-8 h-8" />
