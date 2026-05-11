@@ -139,11 +139,17 @@ const ManagerEvaluation = () => {
       Manager Evaluation form could not be loaded.
     </div>
   );
-  const isManager = Number(user?.id) === Number(formData.managerId);
+  // Debug: log IDs to verify they match (remove after confirming)
+  console.log('[ManagerEval] user.id:', user?.id, '| formData.managerId:', formData.managerId, '| submitted:', formData.submitted);
+  const isManager = formData.managerId != null
+    ? Number(user?.id) === Number(formData.managerId)
+    : isHR || isAdmin // fallback if managerId is null in DB
+      ? false
+      : true; // if no manager assigned, let role-based MANAGER access it
   const isPrivileged = isHR || isAdmin;
 
-  // Read-only if already submitted
-  const isReadOnly = !!formData.submitted;
+  // Read-only if already submitted OR if the current user is not the assigned manager
+  const isReadOnly = !!formData.submitted || !isManager;
   const isDisabled = isSubmitting || isReadOnly;
 
   const grandTotal = Object.values(managerRatings).reduce((a, b) => a + b, 0);
