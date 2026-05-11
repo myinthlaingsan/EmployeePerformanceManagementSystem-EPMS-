@@ -7,7 +7,9 @@ import {
   useGetAppraisalsByCycleQuery,
   useActivateCycleMutation,
   useCloseCycleMutation,
-  useGetTeamEvaluationsQuery
+  useGetTeamEvaluationsQuery,
+  useCreateFormSetMutation,
+  useGetAppraisalFormSetsQuery
 } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
 import {
@@ -58,6 +60,8 @@ const AppraisalList: React.FC = () => {
   const { data: appraisalsByCycle = [], isLoading: loadingCycleData } = useGetAppraisalsByCycleQuery(selectedCycleId || 0, { skip: !selectedCycleId || !isPrivileged });
   const [activateCycle, { isLoading: isActivating }] = useActivateCycleMutation();
   const [closeCycle, { isLoading: isClosing }] = useCloseCycleMutation();
+  const [createFormSet] = useCreateFormSetMutation();
+  const { data: formSets = [] } = useGetAppraisalFormSetsQuery(undefined, { skip: !isPrivileged });
 
   const isLoading = loadingAppraisals || loadingTeam || (isPrivileged && (loadingCycles || loadingForms || (selectedCycleId && loadingCycleData)));
 
@@ -104,7 +108,7 @@ const AppraisalList: React.FC = () => {
           key={appraisal.appraisalId}
           className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
           onClick={() => {
-            navigate(`/appraisal/${appraisal.appraisalId}/self-assessment`);
+            navigate(`/appraisal/${appraisal.appraisalId}`);
           }}
         >
           {/* Background Accent */}
@@ -435,6 +439,7 @@ const AppraisalList: React.FC = () => {
                         <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Department</th>
                         <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Manager</th>
                         <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Score</th>
                         <th className="px-8 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
                       </tr>
                     </thead>
@@ -456,7 +461,7 @@ const AppraisalList: React.FC = () => {
                             </div>
                           </td>
                           <td className="px-8 py-6 text-sm font-medium text-slate-600">
-                            Development
+                            {appraisal.departmentName || 'Corporate'}
                           </td>
                           <td className="px-8 py-6">
                             <p className="text-sm font-bold text-slate-700">{appraisal.managerName || 'System'}</p>
@@ -465,6 +470,16 @@ const AppraisalList: React.FC = () => {
                             <div className={`inline-flex px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${getStatusColor(appraisal.status)}`}>
                               {appraisal.status.replace('_', ' ')}
                             </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            {appraisal.finalScore !== null && appraisal.finalScore !== undefined ? (
+                              <div className="flex flex-col">
+                                <span className="text-sm font-black text-slate-900">{Number(appraisal.finalScore).toFixed(2)}%</span>
+                                <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest">{appraisal.finalGrade?.replace('_', ' ')}</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs font-bold text-slate-300 italic">Not Calculated</span>
+                            )}
                           </td>
                           <td className="px-8 py-6 text-right">
                             <button
@@ -619,39 +634,36 @@ const AppraisalList: React.FC = () => {
   };
 
   const renderForms = () => {
-    // 1. Group all forms by cycle
-    const groupedForms: Record<string, any[]> = {};
-    cycles.forEach((c: any) => { groupedForms[c.cycleName] = []; });
-    forms.forEach((form: any) => {
-      const key = form.cycleName || 'Unassigned';
-      if (!groupedForms[key]) groupedForms[key] = [];
-      groupedForms[key].push(form);
+    // Group Form Sets by cycle
+    const groupedSets: Record<string, any[]> = {};
+    cycles.forEach((c: any) => { groupedSets[c.cycleName] = []; });
+    formSets.forEach((set: any) => {
+      const cycleName = set.cycleName || 'Unassigned';
+      if (!groupedSets[cycleName]) groupedSets[cycleName] = [];
+      groupedSets[cycleName].push(set);
     });
 
-    // Helper: Parse "SetName | Form label"
-    const getSetName = (formName: string) => {
-      const idx = formName.indexOf(' | ');
-      return idx >= 0 ? formName.slice(0, idx).trim() : '__unassigned__';
+    // Helper: Map set to the UI structure
+    const getSetDetails = (set: any) => {
+      const self = forms.find(f => f.formId === set.selfAssessmentFormId);
+      const manager = forms.find(f => f.formId === set.managerEvaluationFormId);
+      return { self, manager, id: set.id };
     };
 
-    // Helper: Group forms in a cycle by their set name
     const buildSetMap = (cycleName: string) => {
-      const map = new Map<string, { self: any; manager: any }>();
-      (groupedForms[cycleName] || []).forEach((f: any) => {
-        const sn = getSetName(f.formName);
-        if (!map.has(sn)) map.set(sn, { self: null, manager: null });
-        const entry = map.get(sn)!;
-        if (f.formType === 'SELF_ASSESSMENT') entry.self = f;
-        else if (f.formType === 'MANAGER_EVALUATION') entry.manager = f;
+      const setsForCycle = groupedSets[cycleName] || [];
+      const setMap = new Map<string, { self: any, manager: any, id: number }>();
+      setsForCycle.forEach(set => {
+        setMap.set(set.name, getSetDetails(set));
       });
-      return map;
+      return setMap;
     };
 
     // Î“Ã¶Ã‡Î“Ã¶Ã‡ LEVEL 3: Inside a Form Set Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡
     if (expandedCycle && expandedSet) {
       const cycleData = cycles.find((c: any) => c.cycleName === expandedCycle);
       const setMap = buildSetMap(expandedCycle);
-      const thisSet = setMap.get(expandedSet) || { self: null, manager: null };
+      const thisSet = setMap.get(expandedSet) || { self: null, manager: null, id: 0 };
 
       return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -701,7 +713,7 @@ const AppraisalList: React.FC = () => {
                   </h3>
                   <p className="text-slate-400 text-sm font-medium leading-relaxed mb-10">
                     {form
-                      ? `Full template configured with ${form.categoryCount || 0} sections and custom evaluation criteria.`
+                      ? `Full template configured with ${form.categories?.length || 0} sections and custom evaluation criteria.`
                       : `No ${label.toLowerCase()} template has been designed for this specific position set.`}
                   </p>
                 </div>
@@ -716,7 +728,7 @@ const AppraisalList: React.FC = () => {
                     </button>
                   ) : (
                     <button
-                      onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}`)}
+                      onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}`)}
                       className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100"
                     >
                       <Plus className="w-4 h-4" /> Design Template
@@ -778,7 +790,18 @@ const AppraisalList: React.FC = () => {
                 />
                 <button
                   disabled={!newSetName.trim()}
-                  onClick={() => { setExpandedSet(newSetName); setShowNewSetModal(false); }}
+                  onClick={async () => {
+                    const cycleData = cycles.find((c: any) => c.cycleName === expandedCycle);
+                    if (cycleData) {
+                      try {
+                        const res = await createFormSet({ name: newSetName, cycleId: cycleData.cycleId }).unwrap();
+                        setExpandedSet(newSetName);
+                        setShowNewSetModal(false);
+                      } catch (err) {
+                        alert('Failed to create form set');
+                      }
+                    }
+                  }}
                   className="px-8 py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-50"
                 >
                   Create & Design
@@ -834,22 +857,22 @@ const AppraisalList: React.FC = () => {
       );
     }
 
-    // Î“Ã¶Ã‡Î“Ã¶Ã‡ LEVEL 1: Cycle List Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡
+    // LEVEL 1: Cycle List
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {Object.keys(groupedForms).map((cycleName) => {
-          const cycleData = cycles.find((c: any) => c.cycleName === cycleName);
+        {cycles.map((cycle: any) => {
+          const setsCount = formSets.filter(s => s.cycleId === cycle.cycleId).length;
           return (
             <div
-              key={cycleName}
-              onClick={() => { setExpandedCycle(cycleName); setExpandedSet(null); }}
+              key={cycle.cycleId}
+              onClick={() => { setExpandedCycle(cycle.cycleName); setExpandedSet(null); }}
               className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
             >
               <div className="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full bg-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity blur-3xl"></div>
 
               <div className="flex justify-between items-start mb-8 relative z-10">
-                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${cycleData?.isActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                  {cycleData?.isActive ? 'Active' : 'Inactive'}
+                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${cycle.isActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                  {cycle.isActive ? 'Active' : 'Inactive'}
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                   <Layers className="w-5 h-5" />
@@ -857,9 +880,9 @@ const AppraisalList: React.FC = () => {
               </div>
 
               <div className="relative z-10 flex-1 text-center">
-                <h3 className="text-2xl font-black text-slate-900 leading-tight mb-2 group-hover:text-indigo-600 transition-colors">{cycleName}</h3>
+                <h3 className="text-2xl font-black text-slate-900 leading-tight mb-2 group-hover:text-indigo-600 transition-colors">{cycle.cycleName}</h3>
                 <p className="text-slate-400 text-xs font-black uppercase tracking-[0.2em] mb-8">
-                  {buildSetMap(cycleName).size} Form Set(s)
+                  {setsCount} Form Set(s)
                 </p>
               </div>
 

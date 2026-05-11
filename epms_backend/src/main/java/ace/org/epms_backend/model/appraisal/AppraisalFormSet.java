@@ -1,38 +1,37 @@
 package ace.org.epms_backend.model.appraisal;
 
-import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "appraisal_form")
+@Table(name = "appraisal_form_set")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class AppraisalForm extends BaseEntity {
+public class AppraisalFormSet extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long formId;
+    private Long id;
 
-    private String formName;
-
-    @Enumerated(EnumType.STRING)
-    private FormType formType;
+    private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cycle_id")
     private AppraisalCycle cycle;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "form_set_id")
-    private AppraisalFormSet formSet;
+    @JoinColumn(name = "self_assessment_form_id")
+    private AppraisalForm selfAssessmentForm;
 
-    private Long createdBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_evaluation_form_id")
+    private AppraisalForm managerEvaluationForm;
+
+    private Boolean isActive = true;
 }
-

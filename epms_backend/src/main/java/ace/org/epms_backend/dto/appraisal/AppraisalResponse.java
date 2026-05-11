@@ -25,6 +25,8 @@ public class AppraisalResponse {
     private String cycleName;
     private Long formId;
     private String formName;
+    private Long formSetId;
+    private String formSetName;
     private AppraisalStatus status;
 
     private Instant assignedAt;
@@ -40,4 +42,7 @@ public class AppraisalResponse {
     private String managerSignComment;
     private String approvalComment;
     private Boolean isLocked;
+    
+    private java.math.BigDecimal finalScore;
+    private String finalGrade;
 }

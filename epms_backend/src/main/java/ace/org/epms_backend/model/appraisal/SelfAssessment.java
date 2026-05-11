@@ -32,5 +32,8 @@ public class SelfAssessment extends BaseEntity {
 
     private Instant lastSavedAt;
 
+    @Column(columnDefinition = "TEXT")
+    private String overallReflection;
+
     private Instant submittedAt;
 }

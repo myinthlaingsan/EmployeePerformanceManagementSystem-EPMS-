@@ -9,7 +9,7 @@ public interface SelfAssessmentService {
 
     void saveAnswers(Long selfAssessmentId, List<SelfAssessmentAnswerRequest> answers);
 
-    void saveDraft(Long selfAssessmentId);
+    void saveDraft(Long selfAssessmentId, String overallReflection);
 
     void submitFinal(Long selfAssessmentId);
 

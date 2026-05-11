@@ -5,40 +5,37 @@ import {
   useSaveSelfAssessmentAnswersMutation,
   useSubmitSelfAssessmentMutation,
   useSaveDraftMutation,
-  useUploadEmployeeSignatureMutation
 } from '../../features/appraisal/appraisalApi';
 import {
   User,
   Cloud,
   ChevronLeft,
   Target,
-  Image as ImageIcon,
   Save,
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 /* ─── Shared rating scale (mirrors ManagerEvaluation) ───────── */
 const RATING_SCALE = [
   { v: 1, label: 'Unsatisfactory', color: '#ef4444' },
-  { v: 2, label: 'Below Average',  color: '#f97316' },
-  { v: 3, label: 'Meets Expects',  color: '#eab308' },
-  { v: 4, label: 'Exceeds',        color: '#22c55e' },
-  { v: 5, label: 'Outstanding',    color: '#0052CC' },
+  { v: 2, label: 'Below Average', color: '#f97316' },
+  { v: 3, label: 'Meets Expects', color: '#eab308' },
+  { v: 4, label: 'Exceeds', color: '#22c55e' },
+  { v: 5, label: 'Outstanding', color: '#0052CC' },
 ];
 
 const SelfAssessment = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, isHR, isAdmin } = useAuth();
 
   const { data: formResp, isLoading: appraisalLoading } = useGetSelfAssessmentFormQuery(id || '', { skip: !id });
-  const [saveAnswers,          { isLoading: isSaving }]    = useSaveSelfAssessmentAnswersMutation();
+  const [saveAnswers, { isLoading: isSaving }] = useSaveSelfAssessmentAnswersMutation();
   const [submitSelfAssessment, { isLoading: isSubmitting }] = useSubmitSelfAssessmentMutation();
-  const [saveDraftMutation,    { isLoading: isDrafting }]   = useSaveDraftMutation();
-  const [uploadSignature]                                    = useUploadEmployeeSignatureMutation();
+  const [saveDraftMutation, { isLoading: isDrafting }] = useSaveDraftMutation();
 
   const [responses, setResponses] = useState<Record<string, { ratingValue: number; isCompleted: boolean | null; comment?: string }>>({});
-  const [comment,          setComment]          = useState('');
-  const [signatureFile,    setSignatureFile]    = useState<File | null>(null);
-  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [comment, setComment] = useState('');
 
   const formData = formResp;
 
@@ -48,13 +45,14 @@ const SelfAssessment = () => {
       formData.categories.forEach((cat: any) => {
         cat.questions.forEach((q: any) => {
           initial[q.questionId] = {
-            ratingValue:  q.ratingValue  || 0,
-            isCompleted:  q.isCompleted  ?? null,
-            comment:      q.comment      || '',
+            ratingValue: q.ratingValue || 0,
+            isCompleted: q.isCompleted ?? null,
+            comment: q.comment || '',
           };
         });
       });
       setResponses(initial);
+      setComment(formData.overallReflection || '');
     }
   }, [formData]);
 
@@ -66,22 +64,22 @@ const SelfAssessment = () => {
     Object.values(responses).filter(r => r.ratingValue > 0 && r.isCompleted !== null).length,
     [responses]);
 
-  const handleRatingChange     = (qId: string, val: number)  => setResponses(p => ({ ...p, [qId]: { ...p[qId], ratingValue: val } }));
+  const handleRatingChange = (qId: string, val: number) => setResponses(p => ({ ...p, [qId]: { ...p[qId], ratingValue: val } }));
   const handleCompletionChange = (qId: string, val: boolean) => setResponses(p => ({ ...p, [qId]: { ...p[qId], isCompleted: val } }));
-  const handleCommentChange    = (qId: string, val: string)  => setResponses(p => ({ ...p, [qId]: { ...p[qId], comment: val } }));
+  const handleCommentChange = (qId: string, val: string) => setResponses(p => ({ ...p, [qId]: { ...p[qId], comment: val } }));
 
   const buildPayload = () => Object.keys(responses).map(qId => ({
-    questionId:  Number(qId),
+    questionId: Number(qId),
     ratingValue: responses[qId].ratingValue,
     isCompleted: responses[qId].isCompleted,
-    comment:     responses[qId].comment || null,
+    comment: responses[qId].comment || null,
   }));
 
   const handleSaveDraft = async () => {
     if (!formData?.selfAssessmentId) return;
     try {
       await saveAnswers({ id: formData.selfAssessmentId, answers: buildPayload() }).unwrap();
-      await saveDraftMutation(formData.selfAssessmentId).unwrap();
+      await saveDraftMutation({ selfAssessmentId: formData.selfAssessmentId, overallReflection: comment }).unwrap();
       alert('Draft saved successfully!');
     } catch (err: any) {
       alert(err?.data?.message || 'Operation failed. Please try again.');
@@ -95,7 +93,7 @@ const SelfAssessment = () => {
     }
     try {
       await saveAnswers({ id: formData.selfAssessmentId, answers: buildPayload() }).unwrap();
-      if (signatureFile && id) await uploadSignature({ id, file: signatureFile }).unwrap();
+      await saveDraftMutation({ selfAssessmentId: formData.selfAssessmentId, overallReflection: comment }).unwrap();
       await submitSelfAssessment(formData.selfAssessmentId).unwrap();
       alert('Self-assessment submitted successfully!');
       navigate('/appraisal');
@@ -115,7 +113,36 @@ const SelfAssessment = () => {
     </div>
   );
 
-  const isDisabled = isSubmitting || !!formData.submitted;
+  const isOwner = Number(user?.id) === Number(formData.employeeId);
+
+  // A form is read-only if:
+  // 1. It is already submitted
+  // 2. The viewer is NOT the employee who owns the form (Manager, HR, Admin)
+  const isReadOnly = !!formData.submitted || !isOwner;
+  const isDisabled = isSubmitting || isReadOnly;
+
+  // HARD BLOCK: If viewer is NOT the owner AND form is NOT submitted, show nothing.
+  if (!isOwner && !formData.submitted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
+        <div className="bg-white border border-slate-200 rounded-3xl p-16 text-center max-w-2xl shadow-xl">
+          <div className="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+            <Target className="w-10 h-10 animate-pulse" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-4">Assessment Not Yet Available</h2>
+          <p className="text-slate-500 font-medium leading-relaxed mb-8">
+            You are not authorized to view this self-assessment until <strong>{formData.employeeName}</strong> has completed and submitted it.
+          </p>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-8 py-3 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg"
+          >
+            Return to Previous Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-10" style={{ background: 'linear-gradient(135deg, #f5f0ff 0%, #f8fafc 60%, #eef2f7 100%)' }}>
@@ -143,7 +170,7 @@ const SelfAssessment = () => {
               <span className="text-sm font-black text-indigo-700">{completedCount}</span>
               <span className="text-sm text-indigo-400 font-medium">/ {totalQuestions}</span>
             </div>
-            {!formData.submitted && (
+            {!isReadOnly && (
               <>
                 <button
                   onClick={handleSaveDraft}
@@ -165,7 +192,7 @@ const SelfAssessment = () => {
             )}
             {formData.submitted && (
               <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl px-4 py-2 text-sm font-black">
-                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                 Submitted
               </div>
             )}
@@ -183,9 +210,9 @@ const SelfAssessment = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-10 gap-y-3 flex-1">
             {[
               { label: 'Employee Name', value: formData.employeeName },
-              { label: 'Employee ID',   value: formData.employeeCode },
-              { label: 'Department',    value: formData.departmentName },
-              { label: 'Manager',       value: formData.managerName },
+              { label: 'Employee ID', value: formData.employeeCode },
+              { label: 'Department', value: formData.departmentName },
+              { label: 'Manager', value: formData.managerName },
             ].map(({ label, value }) => (
               <div key={label}>
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-0.5">{label}</p>
@@ -217,7 +244,7 @@ const SelfAssessment = () => {
 
         {/* ── Assessment Sections ── */}
         {formData.categories?.map((section: any, sIdx: number) => {
-          const sectionMax   = section.questions.length * 5;
+          const sectionMax = section.questions.length * 5;
           const sectionScore = section.questions.reduce((acc: number, q: any) =>
             acc + (responses[q.questionId.toString()]?.ratingValue || 0), 0);
           const pct = sectionMax > 0 ? (sectionScore / sectionMax) * 100 : 0;
@@ -261,9 +288,9 @@ const SelfAssessment = () => {
               {/* Questions */}
               <div className="divide-y divide-slate-50">
                 {section.questions.map((q: any, qIdx: number) => {
-                  const qId     = q.questionId.toString();
-                  const resp    = responses[qId] || { ratingValue: 0, isCompleted: null };
-                  const hasYN   = q.questionType === 'YESNO' || q.secondaryQuestionType === 'YESNO';
+                  const qId = q.questionId.toString();
+                  const resp = responses[qId] || { ratingValue: 0, isCompleted: null };
+                  const hasYN = q.questionType === 'YESNO' || q.secondaryQuestionType === 'YESNO';
                   const hasRating = q.questionType === 'RATING' || q.secondaryQuestionType === 'RATING';
                   const hasText = q.questionType === 'TEXT' || q.secondaryQuestionType === 'TEXT';
                   const selectedScale = resp.ratingValue ? RATING_SCALE.find(s => s.v === resp.ratingValue) : null;
@@ -316,7 +343,7 @@ const SelfAssessment = () => {
                               <>
                                 {[1, 2, 3, 4, 5].map(n => {
                                   const scale = RATING_SCALE.find(s => s.v === n)!;
-                                  const sel   = resp.ratingValue === n;
+                                  const sel = resp.ratingValue === n;
                                   return (
                                     <button
                                       key={n}
@@ -333,7 +360,7 @@ const SelfAssessment = () => {
                                         ${isDisabled || ratingLocked ? 'cursor-not-allowed opacity-50 !scale-100' : 'cursor-pointer'}`}
                                       style={sel ? {
                                         background: `linear-gradient(135deg, ${scale.color}cc, ${scale.color})`,
-                                        boxShadow:  `0 4px 12px ${scale.color}55`,
+                                        boxShadow: `0 4px 12px ${scale.color}55`,
                                       } : {}}
                                     >
                                       {n}
@@ -341,7 +368,7 @@ const SelfAssessment = () => {
                                         <span className="absolute -top-1 -right-1 w-3 h-3 rounded-sm flex items-center justify-center shadow"
                                           style={{ background: scale.color }}>
                                           <svg viewBox="0 0 10 10" className="w-2 h-2" fill="none">
-                                            <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                            <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                           </svg>
                                         </span>
                                       )}
@@ -384,8 +411,9 @@ const SelfAssessment = () => {
           );
         })}
 
+
         {/* ── Overall Reflection ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-6">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-6 mb-8">
           <h2 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-3 flex items-center gap-2">
             <span className="w-1 h-4 bg-indigo-500 rounded-full inline-block" />
             Overall Self-Reflection
@@ -397,54 +425,6 @@ const SelfAssessment = () => {
             onChange={e => setComment(e.target.value)}
             disabled={isDisabled}
           />
-        </div>
-
-        {/* ── Signature ── */}
-        <div className="flex justify-end pb-10">
-          <div className="w-full md:w-80 bg-white rounded-2xl border border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-6">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 flex items-center justify-between">
-              Employee Signature
-              {(formData.employeeSignature || signaturePreview) && (
-                <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5 text-[8px] font-black uppercase">Ready</span>
-              )}
-            </p>
-
-            <div className="flex flex-col items-center justify-center min-h-[100px] bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 relative group transition-all hover:border-indigo-300 hover:bg-indigo-50/20 mb-4 cursor-pointer">
-              {formData.employeeSignature ? (
-                <img src={`data:image/png;base64,${formData.employeeSignature}`} alt="Signature" className="max-h-16 object-contain mix-blend-multiply" />
-              ) : signaturePreview ? (
-                <>
-                  <img src={signaturePreview} alt="Signature Preview" className="max-h-16 object-contain mix-blend-multiply" />
-                  {!formData.submitted && (
-                    <button
-                      onClick={() => { setSignatureFile(null); setSignaturePreview(null); }}
-                      className="absolute top-1 right-1 text-[9px] font-black text-slate-400 hover:text-red-500 bg-white rounded-full px-1.5 py-0.5 border border-slate-200"
-                    >✕</button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <ImageIcon className="w-6 h-6 text-slate-300 mb-1.5 group-hover:text-indigo-400 transition-colors" />
-                  <p className="text-[10px] font-bold text-slate-400">Click to choose photo</p>
-                  <p className="text-[9px] text-slate-300 mt-0.5">Will be submitted with the form</p>
-                  <input
-                    type="file" accept="image/*"
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) { setSignatureFile(file); setSignaturePreview(URL.createObjectURL(file)); }
-                    }}
-                    disabled={isDisabled}
-                  />
-                </>
-              )}
-            </div>
-
-            <div className="border-t border-slate-100 pt-4 text-center">
-              <p className="text-sm font-black text-slate-700">{formData.employeeName}</p>
-              <p className="text-[10px] text-slate-400 mt-1">Date: {new Date().toISOString().split('T')[0]}</p>
-            </div>
-          </div>
         </div>
 
       </div>

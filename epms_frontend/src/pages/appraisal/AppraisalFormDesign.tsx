@@ -6,7 +6,8 @@ import {
   useAddQuestionMutation,
   useGetCyclesQuery,
   useGetAppraisalFormsQuery,
-  useLazyGetAppraisalFormQuery
+  useLazyGetAppraisalFormQuery,
+  useUpdateAppraisalFormMutation
 } from '../../features/appraisal/appraisalApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { 
@@ -47,10 +48,18 @@ const AppraisalFormDesign: React.FC = () => {
   const [addQuestion] = useAddQuestionMutation();
 
   // State
+  const { data: allForms = [], isLoading: formsLoading } = useGetAppraisalFormsQuery();
+  const [fetchFormDetail] = useLazyGetAppraisalFormQuery();
+  const [updateForm] = useUpdateAppraisalFormMutation();
+
+  // State
   const queryParams = new URLSearchParams(location.search);
   const initialCycleId = queryParams.get('cycleId') || location.state?.cycleId || '';
   const initialType = queryParams.get('type') || 'SELF_ASSESSMENT';
   const initialSetName = queryParams.get('setName') ? decodeURIComponent(queryParams.get('setName')!) : '';
+  const isSetNameFromUrl = React.useMemo(() => !!initialSetName, [initialSetName]);
+  const isEditMode = queryParams.get('edit') === 'true';
+  const existingFormId = queryParams.get('formId');
   
   const [formName, setFormName] = useState(
     initialType === 'MANAGER_EVALUATION' 
@@ -59,33 +68,51 @@ const AppraisalFormDesign: React.FC = () => {
   );
   const [formType, setFormType] = useState(initialType);
   const [selectedCycleId, setSelectedCycleId] = useState<string>(initialCycleId);
-  // setName: comes from URL (drill-down flow) or user can type it manually
   const [setName, setSetName] = useState<string>(initialSetName);
   const { data: positions = [] } = useGetPositionsQuery();
-  const { data: allForms = [], isLoading: formsLoading } = useGetAppraisalFormsQuery();
-  const [fetchFormDetail] = useLazyGetAppraisalFormQuery();
+  const [categories, setCategories] = useState<CategoryDraft[]>([]);
 
-  // Only show position dropdown when no setName from URL
-  const isSetNameFromUrl = !!initialSetName;
-  const [categories, setCategories] = useState<CategoryDraft[]>([
-    {
-      name: initialType === 'MANAGER_EVALUATION' ? 'Management Skills' : 'Technical Competencies',
-      questions: [
-        { 
-          text: initialType === 'MANAGER_EVALUATION' 
-            ? 'Rate the employee\'s leadership and team management skills.' 
-            : 'How do you rate your code quality and adherence to standards?', 
-          type: 'RATING', 
-          secondaryType: initialType === 'SELF_ASSESSMENT' ? 'YESNO' : 'NONE',
-          isRequired: true 
-        }
-      ]
-    }
-  ]);
+  // Load existing form data if in edit mode
+  React.useEffect(() => {
+    const loadForm = async () => {
+      if (isEditMode && existingFormId) {
+        try {
+          const fullForm = await fetchFormDetail(existingFormId).unwrap();
+          setIsAssigned(fullForm.isAssigned);
+          const parts = fullForm.formName.split(' | ');
+          if (parts.length > 1) {
+            setSetName(parts[0]);
+            setFormName(parts[1]);
+          } else {
+            setFormName(fullForm.formName);
+          }
+          setFormType(fullForm.formType);
+          setSelectedCycleId(String(fullForm.cycleId));
+          const sections = fullForm.sections || fullForm.categories || [];
+          setCategories(sections.map((s: any) => ({
+            name: s.categoryName || s.title || 'Section',
+            questions: (s.questions || []).map((q: any) => ({
+              text: q.questionText || q.text || '',
+              type: q.questionType || q.type || 'RATING',
+              secondaryType: q.secondaryQuestionType || q.secondaryType || 'NONE',
+              isRequired: q.isRequired ?? q.required ?? true
+            }))
+          })));
+        } catch (err) { console.error(err); }
+      } else {
+        setCategories([{
+          name: initialType === 'MANAGER_EVALUATION' ? 'Management Skills' : 'Technical Competencies',
+          questions: [{ text: '', type: 'RATING', secondaryType: initialType === 'SELF_ASSESSMENT' ? 'YESNO' : 'NONE', isRequired: true }]
+        }]);
+      }
+    };
+    loadForm();
+  }, [isEditMode, existingFormId]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [isAssigned, setIsAssigned] = useState(false);
   const [settings, setSettings] = useState({
     mandatory: true
   });
@@ -162,16 +189,35 @@ const AppraisalFormDesign: React.FC = () => {
       return;
     }
     const prefixedFormName = `${setName.trim()} | ${formName}`;
+    
+    if (isAssigned) {
+      alert('Cannot save changes: This form template is already assigned to active appraisals and cannot be modified.');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       
-      // 1. Create the Form
-      const formId = await createForm({
-        formName: prefixedFormName,
-        formType,
-        cycleId: Number(selectedCycleId)
-      }).unwrap();
+      let formId: number;
+      
+      if (isEditMode && existingFormId) {
+        await updateForm({
+          id: existingFormId,
+          body: {
+            formName: prefixedFormName,
+            formType,
+            cycleId: Number(selectedCycleId)
+          }
+        }).unwrap();
+        formId = Number(existingFormId);
+      } else {
+        formId = await createForm({
+          formName: prefixedFormName,
+          formType,
+          cycleId: Number(selectedCycleId),
+          formSetId: queryParams.get('formSetId') ? Number(queryParams.get('formSetId')) : undefined
+        }).unwrap();
+      }
 
       // 2. Add Categories and Questions
       for (const cat of categories) {
@@ -191,16 +237,17 @@ const AppraisalFormDesign: React.FC = () => {
       const cycle = cycles.find(c => Number(c.cycleId) === Number(selectedCycleId));
       const cycleName = cycle?.cycleName || '';
 
-      alert('Form saved successfully!');
+      alert(isEditMode ? 'Form updated successfully!' : 'Form saved successfully!');
       navigate('/appraisal', { 
         state: { 
           activeTab: 'forms', 
           expandedCycle: cycleName 
         } 
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to save form design.');
+      const errorMsg = err?.data?.message || err?.message || 'Unknown error';
+      alert(`Failed to save form design: ${errorMsg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -243,19 +290,30 @@ const AppraisalFormDesign: React.FC = () => {
             onClick={() => setIsPreviewMode(!isPreviewMode)}
             className={`px-5 py-2.5 font-bold rounded-xl border transition-all flex items-center gap-2 ${isPreviewMode ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
           >
-            <FileText className="w-4 h-4" /> {isPreviewMode ? 'Exit Preview' : 'Preview'}
+            {isPreviewMode ? <ListTodo className="w-4 h-4" /> : <Layout className="w-4 h-4" />}
+            {isPreviewMode ? 'Back to Editor' : 'Live Preview'}
           </button>
           {!isPreviewMode && (
             <button 
               onClick={handleSaveForm}
-              disabled={isSubmitting}
-              className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2 disabled:opacity-50"
+              disabled={isSubmitting || isAssigned}
+              className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2 disabled:opacity-50 disabled:bg-slate-400"
             >
-              {isSubmitting ? 'Saving...' : <><Save className="w-4 h-4" /> Save Template</>}
+              <Save className="w-4 h-4" />
+              {isSubmitting ? 'Saving...' : 'Save Template'}
             </button>
           )}
         </div>
       </div>
+
+      {isAssigned && !isPreviewMode && (
+        <div className="bg-amber-50 border-b border-amber-100 px-8 py-3 flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 text-amber-600" />
+          <p className="text-xs font-bold text-amber-700">
+            This form is currently <span className="underline">Assigned</span> to active appraisals. Structural changes may impact existing assessment data.
+          </p>
+        </div>
+      )}
 
       <div className="max-w-[1400px] mx-auto mt-8 px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
@@ -318,6 +376,7 @@ const AppraisalFormDesign: React.FC = () => {
                     className={inputClass}
                     placeholder='e.g. "Software Engineer"'
                     value={setName}
+                    readOnly={isAssigned}
                     onChange={e => setSetName(e.target.value)}
                   />
                 )}
@@ -335,8 +394,8 @@ const AppraisalFormDesign: React.FC = () => {
             
             <div className="space-y-6">
               <div 
-                onClick={() => setSettings({...settings, mandatory: !settings.mandatory})}
-                className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors"
+                onClick={() => !isAssigned && setSettings({...settings, mandatory: !settings.mandatory})}
+                className={`flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-colors ${isAssigned ? 'cursor-not-allowed opacity-75' : 'cursor-pointer hover:bg-slate-100'}`}
               >
                 <div>
                   <p className="text-sm font-bold text-slate-800">Mandatory Completion</p>
@@ -465,6 +524,7 @@ const AppraisalFormDesign: React.FC = () => {
                           newCats[catIdx].name = e.target.value;
                           setCategories(newCats);
                         }}
+                        readOnly={isAssigned}
                         className="bg-transparent border-none focus:ring-0 text-lg font-black text-slate-800 p-0 w-full placeholder:text-slate-200"
                         placeholder="Category Name..."
                       />
@@ -476,15 +536,19 @@ const AppraisalFormDesign: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 opacity-0 group-hover/section:opacity-100 transition-opacity">
-                  <button className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
-                    <Plus className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => removeCategory(catIdx)}
-                    className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {!isAssigned && (
+                    <>
+                      <button className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => removeCategory(catIdx)}
+                        className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -502,6 +566,7 @@ const AppraisalFormDesign: React.FC = () => {
                           placeholder="What would you like to evaluate?"
                           className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 resize-none p-0 placeholder:text-slate-200"
                           value={q.text}
+                          readOnly={isAssigned}
                           onChange={e => updateQuestion(catIdx, qIdx, { text: e.target.value })}
                         />
                         
@@ -520,7 +585,6 @@ const AppraisalFormDesign: React.FC = () => {
                                     <option value="YESNO">Yes / No</option>
                                     <option value="TEXT">Text</option>
                                     <option value="RATING">1-5 Rating</option>
-                                    <option value="NONE">None</option>
                                   </select>
                                 </div>
                               </div>
@@ -601,38 +665,44 @@ const AppraisalFormDesign: React.FC = () => {
                         </div>
                       </div>
 
-                      <button 
-                        onClick={() => removeQuestion(catIdx, qIdx)}
-                        className="p-2 text-slate-100 hover:text-rose-400 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isAssigned && (
+                        <button 
+                          onClick={() => removeQuestion(catIdx, qIdx)}
+                          className="p-2 text-slate-100 hover:text-rose-400 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
 
-                <button 
-                  onClick={() => addQuestionToCategory(catIdx)}
-                  className="w-full py-3 bg-white border border-slate-200 border-dashed text-slate-400 font-bold text-xs rounded-2xl hover:border-indigo-300 hover:text-indigo-600 hover:bg-white transition-all flex items-center justify-center gap-2 mt-2"
-                >
-                  <Plus className="w-4 h-4" /> Add Question to {cat.name || 'Section'}
-                </button>
+                {!isAssigned && (
+                  <button 
+                    onClick={() => addQuestionToCategory(catIdx)}
+                    className="w-full py-3 bg-white border border-slate-200 border-dashed text-slate-400 font-bold text-xs rounded-2xl hover:border-indigo-300 hover:text-indigo-600 hover:bg-white transition-all flex items-center justify-center gap-2 mt-2"
+                  >
+                    <Plus className="w-4 h-4" /> Add Question to {cat.name || 'Section'}
+                  </button>
+                )}
               </div>
             </div>
           ))}
 
-          <button 
-            onClick={addNewCategory}
-            className="w-full py-12 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center gap-3 group hover:border-indigo-300 hover:bg-white transition-all shadow-sm"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 transition-all duration-300 shadow-sm">
-              <Plus className="w-6 h-6" />
-            </div>
-            <div className="text-center">
-              <span className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] group-hover:text-indigo-600 transition-all">Create New Assessment Category</span>
-              <p className="text-[10px] font-medium text-slate-300 mt-1">Group indicators by competency area</p>
-            </div>
-          </button>
+          {!isAssigned && (
+            <button 
+              onClick={addNewCategory}
+              className="w-full py-12 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center gap-3 group hover:border-indigo-300 hover:bg-white transition-all shadow-sm"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 transition-all duration-300 shadow-sm">
+                <Plus className="w-6 h-6" />
+              </div>
+              <div className="text-center">
+                <span className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] group-hover:text-indigo-600 transition-all">Create New Assessment Category</span>
+                <p className="text-[10px] font-medium text-slate-300 mt-1">Group indicators by competency area</p>
+              </div>
+            </button>
+          )}
 
           {/* Expedite Banner */}
           <div className="bg-white rounded-3xl border border-slate-200 p-10 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative group">
@@ -641,12 +711,14 @@ const AppraisalFormDesign: React.FC = () => {
                 <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Need to expedite template creation?</h3>
                 <p className="text-sm font-medium text-slate-400">Browse our library of pre-configured industry-standard appraisal forms.</p>
              </div>
-             <button 
-               onClick={() => setShowLibrary(true)}
-               className="relative z-10 px-8 py-3 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all"
-             >
-                Explore Library
-             </button>
+             {!isAssigned && (
+               <button 
+                 onClick={() => setShowLibrary(true)}
+                 className="relative z-10 px-8 py-3 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all"
+               >
+                  Explore Library
+               </button>
+             )}
              </div>
           </>
         )}
