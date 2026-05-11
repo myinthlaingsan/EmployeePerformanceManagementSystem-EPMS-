@@ -4,6 +4,7 @@ import ace.org.epms_backend.dto.AuditRequest;
 import ace.org.epms_backend.dto.kpi.KpiScoreResponse;
 import ace.org.epms_backend.enums.AuditAction;
 import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.enums.KpiGoalStatus;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.employee.Employee;
@@ -64,8 +65,8 @@ public class KpiScoringServiceImpl implements KpiScoringService {
         // }
 
         // Precondition 2: Has the manager locked the goal set?
-        if (!goalSet.getStatus().equals(ace.org.epms_backend.enums.KpiGoalStatus.LOCKED) && 
-            !goalSet.getStatus().equals(ace.org.epms_backend.enums.KpiGoalStatus.APPROVED)) {
+        if (!goalSet.getStatus().equals(KpiGoalStatus.LOCKED) &&
+            !goalSet.getStatus().equals(KpiGoalStatus.APPROVED)) {
             throw new IllegalStateException("Goal set must be APPROVED or LOCKED before finalizing the score.");
         }
 
