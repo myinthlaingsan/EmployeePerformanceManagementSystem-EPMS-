@@ -22,12 +22,12 @@ const EmployeeList = () => {
   const [selectedDeptId, setSelectedDeptId] = useState<string>("");
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
 
-  const { data: pagedData, isLoading, error } = useSearchEmployeesQuery({ 
-    query: searchQuery, 
-    departmentId: selectedDeptId, 
-    teamId: selectedTeamId, 
-    page, 
-    size 
+  const { data: pagedData, isLoading, error } = useSearchEmployeesQuery({
+    query: searchQuery,
+    departmentId: selectedDeptId,
+    teamId: selectedTeamId,
+    page,
+    size
   });
 
   const employees = pagedData?.content;
@@ -183,8 +183,17 @@ const EmployeeList = () => {
               <tr key={emp.id} className="hover:bg-gray-50/50 transition-colors group">
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-4">
-                    <div className="w-11 h-11 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
-                      {emp.staffName.charAt(0)}
+                    <div className="w-11 h-11 rounded-2xl bg-gray-100 flex items-center justify-center text-white font-bold shadow-md overflow-hidden">
+                      {emp.profileImage && emp.profileImage !== "default.jpg" ? (
+                        <img
+                          src={`http://localhost:8080${emp.profileImage}`}
+                          alt={emp.staffName}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span className="text-sm font-bold text-gray-500">{emp.staffName.charAt(0)}</span>
+                      )}
                     </div>
                     <div>
                       <div className="text-sm font-bold text-gray-900">{emp.staffName}</div>
@@ -306,11 +315,10 @@ const EmployeeList = () => {
                 <button
                   key={i}
                   onClick={() => setPage(i)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition ${
-                    page === i
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition ${page === i
                       ? "bg-blue-600 text-white shadow-md shadow-blue-200"
                       : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
-                  }`}
+                    }`}
                 >
                   {i + 1}
                 </button>

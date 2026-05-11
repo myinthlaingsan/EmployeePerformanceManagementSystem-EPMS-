@@ -160,6 +160,25 @@ export const employeeApi = api.injectEndpoints({
       }),
     }),
 
+    uploadProfileImage: builder.mutation<
+      ApiResponse<any>,
+      { id: number; file: File }
+    >({
+      query: ({ id, file }) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return {
+          url: `/emp/${id}/profile-image`,
+          method: "POST",
+          body: formData,
+        };
+      },
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "Employee", id },
+        "Employee",
+        "Profile",
+      ],
+    }),
 
   }),
 });
@@ -180,4 +199,5 @@ export const {
   useChangePasswordMutation,
   useSetPasswordMutation,
   useGetAllEmployeesQuery,
+  useUploadProfileImageMutation,
 } = employeeApi;
