@@ -206,39 +206,52 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 .toList();
         }
 
-        @Override
-        public PagedResponse<EmployeeResponse> getAllPaginated(int page, int size) {
-                Pageable pageable = PageRequest.of(
-                                page,
-                                size,
-                                Sort.by("id").descending());
+    @Override
+    public PagedResponse<EmployeeResponse> getAllPaginated(int page, int size, Boolean excludeSelf) {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by("id").descending()
+        );
 
-                Page<Employee> employeePage = employeeRepository.findAllPaginated(pageable);
-
-                List<EmployeeResponse> content = employeePage.getContent()
-                                .stream()
-                                .map(this::mapToResponse)
-                                .toList();
-
-                return new PagedResponse<>(
-                                content,
-                                employeePage.getNumber(),
-                                employeePage.getSize(),
-                                employeePage.getTotalElements(),
-                                employeePage.getTotalPages(),
-                                employeePage.isLast());
+        Page<Employee> employeePage;
+        if (Boolean.TRUE.equals(excludeSelf)) {
+            Employee currentUser = authService.getCurrentUser();
+            employeePage = employeeRepository.findAllPaginatedExcluding(currentUser.getId(), pageable);
+        } else {
+            employeePage = employeeRepository.findAllPaginated(pageable);
         }
+
+        List<EmployeeResponse> content = employeePage.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+
+        return new PagedResponse<>(
+                content,
+                employeePage.getNumber(),
+                employeePage.getSize(),
+                employeePage.getTotalElements(),
+                employeePage.getTotalPages(),
+                employeePage.isLast()
+        );
+    }
 
         @Override
         public PagedResponse<EmployeeResponse> search(String query, Long departmentId, Long teamId, int page,
-                        int size) {
+                        int size,Boolean excludeSelf) {
                 Pageable pageable = PageRequest.of(
                                 page,
                                 size,
                                 Sort.by("id").descending());
 
                 Page<Employee> employeePage = employeeRepository.searchEmployees(query, departmentId, teamId, pageable);
-
+            if (Boolean.TRUE.equals(excludeSelf)) {
+                Employee currentUser = authService.getCurrentUser();
+                employeePage = employeeRepository.searchEmployeesExcluding(query, currentUser.getId(), pageable);
+            } else {
+                employeePage = employeeRepository.searchEmployees(query,departmentId, teamId,pageable);
+            }
                 List<EmployeeResponse> content = employeePage.getContent()
                                 .stream()
                                 .map(this::mapToResponse)

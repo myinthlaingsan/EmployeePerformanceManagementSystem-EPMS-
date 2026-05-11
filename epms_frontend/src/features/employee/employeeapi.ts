@@ -19,20 +19,22 @@ export const employeeApi = api.injectEndpoints({
       transformResponse: (response: ApiResponse<EmployeeResponse[]>) => response.data,
       providesTags: ["Employee"],
     }),
-
-    getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page: number; size: number }>({
-      query: ({ page, size }) => `/emp?page=${page}&size=${size}`,
+    // getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page: number; size: number }>({
+    //   query: ({ page, size }) => `/emp?page=${page}&size=${size}`,
+    getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page: number; size: number; excludeSelf?: boolean }>({
+      query: ({ page, size, excludeSelf }) => `/emp?page=${page}&size=${size}${excludeSelf ? '&excludeSelf=true' : ''}`,
       transformResponse: (response: ApiResponse<PagedResponse<EmployeeResponse>>) =>
         response.data,
       providesTags: ["Employee"],
     }),
 
-    searchEmployees: builder.query<PagedResponse<EmployeeResponse>, { query?: string; departmentId?: string; teamId?: string; page: number; size: number }>({
-      query: ({ query, departmentId, teamId, page, size }) => {
+    searchEmployees: builder.query<PagedResponse<EmployeeResponse>, { query?: string; departmentId?: string; teamId?: string; page: number; size: number; excludeSelf?: boolean }>({
+      query: ({ query, departmentId, teamId, page, size, excludeSelf }) => {
         let url = `/emp/search?page=${page}&size=${size}`;
         if (query) url += `&query=${encodeURIComponent(query)}`;
         if (departmentId) url += `&departmentId=${departmentId}`;
         if (teamId) url += `&teamId=${teamId}`;
+        if (excludeSelf) url += `&excludeSelf=true`;
         return url;
       },
       transformResponse: (response: ApiResponse<PagedResponse<EmployeeResponse>>) =>

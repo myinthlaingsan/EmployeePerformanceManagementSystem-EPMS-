@@ -7,6 +7,8 @@ import ace.org.epms_backend.exception.CodeAlreadyExistsException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.DepartmentMapper;
 import ace.org.epms_backend.model.employee.Department;
+import ace.org.epms_backend.model.employee.Employee;
+import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.DepartmentRepository;
 import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.service.DepartmentService;
@@ -23,6 +25,9 @@ public class DepartmentServiceImpl implements DepartmentService {
     private final DepartmentRepository departmentRepository;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
     private final DepartmentMapper departmentMapper;
+    private final ace.org.epms_backend.service.AuthService authService;
+    private final ace.org.epms_backend.repository.EmployeeRoleRepository employeeRoleRepository;
+    private final ace.org.epms_backend.repository.EmployeeRepository employeeRepository;
 
     @Override
     public DepartmentResponse createDepartment(DepartmentRequest request) {
@@ -36,6 +41,24 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Override
     public List<DepartmentResponse> getAllDepartments() {
+        Employee currentUser = authService.getCurrentUser();
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(currentUser.getId());
+
+        boolean isAdminOrHR = roles.stream().anyMatch(r -> 
+            r.getRoleName() == ace.org.epms_backend.enums.RoleType.ADMIN || 
+            r.getRoleName() == ace.org.epms_backend.enums.RoleType.HR
+        );
+        
+        boolean isManager = roles.stream().anyMatch(r -> 
+            r.getRoleName() == ace.org.epms_backend.enums.RoleType.MANAGER
+        );
+
+        if (isManager && !isAdminOrHR) {
+            return employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(currentUser.getId())
+                    .map(ed -> List.of(departmentMapper.toResponse(ed.getCurrentDepartment())))
+                    .orElse(List.of());
+        }
+
         return departmentRepository.findByIsActiveTrue().stream()
                 .map(departmentMapper::toResponse)
                 .collect(Collectors.toList());
@@ -80,6 +103,24 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Override
     public List<DepartmentResponse> getActiveDepartments() {
+        ace.org.epms_backend.model.employee.Employee currentUser = authService.getCurrentUser();
+        List<ace.org.epms_backend.model.employee.Role> roles = employeeRoleRepository.findRolesByEmployeeId(currentUser.getId());
+        
+        boolean isAdminOrHR = roles.stream().anyMatch(r -> 
+            r.getRoleName() == ace.org.epms_backend.enums.RoleType.ADMIN || 
+            r.getRoleName() == ace.org.epms_backend.enums.RoleType.HR
+        );
+        
+        boolean isManager = roles.stream().anyMatch(r -> 
+            r.getRoleName() == ace.org.epms_backend.enums.RoleType.MANAGER
+        );
+
+        if (isManager && !isAdminOrHR) {
+            return employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(currentUser.getId())
+                    .map(ed -> List.of(departmentMapper.toResponse(ed.getCurrentDepartment())))
+                    .orElse(List.of());
+        }
+
         return departmentRepository.findByIsActiveTrue().stream()
                 .map(departmentMapper::toResponse)
                 .collect(Collectors.toList());

@@ -118,6 +118,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
 
     @Override
     public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId, int page, int size) {
+        checkNotPurePrivileged();
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
@@ -139,6 +140,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
 
     @Override
     public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, int page, int size) {
+        checkNotPurePrivileged();
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
@@ -162,6 +164,17 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
         return roles.stream()
                 .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
+    }
+
+    private void checkNotPurePrivileged() {
+        Employee currentUser = authService.getCurrentUser();
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(currentUser.getId());
+        boolean hasPrivilegedRole = roles.stream().anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
+        boolean isManager = roles.stream().anyMatch(r -> r.getRoleName() == RoleType.MANAGER);
+        
+        if (hasPrivilegedRole && !isManager) {
+             throw new ace.org.epms_backend.exception.AccessDeniedException("Admins/HR cannot access feedback feeds directly. Use Performance Pulse instead.");
+        }
     }
 
     @Override
