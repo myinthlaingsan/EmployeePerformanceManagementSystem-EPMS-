@@ -338,9 +338,9 @@ public class AppraisalServiceImpl implements AppraisalService {
         public AppraisalResponse employeeSignOff(Long id, String comment) {
                 Appraisal appraisal = appraisalRepo.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
-        appraisal.setManagerSignedAt(Instant.now());
+        appraisal.setEmployeeSignedAt(Instant.now());
         if (comment != null) {
-            appraisal.setManagerSignComment(comment.getBytes());
+            appraisal.setEmployeeSignComment(comment);
         }
 
                 Appraisal saved = appraisalRepo.save(appraisal);
@@ -373,7 +373,7 @@ public class AppraisalServiceImpl implements AppraisalService {
 
                 appraisal.setManagerSignedAt(Instant.now());
             if (comment != null) {
-                appraisal.setManagerSignComment(comment.getBytes());
+                appraisal.setManagerSignComment(comment);
             }
 
                 Appraisal saved = appraisalRepo.save(appraisal);
