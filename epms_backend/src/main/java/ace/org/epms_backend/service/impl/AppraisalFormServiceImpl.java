@@ -127,7 +127,6 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                 .cycleId(form.getCycle() != null ? form.getCycle().getCycleId() : null)
                 .cycleName(form.getCycle() != null ? form.getCycle().getCycleName() : null)
                 .categories(categoryDTOs)
-                .isAssigned(appraisalRepository.existsByFormIdInFormSet(form.getFormId()))
                 .build();
     }
 
@@ -258,7 +257,6 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                         .createdBy(form.getCreatedBy())
                         .createdAt(form.getCreatedAt())
                         .updatedAt(form.getUpdatedAt())
-                        .isAssigned(appraisalRepository.existsByFormIdInFormSet(form.getFormId()))
                         .build())
                 .collect(Collectors.toList());
     }

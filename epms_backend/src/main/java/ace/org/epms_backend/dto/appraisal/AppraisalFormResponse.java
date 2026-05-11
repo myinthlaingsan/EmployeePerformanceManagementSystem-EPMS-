@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 
 @Data
@@ -21,6 +20,4 @@ public class AppraisalFormResponse {
     private Long createdBy;
     private Instant createdAt;
     private Instant updatedAt;
-    @JsonProperty("isAssigned")
-    private boolean isAssigned;
 }
