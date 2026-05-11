@@ -56,8 +56,33 @@ public class KpiProgressServiceImpl implements KpiProgressService {
         progress.setUpdatedBy(currentUser.getId());
         progressRepository.save(progress);
 
+        // Validate actual value range [0, targetValue]
+        if (request.getActualValue().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Actual value cannot be less than 0");
+        }
+        if (item.getTargetValue() != null && request.getActualValue().compareTo(item.getTargetValue()) > 0) {
+            throw new IllegalArgumentException("Actual value cannot exceed target value (" + item.getTargetValue() + ")");
+        }
+
         // Update item status and snapshot value
         item.setActualValue(request.getActualValue());
+
+        // Calculate Score Percent and Weighted Score
+        BigDecimal scorePercent = BigDecimal.ZERO;
+        if (item.getTargetValue() != null && item.getTargetValue().compareTo(BigDecimal.ZERO) != 0) {
+            scorePercent = request.getActualValue()
+                    .divide(item.getTargetValue(), 4, java.math.RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"));
+        }
+        item.setScorePercent(scorePercent);
+
+        BigDecimal weightedScore = BigDecimal.ZERO;
+        if (item.getWeightPercent() != null) {
+            weightedScore = scorePercent
+                    .multiply(item.getWeightPercent().divide(new BigDecimal("100"), 4, java.math.RoundingMode.HALF_UP));
+        }
+        item.setWeightedScore(weightedScore);
+
         if (request.getProgressPercent().compareTo(new BigDecimal("100")) >= 0) {
             item.setStatus(KpiItemStatus.COMPLETED);
         } else {

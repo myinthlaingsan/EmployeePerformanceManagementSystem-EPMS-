@@ -61,6 +61,14 @@ const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
               <p className="text-sm font-bold text-blue-600">{kpi.currentProgress}</p>
             </div>
             <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Score</p>
+              <p className="text-sm font-bold text-emerald-600">{kpi.scorePercent ? `${kpi.scorePercent.toFixed(1)}%` : '-'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Weighted</p>
+              <p className="text-sm font-bold text-emerald-600">{kpi.weightedScore ? kpi.weightedScore.toFixed(2) : '-'}</p>
+            </div>
+            <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Unit</p>
               <p className="text-sm font-bold text-gray-600">{kpi.unit || '-'}</p>
             </div>
