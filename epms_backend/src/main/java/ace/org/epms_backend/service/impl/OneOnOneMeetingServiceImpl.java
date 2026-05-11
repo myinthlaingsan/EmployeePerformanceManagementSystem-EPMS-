@@ -76,6 +76,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
 
     @Override
     public ace.org.epms_backend.dto.PagedResponse<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId, int page, int size) {
+        checkNotPurePrivileged();
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("meetingDate").descending().and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
         Employee currentUser = authService.getCurrentUser();
 
@@ -97,6 +98,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
 
     @Override
     public ace.org.epms_backend.dto.PagedResponse<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId, int page, int size) {
+        checkNotPurePrivileged();
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("meetingDate").descending().and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
         Employee currentUser = authService.getCurrentUser();
 
@@ -368,5 +370,16 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     private Employee fetchEmployee(Long employeeId) {
         return employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new NotFoundException("Employee not found with id: " + employeeId));
+    }
+
+    private void checkNotPurePrivileged() {
+        Employee currentUser = authService.getCurrentUser();
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(currentUser.getId());
+        boolean hasPrivilegedRole = roles.stream().anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
+        boolean isManager = roles.stream().anyMatch(r -> r.getRoleName() == RoleType.MANAGER);
+        
+        if (hasPrivilegedRole && !isManager) {
+             throw new AccessDeniedException("Admins/HR cannot access meeting feeds directly. Use Performance Pulse instead.");
+        }
     }
 }

@@ -18,10 +18,10 @@ public class BaseEntity {
 
     private Instant updatedAt;
 
-    @Builder.Default
-    private Boolean isDeleted = false;
-
-    private Instant deletedAt;
+//    @Builder.Default
+//    private Boolean isDeleted = false;
+//
+   private Instant deletedAt;
 
     @PrePersist
     protected void onCreate(){

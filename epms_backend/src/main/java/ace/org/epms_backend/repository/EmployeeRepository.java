@@ -25,6 +25,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
            countQuery = "SELECT COUNT(e) FROM Employee e")
     Page<Employee> findAllPaginated(Pageable pageable);
 
+    @Query(value = "SELECT e FROM Employee e JOIN FETCH e.position p JOIN FETCH p.level WHERE e.id != :excludedId",
+           countQuery = "SELECT COUNT(e) FROM Employee e WHERE e.id != :excludedId")
+    Page<Employee> findAllPaginatedExcluding(@Param("excludedId") Long excludedId, Pageable pageable);
+
     @Query(value = "SELECT e FROM Employee e " +
            "JOIN FETCH e.position p " +
            "JOIN FETCH p.level " +
@@ -36,6 +40,18 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
                         "OR LOWER(e.employeeCode) LIKE LOWER(CONCAT('%', :query, '%')) " +
                         "OR LOWER(e.email) LIKE LOWER(CONCAT('%', :query, '%')))")
     Page<Employee> searchEmployees(@Param("query") String query, Pageable pageable);
+
+    @Query(value = "SELECT e FROM Employee e " +
+           "JOIN FETCH e.position p " +
+           "JOIN FETCH p.level " +
+           "WHERE e.id != :excludedId AND (:query IS NULL OR LOWER(e.staffName) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(e.employeeCode) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(e.email) LIKE LOWER(CONCAT('%', :query, '%')))",
+           countQuery = "SELECT COUNT(e) FROM Employee e " +
+                        "WHERE e.id != :excludedId AND (:query IS NULL OR LOWER(e.staffName) LIKE LOWER(CONCAT('%', :query, '%')) " +
+                        "OR LOWER(e.employeeCode) LIKE LOWER(CONCAT('%', :query, '%')) " +
+                        "OR LOWER(e.email) LIKE LOWER(CONCAT('%', :query, '%')))")
+    Page<Employee> searchEmployeesExcluding(@Param("query") String query, @Param("excludedId") Long excludedId, Pageable pageable);
 
     @Query("SELECT e FROM Employee e JOIN FETCH e.position p JOIN FETCH p.level WHERE e.id = :id")
     Optional<Employee> findById(Long id);

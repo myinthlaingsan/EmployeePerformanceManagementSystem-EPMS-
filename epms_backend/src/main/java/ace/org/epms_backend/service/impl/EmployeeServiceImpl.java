@@ -182,14 +182,20 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public PagedResponse<EmployeeResponse> getAllPaginated(int page, int size) {
+    public PagedResponse<EmployeeResponse> getAllPaginated(int page, int size, Boolean excludeSelf) {
         Pageable pageable = PageRequest.of(
                 page,
                 size,
                 Sort.by("id").descending()
         );
 
-        Page<Employee> employeePage = employeeRepository.findAllPaginated(pageable);
+        Page<Employee> employeePage;
+        if (Boolean.TRUE.equals(excludeSelf)) {
+            Employee currentUser = authService.getCurrentUser();
+            employeePage = employeeRepository.findAllPaginatedExcluding(currentUser.getId(), pageable);
+        } else {
+            employeePage = employeeRepository.findAllPaginated(pageable);
+        }
 
         List<EmployeeResponse> content = employeePage.getContent()
                 .stream()
@@ -207,14 +213,20 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public PagedResponse<EmployeeResponse> search(String query, int page, int size) {
+    public PagedResponse<EmployeeResponse> search(String query, int page, int size, Boolean excludeSelf) {
         Pageable pageable = PageRequest.of(
                 page,
                 size,
                 Sort.by("id").descending()
         );
 
-        Page<Employee> employeePage = employeeRepository.searchEmployees(query, pageable);
+        Page<Employee> employeePage;
+        if (Boolean.TRUE.equals(excludeSelf)) {
+            Employee currentUser = authService.getCurrentUser();
+            employeePage = employeeRepository.searchEmployeesExcluding(query, currentUser.getId(), pageable);
+        } else {
+            employeePage = employeeRepository.searchEmployees(query, pageable);
+        }
 
         List<EmployeeResponse> content = employeePage.getContent()
                 .stream()
