@@ -78,17 +78,20 @@ const ManagerEvaluation = () => {
 
   const [managerRatings, setManagerRatings] = useState<Record<string, number>>({});
   const [managerComment, setManagerComment] = useState('');
-  const [otherRemarks, setOtherRemarks] = useState('');
+  const [managerComments, setManagerComments] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (formData?.categories) {
       const initial: Record<string, number> = {};
+      const initialComments: Record<string, string> = {};
       formData.categories.forEach((cat: any) => {
         cat.questions.forEach((q: any) => {
           if (q.managerRatingValue) initial[q.questionId] = q.managerRatingValue;
+          if (q.managerComment) initialComments[q.questionId] = q.managerComment;
         });
       });
       setManagerRatings(initial);
+      setManagerComments(initialComments);
       setManagerComment(formData.finalComment || '');
     }
   }, [formData]);
@@ -109,10 +112,11 @@ const ManagerEvaluation = () => {
       return;
     }
     try {
-      const answersPayload = Object.keys(managerRatings).map(qId => ({
+      const allQIds = Array.from(new Set([...Object.keys(managerRatings), ...Object.keys(managerComments)]));
+      const answersPayload = allQIds.map(qId => ({
         questionId: Number(qId),
-        ratingValue: managerRatings[qId],
-        comment: null,
+        ratingValue: managerRatings[qId] || 0,
+        comment: managerComments[qId] || null,
       }));
       await saveAnswers({ id: formData.evaluationId, answers: answersPayload }).unwrap();
       await saveManagerDraft({ evaluationId: formData.evaluationId, finalComment: managerComment }).unwrap();
@@ -129,11 +133,17 @@ const ManagerEvaluation = () => {
       <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600" />
     </div>
   );
+
+  if (!formData) return (
+    <div className="flex items-center justify-center min-h-[60vh] text-slate-500 font-bold">
+      Manager Evaluation form could not be loaded.
+    </div>
+  );
   const isManager = Number(user?.id) === Number(formData.managerId);
   const isPrivileged = isHR || isAdmin;
 
-  // Read-only if already submitted OR if the viewer is HR/Admin (not the manager)
-  const isReadOnly = !!formData.submitted || (isPrivileged && !isManager);
+  // Read-only if already submitted
+  const isReadOnly = !!formData.submitted;
   const isDisabled = isSubmitting || isReadOnly;
 
   const grandTotal = Object.values(managerRatings).reduce((a, b) => a + b, 0);
@@ -190,19 +200,23 @@ const ManagerEvaluation = () => {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || isSaving || completedCount < totalQuestions}
+                  disabled={isSubmitting || isSaving || completedCount < totalQuestions || !formData.isSelfSubmitted}
+                  title={!formData.isSelfSubmitted ? "Employee must submit self assessment first" : ""}
                   className="px-7 py-2.5 text-white font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 text-sm shadow-lg order-2"
                   style={{ background: 'linear-gradient(135deg, #0052CC, #0747A6)', boxShadow: '0 4px 14px rgba(0,82,204,0.35)' }}
                 >
-                  {isSubmitting ? 'Submit Evaluation' : 'Submit Evaluation'}
+                  {!formData.isSelfSubmitted 
+                    ? 'Awaiting Employee' 
+                    : (isSubmitting ? 'Submitting...' : 'Submit Evaluation')}
                 </button>
                 <button
                   onClick={async () => {
                     try {
-                      const answersPayload = Object.keys(managerRatings).map(qId => ({
+                      const allQIds = Array.from(new Set([...Object.keys(managerRatings), ...Object.keys(managerComments)]));
+                      const answersPayload = allQIds.map(qId => ({
                         questionId: Number(qId),
-                        ratingValue: managerRatings[qId],
-                        comment: null,
+                        ratingValue: managerRatings[qId] || 0,
+                        comment: managerComments[qId] || null,
                       }));
                       await saveAnswers({ id: formData.evaluationId, answers: answersPayload }).unwrap();
                       await saveManagerDraft({ evaluationId: formData.evaluationId, finalComment: managerComment }).unwrap();
@@ -245,22 +259,6 @@ const ManagerEvaluation = () => {
           </div>
         </div>
  
-        {!formData.isSelfSubmitted && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-black text-amber-900">Self-Assessment Pending</p>
-              <p className="text-[10px] text-amber-700 font-medium opacity-80">
-                The employee hasn't submitted their self-assessment yet. Their ratings and comments are currently hidden.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Rating Scale */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-5">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4 flex items-center gap-2">
@@ -344,8 +342,8 @@ const ManagerEvaluation = () => {
                         {q.description && (
                           <p className="text-xs text-slate-400 mt-0.5 italic">{q.description}</p>
                         )}
-                        {/* Employee Reference */}
-                        {(q.employeeRatingValue || q.employeeComment) && (
+                        {/* Employee Reference - ONLY show if submitted */}
+                        {formData.isSelfSubmitted && (q.employeeRatingValue || q.employeeComment) && (
                           <div className="mt-2 flex items-start gap-2 bg-slate-100/50 rounded-lg p-2 border border-slate-100">
                             <div className="text-[9px] font-black text-slate-400 uppercase vertical-text mt-1">Ref</div>
                             <div>
@@ -361,6 +359,16 @@ const ManagerEvaluation = () => {
                             </div>
                           </div>
                         )}
+                        <div className="mt-3">
+                          <input
+                            type="text"
+                            placeholder="Manager's note for this question..."
+                            value={managerComments[q.questionId.toString()] || ''}
+                            disabled={isDisabled}
+                            onChange={(e) => setManagerComments(prev => ({ ...prev, [q.questionId.toString()]: e.target.value }))}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-all"
+                          />
+                        </div>
                       </div>
                       {selectedScale && (
                         <div
@@ -395,25 +403,19 @@ const ManagerEvaluation = () => {
 
         {/* Remarks */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              { label: 'Other Remarks', value: otherRemarks, setter: setOtherRemarks, placeholder: 'Additional observations or notes…' },
-              { label: "Appraiser's Comment", value: managerComment, setter: setManagerComment, placeholder: 'Final summary and overall assessment from the evaluator…' },
-            ].map(({ label, value, setter, placeholder }) => (
-              <div key={label}>
-                <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2">{label}</h3>
-                <textarea
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400 transition-all min-h-[110px] resize-none"
-                  placeholder={placeholder}
-                  value={value}
-                  onChange={e => setter(e.target.value)}
-                  disabled={isDisabled}
-                />
-              </div>
-            ))}
+          <div className="grid grid-cols-1 gap-6">
+            <div>
+              <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Appraiser's Comment</h3>
+              <textarea
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400 transition-all min-h-[140px] resize-none"
+                placeholder="Final summary and overall assessment from the evaluator…"
+                value={managerComment}
+                onChange={e => setManagerComment(e.target.value)}
+                disabled={isDisabled}
+              />
+            </div>
           </div>
         </div>
-
       </div>
     </div>
   );

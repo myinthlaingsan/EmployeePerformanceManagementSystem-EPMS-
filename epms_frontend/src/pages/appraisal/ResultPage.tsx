@@ -267,7 +267,7 @@ const ResultPage: React.FC = () => {
               <div className="h-48 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative group overflow-hidden">
                 {appraisal.employeeSignComment ? (
                   <img 
-                    src={`data:image/png;base64,${appraisal.employeeSignComment}`} 
+                    src={`http://localhost:8080${appraisal.employeeSignComment}`} 
                     alt="Employee Signature" 
                     className="max-h-32 object-contain mix-blend-multiply transition-all group-hover:scale-105" 
                   />
@@ -326,7 +326,7 @@ const ResultPage: React.FC = () => {
               <div className="h-48 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative group overflow-hidden">
                 {appraisal.managerSignComment ? (
                   <img 
-                    src={`data:image/png;base64,${appraisal.managerSignComment}`} 
+                    src={`http://localhost:8080${appraisal.managerSignComment}`} 
                     alt="Manager Signature" 
                     className="max-h-32 object-contain mix-blend-multiply transition-all group-hover:scale-105" 
                   />

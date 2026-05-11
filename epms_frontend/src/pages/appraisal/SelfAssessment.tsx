@@ -52,6 +52,7 @@ const SelfAssessment = () => {
         });
       });
       setResponses(initial);
+      setComment(formData.overallReflection || '');
     }
   }, [formData]);
 
@@ -78,7 +79,7 @@ const SelfAssessment = () => {
     if (!formData?.selfAssessmentId) return;
     try {
       await saveAnswers({ id: formData.selfAssessmentId, answers: buildPayload() }).unwrap();
-      await saveDraftMutation(formData.selfAssessmentId).unwrap();
+      await saveDraftMutation({ selfAssessmentId: formData.selfAssessmentId, overallReflection: comment }).unwrap();
       alert('Draft saved successfully!');
     } catch (err: any) {
       alert(err?.data?.message || 'Operation failed. Please try again.');
@@ -92,6 +93,7 @@ const SelfAssessment = () => {
     }
     try {
       await saveAnswers({ id: formData.selfAssessmentId, answers: buildPayload() }).unwrap();
+      await saveDraftMutation({ selfAssessmentId: formData.selfAssessmentId, overallReflection: comment }).unwrap();
       await submitSelfAssessment(formData.selfAssessmentId).unwrap();
       alert('Self-assessment submitted successfully!');
       navigate('/appraisal');
@@ -111,14 +113,36 @@ const SelfAssessment = () => {
     </div>
   );
 
-  const isEmployee = Number(user?.id) === Number(formData.employeeId);
-  const isPrivileged = isHR || isAdmin;
+  const isOwner = Number(user?.id) === Number(formData.employeeId);
   
   // A form is read-only if:
   // 1. It is already submitted
-  // 2. The viewer is HR/Admin (they should never edit employee's self-assessment)
-  const isReadOnly = !!formData.submitted || (isPrivileged && !isEmployee);
+  // 2. The viewer is NOT the employee who owns the form (Manager, HR, Admin)
+  const isReadOnly = !!formData.submitted || !isOwner;
   const isDisabled = isSubmitting || isReadOnly;
+
+  // HARD BLOCK: If viewer is NOT the owner AND form is NOT submitted, show nothing.
+  if (!isOwner && !formData.submitted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
+        <div className="bg-white border border-slate-200 rounded-3xl p-16 text-center max-w-2xl shadow-xl">
+          <div className="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+            <Target className="w-10 h-10 animate-pulse" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-4">Assessment Not Yet Available</h2>
+          <p className="text-slate-500 font-medium leading-relaxed mb-8">
+            You are not authorized to view this self-assessment until <strong>{formData.employeeName}</strong> has completed and submitted it.
+          </p>
+          <button 
+            onClick={() => navigate(-1)}
+            className="px-8 py-3 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg"
+          >
+            Return to Previous Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-10" style={{ background: 'linear-gradient(135deg, #f5f0ff 0%, #f8fafc 60%, #eef2f7 100%)' }}>
@@ -386,6 +410,7 @@ const SelfAssessment = () => {
             </div>
           );
         })}
+
 
         {/* ── Overall Reflection ── */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-6 mb-8">

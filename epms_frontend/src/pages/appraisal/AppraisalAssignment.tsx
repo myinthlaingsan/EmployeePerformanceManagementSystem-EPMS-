@@ -4,7 +4,8 @@ import {
   useGetCyclesQuery,
   useAssignBulkMutation,
   useGetActiveCycleQuery,
-  useGetAppraisalFormsQuery
+  useGetAppraisalFormSetsQuery,
+  useSyncFormSetsMutation
 } from '../../features/appraisal/appraisalApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import {
@@ -17,20 +18,22 @@ import {
   Building2,
   Mail,
   Briefcase,
-  Layers
+  Layers,
+  RefreshCw
 } from 'lucide-react';
 
 const AppraisalAssignment: React.FC = () => {
   const navigate = useNavigate();
   const { data: cycles = [] } = useGetCyclesQuery();
   const { data: activeCycle, isLoading: cycleLoading } = useGetActiveCycleQuery();
-  const { data: appraisalForms = [] } = useGetAppraisalFormsQuery();
+  const { data: formSets = [], isLoading: formsLoading } = useGetAppraisalFormSetsQuery(activeCycle?.cycleId, { skip: !activeCycle });
+  const [syncFormSets, { isLoading: isSyncing }] = useSyncFormSetsMutation();
   const { data: employeePaged, isLoading: empsLoading } = useGetEmployeesQuery({ page: 0, size: 100 });
   const [assignBulk, { isLoading: isAssigning }] = useAssignBulkMutation();
 
   // State
   const [selectedCycleId, setSelectedCycleId] = useState<string>('');
-  const [selectedFormId, setSelectedFormId] = useState<string>('');
+  const [selectedFormSetId, setSelectedFormSetId] = useState<string>('');
 
   // Auto-select active cycle
   React.useEffect(() => {
@@ -68,25 +71,6 @@ const AppraisalAssignment: React.FC = () => {
     return Array.from(poses);
   }, [employees, deptFilter]);
 
-  const formSets = useMemo(() => {
-    if (!activeCycle) return [];
-    
-    const cycleForms = appraisalForms.filter(f => f.cycleId === activeCycle.cycleId);
-    const sets = new Map<string, { selfId: number; managerId: number }>();
-    
-    cycleForms.forEach(f => {
-      const existing = sets.get(f.formName) || { selfId: 0, managerId: 0 };
-      if (f.formType === 'SELF_ASSESSMENT') existing.selfId = f.formId;
-      if (f.formType === 'MANAGER_EVALUATION') existing.managerId = f.formId;
-      sets.set(f.formName, existing);
-    });
-
-    // Only return sets that are "complete" (have at least a self-assessment)
-    return Array.from(sets.entries())
-      .map(([name, ids]) => ({ name, ...ids }))
-      .filter(set => set.selfId !== 0);
-  }, [appraisalForms, activeCycle]);
-
   // Handlers
   const toggleEmployee = (id: number) => {
     setSelectedEmployeeIds(prev =>
@@ -112,7 +96,7 @@ const AppraisalAssignment: React.FC = () => {
       return;
     }
 
-    if (!selectedFormId || selectedFormId === '0') {
+    if (!selectedFormSetId || selectedFormSetId === '0') {
       alert('Please select a valid Form Set.');
       return;
     }
@@ -124,7 +108,7 @@ const AppraisalAssignment: React.FC = () => {
     try {
       await assignBulk({
         cycleId: Number(selectedCycleId),
-        formId: Number(selectedFormId),
+        formSetId: Number(selectedFormSetId),
         employeeIds: selectedEmployeeIds
       }).unwrap();
 
@@ -185,16 +169,26 @@ const AppraisalAssignment: React.FC = () => {
                   <Layers className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
                   <select
                     className={inputClass + " w-full pl-10"}
-                    value={selectedFormId}
-                    onChange={e => setSelectedFormId(e.target.value)}
+                    value={selectedFormSetId}
+                    onChange={e => setSelectedFormSetId(e.target.value)}
                   >
                     <option value="">Select Form Set...</option>
                     {formSets.map(fs => (
-                      <option key={fs.name} value={fs.selfId}>{fs.name}</option>
+                      <option key={fs.id} value={fs.id}>{fs.name}</option>
                     ))}
                   </select>
                 </div>
-                {selectedFormId !== '0' && selectedFormId && (
+                {formSets.length === 0 && !formsLoading && (
+                  <button
+                    onClick={() => syncFormSets().unwrap().then((res) => alert(res || 'Successfully synced form sets!'))}
+                    disabled={isSyncing}
+                    className="mt-2 text-[10px] text-indigo-600 font-bold flex items-center gap-1 hover:text-indigo-800"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                    Sync Form Sets from Templates
+                  </button>
+                )}
+                {selectedFormSetId && selectedFormSetId !== '0' && (
                   <p className="text-[10px] text-slate-400 mt-1.5 px-1 italic">
                     Includes Self-Assessment & Manager Evaluation templates.
                   </p>

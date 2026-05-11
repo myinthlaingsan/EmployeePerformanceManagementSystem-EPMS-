@@ -54,13 +54,14 @@ const AppraisalDetail: React.FC = () => {
     );
   }
 
-  const isEmployee = user?.id === appraisal.employeeId;
-  const isManager = user?.id === appraisal.managerId;
+  const isEmployee = Number(user?.id) === Number(appraisal.employeeId);
+  const isManager = Number(user?.id) === Number(appraisal.managerId);
   const isPrivileged = isAdmin || isHR;
 
   // HR/Admin can only view if submitted, unless they are the direct manager/employee
-  const canViewSelfAssessment = isEmployee || isManager || (isPrivileged && appraisal.selfSubmittedAt);
-  const canViewManagerEvaluation = isManager || (isPrivileged && appraisal.managerSubmittedAt);
+  // HR/Admin can view any self-assessment to monitor progress or test
+  const canViewSelfAssessment = isEmployee || isManager || isPrivileged;
+  const canViewManagerEvaluation = isManager || isPrivileged;
 
   const handleCalculate = async () => {
     try {

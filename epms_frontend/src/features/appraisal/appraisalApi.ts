@@ -36,6 +36,17 @@ export interface AppraisalForm {
   sections?: Section[];
 }
 
+export interface AppraisalFormSet {
+  id: number;
+  name: string;
+  cycleId: number;
+  cycleName: string;
+  selfAssessmentFormId: number;
+  selfAssessmentFormName: string;
+  managerEvaluationFormId: number;
+  managerEvaluationFormName: string;
+}
+
 export interface AppraisalCycle {
   cycleId: number;
   cycleName: string;
@@ -116,6 +127,30 @@ export const appraisalApi = api.injectEndpoints({
           ? [...result.map(({ formId }) => ({ type: 'Form' as const, id: formId })), { type: 'Form', id: 'LIST' }]
           : [{ type: 'Form', id: 'LIST' }],
     }),
+
+    getAppraisalFormSets: builder.query<AppraisalFormSet[], number | void>({
+      query: (cycleId) => cycleId ? `/appraisal-form-sets/cycle/${cycleId}` : '/appraisal-form-sets',
+      transformResponse,
+      providesTags: ['Form'],
+    }),
+
+    syncFormSets: builder.mutation<string, void>({
+      query: () => ({
+        url: '/appraisal-form-sets/sync',
+        method: 'POST',
+      }),
+      invalidatesTags: ['Form'],
+    }),
+
+    createFormSet: builder.mutation<any, { name: string; cycleId: number }>({
+      query: (body) => ({
+        url: '/appraisal-form-sets',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Form'],
+    }),
+
     createAppraisalForm: builder.mutation<number, any>({
       query: (body) => ({
         url: '/appraisal-forms',
@@ -233,10 +268,11 @@ export const appraisalApi = api.injectEndpoints({
       invalidatesTags: ['Appraisal'],
     }),
 
-    saveDraft: builder.mutation<any, string>({
-      query: (selfAssessmentId) => ({
+    saveDraft: builder.mutation<any, { selfAssessmentId: string; overallReflection: string }>({
+      query: ({ selfAssessmentId, overallReflection }) => ({
         url: `/self-assessments/${selfAssessmentId}/draft`,
         method: 'POST',
+        params: { overallReflection },
       }),
       invalidatesTags: ['Appraisal'],
     }),
@@ -275,7 +311,7 @@ export const appraisalApi = api.injectEndpoints({
       invalidatesTags: ['Form'], // Invalidate all forms since we don't have formId here
     }),
 
-    assignBulk: builder.mutation<any, { cycleId: number; employeeIds: number[]; departmentIds?: number[]; formId?: number }>({
+    assignBulk: builder.mutation<any, { cycleId: number; employeeIds: number[]; departmentIds?: number[]; formId?: number; formSetId?: number }>({
       query: (body) => ({
         url: '/appraisals/assign/bulk',
         method: 'POST',
@@ -373,6 +409,9 @@ export const {
   useGetAppraisalFormQuery,
   useLazyGetAppraisalFormQuery,
   useGetAppraisalFormsQuery,
+  useGetAppraisalFormSetsQuery,
+  useSyncFormSetsMutation,
+  useCreateFormSetMutation,
   useCreateAppraisalFormMutation,
   useUpdateAppraisalFormMutation,
   useGetCategoriesQuery,

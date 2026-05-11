@@ -166,12 +166,13 @@ const AppraisalFormDesign: React.FC = () => {
     try {
       setIsSubmitting(true);
       
-      // 1. Create the Form
-      const formId = await createForm({
-        formName: prefixedFormName,
-        formType,
-        cycleId: Number(selectedCycleId)
-      }).unwrap();
+    // 1. Create the Form
+    const formId = await createForm({
+      formName: prefixedFormName,
+      formType,
+      cycleId: Number(selectedCycleId),
+      formSetId: queryParams.get('formSetId') ? Number(queryParams.get('formSetId')) : undefined
+    }).unwrap();
 
       // 2. Add Categories and Questions
       for (const cat of categories) {
@@ -520,7 +521,6 @@ const AppraisalFormDesign: React.FC = () => {
                                     <option value="YESNO">Yes / No</option>
                                     <option value="TEXT">Text</option>
                                     <option value="RATING">1-5 Rating</option>
-                                    <option value="NONE">None</option>
                                   </select>
                                 </div>
                               </div>
