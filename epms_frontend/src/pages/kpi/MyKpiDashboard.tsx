@@ -119,10 +119,6 @@ const MyKpiDashboard: React.FC = () => {
           {/* Right Column: Sidebar */}
           <div className="lg:col-span-1 space-y-6">
             <KpiUpdateHistoryCard history={historyResponse?.data || []} />
-
-
-
-
           </div>
         </div>
       </main>
