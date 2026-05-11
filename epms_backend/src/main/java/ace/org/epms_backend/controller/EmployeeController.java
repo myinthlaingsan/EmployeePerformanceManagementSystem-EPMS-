@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -101,15 +100,6 @@ public class EmployeeController {
         return ResponseEntity.ok(
                 ApiResponse.success(employeeService.updateProfile(request))
         );
-    }
-
-    @PostMapping(value = "/{id}/profile-image", consumes = "multipart/form-data")
-    public ResponseEntity<ApiResponse<?>> uploadProfileImage(
-            @PathVariable Long id,
-            @RequestParam("file") MultipartFile file
-    ) {
-        employeeService.uploadProfileImage(id, file);
-        return ResponseEntity.ok(ApiResponse.success());
     }
 
     @PostMapping("/{id}/change-password")
