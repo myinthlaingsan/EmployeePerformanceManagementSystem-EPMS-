@@ -9,6 +9,7 @@ import ace.org.epms_backend.model.employee.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmployeeService;
+import ace.org.epms_backend.util.FileUploadUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import ace.org.epms_backend.repository.employee.ReportingLineRepository;
@@ -26,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -228,7 +230,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         @Override
-        public PagedResponse<EmployeeResponse> search(String query, Long departmentId, Long teamId, int page, int size) {
+        public PagedResponse<EmployeeResponse> search(String query, Long departmentId, Long teamId, int page,
+                        int size) {
                 Pageable pageable = PageRequest.of(
                                 page,
                                 size,
@@ -426,6 +429,24 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         @Override
+        public void uploadProfileImage(Long id, MultipartFile file) {
+                Employee emp = employeeRepository.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+                try {
+                        String uploadDir = System.getProperty("user.dir") + "/uploads/profiles/";
+                        String fileName = "emp_" + id;
+                        String savedFileName = FileUploadUtil.saveFile(uploadDir, fileName,
+                                        file);
+
+                        emp.setProfileImage("/uploads/profiles/" + savedFileName);
+                        employeeRepository.save(emp);
+                } catch (java.io.IOException e) {
+                        throw new RuntimeException("Could not upload profile image", e);
+                }
+        }
+
+        @Override
         public void changePassword(Long id, ChangePasswordRequest request) {
                 Employee emp = employeeRepository.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
@@ -463,36 +484,36 @@ public class EmployeeServiceImpl implements EmployeeService {
                 EmployeeResponse response = employeeMapper.toResponse(emp);
                 List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(emp.getId());
                 List<String> roleNames = roles.stream()
-                        .map(role -> role.getRoleName().name())
-                        .toList();
+                                .map(role -> role.getRoleName().name())
+                                .toList();
                 response.setRoles(roleNames);
 
                 // Fetch permissions based on roles and level
                 List<String> permissions = roleLevelPermissionRepository
-                        .findPermissionsByRolesAndLevel(roles, emp.getLevel())
-                        .stream()
-                        .map(Permission::getPermissionName)
-                        .toList();
+                                .findPermissionsByRolesAndLevel(roles, emp.getLevel())
+                                .stream()
+                                .map(Permission::getPermissionName)
+                                .toList();
                 response.setPermissions(permissions);
 
                 // Set Department Name
                 employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
-                        .ifPresent(ed -> {
-                                response.setCurrentDepartmentName(
-                                        ed.getCurrentDepartment().getDepartmentName());
-                                response.setCurrentDepartmentId(
-                                        ed.getCurrentDepartment().getId());
-                                response.setParentDepartmentName(
-                                        ed.getParentDepartment().getDepartmentName());
-                                response.setParentDepartmentId(
-                                        ed.getParentDepartment().getId());
-                        });
+                                .ifPresent(ed -> {
+                                        response.setCurrentDepartmentName(
+                                                        ed.getCurrentDepartment().getDepartmentName());
+                                        response.setCurrentDepartmentId(
+                                                        ed.getCurrentDepartment().getId());
+                                        response.setParentDepartmentName(
+                                                        ed.getParentDepartment().getDepartmentName());
+                                        response.setParentDepartmentId(
+                                                        ed.getParentDepartment().getId());
+                                });
                 // Set Manager Info
                 reportingLineRepository.findByEmployeeAndIsActiveTrue(emp)
-                        .ifPresent(line -> {
-                                response.setDirectManagerId(line.getManager().getId());
-                                response.setDirectManagerName(line.getManager().getStaffName());
-                        });
+                                .ifPresent(line -> {
+                                        response.setDirectManagerId(line.getManager().getId());
+                                        response.setDirectManagerName(line.getManager().getStaffName());
+                                });
                 return response;
         }
 }

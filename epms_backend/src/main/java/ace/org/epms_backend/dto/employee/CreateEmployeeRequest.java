@@ -27,6 +27,8 @@ public class CreateEmployeeRequest {
     @NotBlank(message = "phone number is required")
     private String phoneNo;
 
+    private String profileImage;
+
     private Integer stateCode;
 
     @NotBlank(message = "township is required")

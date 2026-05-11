@@ -24,6 +24,8 @@ public class UpdateProfileRequest {
 
     private String phoneNo;
 
+    private String profileImage;
+
     private MaritalStatus maritalStatus;
     private String spouseName;
     private String fatherName;

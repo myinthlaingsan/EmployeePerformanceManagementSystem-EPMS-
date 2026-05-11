@@ -39,5 +39,7 @@ public interface EmployeeService {
 
     EmployeeResponse updateProfile(UpdateProfileRequest request);
 
+    void uploadProfileImage(Long id, org.springframework.web.multipart.MultipartFile file);
+
     void changePassword(Long id, ChangePasswordRequest request);
 }
