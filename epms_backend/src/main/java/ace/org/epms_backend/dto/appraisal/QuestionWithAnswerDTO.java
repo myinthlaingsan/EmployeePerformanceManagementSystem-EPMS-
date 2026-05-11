@@ -13,10 +13,12 @@ public class QuestionWithAnswerDTO {
     private Long questionId;
     private String questionText;
     private String questionType;
+    private String secondaryQuestionType;
     private Boolean isRequired;
     
     // Answer part (can be null if not answered yet)
     private Long answerId;
     private Integer ratingValue;
+    private Boolean isCompleted;
     private String comment;
 }

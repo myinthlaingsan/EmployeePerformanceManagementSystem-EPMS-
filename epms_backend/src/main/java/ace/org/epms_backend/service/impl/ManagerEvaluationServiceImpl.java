@@ -7,6 +7,7 @@ import ace.org.epms_backend.enums.*;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.ManagerEvaluationMapper;
 import ace.org.epms_backend.model.appraisal.*;
+import ace.org.epms_backend.model.employee.EmployeeDepartment;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.ManagerEvaluationService;
@@ -125,16 +126,26 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
             throw new RuntimeException("Manager evaluation is already submitted");
         }
 
-        // Calculate total score (sum of ratings)
+        // Calculate total score based on formula: (Total Point * 100) / (Number of Questions Answered * 5)
         List<ManagerEvaluationAnswer> answers = answerRepo.findByEvaluation_EvaluationId(evaluationId);
-        BigDecimal totalScore = BigDecimal.ZERO;
+        BigDecimal sum = BigDecimal.ZERO;
+        int answeredCount = 0;
+
         for (ManagerEvaluationAnswer ans : answers) {
             if (ans.getRatingValue() != null) {
-                totalScore = totalScore.add(BigDecimal.valueOf(ans.getRatingValue()));
+                sum = sum.add(BigDecimal.valueOf(ans.getRatingValue()));
+                answeredCount++;
             }
         }
 
-        eval.setTotalScore(totalScore);
+        BigDecimal finalScore = BigDecimal.ZERO;
+        if (answeredCount > 0) {
+            BigDecimal maxPossiblePoints = BigDecimal.valueOf(answeredCount).multiply(BigDecimal.valueOf(5));
+            finalScore = sum.multiply(BigDecimal.valueOf(100))
+                    .divide(maxPossiblePoints, 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        eval.setTotalScore(finalScore);
         eval.setSubmitted(true);
         eval.setSubmittedAt(Instant.now());
         evalRepo.save(eval);
@@ -180,6 +191,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                         .questionText(q.getQuestionText())
                         .questionType(q.getQuestionType())
                         .ratingValue(q.getRatingValue())
+                        .isCompleted(q.getIsCompleted())
                         .comment(q.getComment())
                         .build();
             }).toList();
@@ -196,7 +208,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 ? appraisal.getEmployee().getPosition().getPositionName()
                 : "N/A";
 
-        ace.org.epms_backend.model.employee.EmployeeDepartment ed = empDeptRepo
+        EmployeeDepartment ed = empDeptRepo
                 .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
                 .orElse(null);
 
@@ -215,17 +227,22 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 .submittedAt(fullSelf.getSubmittedAt())
                 .categories(categoryViews)
 
-
                 .build();
     }
 
     private FullManagerEvaluationResponse buildFullResponse(Appraisal appraisal, ManagerEvaluation eval) {
-        // Find the MANAGER_EVALUATION form in the cycle
-        AppraisalForm form = appraisal.getCycle().getForms().stream()
-                .filter(f -> f.getFormType() == FormType.MANAGER_EVALUATION)
-                .findFirst()
-                .orElseThrow(() -> new NotFoundException("No MANAGER_EVALUATION form found for cycle: "
-                        + appraisal.getCycle().getCycleName()));
+        // Use the specific form linked to the appraisal
+        AppraisalForm form = appraisal.getForm();
+
+        if (form == null) {
+            // Fallback: Find the first MANAGER_EVALUATION form in the cycle if none linked
+            form = appraisal.getCycle().getForms().stream()
+                    .filter(f -> f.getFormType() == FormType.MANAGER_EVALUATION)
+                    .findFirst()
+                    .orElseThrow(() -> new NotFoundException(
+                            "No MANAGER_EVALUATION form found for appraisal: "
+                                    + appraisal.getAppraisalId()));
+        }
 
         List<FormCategory> categories = categoryRepo.findByForm_FormId(form.getFormId());
         List<Question> questions = questionRepo.findByCategory_Form_FormId(form.getFormId());
@@ -256,7 +273,6 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                         SelfAssessmentAnswer empAns = finalEmpAnswersMap
                                 .getOrDefault(q.getQuestionId(), new ArrayList<>())
                                 .stream().findFirst().orElse(null);
-
                         return QuestionWithManagerAnswerDTO.builder()
                                 .questionId(q.getQuestionId())
                                 .questionText(q.getQuestionText())
@@ -266,6 +282,9 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                                 .isRequired(q.getIsRequired())
                                 .employeeRatingValue(
                                         empAns != null ? empAns.getRatingValue()
+                                                : null)
+                                .employeeIsCompleted(
+                                        empAns != null ? empAns.getIsCompleted()
                                                 : null)
                                 .employeeComment(empAns != null ? empAns.getComment()
                                         : null)
@@ -293,6 +312,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 // Employee Info
                 .employeeName(appraisal.getEmployee().getStaffName())
                 .employeeId(appraisal.getEmployee().getId())
+                .employeeCode(appraisal.getEmployee().getEmployeeCode())
                 .positionName(appraisal.getEmployee().getPosition() != null
                         ? appraisal.getEmployee().getPosition().getPositionName()
                         : null)
@@ -306,13 +326,24 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 // Cycle Info
                 .cycleStartDate(appraisal.getCycle().getStartDate())
                 .cycleEndDate(appraisal.getCycle().getEndDate())
+                .selfAssessmentDeadline(appraisal.getCycle().getSelfAssessmentDeadline())
+                .managerEvaluationDeadline(appraisal.getCycle().getManagerEvaluationDeadline())
                 .totalScore(eval.getTotalScore())
 
                 .submitted(eval.getSubmitted())
                 .lastSavedAt(eval.getLastSavedAt())
                 .finalComment(eval.getFinalComment())
                 .submittedAt(eval.getSubmittedAt())
+                .employeeSignedAt(appraisal.getEmployeeSignedAt())
+                .managerSignedAt(appraisal.getManagerSignedAt())
+                .employeeSignature(appraisal.getEmployeeSignComment() != null
+                        ? java.util.Base64.getEncoder().encodeToString(appraisal.getEmployeeSignComment())
+                        : null)
+                .managerSignature(appraisal.getManagerSignComment() != null
+                        ? java.util.Base64.getEncoder().encodeToString(appraisal.getManagerSignComment())
+                        : null)
                 .categories(categoryDTOs)
                 .build();
+
     }
 }

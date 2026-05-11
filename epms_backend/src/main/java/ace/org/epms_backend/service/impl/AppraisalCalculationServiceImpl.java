@@ -9,8 +9,10 @@ import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.model.PerformanceCategory;
 import ace.org.epms_backend.model.appraisal.*;
 import ace.org.epms_backend.repository.*;
+import ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository;
 import ace.org.epms_backend.service.AppraisalCalculationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,10 +27,14 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
     private final AppraisalRepository appraisalRepo;
     private final SelfAssessmentAnswerRepository selfAnswerRepo;
     private final ManagerEvaluationAnswerRepository mgrAnswerRepo;
+    private final SelfAssessmentRepository selfRepo;
+    private final ManagerEvaluationRepository evalRepo;
     private final AppraisalSummaryRepository summaryRepo;
     private final PerformanceCategoryRepository performanceCategoryRepo;
     private final ScoringWeightRepository weightRepo;
-    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final KpiFinalScoreRepository kpiFinalScoreRepo;
+    private final FeedbackSummaryRepository feedbackSummaryRepo;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -36,13 +42,24 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
         Appraisal appraisal = appraisalRepo.findById(appraisalId)
                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
-        // 1. Calculate Raw Scores
-        BigDecimal selfRaw = calculateAverageRating(
-                selfAnswerRepo.findBySelfAssessment_Appraisal_AppraisalId(appraisalId));
-        BigDecimal managerRaw = calculateAverageRating(
-                mgrAnswerRepo.findByEvaluation_Appraisal_AppraisalId(appraisalId));
-        BigDecimal kpiRaw = BigDecimal.ZERO;
-        BigDecimal feedbackRaw = BigDecimal.ZERO;
+        // 1. Fetch Pre-calculated Percentage Scores (0-100)
+        BigDecimal selfRaw = selfRepo.findByAppraisal_AppraisalId(appraisalId)
+                .map(SelfAssessment::getTotalScore).orElse(BigDecimal.ZERO);
+
+        BigDecimal managerRaw = evalRepo.findByAppraisal_AppraisalId(appraisalId)
+                .map(ManagerEvaluation::getTotalScore).orElse(BigDecimal.ZERO);
+
+        // 1.1 Fetch KPI Final Score (already 0-100%)
+        BigDecimal kpiRaw = kpiFinalScoreRepo.findByEmployeeIdAndCycleId(
+                        appraisal.getEmployee().getId(), appraisal.getCycle().getCycleId())
+                .map(kpi -> kpi.getTotalAchievementPercent())
+                .orElse(BigDecimal.ZERO);
+
+        // 1.2 Fetch 360 Feedback Summary Score (already 0-100)
+        BigDecimal feedbackRaw = feedbackSummaryRepo.findByEmployeeIdAndCycleCycleId(
+                        appraisal.getEmployee().getId(), appraisal.getCycle().getCycleId())
+                .map(fs -> fs.getFinalScore())
+                .orElse(BigDecimal.ZERO);
 
         // 2. Fetch Weights
         ScoringWeight weights = weightRepo.findByCycle_CycleId(appraisal.getCycle().getCycleId())
@@ -59,9 +76,11 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
         BigDecimal selfWeighted = selfRaw
                 .multiply(weights.getSelfWeight() != null ? weights.getSelfWeight() : BigDecimal.ZERO);
         BigDecimal managerWeighted = managerRaw
-                .multiply(weights.getManagerWeight() != null ? weights.getManagerWeight() : BigDecimal.ZERO);
+                .multiply(weights.getManagerWeight() != null ? weights.getManagerWeight()
+                        : BigDecimal.ZERO);
         BigDecimal feedbackWeighted = feedbackRaw
-                .multiply(weights.getFeedbackWeight() != null ? weights.getFeedbackWeight() : BigDecimal.ZERO);
+                .multiply(weights.getFeedbackWeight() != null ? weights.getFeedbackWeight()
+                        : BigDecimal.ZERO);
         BigDecimal kpiWeighted = kpiRaw
                 .multiply(weights.getKpiWeight() != null ? weights.getKpiWeight() : BigDecimal.ZERO);
 
@@ -73,7 +92,8 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
 
         // 5. Save Summary
         AppraisalSummary summary = summaryRepo
-                .findByEmployee_IdAndCycle_CycleId(appraisal.getEmployee().getId(), appraisal.getCycle().getCycleId())
+                .findByEmployee_IdAndCycle_CycleId(appraisal.getEmployee().getId(),
+                        appraisal.getCycle().getCycleId())
                 .orElseGet(() -> {
                     AppraisalSummary newSummary = new AppraisalSummary();
                     newSummary.setEmployee(appraisal.getEmployee());
@@ -115,33 +135,11 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                 .build();
     }
 
-    private BigDecimal calculateAverageRating(List<?> answers) {
-        if (answers == null || answers.isEmpty())
-            return BigDecimal.ZERO;
-        BigDecimal total = BigDecimal.ZERO;
-        int count = 0;
-        for (Object obj : answers) {
-            Integer rating = null;
-            if (obj instanceof SelfAssessmentAnswer)
-                rating = ((SelfAssessmentAnswer) obj).getRatingValue();
-            else if (obj instanceof ManagerEvaluationAnswer)
-                rating = ((ManagerEvaluationAnswer) obj).getRatingValue();
-            if (rating != null) {
-                total = total.add(BigDecimal.valueOf(rating));
-                count++;
-            }
-        }
-        return count == 0 ? BigDecimal.ZERO : total.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP);
-    }
-
     private PerformanceGrade determineGrade(BigDecimal score) {
         List<PerformanceCategory> categories = performanceCategoryRepo.findAll();
         for (PerformanceCategory cat : categories) {
             if (score.compareTo(cat.getMinScore()) >= 0 && score.compareTo(cat.getMaxScore()) <= 0) {
-                for (PerformanceGrade pg : PerformanceGrade.values()) {
-                    if (pg.name().equalsIgnoreCase(cat.getName().replace(" ", "_")))
-                        return pg;
-                }
+                return cat.getGrade() != null ? cat.getGrade() : PerformanceGrade.MEETS_EXPECTATIONS;
             }
         }
         return PerformanceGrade.MEETS_EXPECTATIONS;

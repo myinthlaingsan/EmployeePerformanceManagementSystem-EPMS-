@@ -16,6 +16,8 @@ public class FullFormResponse {
     private Long formId;
     private String formName;
     private FormType formType;
+    private Long cycleId;
+    private String cycleName;
     private List<CategoryDTO> categories;
 }
 

@@ -13,5 +13,6 @@ public class QuestionDTO {
     private Long questionId;
     private String questionText;
     private String questionType;
+    private String secondaryQuestionType;
     private Boolean isRequired;
 }

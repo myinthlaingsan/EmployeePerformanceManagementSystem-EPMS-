@@ -23,18 +23,29 @@ public class FullManagerEvaluationResponse {
     // Employee Info
     private String employeeName;
     private Long employeeId;
+    private String employeeCode;
     private String positionName;
     private String departmentName;
 
     // Cycle Info
     private java.time.LocalDate cycleStartDate;
     private java.time.LocalDate cycleEndDate;
+    private java.time.LocalDate selfAssessmentDeadline;
+    private java.time.LocalDate managerEvaluationDeadline;
 
     private BigDecimal totalScore;
     private Boolean submitted;
     private Instant lastSavedAt;
     private String finalComment;
     private Instant submittedAt;
+
+    // Signatures
+    private Instant employeeSignedAt;
+    private Instant managerSignedAt;
+    private String employeeSignature;
+    private String managerSignature;
+    private String employeeSignComment;
+    private String managerSignComment;
 
     private List<CategoryWithManagerAnswersDTO> categories;
 }

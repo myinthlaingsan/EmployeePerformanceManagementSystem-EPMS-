@@ -29,54 +29,67 @@ const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ pipStartDate, initialDa
     }, [initialData]);
 
     const handleSubmit = async () => {
-        if (!data.title || (!initialData && !data.targetDate)) return;
+        if (!data.title) {
+            alert("Objective Title is required");
+            return;
+        }
+        if (!initialData && !data.targetDate) {
+            alert("Target Completion Date is required");
+            return;
+        }
         setIsSaving(true);
         try {
             await onSave(data);
+        } catch (err: any) {
+            alert("Failed to save objective: " + (err?.data?.message || "Check permissions"));
         } finally {
             setIsSaving(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-in fade-in zoom-in duration-200">
-                <h3 className="text-2xl font-bold mb-6">{initialData ? 'Edit Objective' : 'Add New Objective'}</h3>
-                <div className="space-y-4">
+        <div className="fixed inset-0 bg-[#2b3437]/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-[#ffffff] rounded-2xl overflow-hidden ring-1 ring-[#abb3b7]/15 shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+                <div className="bg-[#e3e9ec] px-8 py-4 border-b border-[#005db5]/5">
+                    <h3 className="text-[10px] font-black text-[#2b3437] uppercase tracking-[0.1rem]">
+                        {initialData ? 'EDIT OBJECTIVE' : 'ADD NEW OBJECTIVE'}
+                    </h3>
+                </div>
+                <div className="p-8 space-y-6">
                     <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Title</label>
+                        <label className="text-[9px] font-black text-[#abb3b7] uppercase tracking-widest mb-2 block">OBJECTIVE TITLE</label>
                         <input 
                             value={data.title}
                             placeholder="e.g., Improve Code Quality" 
-                            className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition" 
+                            className="w-full bg-[#f1f4f6] rounded-xl px-4 py-3.5 text-[13px] text-[#2b3437] font-bold outline-none border-2 border-transparent focus:border-[#005db5]/10 transition-all" 
                             onChange={e => setData({ ...data, title: e.target.value })} 
                         />
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Description</label>
+                        <label className="text-[9px] font-black text-[#abb3b7] uppercase tracking-widest mb-2 block">DESCRIPTION</label>
                         <textarea 
                             value={data.description}
                             placeholder="What needs to be achieved?" 
-                            className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition h-24" 
+                            className="w-full bg-[#f1f4f6] rounded-xl px-4 py-3.5 text-[13px] text-[#2b3437] outline-none min-h-[80px] resize-none border-2 border-transparent focus:border-[#005db5]/10 transition-all" 
                             onChange={e => setData({ ...data, description: e.target.value })} 
                         />
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Success Criteria</label>
+                        <label className="text-[9px] font-black text-[#abb3b7] uppercase tracking-widest mb-2 block">SUCCESS CRITERIA (KPI)</label>
                         <textarea 
                             value={data.successCriteria}
                             placeholder="How will we measure success?" 
-                            className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition h-24" 
+                            className="w-full bg-[#f1f4f6] rounded-xl px-4 py-3.5 text-[13px] text-[#2b3437] outline-none min-h-[80px] resize-none border-2 border-transparent focus:border-[#005db5]/10 transition-all" 
                             onChange={e => setData({ ...data, successCriteria: e.target.value })} 
                         />
                     </div>
                     {!initialData && (
                         <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Target Completion Date</label>
+                            <label className="text-[9px] font-black text-[#abb3b7] uppercase tracking-widest mb-2 block">TARGET COMPLETION DATE</label>
                             <input 
                                 type="date" 
-                                min={pipStartDate}
-                                className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition" 
+                                min={pipStartDate?.split('T')[0]}
+                                className="w-full bg-[#f1f4f6] rounded-xl px-4 py-3.5 text-[13px] text-[#2b3437] font-bold outline-none border-2 border-transparent focus:border-[#005db5]/10 transition-all" 
                                 onChange={e => setData({ ...data, targetDate: e.target.value })} 
                             />
                         </div>
@@ -84,16 +97,16 @@ const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ pipStartDate, initialDa
                     <div className="flex gap-4 pt-4">
                         <button 
                             onClick={onClose} 
-                            className="flex-1 px-4 py-2 bg-gray-100 rounded-xl font-bold hover:bg-gray-200 transition"
+                            className="flex-1 px-4 py-3.5 bg-[#f1f4f6] text-[#586064] rounded-xl text-[10px] font-black uppercase tracking-[0.15rem] hover:bg-[#e3e9ec] transition-all"
                         >
-                            Cancel
+                            CANCEL
                         </button>
                         <button 
                             onClick={handleSubmit} 
                             disabled={isSaving}
-                            className={`flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2 ${isSaving ? 'opacity-70' : ''}`}
+                            className={`flex-1 px-4 py-3.5 bg-[#005db5] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.15rem] hover:bg-[#0052a0] transition-all shadow-sm flex items-center justify-center gap-2 ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                            {isSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Save'}
+                            {isSaving ? 'SAVING...' : 'SAVE OBJECTIVE'}
                         </button>
                     </div>
                 </div>

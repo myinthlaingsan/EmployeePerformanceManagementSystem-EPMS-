@@ -1,10 +1,9 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
 import {
   LayoutDashboard,
   ClipboardCheck,
-  User,
   Users,
   MessageSquare,
   TrendingUp,
@@ -18,8 +17,9 @@ import {
   Briefcase,
   Zap,
   Target,
-  Library,
-  History
+  History,
+  Calendar,
+  Layers
 } from "lucide-react";
 
 interface NavItem {
@@ -28,18 +28,20 @@ interface NavItem {
   icon: React.ElementType;
   adminOnly?: boolean;
   hrOnly?: boolean;
+  end?: boolean;
   privilegedOnly?: boolean;
   hideForPrivileged?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
+  { label: "360 Feedback", to: "/appraisal/360", icon: Users },
   { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck },
   { label: "Performance Pulse", to: "/performance-history", icon: History, privilegedOnly: true },
   { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true },
   { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true },
   { label: "PIP", to: "/pip", icon: TrendingUp },
-  { label: "Analytics", to: "/hr", icon: BarChart3, adminOnly: true },
+  { label: "Analytics", to: "/analytics", icon: BarChart3, adminOnly: true },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
@@ -49,15 +51,20 @@ const ADMIN_ITEMS: NavItem[] = [
   { label: "Job Levels", to: "/job-levels", icon: Zap },
   { label: "Positions", to: "/positions", icon: Briefcase },
   { label: "Teams", to: "/teams", icon: Users },
-  { label: "Permissions", to: "/permissions", icon: ShieldCheck },
+  { label: "Permissions", to: "/permissions", icon: ShieldCheck, end: true },
   { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck },
+  { label: "Assign Permissions", to: "/permissions/assign", icon: Zap },
+  { label: "Financial Years", to: "/financial-years", icon: Calendar },
+  { label: "Performance Categories", to: "/performance-categories", icon: Layers },
+  { label: "Strategic Analytics", to: "/analytics", icon: TrendingUp },
 ];
 
 const Sidebar = () => {
-  const { logout, isAdmin, isHR, isManager } = useAuth();
+  const { logout, isAdmin, isHR, isManager, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
-  const [perfOpen, setPerfOpen] = useState(true);
+  const [perfOpen, setPerfOpen] = useState(false);
 
   const activeClass = "bg-blue-50 text-blue-600 border-r-4 border-blue-600";
   const inactiveClass = "text-gray-500 hover:bg-gray-50 hover:text-gray-900";
@@ -84,6 +91,7 @@ const Sidebar = () => {
             <NavLink
               key={item.label}
               to={item.to}
+              end={item.end}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${isActive ? activeClass : inactiveClass
                 }`
@@ -111,63 +119,55 @@ const Sidebar = () => {
               <div className="bg-gray-50/50 py-1">
                 <NavLink
                   to="/kpi"
+                  end
                   className={({ isActive }) =>
                     `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
                   }
                 >
-                  Intelligence Hub
+                  KPI Intelligence Hub
                 </NavLink>
                 <NavLink
                   to="/kpi/my"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                  }
+                  className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/my' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                 >
                   My Goals
                 </NavLink>
                 {isManager && (
                   <NavLink
                     to="/kpi/team"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                    }
+                    className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/team' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                   >
                     Team Performance
                   </NavLink>
                 )}
-                <NavLink
-                  to="/kpi/update"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                  }
-                >
-                  Update Progress
-                </NavLink>
+                {user && (
+                  <NavLink
+                    to={`/kpi/history/${user.id}`}
+                    className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname.startsWith('/kpi/history/') ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
+                  >
+                    KPI Journey
+                  </NavLink>
+                )}
+
                 {(isAdmin || isHR) && (
                   <NavLink
                     to="/kpi/manage"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                    }
+                    className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/manage' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                   >
-                    KPI Assignment
+                    Goal Management
                   </NavLink>
                 )}
                 {(isAdmin || isHR) && (
                   <>
                     <NavLink
                       to="/kpi/library"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                      }
+                      className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/library' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                     >
                       KPI Library
                     </NavLink>
                     <NavLink
                       to="/kpi/categories"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                      }
+                      className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/categories' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
                     >
                       KPI Categories
                     </NavLink>
@@ -196,6 +196,7 @@ const Sidebar = () => {
                     <NavLink
                       key={item.label}
                       to={item.to}
+                      end={item.end}
                       className={({ isActive }) =>
                         `flex items-center gap-3 pl-12 pr-6 py-2.5 text-xs font-medium transition-all ${isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
                         }`

@@ -6,12 +6,13 @@ import KpiLibraryEntry from "../pages/kpi/KpiLibraryEntry";
 import GoalManagement from "../pages/kpi/GoalManagement";
 import GoalDetail from "../pages/kpi/GoalDetail";
 import GoalAssignmentWorkspace from "../pages/kpi/GoalAssignmentWorkspace";
-import ProgressUpdateWorkspace from "../pages/kpi/ProgressUpdateWorkspace";
+import EmployeeKpiHistory from "../pages/kpi/EmployeeKpiHistory";
+
 
 export const kpiRoutes = [
   { path: "/kpi", element: <KpiHub /> },
   { path: "/kpi/my", element: <MyKpiDashboard /> },
-  { path: "/kpi/update", element: <ProgressUpdateWorkspace /> },
+
   { path: "/kpi/team", element: <TeamKpiDashboard /> },
   { path: "/kpi/library", element: <KpiLibraryDashboard /> },
   { path: "/kpi/library/new", element: <KpiLibraryEntry /> },
@@ -19,4 +20,5 @@ export const kpiRoutes = [
   { path: "/kpi/manage", element: <GoalManagement /> },
   { path: "/kpi/assign/:employeeId", element: <GoalAssignmentWorkspace /> },
   { path: "/kpi/goals/:employeeId", element: <GoalDetail /> },
+  { path: "/kpi/history/:employeeId", element: <EmployeeKpiHistory /> },
 ];

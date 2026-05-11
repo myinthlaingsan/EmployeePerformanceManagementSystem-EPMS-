@@ -14,5 +14,7 @@ public class PipDetailDTO {
     private String startDate;
     private String endDate;
     private String status;
+    private String objectives;
+    private String progressSummary;
     private String outcome;
 }

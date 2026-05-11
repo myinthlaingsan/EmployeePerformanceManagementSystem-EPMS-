@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class SelfAssessmentAnswerRequest {
     private Long questionId;
     private Integer ratingValue;
+    private Boolean isCompleted;
     private String comment;
 }
 

@@ -1,5 +1,5 @@
 // ==================== Enums ====================
-export type KpiGoalStatus = 'DRAFT' | 'APPROVED' | 'ARCHIVED';
+export type KpiGoalStatus = 'DRAFT' | 'APPROVED' | 'LOCKED' | 'ARCHIVED';
 
 export type KpiItemStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 
@@ -55,8 +55,31 @@ export interface KpiLibraryResponse {
 // ==================== Goal Assignment ====================
 export interface GoalAssignmentRequest {
   employeeId: number;
+  libraryId?: number;
+  appraisalCycleId: number;
+  overwriteExisting?: boolean;
+}
+
+export interface BulkGoalAssignmentRequest {
+  employeeIds: number[];
   libraryId: number;
   appraisalCycleId: number;
+  overwriteExisting?: boolean;
+}
+
+export interface AssignmentResult {
+  employeeId: number;
+  employeeName: string;
+  status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
+  reason: string;
+}
+
+export interface BulkAssignmentResponse {
+  totalProcessed: number;
+  successfulCount: number;
+  failedCount: number;
+  skippedCount: number;
+  results: AssignmentResult[];
 }
 
 // ==================== Goal Items ====================
@@ -79,6 +102,20 @@ export interface GoalItemResponse {
   currentProgress?: number;
   categoryId?: number;
   categoryName?: string;
+  scorePercent?: number;
+  weightedScore?: number;
+}
+
+
+export interface KpiGoalBulkUpdateRequest {
+  items: {
+    id: number;
+    title: string;
+    unit: string;
+    targetValue: number;
+    weightPercent: number;
+    categoryId: number;
+  }[];
 }
 
 // ==================== Goal Set ====================
@@ -137,6 +174,7 @@ export interface KpiHistoryLog {
   newVersionId: number;
   action: string;
   changeReason: string;
+  changeDetails?: string;
   changedBy: number;
   createdAt: string;
 }

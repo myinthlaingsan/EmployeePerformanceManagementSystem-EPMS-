@@ -21,10 +21,11 @@ const KpiHub: React.FC = () => {
   }, { skip: !user });
 
   const myGoals = myGoalsResponse?.data;
-  const items = myGoals?.items || [];
+  const isDraft = myGoals?.status === 'DRAFT';
+  const items = isDraft ? [] : (myGoals?.items || []);
 
   const overallProgress = items.length > 0
-    ? Math.round(items.reduce((acc, item) => acc + ((item.currentProgress || 0) / item.targetValue * item.weightPercent), 0))
+    ? Math.floor(items.reduce((acc, item) => acc + ((item.currentProgress || 0) / item.targetValue * item.weightPercent), 0))
     : 0;
 
   return (
@@ -55,16 +56,24 @@ const KpiHub: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-blue-700 p-8 rounded-xl text-white shadow-lg shadow-blue-700/20">
-          <p className="text-blue-200 text-[10px] font-black uppercase tracking-widest mb-2">KPI Templates</p>
-          <p className="text-4xl font-black">{libraries.length}</p>
-          <button
-            onClick={() => navigate('/kpi/library')}
-            className="mt-6 text-[10px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 px-4 py-2 rounded-md transition"
-          >
-            Manage Library
-          </button>
-        </div>
+        {(isAdmin || isHR) ? (
+          <div className="bg-blue-700 p-8 rounded-xl text-white shadow-lg shadow-blue-700/20">
+            <p className="text-blue-200 text-[10px] font-black uppercase tracking-widest mb-2">KPI Templates</p>
+            <p className="text-4xl font-black">{libraries.length}</p>
+            <button
+              onClick={() => navigate('/kpi/library')}
+              className="mt-6 text-[10px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 px-4 py-2 rounded-md transition"
+            >
+              Manage Library
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Assigned KPIs</p>
+            <p className="text-4xl font-black text-gray-900">{items.length}</p>
+            <p className="mt-4 text-xs font-bold text-gray-400">Active goals in this cycle</p>
+          </div>
+        )}
 
         <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Goal Status</p>
@@ -96,7 +105,7 @@ const KpiHub: React.FC = () => {
                     <p className="text-[10px] font-bold text-gray-400 uppercase">Weight: {item.weightPercent}%</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-black text-gray-900">{Math.round((item.currentProgress || 0) / item.targetValue * 100)}%</p>
+                    <p className="text-sm font-black text-gray-900">{Math.floor((item.currentProgress || 0) / item.targetValue * 100)}%</p>
                     <div className="w-12 h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
                       <div className="bg-blue-600 h-full" style={{ width: `${(item.currentProgress || 0) / item.targetValue * 100}%` }}></div>
                     </div>

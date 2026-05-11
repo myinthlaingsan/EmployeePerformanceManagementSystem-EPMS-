@@ -115,4 +115,23 @@ export interface TeamMemberResponse {
   isPrimary: boolean;
 }
 
+export interface RoleLevelMapping {
+  roleId: number;
+  levelId: number;
+  permissionIds: number[];
+}
+
+export interface PermissionMatrixResponse {
+  roles: RoleResponse[];
+  levels: JobLevelResponse[];
+  permissions: PermissionResponse[];
+  matrix: RoleLevelMapping[];
+}
+
+export interface UpdatePermissionMatrixRequest {
+  roleId: number;
+  levelId: number;
+  permissionIds: number[];
+}
+
 

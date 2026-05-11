@@ -22,6 +22,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
     private final FormCategoryRepository categoryRepository;
     private final QuestionRepository questionRepository;
     private final AppraisalCycleRepository cycleRepository;
+    private final AppraisalRepository appraisalRepository;
     private final AuthService authService;
 
     @Override
@@ -30,7 +31,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         AppraisalForm form = new AppraisalForm();
         form.setFormName(request.getFormName());
         form.setFormType(request.getFormType());
-        
+
         if (request.getCycleId() != null) {
             AppraisalCycle cycle = cycleRepository.findById(request.getCycleId())
                     .orElseThrow(() -> new NotFoundException("Cycle not found"));
@@ -41,23 +42,22 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         return formRepository.save(form).getFormId();
     }
 
-
     @Override
     @Transactional
-    public void addCategory(Long formId, CategoryRequest request) {
+    public Long addCategory(Long formId, CategoryRequest request) {
         AppraisalForm form = formRepository.findById(formId)
                 .orElseThrow(() -> new NotFoundException("Form not found"));
-        
+
         FormCategory category = new FormCategory();
         category.setForm(form);
         category.setCategoryName(request.getCategoryName());
         category.setIsActive(true);
-        categoryRepository.save(category);
+        return categoryRepository.save(category).getCategoryId();
     }
 
     @Override
     @Transactional
-    public void addQuestion(Long categoryId, QuestionRequest request) {
+    public Long addQuestion(Long categoryId, QuestionRequest request) {
         FormCategory category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new NotFoundException("Category not found"));
 
@@ -65,9 +65,12 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         question.setCategory(category);
         question.setQuestionText(request.getQuestionText());
         question.setQuestionType(QuestionType.valueOf(request.getQuestionType()));
+        if (request.getSecondaryQuestionType() != null) {
+            question.setSecondaryQuestionType(QuestionType.valueOf(request.getSecondaryQuestionType()));
+        }
         question.setIsRequired(request.getIsRequired());
         question.setIsActive(true);
-        questionRepository.save(question);
+        return questionRepository.save(question).getQuestionId();
     }
 
     @Override
@@ -85,6 +88,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                             .questionId(q.getQuestionId())
                             .questionText(q.getQuestionText())
                             .questionType(q.getQuestionType() != null ? q.getQuestionType().name() : null)
+                            .secondaryQuestionType(q.getSecondaryQuestionType() != null ? q.getSecondaryQuestionType().name() : null)
                             .isRequired(q.getIsRequired())
                             .build())
                     .toList();
@@ -100,6 +104,8 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                 .formId(form.getFormId())
                 .formName(form.getFormName())
                 .formType(form.getFormType())
+                .cycleId(form.getCycle() != null ? form.getCycle().getCycleId() : null)
+                .cycleName(form.getCycle() != null ? form.getCycle().getCycleName() : null)
                 .categories(categoryDTOs)
                 .build();
     }
@@ -129,6 +135,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                 newQ.setCategory(savedCat);
                 newQ.setQuestionText(origQ.getQuestionText());
                 newQ.setQuestionType(origQ.getQuestionType());
+                newQ.setSecondaryQuestionType(origQ.getSecondaryQuestionType());
                 newQ.setIsRequired(origQ.getIsRequired());
                 newQ.setIsActive(origQ.getIsActive());
                 questionRepository.save(newQ);
@@ -143,6 +150,94 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
     public void updateFormStatus(Long formId, Boolean isActive) {
         AppraisalForm form = formRepository.findById(formId)
                 .orElseThrow(() -> new NotFoundException("Form not found"));
-        // Assuming we add logic if we have isActive on form
+        // Logic for isActive on form if needed
+    }
+
+    @Override
+    @Transactional
+    public void updateForm(Long formId, AppraisalFormRequest request) {
+        AppraisalForm form = formRepository.findById(formId)
+                .orElseThrow(() -> new NotFoundException("Form not found"));
+
+        form.setFormName(request.getFormName());
+        form.setFormType(request.getFormType());
+        if (request.getCycleId() != null) {
+            AppraisalCycle cycle = cycleRepository.findById(request.getCycleId())
+                    .orElseThrow(() -> new NotFoundException("Cycle not found"));
+            form.setCycle(cycle);
+        }
+        formRepository.save(form);
+    }
+
+    @Override
+    @Transactional
+    public void updateCategory(Long categoryId, CategoryRequest request) {
+        FormCategory category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NotFoundException("Category not found"));
+
+        category.setCategoryName(request.getCategoryName());
+        categoryRepository.save(category);
+    }
+
+    @Override
+    @Transactional
+    public void updateQuestion(Long questionId, QuestionRequest request) {
+        Question question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new NotFoundException("Question not found"));
+
+        question.setQuestionText(request.getQuestionText());
+        question.setQuestionType(QuestionType.valueOf(request.getQuestionType()));
+        question.setIsRequired(request.getIsRequired());
+        questionRepository.save(question);
+    }
+
+    @Override
+    @Transactional
+    public void deleteForm(Long formId) {
+        if (appraisalRepository.existsByForm_FormId(formId)) {
+            throw new RuntimeException("Cannot delete form. It is currently in use by active appraisals.");
+        }
+        formRepository.deleteById(formId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCategory(Long categoryId) {
+        FormCategory category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NotFoundException("Category not found"));
+
+        if (appraisalRepository.existsByForm_FormId(category.getForm().getFormId())) {
+            throw new RuntimeException("Cannot delete category. The associated form is in use.");
+        }
+        categoryRepository.delete(category);
+    }
+
+    @Override
+    @Transactional
+    public void deleteQuestion(Long questionId) {
+        Question question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new NotFoundException("Question not found"));
+
+        if (appraisalRepository.existsByForm_FormId(question.getCategory().getForm().getFormId())) {
+            throw new RuntimeException("Cannot delete question. The associated form is in use.");
+        }
+        questionRepository.delete(question);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppraisalFormResponse> getAllForms() {
+        return formRepository.findAll().stream()
+                .map(form -> AppraisalFormResponse.builder()
+                        .formId(form.getFormId())
+                        .formName(form.getFormName())
+                        .formType(form.getFormType() != null ? form.getFormType().name() : null)
+                        .cycleId(form.getCycle() != null ? form.getCycle().getCycleId() : null)
+                        .cycleName(form.getCycle() != null ? form.getCycle().getCycleName() : null)
+                        .createdBy(form.getCreatedBy())
+                        .createdAt(form.getCreatedAt())
+                        .updatedAt(form.getUpdatedAt())
+                        .build())
+                .collect(Collectors.toList());
     }
 }

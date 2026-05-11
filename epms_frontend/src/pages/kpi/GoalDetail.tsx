@@ -6,6 +6,7 @@ import {
   useCalculateScoreMutation
 } from '../../services/kpiApi';
 import { useAuth } from '../../hooks/useAuth';
+import { useActiveCycle } from '../../context/ActiveCycleContext';
 import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
 import KpiRevisionModal from '../../components/kpi/KpiRevisionModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
@@ -14,10 +15,11 @@ const GoalDetail: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeCycleId } = useActiveCycle();
 
   const { data: goalSetResponse, isLoading, error } = useGetGoalSetByEmployeeQuery({
     employeeId: parseInt(employeeId!),
-    cycleId: 1
+    cycleId: activeCycleId
   });
 
   const [approveGoal] = useApproveGoalSetMutation();
@@ -31,7 +33,7 @@ const GoalDetail: React.FC = () => {
   const [showRevisionModal, setShowRevisionModal] = useState(false);
 
   const isOwner = user?.id === parseInt(employeeId!);
-  const isManager = user?.roles.includes('MANAGER') || user?.roles.includes('ADMIN');
+  const isManager = user?.roles.includes('MANAGER') || user?.roles.includes('ADMIN') || user?.roles.includes('HR');
 
   const handleApprove = async () => {
     if (!goalSet) return;
@@ -79,22 +81,33 @@ const GoalDetail: React.FC = () => {
             {goalSet.status}
           </span>
 
-          {isManager && goalSet.status === 'DRAFT' && (
-            <button
-              onClick={handleApprove}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold text-sm shadow-sm transition"
-            >
-              Approve Goals
-            </button>
-          )}
+          {isManager && (goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate(`/kpi/assign/${employeeId}`)}
+                className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-black font-bold text-sm shadow-sm transition flex items-center gap-2"
+              >
+                Modify Goals
+              </button>
+              
+              {goalSet.status === 'DRAFT' && (
+                <button
+                  onClick={handleApprove}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold text-sm shadow-sm transition"
+                >
+                  Approve Goals
+                </button>
+              )}
 
-          {isManager && goalSet.status === 'APPROVED' && (
-            <button
-              onClick={handleCalculate}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold text-sm shadow-sm transition"
-            >
-              Calculate Score
-            </button>
+              {goalSet.status === 'APPROVED' && (
+                <button
+                  onClick={handleCalculate}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold text-sm shadow-sm transition"
+                >
+                  Calculate Score
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

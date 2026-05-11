@@ -1,8 +1,10 @@
 package ace.org.epms_backend.controller.feedback360;
 
+import ace.org.epms_backend.dto.appraisal.FullFormResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackDetailsResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackSubmissionRequest;
 import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,9 +15,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/360-feedback/feedbacks")
 @RequiredArgsConstructor
+@Tag(name = "360 Feedback Submission", description = "Endpoints for submitting and managing 360 feedback responses")
 public class FeedbackSubmissionController {
 
     private final FeedbackSubmissionService feedbackService;
+    private final ace.org.epms_backend.service.feedback360.FeedbackFormService feedbackFormService;
 
     @PostMapping
     public ResponseEntity<Void> submitFeedback(@RequestBody FeedbackSubmissionRequest request, @RequestParam Long evaluatorId) {
@@ -42,5 +46,10 @@ public class FeedbackSubmissionController {
     public ResponseEntity<Void> deleteFeedback(@PathVariable Long feedbackId) {
         feedbackService.deleteFeedback(feedbackId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/request/{requestId}/questions")
+    public ResponseEntity<FullFormResponse> getQuestions(@PathVariable Long requestId) {
+        return ResponseEntity.ok(feedbackFormService.getQuestionsForRequest(requestId));
     }
 }

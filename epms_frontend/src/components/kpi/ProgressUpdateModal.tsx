@@ -30,7 +30,7 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden transition-all">
         <form onSubmit={handleSubmit}>
           <div className="p-6 border-b border-gray-100">
@@ -47,8 +47,18 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
                 <input
                   type="number"
                   required
+                  min={0}
+                  max={item.targetValue}
                   value={actualValue}
-                  onChange={(e) => setActualValue(parseFloat(e.target.value))}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (isNaN(val)) {
+                      setActualValue(0);
+                    } else {
+                      // Clamp between 0 and targetValue
+                      setActualValue(Math.max(0, Math.min(val, item.targetValue)));
+                    }
+                  }}
                   className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 />
                 <span className="text-sm font-bold text-gray-400">/ {item.targetValue}</span>
@@ -66,18 +76,35 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
               />
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-              <div className="flex justify-between text-xs font-bold mb-1.5">
-                <span className="text-blue-700">Calculated Completion</span>
-                <span className="text-blue-700">
-                  {Math.round((actualValue / item.targetValue) * 100)}%
-                </span>
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 space-y-3">
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-1.5">
+                  <span className="text-blue-700">Calculated Completion</span>
+                  <span className="text-blue-700">
+                    {Math.floor((actualValue / item.targetValue) * 100)}%
+                  </span>
+                </div>
+                <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-full transition-all duration-500"
+                    style={{ width: `${Math.min((actualValue / item.targetValue) * 100, 100)}%` }}
+                  />
+                </div>
               </div>
-              <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-blue-600 h-full transition-all duration-500"
-                  style={{ width: `${Math.min((actualValue / item.targetValue) * 100, 100)}%` }}
-                />
+
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-blue-100">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-blue-500 font-bold">Score</p>
+                  <p className="text-lg font-black text-blue-700">
+                    {((actualValue / item.targetValue) * 100).toFixed(2)}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-blue-500 font-bold">Weighted Score</p>
+                  <p className="text-lg font-black text-blue-700">
+                    {(((actualValue / item.targetValue) * 100) * (item.weightPercent / 100)).toFixed(2)}
+                  </p>
+                </div>
               </div>
             </div>
           </div>

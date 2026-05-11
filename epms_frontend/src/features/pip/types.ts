@@ -15,6 +15,13 @@ export const PipOutcome = {
 } as const;
 export type PipOutcome = (typeof PipOutcome)[keyof typeof PipOutcome];
 
+export const PipSeverity = {
+    STANDARD: 'STANDARD',
+    URGENT: 'URGENT',
+    CRITICAL: 'CRITICAL',
+} as const;
+export type PipSeverity = (typeof PipSeverity)[keyof typeof PipSeverity];
+
 export const ObjectiveStatus = {
     NOT_STARTED: 'NOT_STARTED',
     IN_PROGRESS: 'IN_PROGRESS',
@@ -30,7 +37,12 @@ export interface PipResponse {
     endDate: string;
     status: PipStatus;
     finalOutcome: PipOutcome | null;
+    severity?: PipSeverity;
     reason: string;
+    managerPrivateNote?: string;
+    employeePrivateNote?: string;
+    scheduledReviewDates?: string[];
+    overallProgress?: number;
 }
 
 export interface PipCreateRequest {
@@ -38,11 +50,14 @@ export interface PipCreateRequest {
     managerId: number;
     startDate: string;
     endDate: string;
+    severity: PipSeverity;
     reason: string;
+    scheduledReviewDates?: string[];
 }
 
 export interface PipExtendRequest {
     newEndDate: string;
+    scheduledReviewDates?: string[];
 }
 
 export interface PipObjectiveResponse {
@@ -54,6 +69,7 @@ export interface PipObjectiveResponse {
     targetDate: string;
     status: ObjectiveStatus;
     isAchieved: boolean;
+    currentProgress?: number;
 }
 
 export interface PipObjectiveRequest {
@@ -99,6 +115,8 @@ export interface PipReviewRequest {
 export interface PipUpdateRequest {
     managerId?: number;
     reason?: string;
+    managerPrivateNote?: string;
+    employeePrivateNote?: string;
 }
 
 export interface PipObjectiveUpdateRequest {

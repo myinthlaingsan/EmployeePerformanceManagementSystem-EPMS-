@@ -77,6 +77,7 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
                     });
 
             answer.setRatingValue(req.getRatingValue());
+            answer.setIsCompleted(req.getIsCompleted());
             answer.setComment(req.getComment());
             answerRepo.save(answer);
         }
@@ -102,16 +103,26 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
             throw new RuntimeException("Self-assessment is already submitted");
         }
 
-        // Calculate total score (sum of ratings)
+        // Calculate total score based on formula: (Total Point * 100) / (Number of Questions Answered * 5)
         List<SelfAssessmentAnswer> answers = answerRepo.findBySelfAssessment_SelfAssessmentId(selfAssessmentId);
-        BigDecimal totalScore = BigDecimal.ZERO;
+        BigDecimal sum = BigDecimal.ZERO;
+        int answeredCount = 0;
+        
         for (SelfAssessmentAnswer ans : answers) {
             if (ans.getRatingValue() != null) {
-                totalScore = totalScore.add(BigDecimal.valueOf(ans.getRatingValue()));
+                sum = sum.add(BigDecimal.valueOf(ans.getRatingValue()));
+                answeredCount++;
             }
         }
 
-        self.setTotalScore(totalScore);
+        BigDecimal finalScore = BigDecimal.ZERO;
+        if (answeredCount > 0) {
+            BigDecimal maxPossiblePoints = BigDecimal.valueOf(answeredCount).multiply(BigDecimal.valueOf(5));
+            finalScore = sum.multiply(BigDecimal.valueOf(100))
+                    .divide(maxPossiblePoints, 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        self.setTotalScore(finalScore);
         self.setSubmitted(true);
         self.setSubmittedAt(Instant.now());
         selfRepo.save(self);
@@ -152,12 +163,17 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
     }
 
     private FullSelfAssessmentResponse buildFullResponse(Appraisal appraisal, SelfAssessment self) {
-        // Find the SELF_ASSESSMENT form in the cycle
-        AppraisalForm form = appraisal.getCycle().getForms().stream()
+        // Use the specific form linked to the appraisal
+        AppraisalForm form = appraisal.getForm();
+        
+        if (form == null) {
+            // Fallback: Find the first SELF_ASSESSMENT form in the cycle if none linked (backward compatibility)
+            form = appraisal.getCycle().getForms().stream()
                 .filter(f -> f.getFormType() == FormType.SELF_ASSESSMENT)
                 .findFirst()
-                .orElseThrow(() -> new NotFoundException("No SELF_ASSESSMENT form found for cycle: " 
-                        + appraisal.getCycle().getCycleName()));
+                .orElseThrow(() -> new NotFoundException("No SELF_ASSESSMENT form found for appraisal: " 
+                        + appraisal.getAppraisalId()));
+        }
 
         List<FormCategory> categories = categoryRepo.findByForm_FormId(form.getFormId());
 
@@ -180,9 +196,11 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
                                 .questionId(q.getQuestionId())
                                 .questionText(q.getQuestionText())
                                 .questionType(q.getQuestionType() != null ? q.getQuestionType().name() : null)
+                                .secondaryQuestionType(q.getSecondaryQuestionType() != null ? q.getSecondaryQuestionType().name() : null)
                                 .isRequired(q.getIsRequired())
                                 .answerId(ans != null ? ans.getId() : null)
                                 .ratingValue(ans != null ? ans.getRatingValue() : null)
+                                .isCompleted(ans != null ? ans.getIsCompleted() : null)
                                 .comment(ans != null ? ans.getComment() : null)
                                 .build();
                     }).toList();
@@ -208,15 +226,23 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
                 .departmentName(empDeptRepo.findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId())
                         .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : null)
                         .orElse(null))
+                .managerName(appraisal.getManager() != null ? appraisal.getManager().getStaffName() : "N/A")
 
                 // Cycle Info
                 .cycleStartDate(appraisal.getCycle().getStartDate())
                 .cycleEndDate(appraisal.getCycle().getEndDate())
+                .selfAssessmentDeadline(appraisal.getCycle().getSelfAssessmentDeadline())
+                .managerEvaluationDeadline(appraisal.getCycle().getManagerEvaluationDeadline())
                 .totalScore(self.getTotalScore())
 
                 .submitted(self.getSubmitted())
                 .lastSavedAt(self.getLastSavedAt())
                 .submittedAt(self.getSubmittedAt())
+                .employeeSignedAt(appraisal.getEmployeeSignedAt())
+                .managerSignedAt(appraisal.getManagerSignedAt())
+                .employeeSignature(appraisal.getEmployeeSignComment() != null 
+                    ? java.util.Base64.getEncoder().encodeToString(appraisal.getEmployeeSignComment()) 
+                    : null)
                 .categories(categoryDTOs)
                 .build();
     }

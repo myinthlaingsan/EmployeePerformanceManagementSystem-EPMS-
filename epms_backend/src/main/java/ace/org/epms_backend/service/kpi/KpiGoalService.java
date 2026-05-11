@@ -1,45 +1,28 @@
-package ace.org.epms_backend.service;
+package ace.org.epms_backend.service.kpi;
 
 import ace.org.epms_backend.dto.appraisal.AppraisalCycleResponse;
 import ace.org.epms_backend.dto.kpi.*;
 import java.util.List;
 
-public interface KpiService {
-    // Appraisal Cycle
+public interface KpiGoalService {
     AppraisalCycleResponse getActiveCycle();
-
-    // KPI Library
-    KpiLibraryResponse createLibrary(KpiLibraryRequest request);
-
-    List<KpiLibraryResponse> getAllActiveLibraries();
-
-    KpiLibraryResponse toggleLibraryStatus(Long id, boolean status);
-
-    // KPI Assignment
+    
     GoalSetResponse assignKpiToEmployee(GoalAssignmentRequest request);
-
-    // Goal Management
+    BulkAssignmentResponse bulkAssignKpi(BulkGoalAssignmentRequest request);
+    
     GoalSetResponse addGoalItem(Long goalSetId, KpiGoalItemRequest request);
-
     GoalSetResponse updateGoalItem(Long itemId, KpiGoalItemRequest request);
-
     GoalSetResponse deleteGoalItem(Long itemId);
-
+    GoalSetResponse bulkUpdateGoalItems(Long goalSetId, KpiGoalBulkUpdateRequest request);
+    
     GoalSetResponse approveGoalSet(Long goalSetId);
-
-    // Progress
-    GoalSetResponse updateProgress(ProgressRequest request);
-
-    // Revision
+    GoalSetResponse revertToDraft(Long goalSetId);
+    GoalSetResponse lockGoalSet(Long goalSetId);
     GoalSetResponse reviseKpi(Long goalItemId, KpiRevisionRequest request);
-
-    // Scoring
-    KpiScoreResponse calculateFinalScore(Long employeeId, Long cycleId);
-
-    // Goal Set Retrieval
+    
     GoalSetResponse getGoalSetByEmployee(Long employeeId, Long cycleId);
-
     GoalSetResponse getGoalSetById(Long id);
-
-    List<KpiProgressResponse> getRecentProgress(Long employeeId, int limit);
+    List<GoalSetResponse> getEmployeeGoalSets(Long employeeId);
+    List<GoalSetResponse> getTeamGoalSets(Long managerId, Long cycleId);
+    List<GoalSetResponse> getDepartmentGoalSets(Long departmentId, Long cycleId);
 }

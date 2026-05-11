@@ -18,7 +18,7 @@ public interface EmployeeService {
 
     PagedResponse<EmployeeResponse> getAllPaginated(int page, int size, Boolean excludeSelf);
 
-    PagedResponse<EmployeeResponse> search(String query, int page, int size, Boolean excludeSelf);
+    PagedResponse<EmployeeResponse> search(String query, Long departmentId, Long teamId, int page, int size, Boolean excludeSelf);
 
     EmployeeResponse updateEmployee(Long id, UpdateEmployeeRequest request);
 
@@ -38,6 +38,8 @@ public interface EmployeeService {
     Employee findByEmail(String email);
 
     EmployeeResponse updateProfile(UpdateProfileRequest request);
+
+    void uploadProfileImage(Long id, org.springframework.web.multipart.MultipartFile file);
 
     void changePassword(Long id, ChangePasswordRequest request);
 }

@@ -2,14 +2,16 @@ import {
   useGetEmployeesQuery,
   useSearchEmployeesQuery,
   useDeleteEmployeeMutation,
-  useActivateEmployeeMutation,
-  useDeactivateEmployeeMutation
+  useActivateEmployeeMutation
 } from "../../features/employee/employeeapi";
 import {
   useGetRolesQuery,
   useAssignRoleToEmployeeMutation,
   useRemoveRoleFromEmployeeMutation
 } from "../../features/org/roleApi";
+import { useGetActiveDepartmentsQuery } from "../../features/org/departmentApi";
+import { useGetTeamsQuery } from "../../features/org/teamApi";
+import { useDownloadReportMutation } from "../../features/report/reportApi";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 
@@ -17,13 +19,23 @@ const EmployeeList = () => {
   const [page, setPage] = useState(0);
   const [size] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDeptId, setSelectedDeptId] = useState<string>("");
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
 
-  const { data: pagedData, isLoading, error } = searchQuery
-    ? useSearchEmployeesQuery({ query: searchQuery, page, size })
-    : useGetEmployeesQuery({ page, size });
+  const { data: pagedData, isLoading, error } = useSearchEmployeesQuery({
+    query: searchQuery,
+    departmentId: selectedDeptId,
+    teamId: selectedTeamId,
+    page,
+    size
+  });
 
   const employees = pagedData?.content;
   const { data: allRoles } = useGetRolesQuery();
+  const { data: departments } = useGetActiveDepartmentsQuery();
+  const { data: teams } = useGetTeamsQuery();
+  const [downloadReport, { isLoading: isDownloading }] = useDownloadReportMutation();
+
   const [deleteEmployee] = useDeleteEmployeeMutation();
   const [activateEmployee] = useActivateEmployeeMutation();
   // const [deactivateEmployee] = useDeactivateEmployeeMutation();
@@ -31,6 +43,23 @@ const EmployeeList = () => {
   const [removeRole] = useRemoveRoleFromEmployeeMutation();
 
   const [selectedEmp, setSelectedEmp] = useState<number | null>(null);
+
+  const handleDownload = async (format: "pdf" | "xlsx") => {
+    try {
+      await downloadReport({
+        endpoint: "employees",
+        params: {
+          format,
+          ...(selectedDeptId && { departmentId: selectedDeptId }),
+          ...(selectedTeamId && { teamId: selectedTeamId }),
+          fileName: `Employee_List_${format.toUpperCase()}.${format}`,
+        },
+      }).unwrap();
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Failed to download report.");
+    }
+  };
 
   const handleRoleToggle = async (empId: number, roleId: number, hasRole: boolean) => {
     try {
@@ -82,6 +111,63 @@ const EmployeeList = () => {
         </div>
       </div>
 
+      {/* Export & Filters Bar */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-bold text-gray-500">Export Filters:</span>
+          <select
+            value={selectedDeptId}
+            onChange={(e) => {
+              setSelectedDeptId(e.target.value);
+              setSelectedTeamId(""); // Reset team when dept changes
+              setPage(0);
+            }}
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          >
+            <option value="">All Departments</option>
+            {departments?.map((dept) => (
+              <option key={dept.id} value={dept.id}>
+                {dept.departmentName}
+              </option>
+            ))}
+          </select>
+          <select
+            value={selectedTeamId}
+            onChange={(e) => {
+              setSelectedTeamId(e.target.value);
+              setPage(0);
+            }}
+            disabled={!!selectedDeptId}
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50"
+          >
+            <option value="">All Teams</option>
+            {teams?.map((team) => (
+              <option key={team.teamId} value={team.teamId}>
+                {team.teamName}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleDownload("pdf")}
+            disabled={isDownloading}
+            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 font-bold rounded-lg hover:bg-red-100 transition disabled:opacity-50"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            PDF
+          </button>
+          <button
+            onClick={() => handleDownload("xlsx")}
+            disabled={isDownloading}
+            className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 font-bold rounded-lg hover:bg-green-100 transition disabled:opacity-50"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            Excel
+          </button>
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -97,8 +183,17 @@ const EmployeeList = () => {
               <tr key={emp.id} className="hover:bg-gray-50/50 transition-colors group">
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-4">
-                    <div className="w-11 h-11 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
-                      {emp.staffName.charAt(0)}
+                    <div className="w-11 h-11 rounded-2xl bg-gray-100 flex items-center justify-center text-white font-bold shadow-md overflow-hidden">
+                      {emp.profileImage && emp.profileImage !== "default.jpg" ? (
+                        <img
+                          src={`http://localhost:8080${emp.profileImage}`}
+                          alt={emp.staffName}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span className="text-sm font-bold text-gray-500">{emp.staffName.charAt(0)}</span>
+                      )}
                     </div>
                     <div>
                       <div className="text-sm font-bold text-gray-900">{emp.staffName}</div>
@@ -220,11 +315,10 @@ const EmployeeList = () => {
                 <button
                   key={i}
                   onClick={() => setPage(i)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition ${
-                    page === i
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition ${page === i
                       ? "bg-blue-600 text-white shadow-md shadow-blue-200"
                       : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
-                  }`}
+                    }`}
                 >
                   {i + 1}
                 </button>

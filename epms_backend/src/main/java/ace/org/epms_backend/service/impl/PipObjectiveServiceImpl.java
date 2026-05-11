@@ -14,6 +14,7 @@ import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.pip.PipObjective;
 import ace.org.epms_backend.model.pip.PipRecord;
 import ace.org.epms_backend.repository.PipObjectiveRepository;
+import ace.org.epms_backend.repository.PipProgressLogRepository;
 import ace.org.epms_backend.repository.PipRecordRepository;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.PipObjectiveService;
@@ -33,6 +34,7 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
 
     private final PipObjectiveRepository objectiveRepository;
     private final PipRecordRepository pipRepository;
+    private final PipProgressLogRepository progressLogRepository;
     private final PipObjectiveMapper mapper;
     private final AuthService authService;
 
@@ -45,15 +47,15 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
         PipRecord pip = pipRepository.findById(request.getPipId())
                 .orElseThrow(() -> new NotFoundException("PIP not found"));
 
-        if (pip.getStatus() != PipStatus.DRAFT) {
-            throw new InvalidStateException("Objectives can only be added to DRAFT PIP");
+        if (pip.getStatus() == PipStatus.CLOSED) {
+            throw new InvalidStateException("Objectives cannot be added to CLOSED PIPs");
         }
 
         PipObjective objective = mapper.toEntity(request);
         objective.setPip(pip);
         objective.setStatus(ObjectiveStatus.NOT_STARTED);
 
-        return mapper.toResponse(objectiveRepository.save(objective));
+        return enrichObjectiveResponse(objectiveRepository.save(objective));
     }
 
     @Override
@@ -62,15 +64,15 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
                 .orElseThrow(() -> new NotFoundException("Objective not found"));
 
         PipStatus status = objective.getPip().getStatus();
-        if (status == PipStatus.COMPLETED || status == PipStatus.CLOSED) {
-            throw new InvalidStateException("Objectives cannot be edited after PIP is COMPLETED or CLOSED");
+        if (status == PipStatus.CLOSED) {
+            throw new InvalidStateException("Objectives cannot be edited after PIP is CLOSED");
         }
 
         if (request.getTitle() != null) objective.setTitle(request.getTitle());
         if (request.getDescription() != null) objective.setDescription(request.getDescription());
         if (request.getSuccessCriteria() != null) objective.setSuccessCriteria(request.getSuccessCriteria());
 
-        return mapper.toResponse(objectiveRepository.save(objective));
+        return enrichObjectiveResponse(objectiveRepository.save(objective));
     }
 
     // =========================
@@ -84,15 +86,18 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
 
         Employee current = authService.getCurrentUser();
 
-        // 🔐 EMPLOYEE CAN ONLY VIEW OWN PIP OBJECTIVES
-        if (hasRole("EMPLOYEE") &&
-                !pip.getEmployee().getId().equals(current.getId())) {
-            throw new AccessDeniedException("Not allowed to view this PIP");
+        // 🔐 ACCESS CONTROL: Allow if HR, or if the user is the assigned MANAGER or the assigned EMPLOYEE
+        boolean isHR = hasRole("HR");
+        boolean isAssignedManager = pip.getManager().getId().equals(current.getId());
+        boolean isAssignedEmployee = pip.getEmployee().getId().equals(current.getId());
+
+        if (!isHR && !isAssignedManager && !isAssignedEmployee) {
+            throw new AccessDeniedException("You do not have permission to view objectives for this PIP");
         }
 
         return objectiveRepository.findByPip_PipId(pipId)
                 .stream()
-                .map(mapper::toResponse)
+                .map(this::enrichObjectiveResponse)
                 .toList();
     }
 
@@ -109,20 +114,32 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
         PipObjective objective = objectiveRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Objective not found"));
 
-        if (objective.getPip().getStatus() != PipStatus.ACTIVE && objective.getPip().getStatus() != PipStatus.EXTENDED) {
-            throw new InvalidStateException("Objective status can only be updated if PIP is ACTIVE or EXTENDED");
+        if (objective.getPip().getStatus() == PipStatus.CLOSED) {
+            throw new InvalidStateException("Objective status cannot be updated if PIP is CLOSED");
+        }
+        
+        if (objective.getPip().getStatus() == PipStatus.DRAFT) {
+            throw new InvalidStateException("Objective status cannot be changed while PIP is in DRAFT");
+        }
+
+        if (status == ObjectiveStatus.NOT_STARTED && objective.getStatus() != ObjectiveStatus.NOT_STARTED) {
+            throw new InvalidStateException("Cannot revert to NOT_STARTED once the objective has started.");
         }
 
         objective.setStatus(status);
         objective.setIsAchieved(status == ObjectiveStatus.COMPLETED);
         objective.setUpdatedBy(authService.getCurrentUser().getId());
 
-        return mapper.toResponse(objectiveRepository.save(objective));
+        return enrichObjectiveResponse(objectiveRepository.save(objective));
     }
 
-    // =========================
-    // HELPER METHODS
-    // =========================
+    private PipObjectiveResponse enrichObjectiveResponse(PipObjective objective) {
+        PipObjectiveResponse response = mapper.toResponse(objective);
+        progressLogRepository.findFirstByObjective_ObjectiveIdOrderByCreatedAtDesc(objective.getObjectiveId())
+                .ifPresent(log -> response.setCurrentProgress(log.getProgressPercent().intValue()));
+        return response;
+    }
+
     private boolean hasRole(String role) {
         return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_" + role));

@@ -1,4 +1,4 @@
-import {api} from "../../services/api"
+import { api } from "../../services/api"
 import type { ApiResponse } from "../../services/ApiResponse";
 import type {
   EmployeeResponse,
@@ -14,6 +14,13 @@ import type {
 export const employeeApi = api.injectEndpoints({
   endpoints: (builder) => ({
 
+    getAllEmployees: builder.query<EmployeeResponse[], void>({
+      query: () => `/emp/all`,
+      transformResponse: (response: ApiResponse<EmployeeResponse[]>) => response.data,
+      providesTags: ["Employee"],
+    }),
+    // getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page: number; size: number }>({
+    //   query: ({ page, size }) => `/emp?page=${page}&size=${size}`,
     getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page: number; size: number; excludeSelf?: boolean }>({
       query: ({ page, size, excludeSelf }) => `/emp?page=${page}&size=${size}${excludeSelf ? '&excludeSelf=true' : ''}`,
       transformResponse: (response: ApiResponse<PagedResponse<EmployeeResponse>>) =>
@@ -21,8 +28,15 @@ export const employeeApi = api.injectEndpoints({
       providesTags: ["Employee"],
     }),
 
-    searchEmployees: builder.query<PagedResponse<EmployeeResponse>, { query: string; page: number; size: number; excludeSelf?: boolean }>({
-      query: ({ query, page, size, excludeSelf }) => `/emp/search?query=${query}&page=${page}&size=${size}${excludeSelf ? '&excludeSelf=true' : ''}`,
+    searchEmployees: builder.query<PagedResponse<EmployeeResponse>, { query?: string; departmentId?: string; teamId?: string; page: number; size: number; excludeSelf?: boolean }>({
+      query: ({ query, departmentId, teamId, page, size, excludeSelf }) => {
+        let url = `/emp/search?page=${page}&size=${size}`;
+        if (query) url += `&query=${encodeURIComponent(query)}`;
+        if (departmentId) url += `&departmentId=${departmentId}`;
+        if (teamId) url += `&teamId=${teamId}`;
+        if (excludeSelf) url += `&excludeSelf=true`;
+        return url;
+      },
       transformResponse: (response: ApiResponse<PagedResponse<EmployeeResponse>>) =>
         response.data,
       providesTags: ["Employee"],
@@ -147,6 +161,27 @@ export const employeeApi = api.injectEndpoints({
         body,
       }),
     }),
+
+    uploadProfileImage: builder.mutation<
+      ApiResponse<any>,
+      { id: number; file: File }
+    >({
+      query: ({ id, file }) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return {
+          url: `/emp/${id}/profile-image`,
+          method: "POST",
+          body: formData,
+        };
+      },
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "Employee", id },
+        "Employee",
+        "Profile",
+      ],
+    }),
+
   }),
 });
 
@@ -165,4 +200,6 @@ export const {
   useUpdateProfileMutation,
   useChangePasswordMutation,
   useSetPasswordMutation,
+  useGetAllEmployeesQuery,
+  useUploadProfileImageMutation,
 } = employeeApi;

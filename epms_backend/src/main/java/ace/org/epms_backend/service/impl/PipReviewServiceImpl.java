@@ -72,16 +72,13 @@ public class PipReviewServiceImpl implements PipReviewService {
         PipRecord pip = pipRepository.findById(pipId)
                 .orElseThrow(() -> new NotFoundException("PIP not found"));
 
-        // 🔐 EMPLOYEE can only see own PIP
-        if (isEmployee(current) &&
-                !pip.getEmployee().getId().equals(current.getId())) {
-            throw new AccessDeniedException("Not allowed to view this PIP");
-        }
+        // 🔐 ACCESS CONTROL: Allow if HR, or if the user is the assigned MANAGER or the assigned EMPLOYEE
+        boolean isHR = isHR(current);
+        boolean isAssignedManager = pip.getManager().getId().equals(current.getId());
+        boolean isAssignedEmployee = pip.getEmployee().getId().equals(current.getId());
 
-        // 🔐 MANAGER can only see assigned PIP
-        if (isManager(current) &&
-                !pip.getManager().getId().equals(current.getId())) {
-            throw new AccessDeniedException("Not your assigned PIP");
+        if (!isHR && !isAssignedManager && !isAssignedEmployee) {
+            throw new AccessDeniedException("You do not have permission to view reviews for this PIP");
         }
 
         return reviewRepository.findByPip_PipId(pipId)
@@ -109,7 +106,12 @@ public class PipReviewServiceImpl implements PipReviewService {
 
         pip.setFinalOutcome(outcome);
         pip.setOverallComment(comment);
-        pip.setStatus(PipStatus.CLOSED);
+        
+        if (outcome == PipOutcome.EXTEND) {
+            pip.setStatus(PipStatus.EXTENDED);
+        } else {
+            pip.setStatus(PipStatus.CLOSED);
+        }
 
         pipRepository.save(pip);
     }

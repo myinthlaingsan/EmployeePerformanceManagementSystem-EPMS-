@@ -11,6 +11,10 @@ import type {
   ProgressRequest,
   KpiRevisionRequest,
   KpiScoreResponse,
+  KpiGoalBulkUpdateRequest,
+  BulkGoalAssignmentRequest,
+  BulkAssignmentResponse,
+  KpiHistoryLog,
 } from '../features/kpi/kpiTypes';
 
 export const kpiApi = api.injectEndpoints({
@@ -70,10 +74,32 @@ export const kpiApi = api.injectEndpoints({
       invalidatesTags: ['Library'],
     }),
 
+    getLibraryById: builder.query<ApiResponse<KpiLibraryResponse>, number>({
+      query: (id) => `/kpi/library/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Library', id }],
+    }),
+
+    updateLibrary: builder.mutation<ApiResponse<KpiLibraryResponse>, { id: number; data: KpiLibraryRequest }>({
+      query: ({ id, data }) => ({
+        url: `/kpi/library/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Library', id }, 'Library'],
+    }),
+
     // ==================== Assignment ====================
     assignKpiToEmployee: builder.mutation<ApiResponse<GoalSetResponse>, GoalAssignmentRequest>({
       query: (body) => ({
         url: '/kpi/assign',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['GoalSet'],
+    }),
+    bulkAssignKpi: builder.mutation<ApiResponse<BulkAssignmentResponse>, BulkGoalAssignmentRequest>({
+      query: (body) => ({
+        url: '/kpi/bulk-assign',
         method: 'POST',
         body,
       }),
@@ -113,10 +139,30 @@ export const kpiApi = api.injectEndpoints({
       invalidatesTags: ['GoalSet'],
     }),
 
+    bulkUpdateGoalItems: builder.mutation<
+      ApiResponse<GoalSetResponse>,
+      { goalSetId: number; data: KpiGoalBulkUpdateRequest }
+    >({
+      query: ({ goalSetId, data }) => ({
+        url: `/kpi/goal-set/${goalSetId}/bulk-items`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['GoalSet'],
+    }),
+
     // ==================== Approval ====================
     approveGoalSet: builder.mutation<ApiResponse<GoalSetResponse>, number>({
       query: (id) => ({
         url: `/kpi/approve/${id}`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['GoalSet'],
+    }),
+
+    revertGoalSet: builder.mutation<ApiResponse<GoalSetResponse>, number>({
+      query: (id) => ({
+        url: `/kpi/goal-set/${id}/revert`,
         method: 'POST',
       }),
       invalidatesTags: ['GoalSet'],
@@ -178,6 +224,26 @@ export const kpiApi = api.injectEndpoints({
       }),
       invalidatesTags: ['Score'],
     }),
+    getTeamGoalSets: builder.query<ApiResponse<GoalSetResponse[]>, { managerId: number; cycleId: number }>({
+      query: ({ managerId, cycleId }) => `/kpi/goal-set/team?managerId=${managerId}&cycleId=${cycleId}`,
+      providesTags: ['GoalSet'],
+    }),
+    getDepartmentGoalSets: builder.query<ApiResponse<GoalSetResponse[]>, { departmentId?: number; cycleId: number }>({
+      query: ({ departmentId, cycleId }) => {
+        let url = `/kpi/goal-set/department?cycleId=${cycleId}`;
+        if (departmentId) url += `&departmentId=${departmentId}`;
+        return url;
+      },
+      providesTags: ['GoalSet'],
+    }),
+    getEmployeeKpiHistory: builder.query<ApiResponse<GoalSetResponse[]>, number>({
+      query: (employeeId) => `/kpi-history/employee/${employeeId}`,
+      providesTags: ['GoalSet'],
+    }),
+    getGoalSetAuditTrail: builder.query<ApiResponse<KpiHistoryLog[]>, number>({
+      query: (goalSetId) => `/kpi-history/goal-set/${goalSetId}/audit`,
+      providesTags: ['GoalSet'],
+    }),
   }),
 });
 
@@ -193,7 +259,9 @@ export const {
   useAddGoalItemMutation,
   useUpdateGoalItemMutation,
   useDeleteGoalItemMutation,
+  useBulkUpdateGoalItemsMutation,
   useApproveGoalSetMutation,
+  useRevertGoalSetMutation,
   useUpdateProgressMutation,
   useReviseKpiMutation,
   useCalculateScoreMutation,
@@ -201,4 +269,12 @@ export const {
   useGetGoalSetByIdQuery,
   useGetProgressHistoryQuery,
   useGetActiveCycleQuery,
+  useGetLibraryByIdQuery,
+  useUpdateLibraryMutation,
+  useGetTeamGoalSetsQuery,
+  useGetDepartmentGoalSetsQuery,
+
+  useBulkAssignKpiMutation,
+  useGetEmployeeKpiHistoryQuery,
+  useGetGoalSetAuditTrailQuery,
 } = kpiApi;

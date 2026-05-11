@@ -14,9 +14,10 @@ public class QuestionWithManagerAnswerDTO {
     private String questionText;
     private String questionType;
     private Boolean isRequired;
-    
+
     // Employee's answer (read-only reference)
     private Integer employeeRatingValue;
+    private Boolean employeeIsCompleted;
     private String employeeComment;
 
     // Manager's answer part

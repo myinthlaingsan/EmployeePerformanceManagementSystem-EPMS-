@@ -1,4 +1,5 @@
 package ace.org.epms_backend.model.kpi;
+
 import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -19,6 +20,11 @@ public class KpiHistoryLog extends BaseEntity {
 
     private Long employeeId;
 
+    private Long goalSetId;
+    private Long itemId;
+
+    // Legacy version-based fields (kept for backward compatibility with old
+    // records)
     private Long oldVersionId;
     private Long newVersionId;
 
@@ -26,6 +32,9 @@ public class KpiHistoryLog extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String changeReason;
+
+    @Column(columnDefinition = "TEXT")
+    private String changeDetails;
 
     private Long changedBy;
 }

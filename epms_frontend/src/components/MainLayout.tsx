@@ -2,13 +2,14 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useWebSocket } from "../hooks/useWebSocket";
+import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 
 const MainLayout = () => {
   // Initialize WebSocket connection when the layout is mounted
   useWebSocket();
 
   return (
-    <div className="flex min-h-screen bg-gray-50/50">
+    <div className="flex min-h-screen bg-surface-base">
       {/* Sidebar - Fixed width */}
       <Sidebar />
 
@@ -29,3 +30,5 @@ const MainLayout = () => {
 };
 
 export default MainLayout;
+
+

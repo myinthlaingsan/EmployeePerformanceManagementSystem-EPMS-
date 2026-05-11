@@ -35,6 +35,18 @@ const App = () => {
     }
   }, [isSuccess, userData, dispatch]);
 
+  // Sync logout across tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "accessToken" && !e.newValue) {
+        dispatch({ type: "auth/logout" });
+        window.location.href = "/login";
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [dispatch]);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -71,9 +83,9 @@ const App = () => {
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
-            {/* Manager Only KPI Routes */}
-            <Route element={<ProtectedRoute allowedRoles={["MANAGER"]} />}>
-              {kpiRoutes.filter(r => r.path === '/kpi/team').map((route) => (
+            {/* Manager & Admin/HR KPI Management Routes */}
+            <Route element={<ProtectedRoute allowedRoles={["MANAGER", "ADMIN", "HR"]} />}>
+              {kpiRoutes.filter(r => ['/kpi/team', '/kpi/manage', '/kpi/assign/:employeeId'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
             </Route>
@@ -89,8 +101,8 @@ const App = () => {
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
 
-              {/* KPI Administrative Routes */}
-              {kpiRoutes.filter(r => ['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId'].includes(r.path)).map((route) => (
+              {/* KPI Administrative Routes (Library Management) */}
+              {kpiRoutes.filter(r => ['/kpi/library', '/kpi/library/new', '/kpi/library/edit/:id'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
               <Route path="/kpi/categories" element={<KpiCategoryManager />} />

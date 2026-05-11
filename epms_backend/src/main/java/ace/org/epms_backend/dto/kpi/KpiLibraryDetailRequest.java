@@ -13,11 +13,11 @@ public class KpiLibraryDetailRequest {
     private String goalTitle;
 
     @NotNull(message = "Target value is required")
-    @DecimalMin(value = "0.01", message = "Target value must be greater than 0")
+    @DecimalMin(value = "0.0", message = "Target value cannot be negative")
     private BigDecimal targetValue;
 
     @NotNull(message = "Weight percent is required")
-    @DecimalMin(value = "0.01", message = "Weight percent must be greater than 0")
+    @DecimalMin(value = "0.0", message = "Weight percent cannot be negative")
     private BigDecimal weightPercent;
 
     @NotNull(message = "Category ID is required")

@@ -2,8 +2,14 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { AuthResponse, AuthState } from "./authTypes";
 import type { EmployeeResponse } from "../employee/employeeTypes";
 
-const accessToken = localStorage.getItem("accessToken");
-const refreshToken = localStorage.getItem("refreshToken");
+const getStoredToken = (key: string) => {
+  const token = localStorage.getItem(key);
+  if (token === "undefined" || token === "null" || !token) return null;
+  return token;
+};
+
+const accessToken = getStoredToken("accessToken");
+const refreshToken = getStoredToken("refreshToken");
 
 const initialState: AuthState = {
   user: null,

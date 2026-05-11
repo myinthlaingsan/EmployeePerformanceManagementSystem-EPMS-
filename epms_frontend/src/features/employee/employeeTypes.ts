@@ -24,6 +24,7 @@ export interface CreateEmployeeRequest {
   otherName?: string;
   email: string;
   phoneNo: string;
+  profileImage?: string;
   stateCode?: number;
   township?: string;
   nrcType?: string;
@@ -36,6 +37,7 @@ export interface CreateEmployeeRequest {
   roleId: number;
   parentDepartmentId: number;
   currentDepartmentId: number;
+  directManagerId?: number;
 }
 
 export interface SetPasswordRequest {
@@ -62,6 +64,7 @@ export interface UpdateEmployeeRequest {
 
   email?: string;
   phoneNo?: string;
+  profileImage?: string;
 
   maritalStatus?: MaritalStatus;
   spouseName?: string;
@@ -80,6 +83,7 @@ export interface UpdateEmployeeRequest {
   isActive?: boolean;
 
   roleIds?: number[];
+  directManagerId?: number;
 }
 
 export interface UpdateProfileRequest {
@@ -91,6 +95,7 @@ export interface UpdateProfileRequest {
 
   email?: string;
   phoneNo?: string;
+  profileImage?: string;
 
   maritalStatus?: MaritalStatus;
   spouseName?: string;
@@ -101,15 +106,49 @@ export interface EmployeeResponse {
   id: number;
   employeeCode: string;
   staffName: string;
+  otherName?: string;
   email: string;
   phoneNo: string;
+  profileImage?: string;
+
+  stateCode?: number;
+  township?: string;
+  nrcType?: string;
+  number?: string;
+
+  gender?: Gender;
+  race?: string;
+  religion?: string;
+  dateOfBirth?: string;
+  birthPlace?: string;
+
+  contactAddress?: string;
+  permanentAddress?: string;
+
+  maritalStatus?: MaritalStatus;
+  spouseName?: string;
+  fatherName?: string;
+
   positionName: string;
+  positionId: number;
   levelName: string;
   levelRank: number;
+
   currentDepartmentName?: string;
   currentDepartmentId?: number;
   parentDepartmentName?: string;
   parentDepartmentId?: number;
+
+  salary?: number;
+  currency?: string;
+
+  dateOfAppointment?: string;
+  dateOfConfirmation?: string;
+  dateOfPromotion?: string;
+
+  status?: EmployeeStatus;
+  isActive?: boolean;
+
   directManagerId?: number;
   directManagerName?: string;
   roles: string[];

@@ -18,17 +18,20 @@ public class FeedbackRequestController {
 
     private final FeedbackRequestService requestService;
 
+    /*
     @PostMapping("/generate")
     public ResponseEntity<Void> generateRequests(@RequestBody FeedbackRequestGenerateDTO dto) {
         requestService.generateRequests(dto);
         return ResponseEntity.ok().build();
     }
+    */
 
     @GetMapping("/my")
     public ResponseEntity<List<FeedbackRequestResponse>> getMyRequests(@RequestParam Long evaluatorId) {
         return ResponseEntity.ok(requestService.getMyPendingRequests(evaluatorId));
     }
 
+    /*
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<FeedbackRequestResponse>> getByEmployee(@PathVariable Long employeeId,
             @RequestParam Long cycleId) {
@@ -56,4 +59,5 @@ public class FeedbackRequestController {
         requestService.deleteRequest(requestId);
         return ResponseEntity.ok().build();
     }
+    */
 }

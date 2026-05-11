@@ -21,7 +21,7 @@ export interface WeightValidationResult {
   errors: string[];
 }
 
-export const validateKpiWeights = (items: { weightPercent: number }[]): WeightValidationResult => {
+export const validateKpiWeights = (items: { weightPercent: number, priority?: string }[]): WeightValidationResult => {
   const totalWeight = items.reduce((sum, item) => sum + (Number(item.weightPercent) || 0), 0);
   const errors: string[] = [];
 
@@ -29,15 +29,15 @@ export const validateKpiWeights = (items: { weightPercent: number }[]): WeightVa
     errors.push(`Total weight must be exactly 100% (Current: ${totalWeight}%)`);
   }
 
-  const exceedingItem = items.find(item => item.weightPercent > 35);
-  if (exceedingItem) {
-    errors.push('No single KPI item can exceed 35% weight.');
-  }
-
-  const belowMinItem = items.find(item => item.weightPercent < 5);
-  if (belowMinItem) {
-    errors.push('Each KPI item must have at least 5% weight.');
-  }
+  items.forEach((item, index) => {
+    const weight = Number(item.weightPercent);
+    if (weight > 35) {
+      errors.push(`Row ${index + 1}: No single KPI item can exceed 35% weight.`);
+    }
+    if (weight < 5) {
+      errors.push(`Row ${index + 1}: Each KPI item must have at least 5% weight.`);
+    }
+  });
 
   return {
     totalWeight,
@@ -47,19 +47,17 @@ export const validateKpiWeights = (items: { weightPercent: number }[]): WeightVa
 };
 
 export const PRIORITY_MAP = {
-  CRITICAL: { label: 'Critical', weight: 35, color: 'text-red-600 bg-red-50 border-red-200' },
-  HIGH: { label: 'High', weight: 25, color: 'text-orange-600 bg-orange-50 border-orange-200' },
-  MEDIUM: { label: 'Medium', weight: 20, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-  LOW: { label: 'Low', weight: 15, color: 'text-gray-600 bg-gray-50 border-gray-200' },
-  MINIMAL: { label: 'Minimal', weight: 5, color: 'text-gray-400 bg-gray-50 border-gray-100' },
+  CRITICAL: { label: 'Critical', min: 20, max: 35, color: 'text-red-600 bg-red-50 border-red-200' },
+  HIGH: { label: 'High', min: 10, max: 15, color: 'text-orange-600 bg-orange-50 border-orange-200' },
+  MEDIUM: { label: 'Medium', min: 10, max: 10, color: 'text-blue-600 bg-blue-50 border-blue-200' },
+  LOWER: { label: 'Lower', min: 5, max: 5, color: 'text-gray-600 bg-gray-50 border-gray-200' },
 };
 
 export const getPriorityFromWeight = (weight: number) => {
-  if (weight >= 35) return PRIORITY_MAP.CRITICAL;
-  if (weight >= 25) return PRIORITY_MAP.HIGH;
-  if (weight >= 20) return PRIORITY_MAP.MEDIUM;
-  if (weight >= 15) return PRIORITY_MAP.LOW;
-  return PRIORITY_MAP.MINIMAL;
+  if (weight >= 20) return PRIORITY_MAP.CRITICAL;
+  if (weight >= 10) return PRIORITY_MAP.HIGH;
+  if (weight >= 7) return PRIORITY_MAP.MEDIUM; // Loose match for Medium
+  return PRIORITY_MAP.LOWER;
 };
 
 export const getStatusColor = (progress: number): string => {
