@@ -13,4 +13,5 @@ public class AppraisalAssignRequest {
     private Long employeeId;
     private Long cycleId;
     private Long formId;
+    private Long formSetId;
 }

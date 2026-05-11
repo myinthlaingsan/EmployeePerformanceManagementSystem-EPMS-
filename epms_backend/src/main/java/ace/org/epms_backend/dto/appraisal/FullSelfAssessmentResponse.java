@@ -45,6 +45,7 @@ public class FullSelfAssessmentResponse {
     private String employeeSignature;
     private String employeeSignComment;
     private String managerSignComment;
+    private String overallReflection;
 
     private List<CategoryWithAnswersDTO> categories;
 }

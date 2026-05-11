@@ -5,18 +5,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AppraisalBulkAssignRequest {
+public class AppraisalFormSetRequest {
+    private String name;
     private Long cycleId;
-    private List<Long> employeeIds;
-    private List<Long> departmentIds; // Optional filter
-    private Long formId;
-    private Long formSetId;
 }
-
-

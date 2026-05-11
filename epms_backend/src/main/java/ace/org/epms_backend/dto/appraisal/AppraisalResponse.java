@@ -25,6 +25,8 @@ public class AppraisalResponse {
     private String cycleName;
     private Long formId;
     private String formName;
+    private Long formSetId;
+    private String formSetName;
     private AppraisalStatus status;
 
     private Instant assignedAt;
