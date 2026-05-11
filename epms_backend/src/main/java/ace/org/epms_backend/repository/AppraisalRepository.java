@@ -23,6 +23,8 @@ public interface AppraisalRepository extends JpaRepository<Appraisal, Long> {
            "a.formSet.managerEvaluationForm.formId = :formId")
     boolean existsByFormIdInFormSet(Long formId);
  
+    boolean existsByFormSet_Id(Long formSetId);
+ 
     @Query("SELECT a FROM Appraisal a JOIN EmployeeDepartment ed ON a.employee.id = ed.employee.id " +
             "WHERE ed.currentDepartment.id = :departmentId AND ed.isCurrent = true")
     List<Appraisal> findByDepartmentId(Long departmentId);

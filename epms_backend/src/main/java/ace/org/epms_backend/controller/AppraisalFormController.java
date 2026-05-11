@@ -53,13 +53,13 @@ public class AppraisalFormController {
         return ResponseEntity.ok().build();
     }
  
-    @PutMapping("/{categoryId}")
+    @PutMapping("/categories/{categoryId}")
     public ResponseEntity<Void> updateCategory(@PathVariable Long categoryId, @RequestBody CategoryRequest request) {
         formService.updateCategory(categoryId, request);
         return ResponseEntity.ok().build();
     }
  
-    @PutMapping("/{questionId}")
+    @PutMapping("/questions/{questionId}")
     public ResponseEntity<Void> updateQuestion(@PathVariable Long questionId, @RequestBody QuestionRequest request) {
         formService.updateQuestion(questionId, request);
         return ResponseEntity.ok().build();
@@ -71,13 +71,13 @@ public class AppraisalFormController {
         return ResponseEntity.noContent().build();
     }
  
-    @DeleteMapping("/{categoryId}")
+    @DeleteMapping("/categories/{categoryId}")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long categoryId) {
         formService.deleteCategory(categoryId);
         return ResponseEntity.noContent().build();
     }
  
-    @DeleteMapping("/{questionId}")
+    @DeleteMapping("/questions/{questionId}")
     public ResponseEntity<Void> deleteQuestion(@PathVariable Long questionId) {
         formService.deleteQuestion(questionId);
         return ResponseEntity.noContent().build();

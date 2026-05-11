@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 @Data
@@ -19,5 +20,7 @@ public class FullFormResponse {
     private Long cycleId;
     private String cycleName;
     private List<CategoryDTO> categories;
+    @JsonProperty("isAssigned")
+    private boolean isAssigned;
 }
 

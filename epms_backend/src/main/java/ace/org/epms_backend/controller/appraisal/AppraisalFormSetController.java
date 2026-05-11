@@ -26,6 +26,7 @@ public class AppraisalFormSetController {
     private final AppraisalFormSetRepository formSetRepo;
     private final AppraisalFormRepository formRepo;
     private final AppraisalCycleRepository cycleRepo;
+    private final ace.org.epms_backend.repository.AppraisalRepository appraisalRepo;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<AppraisalFormSetResponse>>> getAllFormSets() {
@@ -108,6 +109,28 @@ public class AppraisalFormSetController {
         return ResponseEntity.ok(ApiResponse.success(summary));
     }
 
+    @PutMapping("/{id}")
+    @Transactional
+    public ResponseEntity<ApiResponse<AppraisalFormSetResponse>> updateFormSet(@PathVariable Long id, @RequestBody AppraisalFormSetRequest request) {
+        AppraisalFormSet set = formSetRepo.findById(id)
+                .orElseThrow(() -> new ace.org.epms_backend.exception.NotFoundException("Form set not found"));
+        
+        AppraisalCycle cycle = cycleRepo.findById(request.getCycleId())
+                .orElseThrow(() -> new ace.org.epms_backend.exception.NotFoundException("Cycle not found"));
+        
+        set.setName(request.getName());
+        set.setCycle(cycle);
+        
+        AppraisalFormSet saved = formSetRepo.save(set);
+        return ResponseEntity.ok(ApiResponse.success(toResponse(saved)));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteFormSet(@PathVariable Long id) {
+        formSetRepo.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
     private AppraisalFormSetResponse toResponse(AppraisalFormSet set) {
         return AppraisalFormSetResponse.builder()
                 .id(set.getId())
@@ -118,6 +141,7 @@ public class AppraisalFormSetController {
                 .selfAssessmentFormName(set.getSelfAssessmentForm() != null ? set.getSelfAssessmentForm().getFormName() : null)
                 .managerEvaluationFormId(set.getManagerEvaluationForm() != null ? set.getManagerEvaluationForm().getFormId() : null)
                 .managerEvaluationFormName(set.getManagerEvaluationForm() != null ? set.getManagerEvaluationForm().getFormName() : null)
+                .isAssigned(appraisalRepo.existsByFormSet_Id(set.getId()))
                 .build();
     }
 }

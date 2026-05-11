@@ -34,7 +34,7 @@ public class AppraisalIntegrationServiceImpl implements AppraisalIntegrationServ
                     .ifPresent(summary -> {
                         // We could store the raw feedback score here if we added a field to AppraisalSummary,
                         // but for now let's just ensure we have the summary record ready.
-                        // The FinalAppraisalService will aggregate all scores including from feedback_summary table.
+                        // The AppraisalCalculationService will aggregate all scores including from feedback_summary table.
                         summaryRepository.save(summary);
                     });
         }
