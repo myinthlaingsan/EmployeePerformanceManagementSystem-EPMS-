@@ -102,7 +102,10 @@ export interface GoalItemResponse {
   currentProgress?: number;
   categoryId?: number;
   categoryName?: string;
+  scorePercent?: number;
+  weightedScore?: number;
 }
+
 
 export interface KpiGoalBulkUpdateRequest {
   items: {
