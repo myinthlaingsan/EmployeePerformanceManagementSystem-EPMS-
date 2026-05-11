@@ -333,11 +333,11 @@ const AdminStats = ({ history }: { history: any[] }) => {
 };
 
 export const PerformanceHistoryPage = () => {
-  const { user, isAdmin, isHR } = useAuth();
+  const { user, isAdmin, isHR, isManager } = useAuth();
   const isGovernanceMode = isAdmin || isHR;
   const { data: departments, isLoading: isDeptsLoading } = useGetDepartmentsQuery();
-  const { data: employeeData, isLoading: isEmpsLoading } = useGetEmployeesQuery({ page: 0, size: 1000 });
-  const employees = employeeData?.content || [];
+  const { data: employeeData, isLoading: isEmpsLoading } = useGetEmployeesQuery({ page: 0, size: 1000, excludeSelf: true });
+  const employees = (employeeData?.content || []).filter(emp => emp.id !== user?.id);
 
   const [selectedDeptId, setSelectedDeptId] = useState<number | ''>('');
   const [selectedEmpId, setSelectedEmpId] = useState<number | ''>('');
@@ -347,6 +347,14 @@ export const PerformanceHistoryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [goToPage, setGoToPage] = useState('');
+  const isPlainManager = isManager && !isAdmin && !isHR;
+
+  // Auto-select department for managers
+  React.useEffect(() => {
+    if (isPlainManager && departments && departments.length === 1 && selectedDeptId === '') {
+      setSelectedDeptId(departments[0].id);
+    }
+  }, [isPlainManager, departments, selectedDeptId]);
 
   const { data: employeeHistoryResponse, isLoading: isEmpHistoryLoading } = useGetPerformanceHistoryByEmployeeQuery(
     { 
@@ -450,24 +458,26 @@ export const PerformanceHistoryPage = () => {
 
       {/* Filters Section */}
       <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 sticky top-0 z-20">
-        <div className="flex-1 space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Department</label>
-          <select
-            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
-            value={selectedDeptId}
-            onChange={(e) => {
-              setSelectedDeptId(e.target.value === '' ? '' : Number(e.target.value));
-              setSelectedEmpId(''); // Reset employee selection when department changes
-              setCurrentPage(1);
-            }}
-            disabled={isDeptsLoading}
-          >
-            <option value="">All Departments</option>
-            {departments?.map(dept => (
-              <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
-            ))}
-          </select>
-        </div>
+        {!isPlainManager && (
+          <div className="flex-1 space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Department</label>
+            <select
+              className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
+              value={selectedDeptId}
+              onChange={(e) => {
+                setSelectedDeptId(e.target.value === '' ? '' : Number(e.target.value));
+                setSelectedEmpId(''); // Reset employee selection when department changes
+                setCurrentPage(1);
+              }}
+              disabled={isDeptsLoading}
+            >
+              <option value="">All Departments</option>
+              {departments?.map(dept => (
+                <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="flex-1 space-y-2">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Employee</label>

@@ -149,10 +149,8 @@ const ReplyItem = ({
   setEditReplyText,
   setEditingReplyId,
   handleUpdateReply,
-  setReplyToDelete,
   handleScrollToParent,
   onContextMenu,
-  onReply,
   isUpdatingReply
 }: { 
   reply: any; 
@@ -165,10 +163,8 @@ const ReplyItem = ({
   setEditReplyText: (val: string) => void;
   setEditingReplyId: (val: number | null) => void;
   handleUpdateReply: (id: number) => void;
-  setReplyToDelete: (id: number | null) => void;
   handleScrollToParent: (parentId: number) => void;
   onContextMenu: (e: React.MouseEvent, reply: any) => void;
-  onReply: (reply: any) => void;
   isUpdatingReply: boolean;
 }) => {
   const isCurrentUser = reply.employeeId === user?.id;
@@ -295,7 +291,7 @@ const FeedbackPage = () => {
   );
   const feedbacks = feedbackResponse?.content || [];
   const { data: tags } = useGetFeedbackTagsQuery();
-  const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000 });
+  const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000, excludeSelf: true });
   const employees = employeeData?.content || [];
   const [createFeedback, { isLoading: isCreating }] = useCreateFeedbackMutation();
   const [updateFeedback, { isLoading: isUpdating }] = useUpdateFeedbackMutation();
@@ -579,51 +575,72 @@ const FeedbackPage = () => {
 
           {/* Fixed Pagination Bar */}
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40">
-            <div className="bg-white/80 backdrop-blur-md border border-gray-200/50 rounded-2xl shadow-2xl p-3 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30 rounded-xl transition-all"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                </button>
+            <div className="bg-white/80 backdrop-blur-md border border-gray-200/50 rounded-2xl shadow-2xl p-4 px-8 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-6">
+                <span className="hidden sm:inline text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems}
+                </span>
                 
-                <div className="flex items-center gap-1 px-2">
-                  <span className="text-sm font-bold text-gray-900">{currentPage}</span>
-                  <span className="text-sm font-bold text-gray-400">/</span>
-                  <span className="text-sm font-bold text-gray-400">{totalPages || 1}</span>
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="p-2 text-gray-400 hover:text-blue-600 disabled:opacity-30 transition"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  
+                  <div className="flex items-center gap-1 px-2">
+                    {[...Array(totalPages)].map((_, i) => {
+                      const pageNum = i + 1;
+                      if (totalPages > 5) {
+                        if (pageNum === 1 || pageNum === totalPages || (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)) {
+                          return (
+                            <button 
+                              key={pageNum}
+                              onClick={() => handlePageChange(pageNum)}
+                              className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${currentPage === pageNum ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400 hover:bg-gray-50'}`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        } else if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
+                          return <span key={pageNum} className="text-gray-300 text-[10px] font-black">...</span>;
+                        }
+                        return null;
+                      }
+                      return (
+                        <button 
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${currentPage === pageNum ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400 hover:bg-gray-50'}`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button 
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className="p-2 text-gray-400 hover:text-blue-600 disabled:opacity-30 transition"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  className="p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-30 rounded-xl transition-all"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </button>
-              </div>
-
-              <div className="h-6 w-px bg-gray-200" />
-
-              <div className="hidden sm:flex items-center gap-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                Showing {totalItems === 0 ? 0 : startIndex + 1}-{endIndex} of {totalItems}
               </div>
 
               <form onSubmit={handleGoToPage} className="flex items-center gap-2">
-                <input
-                  type="number"
-                  placeholder="Go to..."
-                  className="w-16 px-3 py-1.5 bg-gray-50 border-none rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none transition"
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Go to</label>
+                <input 
+                  type="text"
                   value={goToPage}
                   onChange={(e) => setGoToPage(e.target.value)}
+                  placeholder="Page..."
+                  className="w-16 px-2 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-[10px] font-black outline-none focus:ring-2 focus:ring-blue-500 transition"
                 />
-                <button
-                  type="submit"
-                  className="p-1.5 bg-gray-900 text-white rounded-lg hover:bg-black transition-all shadow-lg shadow-gray-200"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                </button>
+                <button type="submit" className="hidden" />
               </form>
             </div>
           </div>
@@ -1011,10 +1028,8 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
                 setEditReplyText={setEditReplyText}
                 setEditingReplyId={setEditingReplyId}
                 handleUpdateReply={handleUpdateReply}
-                setReplyToDelete={setReplyToDelete}
                 handleScrollToParent={handleScrollToParent}
                 onContextMenu={handleContextMenu}
-                onReply={startReply}
                 isUpdatingReply={isUpdatingReply}
               />
             </React.Fragment>

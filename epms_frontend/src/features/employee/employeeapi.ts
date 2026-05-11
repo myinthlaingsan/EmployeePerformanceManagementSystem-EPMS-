@@ -14,15 +14,15 @@ import type {
 export const employeeApi = api.injectEndpoints({
   endpoints: (builder) => ({
 
-    getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page: number; size: number }>({
-      query: ({ page, size }) => `/emp?page=${page}&size=${size}`,
+    getEmployees: builder.query<PagedResponse<EmployeeResponse>, { page: number; size: number; excludeSelf?: boolean }>({
+      query: ({ page, size, excludeSelf }) => `/emp?page=${page}&size=${size}${excludeSelf ? '&excludeSelf=true' : ''}`,
       transformResponse: (response: ApiResponse<PagedResponse<EmployeeResponse>>) =>
         response.data,
       providesTags: ["Employee"],
     }),
 
-    searchEmployees: builder.query<PagedResponse<EmployeeResponse>, { query: string; page: number; size: number }>({
-      query: ({ query, page, size }) => `/emp/search?query=${query}&page=${page}&size=${size}`,
+    searchEmployees: builder.query<PagedResponse<EmployeeResponse>, { query: string; page: number; size: number; excludeSelf?: boolean }>({
+      query: ({ query, page, size, excludeSelf }) => `/emp/search?query=${query}&page=${page}&size=${size}${excludeSelf ? '&excludeSelf=true' : ''}`,
       transformResponse: (response: ApiResponse<PagedResponse<EmployeeResponse>>) =>
         response.data,
       providesTags: ["Employee"],

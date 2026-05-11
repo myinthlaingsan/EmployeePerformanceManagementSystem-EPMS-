@@ -28,14 +28,16 @@ interface NavItem {
   icon: React.ElementType;
   adminOnly?: boolean;
   hrOnly?: boolean;
+  privilegedOnly?: boolean;
+  hideForPrivileged?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck },
-  { label: "Performance Pulse", to: "/performance-history", icon: History },
-  { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare },
-  { label: "1-on-1 Meetings", to: "/meetings", icon: Users },
+  { label: "Performance Pulse", to: "/performance-history", icon: History, privilegedOnly: true },
+  { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true },
+  { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true },
   { label: "PIP", to: "/pip", icon: TrendingUp },
   { label: "Analytics", to: "/hr", icon: BarChart3, adminOnly: true },
 ];
@@ -62,6 +64,8 @@ const Sidebar = () => {
 
   const filteredNav = NAV_ITEMS.filter((item) => {
     if (item.adminOnly && !isAdmin && !isHR) return false;
+    if (item.privilegedOnly && !isAdmin && !isHR && !isManager) return false;
+    if (item.hideForPrivileged && (isAdmin || isHR) && !isManager) return false;
     return true;
   });
 
