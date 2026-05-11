@@ -34,6 +34,7 @@ export interface AppraisalForm {
   description?: string;
   categories?: Section[];
   sections?: Section[];
+  isAssigned?: boolean;
 }
 
 export interface AppraisalFormSet {
@@ -45,6 +46,7 @@ export interface AppraisalFormSet {
   selfAssessmentFormName: string;
   managerEvaluationFormId: number;
   managerEvaluationFormName: string;
+  isAssigned?: boolean;
 }
 
 export interface AppraisalCycle {
@@ -83,7 +85,7 @@ export interface CycleRequest {
   finalizationDeadline?: string;
 }
 
-const transformResponse = (response: any) => response.data;
+const transformResponse = (response: any) => response?.data ?? response;
 
 export const appraisalApi = api.injectEndpoints({
   endpoints: (builder) => ({
@@ -150,6 +152,21 @@ export const appraisalApi = api.injectEndpoints({
       }),
       invalidatesTags: ['Form'],
     }),
+    updateFormSet: builder.mutation<any, { id: number; body: { name: string; cycleId: number } }>({
+      query: ({ id, body }) => ({
+        url: `/appraisal-form-sets/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Form'],
+    }),
+    deleteFormSet: builder.mutation<any, number>({
+      query: (id) => ({
+        url: `/appraisal-form-sets/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Form'],
+    }),
 
     createAppraisalForm: builder.mutation<number, any>({
       query: (body) => ({
@@ -160,7 +177,7 @@ export const appraisalApi = api.injectEndpoints({
       transformResponse,
       invalidatesTags: [{ type: 'Form', id: 'LIST' }],
     }),
-    updateAppraisalForm: builder.mutation<AppraisalForm, { id: string; body: any }>({
+    updateAppraisalForm: builder.mutation<any, { id: string; body: any }>({
       query: ({ id, body }) => ({
         url: `/appraisal-forms/${id}`,
         method: 'PUT',
@@ -412,6 +429,8 @@ export const {
   useGetAppraisalFormSetsQuery,
   useSyncFormSetsMutation,
   useCreateFormSetMutation,
+  useUpdateFormSetMutation,
+  useDeleteFormSetMutation,
   useCreateAppraisalFormMutation,
   useUpdateAppraisalFormMutation,
   useGetCategoriesQuery,

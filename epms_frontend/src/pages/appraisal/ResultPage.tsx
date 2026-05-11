@@ -90,143 +90,163 @@ const ResultPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pb-20" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-8 py-4 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen pb-20 bg-[#FBFBFB]">
+      {/* Header - Minimalist & Elegant */}
+      <div className="bg-white border-b border-slate-200 px-12 py-6 sticky top-0 z-30">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-6">
             <button 
               onClick={() => navigate(`/appraisal/${id}`)} 
-              className="p-2.5 bg-slate-50 text-slate-500 rounded-xl hover:bg-slate-100 transition-all border border-slate-200"
+              className="p-2 text-slate-400 hover:text-slate-900 transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight italic uppercase">Performance Report</h1>
+            <div className="h-8 w-[1px] bg-slate-200"></div>
+            <div>
+              <h1 className="text-sm font-bold text-slate-900 tracking-[0.2em] uppercase">Performance Review</h1>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest mt-0.5">Confidential Personnel Record</p>
+            </div>
           </div>
           
-          <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
-            <Download className="w-4 h-4" /> Export PDF
-          </button>
+          <div className="flex items-center gap-4">
+            <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-300 text-slate-700 text-[11px] font-bold uppercase tracking-widest hover:bg-slate-50 transition-all">
+              <Download className="w-4 h-4" /> Print Report
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-8 pt-10 space-y-8">
+      <div className="max-w-6xl mx-auto px-12 pt-12 space-y-12">
         
-        {/* Main Score Banner */}
-        <div className="bg-white rounded-[3rem] p-12 shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-slate-100 flex flex-col md:flex-row items-center gap-12 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500"></div>
-          
-          <div className="text-center md:text-left flex-1">
-            <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-              <Award className="w-6 h-6 text-indigo-500" />
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Official Rating</span>
+        {/* Document Metadata & Summary */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-600 uppercase tracking-[0.3em]">
+                <ShieldCheck className="w-4 h-4" /> Final Assessment Verified
+              </div>
+              <h2 className="text-5xl font-light text-slate-900 tracking-tight leading-tight">
+                Individual Performance Summary: <span className="font-semibold block">{appraisal.cycleName}</span>
+              </h2>
             </div>
-            <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-4">
-              Cycle: <span className="text-indigo-600 italic uppercase">{appraisal.cycleName}</span>
-            </h2>
-            <div className="flex items-center justify-center md:justify-start gap-6 text-slate-500 font-bold text-sm">
-              <div className="flex items-center gap-2"><User className="w-4 h-4" /> {appraisal.employeeName}</div>
-              <div className="flex items-center gap-2"><Target className="w-4 h-4" /> {appraisal.employeeCode}</div>
+
+            <div className="grid grid-cols-2 gap-10 py-8 border-t border-b border-slate-100">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Subject Name</p>
+                <p className="text-lg font-semibold text-slate-800">{appraisal.employeeName}</p>
+                <p className="text-sm text-slate-500 mt-1">{appraisal.employeeCode}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Assessing Manager</p>
+                <p className="text-lg font-semibold text-slate-800">{appraisal.managerName || 'Not Assigned'}</p>
+                <p className="text-sm text-slate-500 mt-1">Reviewing Authority</p>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-2 px-12 py-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-inner">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Final Weighted Score</span>
-            <span className={`text-7xl font-black tracking-tighter ${getScoreColor(appraisal.finalScore || 0)}`}>
-              {appraisal.finalScore !== null ? Number(appraisal.finalScore).toFixed(1) : '--'}
-            </span>
-            <div className="h-1.5 w-32 bg-slate-200 rounded-full overflow-hidden mt-2">
-              <div 
-                className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-1000" 
-                style={{ width: `${appraisal.finalScore || 0}%` }}
-              ></div>
+          {/* Final Score Card - Elegant Slate/Gold-ish feel */}
+          <div className="bg-slate-900 p-10 text-white shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <Award className="w-24 h-24" />
+            </div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-8">Performance Rating</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-7xl font-bold tracking-tighter">
+                {appraisal.finalScore !== null ? Number(appraisal.finalScore).toFixed(1) : '--'}
+              </span>
+              <span className="text-slate-500 font-medium text-lg">/ 100</span>
+            </div>
+            <div className="mt-8 space-y-4">
+              <div className="h-1 bg-slate-800 w-full overflow-hidden">
+                <div 
+                  className="h-full bg-indigo-500 transition-all duration-1000" 
+                  style={{ width: `${appraisal.finalScore || 0}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Standing</span>
+                <span className="text-xs font-black uppercase tracking-widest text-indigo-400">
+                  {breakhead?.finalGrade?.replace(/_/g, ' ') || 'Calculating...'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Comments Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm relative">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-                <FileText className="w-5 h-5" />
-              </div>
-              <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Manager's Evaluation</h3>
-            </div>
-            <p className="text-sm text-slate-600 leading-relaxed italic bg-slate-50/50 p-6 rounded-2xl border border-slate-50">
-              "{appraisal.managerEvaluation?.finalComment || 'No additional remarks provided.'}"
-            </p>
-          </div>
-
-          <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">HR Final Approval</h3>
-            </div>
-            <p className="text-sm text-slate-600 leading-relaxed bg-slate-50/50 p-6 rounded-2xl border border-slate-50">
-              {appraisal.approvalComment || 'The appraisal results have been verified and approved by the HR department.'}
-            </p>
-            <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-slate-400">
-              <Clock className="w-3.5 h-3.5" /> Approved on {appraisal.hrApprovedAt ? format(new Date(appraisal.hrApprovedAt), 'MMM dd, yyyy') : 'N/A'}
-            </div>
-          </div>
-        </div>
-
-        {/* Score Breakdown Table */}
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+        {/* Narrative Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <div className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-indigo-600 text-white rounded-xl">
-                <Target className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Weighted Score Breakdown</h3>
+              <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-[0.2em]">Management Review</h3>
+              <div className="h-[1px] flex-1 bg-slate-100"></div>
             </div>
-            {breakdown?.finalGrade && (
-              <div className="px-4 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg shadow-indigo-100">
-                Grade: {breakdown.finalGrade.replace(/_/g, ' ')}
-              </div>
-            )}
+            <div className="bg-white p-8 border border-slate-200 shadow-sm min-h-[160px]">
+              <p className="text-sm text-slate-600 leading-relaxed italic">
+                "{appraisal.managerEvaluation?.finalComment || 'No additional executive remarks provided for this review period.'}"
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-[0.2em]">Compliance & Audit</h3>
+              <div className="h-[1px] flex-1 bg-slate-100"></div>
+            </div>
+            <div className="bg-slate-50 p-8 border border-slate-200 shadow-sm min-h-[160px]">
+              <p className="text-sm text-slate-500 leading-relaxed">
+                {appraisal.approvalComment || 'This appraisal document has been audited for compliance with organizational standards and verified by the Human Resources department.'}
+              </p>
+              {appraisal.hrApprovedAt && (
+                <div className="mt-6 flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  <Clock className="w-3.5 h-3.5" /> Verified: {format(new Date(appraisal.hrApprovedAt), 'MMMM dd, yyyy')}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Breakdown Table - Clean Professional Style */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-[0.2em]">Quantitative Breakdown</h3>
+            <div className="h-[1px] flex-1 bg-slate-100"></div>
           </div>
           
-          <div className="p-0 overflow-x-auto">
+          <div className="bg-white border border-slate-200 shadow-sm overflow-hidden">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                  <th className="px-8 py-4">Performance Category</th>
-                  <th className="px-8 py-4 text-center">Raw Score (1-5)</th>
-                  <th className="px-8 py-4 text-center">Weightage</th>
-                  <th className="px-8 py-4 text-right">Weighted Contribution</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-10 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Metric Component</th>
+                  <th className="px-10 py-5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Raw</th>
+                  <th className="px-10 py-5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Weight</th>
+                  <th className="px-10 py-5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contribution</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-100">
                 {[
-                  { label: 'Key Performance Indicators (KPIs)', raw: breakdown?.kpiRawScore, weight: breakdown?.kpiWeight, weighted: breakdown?.kpiWeightedScore, color: 'text-blue-600' },
-                  { label: 'Manager Evaluation', raw: breakdown?.managerRawScore, weight: breakdown?.managerWeight, weighted: breakdown?.managerWeightedScore, color: 'text-indigo-600' },
-                  { label: 'Self Assessment Reflection', raw: breakdown?.selfRawScore, weight: breakdown?.selfWeight, weighted: breakdown?.selfWeightedScore, color: 'text-purple-600' },
-                  { label: '360° Peer Feedback', raw: breakdown?.feedbackRawScore, weight: breakdown?.feedbackWeight, weighted: breakdown?.feedbackWeightedScore, color: 'text-emerald-600' },
+                  { label: 'Key Performance Indicators', raw: breakdown?.kpiRawScore, weight: breakdown?.kpiWeight, weighted: breakdown?.kpiWeightedScore },
+                  { label: 'Management Evaluation', raw: breakdown?.managerRawScore, weight: breakdown?.managerWeight, weighted: breakdown?.managerWeightedScore },
+                  { label: 'Self-Assessment Reflection', raw: breakdown?.selfRawScore, weight: breakdown?.selfWeight, weighted: breakdown?.selfWeightedScore },
+                  { label: '360° Peer Review', raw: breakdown?.feedbackRawScore, weight: breakdown?.feedbackWeight, weighted: breakdown?.feedbackWeightedScore },
                 ].map((row, idx) => (
-                  <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
-                    <td className="px-8 py-5 text-sm font-bold text-slate-700">{row.label}</td>
-                    <td className="px-8 py-5 text-center">
-                      <span className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-black text-slate-600">
-                        {row.raw !== undefined ? Number(row.raw).toFixed(2) : '--'}
-                      </span>
+                  <tr key={idx} className="hover:bg-slate-50/30 transition-colors">
+                    <td className="px-10 py-6 text-sm font-semibold text-slate-700">{row.label}</td>
+                    <td className="px-10 py-6 text-center text-sm font-medium text-slate-500">
+                      {row.raw !== undefined ? Number(row.raw).toFixed(2) : '--'}
                     </td>
-                    <td className="px-8 py-5 text-center text-xs font-bold text-slate-400">
+                    <td className="px-10 py-6 text-center text-[11px] font-bold text-slate-400">
                       {row.weight !== undefined ? `${(Number(row.weight) * 100).toFixed(0)}%` : '--'}
                     </td>
-                    <td className={`px-8 py-5 text-right text-sm font-black ${row.color}`}>
+                    <td className="px-10 py-6 text-right text-sm font-bold text-slate-900">
                       {row.weighted !== undefined ? Number(row.weighted).toFixed(2) : '--'}
                     </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-slate-900 text-white">
-                  <td colSpan={3} className="px-8 py-6 text-sm font-black uppercase tracking-widest">Calculated Performance Total (Weighted Sum)</td>
-                  <td className="px-8 py-6 text-right text-2xl font-black italic">
+                <tr className="bg-slate-50 border-t border-slate-200">
+                  <td colSpan={3} className="px-10 py-6 text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Calculated Weighted Score</td>
+                  <td className="px-10 py-6 text-right text-xl font-bold text-slate-900">
                     {breakdown?.finalTotalScore !== undefined ? Number(breakdown.finalTotalScore).toFixed(2) : '--'}
                   </td>
                 </tr>
@@ -235,48 +255,34 @@ const ResultPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Formal Sign-off Section */}
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-8 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-slate-900 text-white rounded-2xl">
-                <MessageSquare className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900 tracking-tight">Formal Acknowledgement</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Authentication & Signatures</p>
-              </div>
-            </div>
+        {/* Signatures - Clean Boxed Design */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-[0.2em]">Authentication</h3>
+            <div className="h-[1px] flex-1 bg-slate-100"></div>
           </div>
 
-          <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             {/* Employee Signature */}
-            <div className="space-y-6">
-              <div className="flex justify-between items-end">
+            <div className="p-10 border border-slate-200 bg-white space-y-8">
+              <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Employee Acknowledgement</p>
-                  <h4 className="text-base font-black text-slate-900">{appraisal.employeeName}</h4>
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-widest">{appraisal.employeeName}</h4>
+                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest mt-1">Employee Signature</p>
                 </div>
                 {appraisal.employeeSignedAt && (
-                  <div className="flex items-center gap-1.5 text-emerald-600 text-[10px] font-black uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                    <CheckCircle2 className="w-3 h-3" /> Signed
-                  </div>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                 )}
               </div>
 
-              <div className="h-48 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative group overflow-hidden">
+              <div className="h-40 border border-slate-100 bg-[#F9F9F9] flex items-center justify-center relative">
                 {appraisal.employeeSignComment ? (
-                  <img 
-                    src={`http://localhost:8080${appraisal.employeeSignComment}`} 
-                    alt="Employee Signature" 
-                    className="max-h-32 object-contain mix-blend-multiply transition-all group-hover:scale-105" 
-                  />
+                  <img src={`http://localhost:8080${appraisal.employeeSignComment}`} alt="Signature" className="max-h-24 object-contain grayscale contrast-125" />
                 ) : employeeSigPreview ? (
-                  <img src={employeeSigPreview} alt="Preview" className="max-h-32 object-contain mix-blend-multiply" />
+                  <img src={employeeSigPreview} alt="Preview" className="max-h-24 object-contain grayscale contrast-125" />
                 ) : (
-                  <>
-                    <ImageIcon className="w-10 h-10 text-slate-300 mb-2 group-hover:text-indigo-400 transition-all" />
-                    <p className="text-xs font-bold text-slate-400">Click to upload signature</p>
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Pending Acknowledgement</p>
                     {isEmployee && (
                       <input 
                         type="file" 
@@ -288,7 +294,7 @@ const ResultPage: React.FC = () => {
                         }}
                       />
                     )}
-                  </>
+                  </div>
                 )}
               </div>
 
@@ -296,46 +302,38 @@ const ResultPage: React.FC = () => {
                 <button 
                   disabled={!employeeSigFile || isSigningEmployee}
                   onClick={handleEmployeeSign}
-                  className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-slate-900 text-white text-[11px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-30"
                 >
-                  {isSigningEmployee ? 'Uploading...' : 'I Acknowledge & Sign'} <ArrowRight className="w-4 h-4" />
+                  {isSigningEmployee ? 'Processing...' : 'Acknowledge Results'}
                 </button>
               )}
-
               {appraisal.employeeSignedAt && (
-                <p className="text-[10px] text-center font-bold text-slate-400 uppercase tracking-widest">
-                  Signed on {format(new Date(appraisal.employeeSignedAt), 'MMMM dd, yyyy HH:mm')}
+                <p className="text-[9px] text-center font-bold text-slate-400 uppercase tracking-widest">
+                  Signed: {format(new Date(appraisal.employeeSignedAt), 'yyyy-MM-dd HH:mm')}
                 </p>
               )}
             </div>
 
             {/* Manager Signature */}
-            <div className="space-y-6">
-              <div className="flex justify-between items-end">
+            <div className="p-10 border border-slate-200 bg-white space-y-8">
+              <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Appraiser Sign-off</p>
-                  <h4 className="text-base font-black text-slate-900">{appraisal.managerName || 'Evaluator'}</h4>
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-widest">{appraisal.managerName || 'Assessing Authority'}</h4>
+                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest mt-1">Manager Sign-off</p>
                 </div>
                 {appraisal.managerSignedAt && (
-                  <div className="flex items-center gap-1.5 text-emerald-600 text-[10px] font-black uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                    <CheckCircle2 className="w-3 h-3" /> Signed
-                  </div>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                 )}
               </div>
 
-              <div className="h-48 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative group overflow-hidden">
+              <div className="h-40 border border-slate-100 bg-[#F9F9F9] flex items-center justify-center relative">
                 {appraisal.managerSignComment ? (
-                  <img 
-                    src={`http://localhost:8080${appraisal.managerSignComment}`} 
-                    alt="Manager Signature" 
-                    className="max-h-32 object-contain mix-blend-multiply transition-all group-hover:scale-105" 
-                  />
+                  <img src={`http://localhost:8080${appraisal.managerSignComment}`} alt="Signature" className="max-h-24 object-contain grayscale contrast-125" />
                 ) : managerSigPreview ? (
-                  <img src={managerSigPreview} alt="Preview" className="max-h-32 object-contain mix-blend-multiply" />
+                  <img src={managerSigPreview} alt="Preview" className="max-h-24 object-contain grayscale contrast-125" />
                 ) : (
-                  <>
-                    <ImageIcon className="w-10 h-10 text-slate-300 mb-2 group-hover:text-indigo-400 transition-all" />
-                    <p className="text-xs font-bold text-slate-400">Click to upload signature</p>
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Pending Authorization</p>
                     {isManager && (
                       <input 
                         type="file" 
@@ -347,7 +345,7 @@ const ResultPage: React.FC = () => {
                         }}
                       />
                     )}
-                  </>
+                  </div>
                 )}
               </div>
 
@@ -355,26 +353,24 @@ const ResultPage: React.FC = () => {
                 <button 
                   disabled={!managerSigFile || isSigningManager}
                   onClick={handleManagerSign}
-                  className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-slate-900 text-white text-[11px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-30"
                 >
-                  {isSigningManager ? 'Uploading...' : 'Finalize & Sign-off'} <ArrowRight className="w-4 h-4" />
+                  {isSigningManager ? 'Processing...' : 'Authorize Final Record'}
                 </button>
               )}
-
               {appraisal.managerSignedAt && (
-                <p className="text-[10px] text-center font-bold text-slate-400 uppercase tracking-widest">
-                  Signed on {format(new Date(appraisal.managerSignedAt), 'MMMM dd, yyyy HH:mm')}
+                <p className="text-[9px] text-center font-bold text-slate-400 uppercase tracking-widest">
+                  Authorized: {format(new Date(appraisal.managerSignedAt), 'yyyy-MM-dd HH:mm')}
                 </p>
               )}
             </div>
           </div>
         </div>
 
-        <div className="bg-amber-50 border border-amber-100 rounded-3xl p-8 flex items-start gap-4 shadow-sm shadow-amber-50">
-          <ShieldCheck className="w-6 h-6 text-amber-600 shrink-0" />
-          <p className="text-xs font-medium text-amber-700 leading-relaxed">
-            By providing your digital signature, you acknowledge that you have reviewed the performance results for this cycle. 
-            This document will be permanently stored in your employment records and can be exported as a PDF for personal filing.
+        {/* Footer Disclaimer */}
+        <div className="pt-12 border-t border-slate-200">
+          <p className="text-[10px] font-medium text-slate-400 leading-relaxed text-center max-w-3xl mx-auto uppercase tracking-widest">
+            This performance evaluation is a formal record of employment. Information contained herein is confidential and intended solely for the use of the subject, their management chain, and the Human Resources department. Any unauthorized distribution or reproduction is strictly prohibited.
           </p>
         </div>
 
