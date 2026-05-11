@@ -10,9 +10,12 @@ import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.kpi.KpiGoalItem;
 import ace.org.epms_backend.model.kpi.KpiProgress;
+import ace.org.epms_backend.model.kpi.KpiHistoryLog;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.KpiGoalItemRepository;
+import ace.org.epms_backend.repository.KpiHistoryLogRepository;
 import ace.org.epms_backend.repository.KpiProgressRepository;
+import ace.org.epms_backend.service.kpi.KpiHistoryService;
 import ace.org.epms_backend.service.kpi.KpiProgressService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,6 +33,7 @@ public class KpiProgressServiceImpl implements KpiProgressService {
     private final KpiGoalItemRepository goalItemRepository;
     private final KpiProgressRepository progressRepository;
     private final EmployeeRepository employeeRepository;
+    private final KpiHistoryLogRepository historyRepo;
     private final KpiMapper kpiMapper;
 
     @Override
@@ -60,6 +64,18 @@ public class KpiProgressServiceImpl implements KpiProgressService {
             item.setStatus(KpiItemStatus.IN_PROGRESS);
         }
         goalItemRepository.save(item);
+
+        // Add to history audit trail
+        historyRepo.save(KpiHistoryLog.builder()
+                .employeeId(item.getGoalSet().getEmployee().getId())
+                .goalSetId(item.getGoalSet().getId())
+                .itemId(item.getId())
+                .action("PROGRESS_UPDATE")
+                .changeDetails(String.format("Updated progress for '%s': %s %s (%s%%)", 
+                    item.getTitle(), request.getActualValue(), item.getUnit(), request.getProgressPercent()))
+                .changeReason(request.getEvidenceNote())
+                .changedBy(currentUser.getId())
+                .build());
 
         return kpiMapper.toGoalSetResponse(item.getGoalSet());
     }

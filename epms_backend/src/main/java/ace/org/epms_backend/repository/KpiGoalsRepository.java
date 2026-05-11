@@ -47,6 +47,9 @@ public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
         // @Param("cycleId") Long cycleId);
 
         List<KpiGoals> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
+        
+        @Query("SELECT DISTINCT k FROM KpiGoals k LEFT JOIN FETCH k.items i LEFT JOIN FETCH i.category LEFT JOIN FETCH k.cycle LEFT JOIN FETCH k.employee LEFT JOIN FETCH k.manager WHERE k.employee.id = :employeeId ORDER BY k.createdAt DESC")
+        List<KpiGoals> findByEmployeeIdOrderByCreatedAtDescWithItems(@Param("employeeId") Long employeeId);
 
         @Query("SELECT k FROM KpiGoals k WHERE (k.manager.id = :managerId OR k.employee.id IN " +
                         "(SELECT rl.employee.id FROM ReportingLine rl WHERE rl.manager.id = :managerId AND rl.isActive = true)) "
