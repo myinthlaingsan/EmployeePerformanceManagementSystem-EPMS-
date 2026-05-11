@@ -155,10 +155,17 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
         Employee currentUser = authService.getCurrentUser();
         boolean privileged = isPrivileged(currentUser);
 
-        return historyRepository.findByEmployeeAndOptionalSource(employeeId, null, org.springframework.data.domain.Pageable.unpaged()).getContent().stream()
-                .filter(h -> privileged || 
-                             (currentUser.getId().equals(h.getCreatedBy())) || 
-                             (!Boolean.TRUE.equals(h.getIsPrivate()) && (currentUser.getId().equals(h.getEmployee().getId()) || (h.getManager() != null && currentUser.getId().equals(h.getManager().getId())))))
+        // findLatestStateByEmployee returns one row per (sourceType, sourceId) –
+        // the most recent audit entry for that entity. This means:
+        //   • feedbackType reflects the current value after any edits
+        //   • deleted entities are already excluded by the query
+        //   • no double-counting from update / delete audit rows
+        return historyRepository.findLatestStateByEmployee(employeeId).stream()
+                .filter(h -> privileged ||
+                             currentUser.getId().equals(h.getCreatedBy()) ||
+                             (!Boolean.TRUE.equals(h.getIsPrivate()) &&
+                              (currentUser.getId().equals(h.getEmployee().getId()) ||
+                               (h.getManager() != null && currentUser.getId().equals(h.getManager().getId())))))
                 .map(this::mapToResponseWithFallback)
                 .collect(Collectors.toList());
     }
@@ -170,7 +177,9 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
             throw new ace.org.epms_backend.exception.AccessDeniedException("Only Admin or HR can view global pulse.");
         }
 
-        return historyRepository.findAll(org.springframework.data.domain.Sort.by("createdAt").descending()).stream()
+        // findAllLatestStates returns one row per (sourceType, sourceId) –
+        // the most recent audit entry. feedbackType is always up-to-date.
+        return historyRepository.findAllLatestStates().stream()
                 .map(this::mapToResponseWithFallback)
                 .collect(Collectors.toList());
     }
