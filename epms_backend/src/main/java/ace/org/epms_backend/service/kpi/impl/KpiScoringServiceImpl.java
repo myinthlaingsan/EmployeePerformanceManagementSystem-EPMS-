@@ -114,7 +114,6 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                 .newState(savedScore)
                 .status(AuditStatus.SUCCESS)
                 .build());
-
         return kpiMapper.toScoreResponse(savedScore);
     }
 
