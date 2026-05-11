@@ -25,13 +25,18 @@ interface MonthData {
 }
 
 const SentimentChart = ({ history, employeeName, filterType }: { history: any[], employeeName?: string, filterType: string }) => {
-  // Group data by month for the last 6 months
+  const [timeRange, setTimeRange] = useState<3 | 6 | 12>(6);
+  const [showPraise, setShowPraise] = useState(true);
+  const [showImprovement, setShowImprovement] = useState(true);
+  const [showCorrection, setShowCorrection] = useState(true);
+
+  // Group data by month for the selected time range
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const last6Months: MonthData[] = [];
+  const chartData: MonthData[] = [];
   const now = new Date();
-  for (let i = 5; i >= 0; i--) {
+  for (let i = timeRange - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    last6Months.push({
+    chartData.push({
       name: months[d.getMonth()],
       month: d.getMonth(),
       year: d.getFullYear(),
@@ -46,26 +51,20 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
     });
   }
 
+  // The backend's raw analytics endpoint (findLatestStateByEmployee /
+  // findAllLatestStates) already returns exactly ONE row per entity – its
+  // most-recent non-deleted audit entry. feedbackType is therefore always
+  // the current value.  No client-side deduplication needed.
   history.forEach(h => {
     const date = new Date(h.createdAt);
-    const monthData = last6Months.find(m => m.month === date.getMonth() && m.year === date.getFullYear());
+    const monthData = chartData.find(m => m.month === date.getMonth() && m.year === date.getFullYear());
     if (monthData) {
       const isPrivate = h.isPrivate === true;
       if (h.sourceType === 'MEETING') {
         if (isPrivate) monthData.meetingsPrivate++;
         else monthData.meetingsPublic++;
       } else if (h.sourceType === 'FEEDBACK') {
-        const isReply = h.title.toLowerCase().includes('reply');
-        if (isReply) return;
-
-        const titleLower = h.title.toLowerCase();
-        const descLower = h.description.toLowerCase();
-        const type = h.feedbackType || (
-          titleLower.includes('praise') ? 'PRAISE' : 
-          (titleLower.includes('improvement') || descLower.includes('improvement')) ? 'IMPROVEMENT' :
-          (titleLower.includes('warning') || titleLower.includes('delete')) ? 'WARNING' : null
-        );
-
+        const type: string = h.feedbackType || 'PRAISE';
         if (type === 'PRAISE') {
           if (isPrivate) monthData.praisePrivate++;
           else monthData.praisePublic++;
@@ -75,22 +74,29 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
         } else if (type === 'WARNING') {
           if (isPrivate) monthData.warningPrivate++;
           else monthData.warningPublic++;
-        } else {
-          if (isPrivate) monthData.praisePrivate++;
-          else monthData.praisePublic++;
         }
       }
     }
   });
 
   const isMeetingOnly = filterType === 'MEETING';
-  const maxValue = isMeetingOnly 
-    ? Math.max(...last6Months.map(m => m.meetingsPublic + m.meetingsPrivate), 5)
-    : Math.max(...last6Months.map(m => m.praisePublic + m.praisePrivate + m.improvementPublic + m.improvementPrivate + m.warningPublic + m.warningPrivate), 5);
+  // maxValue must be the highest COUNT of any single metric in any month.
+  // Using the cumulative SUM (old code) made the Y-axis scale too large and
+  // caused stacked lines to visually misrepresent individual values.
+  const maxValue = isMeetingOnly
+    ? Math.max(...chartData.map(m => m.meetingsPublic + m.meetingsPrivate), 5)
+    : Math.max(
+        ...chartData.flatMap(m => [
+          showPraise ? m.praisePublic + m.praisePrivate : 0,
+          showImprovement ? m.improvementPublic + m.improvementPrivate : 0,
+          showCorrection ? m.warningPublic + m.warningPrivate : 0,
+        ]),
+        5
+      );
 
   return (
     <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-start">
         <div className="space-y-1">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
             {isMeetingOnly ? 'Meeting Volume' : 'Sentiment Distribution'}
@@ -99,39 +105,62 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
             {isMeetingOnly ? 'Meeting Frequency' : 'Historical Pulse'}{employeeName ? `: ${employeeName}` : ''}
           </h3>
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          {!isMeetingOnly ? (
-            <>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Praise</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-200" />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Improvement</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-200" />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Correction</span>
-              </div>
-              <div className="h-4 w-px bg-gray-100 mx-2" />
-              <div className="flex items-center gap-1.5">
-                <div className="w-4 h-2 bg-gray-900/10 rounded-sm border border-gray-900/20" />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Confidential (Lighter)</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-200" />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Public Meetings</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-200 shadow-sm" />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Confidential Meetings</span>
-              </div>
-            </>
-          )}
+        
+        <div className="flex flex-col items-end gap-3">
+          <select 
+            value={timeRange} 
+            onChange={(e) => setTimeRange(Number(e.target.value) as 3 | 6 | 12)}
+            className="px-4 py-2 bg-transparent hover:bg-gray-50 border border-gray-200 rounded-lg text-[11px] font-black text-gray-500 uppercase tracking-widest outline-none transition cursor-pointer appearance-none shadow-sm"
+            style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '12px', paddingRight: '32px' }}
+          >
+            <option value={3}>Last 3 Months</option>
+            <option value={6}>Last 6 Months</option>
+            <option value={12}>Last 12 Months</option>
+          </select>
+
+          <div className="flex flex-wrap justify-end gap-x-6 gap-y-2">
+            {!isMeetingOnly ? (
+              <>
+                <button 
+                  onClick={() => setShowPraise(!showPraise)}
+                  className={`flex items-center gap-1.5 transition-all duration-300 hover:opacity-80 ${showPraise ? 'opacity-100' : 'opacity-40 grayscale'}`}
+                >
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" />
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Praise</span>
+                </button>
+                <button 
+                  onClick={() => setShowImprovement(!showImprovement)}
+                  className={`flex items-center gap-1.5 transition-all duration-300 hover:opacity-80 ${showImprovement ? 'opacity-100' : 'opacity-40 grayscale'}`}
+                >
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-200" />
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Improvement</span>
+                </button>
+                <button 
+                  onClick={() => setShowCorrection(!showCorrection)}
+                  className={`flex items-center gap-1.5 transition-all duration-300 hover:opacity-80 ${showCorrection ? 'opacity-100' : 'opacity-40 grayscale'}`}
+                >
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-200" />
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Correction</span>
+                </button>
+                <div className="h-4 w-px bg-gray-100 mx-2 hidden sm:block" />
+                <div className="flex items-center gap-1.5 opacity-50">
+                  <div className="w-4 h-2 bg-gray-900/10 rounded-sm border border-gray-900/20" />
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Confidential</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-200" />
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Public Meetings</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-200 shadow-sm" />
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Confidential Meetings</span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -168,22 +197,26 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
           {(() => {
             const width = 500;
             const height = 200;
-            const points = last6Months.length;
+            const points = chartData.length;
             const dx = width / (points - 1);
 
-            const getPath = (getData: (m: MonthData) => number, isStack?: boolean, stackData?: (m: MonthData) => number) => {
-              let path = `M 0 ${height}`;
-              last6Months.forEach((m, i) => {
+            // Build a smooth cubic-Bézier path for a single metric.
+            // Each point's Y = its own count only — NO stacking.
+            // Tracks prevY explicitly to avoid the broken path.split hack.
+            const getPath = (getData: (m: MonthData) => number): string => {
+              let path = '';
+              let prevY = 0;
+              chartData.forEach((m, i) => {
                 const x = i * dx;
-                const val = getData(m);
-                const stackVal = stackData ? stackData(m) : 0;
-                const y = height - ((val + stackVal) / maxValue) * height;
-                if (i === 0) path = `M ${x} ${y}`;
-                else {
+                const y = height - (getData(m) / maxValue) * height;
+                if (i === 0) {
+                  path = `M ${x} ${y}`;
+                } else {
                   const prevX = (i - 1) * dx;
                   const cpX = prevX + (x - prevX) / 2;
-                  path += ` C ${cpX} ${path.split(' ').pop()?.split(',')[1] || y}, ${cpX} ${y}, ${x} ${y}`;
+                  path += ` C ${cpX} ${prevY}, ${cpX} ${y}, ${x} ${y}`;
                 }
+                prevY = y;
               });
               return path;
             };
@@ -200,19 +233,21 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
               );
             }
 
-            const correctionP = getPath(m => m.warningPublic + m.warningPrivate);
-            const improvementP = getPath(m => m.improvementPublic + m.improvementPrivate, true, m => m.warningPublic + m.warningPrivate);
-            const praiseP = getPath(m => m.praisePublic + m.praisePrivate, true, m => m.warningPublic + m.warningPrivate + m.improvementPublic + m.improvementPrivate);
+            // Each metric is its own independent line — no stacking.
+            // Praise=1, Improvement=3 → Improvement line is HIGHER than Praise.
+            const praiseP     = getPath(m => m.praisePublic + m.praisePrivate);
+            const improvementP = getPath(m => m.improvementPublic + m.improvementPrivate);
+            const correctionP  = getPath(m => m.warningPublic + m.warningPrivate);
 
             return (
               <>
-                <path d={fillPath(praiseP)} fill="url(#praiseGrad)" />
-                <path d={fillPath(improvementP)} fill="url(#improveGrad)" />
-                <path d={fillPath(correctionP)} fill="url(#warningGrad)" />
-                
-                <path d={praiseP} fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
-                <path d={improvementP} fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" />
-                <path d={correctionP} fill="none" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" />
+                {showPraise && <path d={fillPath(praiseP)}      fill="url(#praiseGrad)" className="transition-all duration-500" />}
+                {showImprovement && <path d={fillPath(improvementP)} fill="url(#improveGrad)" className="transition-all duration-500" />}
+                {showCorrection && <path d={fillPath(correctionP)}  fill="url(#warningGrad)" className="transition-all duration-500" />}
+
+                {showPraise && <path d={praiseP}      fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
+                {showImprovement && <path d={improvementP} fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
+                {showCorrection && <path d={correctionP}  fill="none" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
               </>
             );
           })()}
@@ -220,25 +255,34 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
 
         {/* Legend / X-Axis Labels */}
         <div className="absolute inset-0 flex justify-between items-end pointer-events-none px-0">
-          {last6Months.map((m, i) => (
+          {chartData.map((m, i) => (
             <div key={i} className="flex flex-col items-center gap-2 group relative pointer-events-auto">
               <div className="w-px h-64 bg-transparent group-hover:bg-indigo-50 transition-colors relative">
                 <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-4 py-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-2xl z-20 space-y-1.5 border border-white/10">
                   <p className="text-gray-400 mb-1">{m.name} {m.year}</p>
                   {!isMeetingOnly ? (
                     <>
-                      <div className="flex items-center gap-3 justify-between">
-                        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Praise</div>
-                        <span className="font-black">{m.praisePublic + m.praisePrivate}</span>
-                      </div>
-                      <div className="flex items-center gap-3 justify-between">
-                        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-400" /> Improvement</div>
-                        <span className="font-black">{m.improvementPublic + m.improvementPrivate}</span>
-                      </div>
-                      <div className="flex items-center gap-3 justify-between">
-                        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500" /> Correction</div>
-                        <span className="font-black">{m.warningPublic + m.warningPrivate}</span>
-                      </div>
+                      {showPraise && (
+                        <div className="flex items-center gap-3 justify-between">
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Praise</div>
+                          <span className="font-black">{m.praisePublic + m.praisePrivate}</span>
+                        </div>
+                      )}
+                      {showImprovement && (
+                        <div className="flex items-center gap-3 justify-between">
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-400" /> Improvement</div>
+                          <span className="font-black">{m.improvementPublic + m.improvementPrivate}</span>
+                        </div>
+                      )}
+                      {showCorrection && (
+                        <div className="flex items-center gap-3 justify-between">
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500" /> Correction</div>
+                          <span className="font-black">{m.warningPublic + m.warningPrivate}</span>
+                        </div>
+                      )}
+                      {!showPraise && !showImprovement && !showCorrection && (
+                        <div className="text-gray-500 italic text-[10px] text-center">No metrics selected</div>
+                      )}
                     </>
                   ) : (
                     <div className="flex items-center gap-3 justify-between">
@@ -261,18 +305,11 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
 };
 
 const AdminStats = ({ history }: { history: any[] }) => {
-  const initialFeedback = history.filter(h => h.sourceType === 'FEEDBACK' && !h.title.toLowerCase().includes('reply'));
-  const praiseCount = initialFeedback.filter(h => {
-    const titleLower = h.title.toLowerCase();
-    const descLower = h.description.toLowerCase();
-    const type = h.feedbackType || (
-      titleLower.includes('praise') ? 'PRAISE' : 
-      (titleLower.includes('improvement') || descLower.includes('improvement')) ? 'IMPROVEMENT' :
-      (titleLower.includes('warning') || titleLower.includes('delete')) ? 'WARNING' : null
-    );
-    return type === 'PRAISE';
-  }).length;
-  const totalFeedback = initialFeedback.length;
+  // Backend returns one deduped row per entity with up-to-date feedbackType.
+  // Count FEEDBACK rows directly — no title heuristics needed.
+  const feedbacks = history.filter(h => h.sourceType === 'FEEDBACK');
+  const praiseCount = feedbacks.filter(h => h.feedbackType === 'PRAISE').length;
+  const totalFeedback = feedbacks.length;
   const praisePercentage = totalFeedback > 0 ? Math.round((praiseCount / totalFeedback) * 100) : 0;
 
   return (

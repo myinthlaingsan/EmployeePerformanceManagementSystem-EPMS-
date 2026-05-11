@@ -18,6 +18,7 @@ import {
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { FeedbackType } from "../../features/continuous/continuousTypes";
 import { format } from "date-fns";
+import { formatRelativeTime } from "../../utils/timeUtils";
 
 const FeedbackSnapshot = ({ stats }: { stats: { praise: number; improvement: number; correction: number } }) => {
   const { isManager, isAdmin, isHR } = useAuth();
@@ -151,7 +152,8 @@ const ReplyItem = ({
   setReplyToDelete,
   handleScrollToParent,
   onContextMenu,
-  onReply
+  onReply,
+  isUpdatingReply
 }: { 
   reply: any; 
   allReplies: any[];
@@ -167,6 +169,7 @@ const ReplyItem = ({
   handleScrollToParent: (parentId: number) => void;
   onContextMenu: (e: React.MouseEvent, reply: any) => void;
   onReply: (reply: any) => void;
+  isUpdatingReply: boolean;
 }) => {
   const isCurrentUser = reply.employeeId === user?.id;
   const isAuthor = reply.employeeId === authorId;
@@ -245,23 +248,30 @@ const ReplyItem = ({
                   />
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => setEditingReplyId(null)} className="text-[10px] font-black text-gray-400">Cancel</button>
-                    <button onClick={() => handleUpdateReply(reply.replyId)} className="text-[10px] font-black text-blue-600">Save</button>
+                    <button 
+                      disabled={isUpdatingReply}
+                      onClick={() => handleUpdateReply(reply.replyId)} 
+                      className="text-[10px] font-black text-blue-600 disabled:opacity-50"
+                    >
+                      {isUpdatingReply ? 'Saving...' : 'Save'}
+                    </button>
                   </div>
                 </div>
               ) : (
-                <span className="leading-relaxed">{reply.replyText}</span>
+                <>
+                  <span className="leading-relaxed">{reply.replyText}</span>
+                  <div className="flex justify-end items-center gap-1 mt-1">
+                    <span className={`text-[8px] font-semibold tracking-tighter uppercase ${isCurrentUser ? 'text-[#4bb08b]/60' : 'text-gray-400/80'}`}>
+                      {formatRelativeTime(reply.createdAt)}
+                    </span>
+                    {isCurrentUser && (
+                      <svg className="w-2.5 h-2.5 text-[#4bb08b]/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                </>
               )}
-              
-              <div className="flex justify-end items-center gap-1 mt-0.5">
-                <span className={`text-[9px] font-medium ${isCurrentUser ? 'text-[#4bb08b]/70' : 'text-gray-400'}`}>
-                  {reply.createdAt ? format(new Date(reply.createdAt), 'HH:mm') : ''}
-                </span>
-                {isCurrentUser && (
-                  <svg className="w-3 h-3 text-[#4bb08b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
             </div>
           </div>
 
@@ -976,25 +986,40 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
   return (
     <div className="mt-6 pt-6 border-t border-gray-100 space-y-6">
       <div className="space-y-6">
-        {sortedReplies.map((reply) => (
-          <ReplyItem 
-            key={reply.replyId} 
-            reply={reply} 
-            allReplies={sortedReplies}
-            user={user}
-            authorId={authorId}
-            highlightedReplyId={highlightedReplyId}
-            editingReplyId={editingReplyId}
-            editReplyText={editReplyText}
-            setEditReplyText={setEditReplyText}
-            setEditingReplyId={setEditingReplyId}
-            handleUpdateReply={handleUpdateReply}
-            setReplyToDelete={setReplyToDelete}
-            handleScrollToParent={handleScrollToParent}
-            onContextMenu={handleContextMenu}
-            onReply={startReply}
-          />
-        ))}
+        {sortedReplies.map((reply, index) => {
+          const currentDate = reply.createdAt ? format(new Date(reply.createdAt), 'yyyy-MM-dd') : '';
+          const prevDate = index > 0 && sortedReplies[index-1].createdAt ? format(new Date(sortedReplies[index-1].createdAt), 'yyyy-MM-dd') : '';
+          const isNewDay = currentDate !== prevDate;
+
+          return (
+            <React.Fragment key={reply.replyId}>
+              {isNewDay && (
+                <div className="flex justify-center my-8 sticky top-2 z-10">
+                  <span className="px-4 py-1.5 bg-gray-500/20 backdrop-blur-md text-[10px] font-black uppercase tracking-widest text-gray-500 rounded-full border border-white/20 shadow-sm transition-all duration-300">
+                    {format(new Date(reply.createdAt), 'MMMM dd, yyyy')}
+                  </span>
+                </div>
+              )}
+              <ReplyItem 
+                reply={reply} 
+                allReplies={sortedReplies}
+                user={user}
+                authorId={authorId}
+                highlightedReplyId={highlightedReplyId}
+                editingReplyId={editingReplyId}
+                editReplyText={editReplyText}
+                setEditReplyText={setEditReplyText}
+                setEditingReplyId={setEditingReplyId}
+                handleUpdateReply={handleUpdateReply}
+                setReplyToDelete={setReplyToDelete}
+                handleScrollToParent={handleScrollToParent}
+                onContextMenu={handleContextMenu}
+                onReply={startReply}
+                isUpdatingReply={isUpdatingReply}
+              />
+            </React.Fragment>
+          );
+        })}
       </div>
 
       {contextMenu && (
@@ -1042,15 +1067,11 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
       )}
 
       <div className="border-t border-gray-50 pt-4">
-        <div
-          className={`overflow-hidden transition-all duration-200 ease-out ${
-            replyTarget ? 'max-h-16 opacity-100 mb-2' : 'max-h-0 opacity-0 mb-0'
-          }`}
-        >
-          <div className="flex items-center gap-2 bg-indigo-50/70 rounded-xl px-3 py-2 border-l-4 border-indigo-500">
+        {replyTarget && (
+          <div className="flex items-center gap-2 mb-2 bg-indigo-50/70 rounded-xl px-3 py-2 border-l-4 border-indigo-500 animate-in slide-in-from-bottom-2 duration-150">
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-0.5">{replyTarget?.name}</p>
-              <p className="text-xs text-gray-500 truncate italic">{replyTarget?.text}</p>
+              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-0.5">{replyTarget.name}</p>
+              <p className="text-xs text-gray-500 truncate italic">{replyTarget.text}</p>
             </div>
             <button
               onClick={cancelReply}
@@ -1059,7 +1080,7 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
-        </div>
+        )}
         <form onSubmit={handleReply} className="flex gap-3">
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-indigo-50 text-indigo-600 border border-indigo-100`}>
             {user?.staffName?.charAt(0) || '?'}

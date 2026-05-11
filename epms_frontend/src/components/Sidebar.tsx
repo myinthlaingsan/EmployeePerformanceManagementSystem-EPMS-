@@ -1,7 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import React, { useState } from "react";
-
+import { useState } from "react";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -238,4 +237,4 @@ const Sidebar = () => {
   );
 };
 
-export default React.memo(Sidebar);
+export default Sidebar;

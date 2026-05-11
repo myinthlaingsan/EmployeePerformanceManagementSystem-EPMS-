@@ -15,6 +15,7 @@ import {
 } from "../../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { format } from "date-fns";
+import { formatRelativeTime } from "../../utils/timeUtils";
 
 const CommentItem = ({ 
   comment, 
@@ -30,7 +31,8 @@ const CommentItem = ({
   setCommentToDelete,
   handleScrollToParent,
   onContextMenu,
-  onReply
+  onReply,
+  isUpdatingComment
 }: { 
   comment: any; 
   allComments: any[];
@@ -46,6 +48,7 @@ const CommentItem = ({
   handleScrollToParent: (parentId: number) => void;
   onContextMenu: (e: React.MouseEvent, comment: any) => void;
   onReply: (comment: any) => void;
+  isUpdatingComment: boolean;
 }) => {
   const isOwnComment = (isManager && comment.commentType === 'MANAGER' && comment.managerId === user?.id) || 
                        (!isManager && comment.commentType === 'EMPLOYEE' && comment.employeeId === user?.id);
@@ -124,20 +127,30 @@ const CommentItem = ({
                   />
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => setEditingCommentId(null)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600">Cancel</button>
-                    <button onClick={() => handleUpdateComment(comment.id)} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800">Save</button>
+                    <button 
+                      disabled={isUpdatingComment}
+                      onClick={() => handleUpdateComment(comment.id)} 
+                      className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                    >
+                      {isUpdatingComment ? 'Saving...' : 'Save'}
+                    </button>
                   </div>
                 </div>
               ) : (
-                <span className="leading-relaxed">{comment.comment}</span>
+                <>
+                  <span className="leading-relaxed">{comment.comment}</span>
+                  <div className="flex justify-end items-center gap-1 mt-1">
+                    <span className="text-[8px] font-semibold tracking-tighter uppercase text-gray-400/80">
+                      {formatRelativeTime(comment.createdAt)}
+                    </span>
+                    {isOwnComment && (
+                      <svg className="w-2.5 h-2.5 text-[#4bb08b]/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                </>
               )}
-
-              <div className="flex justify-end items-center gap-1 mt-0.5">
-                {isOwnComment && (
-                  <svg className="w-3 h-3 text-[#4bb08b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -742,25 +755,40 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
     <div className="mt-8 pt-8 border-t border-gray-100 space-y-6">
       <div className="space-y-6">
         {sortedComments.length > 0 ? (
-          sortedComments.map((comment) => (
-            <CommentItem 
-              key={comment.id} 
-              comment={comment} 
-              allComments={sortedComments}
-              user={user}
-              isManager={isManager}
-              highlightedCommentId={highlightedCommentId}
-              editingCommentId={editingCommentId}
-              editCommentText={editCommentText}
-              setEditCommentText={setEditCommentText}
-              setEditingCommentId={setEditingCommentId}
-              handleUpdateComment={handleUpdateComment}
-              setCommentToDelete={setCommentToDelete}
-              handleScrollToParent={handleScrollToParent}
-              onContextMenu={handleContextMenu}
-              onReply={startReply}
-            />
-          ))
+          sortedComments.map((comment, index) => {
+            const currentDate = comment.createdAt ? format(new Date(comment.createdAt), 'yyyy-MM-dd') : '';
+            const prevDate = index > 0 && sortedComments[index-1].createdAt ? format(new Date(sortedComments[index-1].createdAt), 'yyyy-MM-dd') : '';
+            const isNewDay = currentDate !== prevDate;
+
+            return (
+              <React.Fragment key={comment.id}>
+                {isNewDay && (
+                  <div className="flex justify-center my-8 sticky top-2 z-10">
+                    <span className="px-4 py-1.5 bg-gray-500/20 backdrop-blur-md text-[10px] font-black uppercase tracking-widest text-gray-500 rounded-full border border-white/20 shadow-sm transition-all duration-300">
+                      {format(new Date(comment.createdAt), 'MMMM dd, yyyy')}
+                    </span>
+                  </div>
+                )}
+                <CommentItem 
+                  comment={comment} 
+                  allComments={sortedComments}
+                  user={user}
+                  isManager={isManager}
+                  highlightedCommentId={highlightedCommentId}
+                  editingCommentId={editingCommentId}
+                  editCommentText={editCommentText}
+                  setEditCommentText={setEditCommentText}
+                  setEditingCommentId={setEditingCommentId}
+                  handleUpdateComment={handleUpdateComment}
+                  setCommentToDelete={setCommentToDelete}
+                  handleScrollToParent={handleScrollToParent}
+                  onContextMenu={handleContextMenu}
+                  onReply={startReply}
+                  isUpdatingComment={isUpdatingComment}
+                />
+              </React.Fragment>
+            );
+          })
         ) : (
           <div className="text-center py-6 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-100">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No conversation yet. Be the first to comment.</p>
@@ -814,15 +842,11 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
       )}
 
       <div className="border-t border-gray-100 pt-6">
-        <div
-          className={`overflow-hidden transition-all duration-200 ease-out ${
-            replyTarget ? 'max-h-16 opacity-100 mb-2' : 'max-h-0 opacity-0 mb-0'
-          }`}
-        >
-          <div className="flex items-center gap-2 bg-indigo-50/70 rounded-xl px-3 py-2 border-l-4 border-indigo-500">
+        {replyTarget && (
+          <div className="flex items-center gap-2 mb-2 bg-indigo-50/70 rounded-xl px-3 py-2 border-l-4 border-indigo-500 animate-in slide-in-from-bottom-2 duration-150">
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-0.5">{replyTarget?.name}</p>
-              <p className="text-xs text-gray-500 truncate italic">{replyTarget?.text}</p>
+              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-0.5">{replyTarget.name}</p>
+              <p className="text-xs text-gray-500 truncate italic">{replyTarget.text}</p>
             </div>
             <button
               onClick={cancelReply}
@@ -831,7 +855,7 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
-        </div>
+        )}
         <form onSubmit={handleComment} className="flex gap-3">
           <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-xs font-bold text-indigo-600 border border-indigo-100 shrink-0">
             {user?.staffName?.charAt(0) || '?'}
