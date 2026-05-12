@@ -28,4 +28,5 @@ public interface EmployeeRoleRepository extends JpaRepository<EmployeeRole, Empl
     boolean existsByRole(Role role);
 
     long countByRole_RoleName(RoleType roleName);
+
 }

@@ -121,4 +121,6 @@ public class KpiScoringServiceImpl implements KpiScoringService {
         return employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Current user not found"));
     }
+
+
 }
