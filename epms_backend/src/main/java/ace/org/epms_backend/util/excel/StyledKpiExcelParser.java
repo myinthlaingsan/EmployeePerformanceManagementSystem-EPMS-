@@ -39,19 +39,16 @@ public class StyledKpiExcelParser {
                 Row row = rowIterator.next();
                 if (isEmptyRow(row)) continue;
 
-                String firstCellValue = getCellValueAsString(row.getCell(0), formatter, evaluator).trim();
-
                 // 1. Detect KPI Library Title (e.g., "07-PS HEAD KPI")
-                // Improved: Must end with KPI and not just be a header or random text
-                if (isLibraryTitle(firstCellValue)) {
-                    // Save previous library if "Total Score" was missing (Safety Fix)
-                    if (currentLibrary != null && !currentDetails.isEmpty()) {
+                String libraryTitle = findLibraryTitle(row, formatter, evaluator);
+                
+                if (libraryTitle != null) {
+                    if (currentLibrary != null && currentDetails != null && !currentDetails.isEmpty()) {
                         addRequestIfValid(requests, currentLibrary, processedKeys);
                     }
-
                     currentLibrary = new KpiLibraryRequest();
-                    currentLibrary.setTitle(firstCellValue);
-                    currentLibrary.setPositionId(resolvePositionId(firstCellValue));
+                    currentLibrary.setTitle(libraryTitle);
+                    currentLibrary.setPositionId(resolvePositionId(libraryTitle));
                     currentDetails = new ArrayList<>();
                     currentLibrary.setDetails(currentDetails);
                     continue;
@@ -65,7 +62,7 @@ public class StyledKpiExcelParser {
 
                 // 3. Detect Total Score Row (Finalize Section)
                 if (isTotalScoreRow(row, formatter, evaluator)) {
-                    if (currentLibrary != null && !currentDetails.isEmpty()) {
+                    if (currentLibrary != null && currentDetails != null && !currentDetails.isEmpty()) {
                         addRequestIfValid(requests, currentLibrary, processedKeys);
                     }
                     currentLibrary = null;
@@ -82,8 +79,8 @@ public class StyledKpiExcelParser {
                 }
             }
 
-            // Safety Fix: Capture the last library if file ended without "Total Score" row
-            if (currentLibrary != null && !currentDetails.isEmpty()) {
+            // Final fallback: Capture the last library if file ended without a "Total Score" row
+            if (currentLibrary != null && currentDetails != null && !currentDetails.isEmpty()) {
                 addRequestIfValid(requests, currentLibrary, processedKeys);
             }
         }
@@ -98,6 +95,16 @@ public class StyledKpiExcelParser {
         }
         requests.add(request);
         processedKeys.add(key);
+    }
+
+    private String findLibraryTitle(Row row, DataFormatter formatter, FormulaEvaluator evaluator) {
+        for (Cell cell : row) {
+            String value = getCellValueAsString(cell, formatter, evaluator).trim();
+            if (isLibraryTitle(value)) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private boolean isLibraryTitle(String value) {
