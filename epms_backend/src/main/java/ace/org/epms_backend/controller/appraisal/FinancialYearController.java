@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -17,9 +18,10 @@ public class FinancialYearController {
     private final FinancialYearService financialYearService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<FinancialYearResponse>> create(@RequestBody FinancialYearRequest request) {
+    public ResponseEntity<ApiResponse<FinancialYearResponse>> create(@Valid @RequestBody FinancialYearRequest request) {
         return ResponseEntity.ok(ApiResponse.success(financialYearService.createFinancialYear(request)));
     }
+
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<FinancialYearResponse>>> getAll() {
@@ -47,4 +49,3 @@ public class FinancialYearController {
         return ResponseEntity.ok(ApiResponse.success(financialYearService.rollover()));
     }
 }
-

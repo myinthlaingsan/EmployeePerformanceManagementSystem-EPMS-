@@ -68,4 +68,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     boolean existsByLevel(ace.org.epms_backend.model.employee.JobLevel level);
 
     boolean existsByPosition(ace.org.epms_backend.model.employee.Position position);
+
+    long countByIsActiveTrue();
+
+    long countByAccountLockedTrue();
 }

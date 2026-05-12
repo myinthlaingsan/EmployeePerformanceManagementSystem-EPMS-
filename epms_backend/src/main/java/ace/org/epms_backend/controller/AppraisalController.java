@@ -193,10 +193,11 @@ public class AppraisalController {
 
     // Merged from AppraisalIntegrationController to resolve conflict
     @PostMapping("/sync-feedback")
-    public ResponseEntity<Void> syncFeedback(@RequestBody AppraisalSyncRequest request) {
+    public ResponseEntity<Void> syncFeedback(@Valid @RequestBody AppraisalSyncRequest request) {
         appraisalIntegrationService.syncFeedbackToAppraisal(request.getCycleId());
         return ResponseEntity.ok().build();
     }
+
 
     @GetMapping("/employee/{employeeId}/cycle/{cycleId}")
     public ResponseEntity<Appraisal> getAppraisalIntegration(@PathVariable Long employeeId, @PathVariable Long cycleId) {
