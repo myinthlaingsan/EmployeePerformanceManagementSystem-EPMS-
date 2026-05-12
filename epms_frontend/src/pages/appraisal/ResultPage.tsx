@@ -13,7 +13,6 @@ import {
   User,
   CheckCircle2,
   ShieldCheck,
-  FileText,
   MessageSquare,
   Image as ImageIcon,
   ArrowRight,
@@ -114,7 +113,7 @@ const ResultPage: React.FC = () => {
 
         {/* Main Score Banner */}
         <div className="bg-white rounded-[3rem] p-12 shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-slate-100 flex flex-col md:flex-row items-center gap-12 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500"></div>
+          <div className="absolute top-0 left-0 w-full h-2 bg-linear-to-r from-indigo-500 via-purple-500 to-emerald-500"></div>
 
           <div className="text-center md:text-left flex-1">
             <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
@@ -135,9 +134,9 @@ const ResultPage: React.FC = () => {
             <span className={`text-8xl font-black tracking-tighter ${getScoreColor(appraisal.finalScore || 0)} drop-shadow-sm transition-all group-hover:scale-105 duration-500`}>
               {appraisal.finalScore !== null ? Number(appraisal.finalScore).toFixed(1) : '--'}
             </span>
-            <div className="h-2 w-40 bg-slate-200 rounded-full overflow-hidden mt-2 p-[2px]">
+            <div className="h-2 w-40 bg-slate-200 rounded-full overflow-hidden mt-2 p-0.5">
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(99,102,241,0.3)]"
+                className="h-full bg-linear-to-r from-indigo-500 via-blue-500 to-emerald-500 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(99,102,241,0.3)]"
                 style={{ width: `${appraisal.finalScore || 0}%` }}
               ></div>
             </div>
@@ -157,7 +156,7 @@ const ResultPage: React.FC = () => {
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Human Resources Final Approval</p>
               </div>
             </div>
-            <p className="text-base text-slate-600 leading-relaxed bg-slate-50/50 p-8 rounded-[2rem] border border-slate-50 shadow-inner">
+            <p className="text-base text-slate-600 leading-relaxed bg-slate-50/50 p-8 rounded-4xl border border-slate-50 shadow-inner">
               {appraisal.approvalComment || 'The appraisal results have been verified and approved by the HR department. All performance metrics and weightages have been audited for compliance with organizational standards.'}
             </p>
             <div className="mt-6 flex items-center justify-between px-4">
@@ -381,7 +380,6 @@ const ResultPage: React.FC = () => {
             This document will be permanently stored in your employment records and can be exported as a PDF for personal filing.
           </p>
         </div>
-
       </div>
     </div>
   );

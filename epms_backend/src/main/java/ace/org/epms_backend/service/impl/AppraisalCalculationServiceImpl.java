@@ -25,8 +25,6 @@ import java.util.List;
 public class AppraisalCalculationServiceImpl implements AppraisalCalculationService {
 
         private final AppraisalRepository appraisalRepo;
-        private final SelfAssessmentAnswerRepository selfAnswerRepo;
-        private final ManagerEvaluationAnswerRepository mgrAnswerRepo;
         private final SelfAssessmentRepository selfRepo;
         private final ManagerEvaluationRepository evalRepo;
         private final AppraisalSummaryRepository summaryRepo;

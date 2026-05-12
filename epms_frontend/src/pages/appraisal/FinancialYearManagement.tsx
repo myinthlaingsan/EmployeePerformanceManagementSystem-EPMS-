@@ -12,12 +12,11 @@ import {
   Trash2, 
   History, 
   ArrowRight,
-  ShieldCheck,
-  Calendar
+  ShieldCheck
 } from 'lucide-react';
 import { format, addYears, subDays, parseISO, isValid } from 'date-fns';
 
-const FinancialYearManagement: React.FC = () => {
+const FinancialYearManagement = () => {
   const { data: years, isLoading } = useGetFinancialYearsQuery();
   const [createYear] = useCreateFinancialYearMutation();
   const [setCurrent] = useSetCurrentFinancialYearMutation();

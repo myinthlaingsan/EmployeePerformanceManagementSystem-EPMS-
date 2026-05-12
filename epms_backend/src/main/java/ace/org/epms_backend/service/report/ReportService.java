@@ -43,4 +43,6 @@ public interface ReportService {
     // High/Low Performers
     List<PerformanceRankingReportDTO> getPerformanceRankingReport(Long cycleId);
     byte[] exportPerformanceRankingReport(Long cycleId, String format);
+
+    byte[] exportEmployeeMasterReport(Long departmentId, Long teamId, String format);
 }

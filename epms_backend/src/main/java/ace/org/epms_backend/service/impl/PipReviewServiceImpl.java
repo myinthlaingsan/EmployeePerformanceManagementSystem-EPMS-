@@ -72,7 +72,8 @@ public class PipReviewServiceImpl implements PipReviewService {
         PipRecord pip = pipRepository.findById(pipId)
                 .orElseThrow(() -> new NotFoundException("PIP not found"));
 
-        // 🔐 ACCESS CONTROL: Allow if HR, or if the user is the assigned MANAGER or the assigned EMPLOYEE
+        // 🔐 ACCESS CONTROL: Allow if HR, or if the user is the assigned MANAGER or the
+        // assigned EMPLOYEE
         boolean isHR = isHR(current);
         boolean isAssignedManager = pip.getManager().getId().equals(current.getId());
         boolean isAssignedEmployee = pip.getEmployee().getId().equals(current.getId());
@@ -106,7 +107,7 @@ public class PipReviewServiceImpl implements PipReviewService {
 
         pip.setFinalOutcome(outcome);
         pip.setOverallComment(comment);
-        
+
         if (outcome == PipOutcome.EXTEND) {
             pip.setStatus(PipStatus.EXTENDED);
         } else {
@@ -130,13 +131,13 @@ public class PipReviewServiceImpl implements PipReviewService {
         return hasRole("HR");
     }
 
-    private boolean isManager(Employee emp) {
-        return hasRole("MANAGER");
-    }
+    // private boolean isManager(Employee emp) {
+    // return hasRole("MANAGER");
+    // }
 
-    private boolean isEmployee(Employee emp) {
-        return hasRole("EMPLOYEE");
-    }
+    // private boolean isEmployee(Employee emp) {
+    // return hasRole("EMPLOYEE");
+    // }
 
     private boolean hasRole(String role) {
         return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()

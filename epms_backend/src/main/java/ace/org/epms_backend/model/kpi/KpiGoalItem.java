@@ -1,6 +1,7 @@
 package ace.org.epms_backend.model.kpi;
 import ace.org.epms_backend.enums.KpiItemStatus;
 import ace.org.epms_backend.model.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -22,6 +23,7 @@ public class KpiGoalItem extends BaseEntity {
 
     @ManyToOne
     @JoinColumn(name = "goal_set_id")
+    @JsonIgnore
     private KpiGoals goalSet;
     @ManyToOne
     @JoinColumn(name = "category_id")

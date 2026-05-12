@@ -3,7 +3,6 @@ import type { RootState } from "../app/store";
 
 export const baseQuery = fetchBaseQuery({
     baseUrl: "http://localhost:8080/api/v1",
-    // baseUrl: "https://dash-murmuring-symphony.ngrok-free.dev/api/v1",
     credentials: "include",
     prepareHeaders: (headers, { getState }) => {
         const token = (getState() as RootState).auth.accessToken;

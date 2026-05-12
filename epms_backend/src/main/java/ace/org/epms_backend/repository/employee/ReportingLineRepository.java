@@ -12,8 +12,8 @@ import java.util.Optional;
 public interface ReportingLineRepository extends JpaRepository<ReportingLine, Long> {
     // Find active manager for an employee
     Optional<ReportingLine> findByEmployeeAndIsActiveTrue(Employee employee);
-
-    Optional<ReportingLine> findByEmployee_IdAndIsActiveTrue(Long employeeId);
+//    Optional<ReportingLine> findByEmployee_IdAndIsActiveTrue(Long employeeId);
+    Optional<ReportingLine> findFirstByEmployee_IdAndIsActiveTrue(Long employeeId);
     
     // Find all active subordinates for a manager
     List<ReportingLine> findAllByManagerAndIsActiveTrue(Employee manager);

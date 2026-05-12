@@ -45,21 +45,25 @@ public class EmployeeController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<EmployeeResponse>>> getAll(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Boolean excludeSelf
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(employeeService.getAllPaginated(page, size))
+                ApiResponse.success(employeeService.getAllPaginated(page, size, excludeSelf))
         );
     }
 
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<PagedResponse<EmployeeResponse>>> search(
-            @RequestParam String query,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long teamId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Boolean excludeSelf
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(employeeService.search(query, page, size))
+                ApiResponse.success(employeeService.search(query, departmentId, teamId, page, size,excludeSelf))
         );
     }
 

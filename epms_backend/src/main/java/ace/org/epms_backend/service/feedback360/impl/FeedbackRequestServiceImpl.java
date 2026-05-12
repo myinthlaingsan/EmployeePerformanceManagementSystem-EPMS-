@@ -7,7 +7,6 @@ import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.FeedbackMapper;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
-import ace.org.epms_backend.model.employee.EmployeeTeam;
 import ace.org.epms_backend.model.feedback360.FeedbackRequest;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;

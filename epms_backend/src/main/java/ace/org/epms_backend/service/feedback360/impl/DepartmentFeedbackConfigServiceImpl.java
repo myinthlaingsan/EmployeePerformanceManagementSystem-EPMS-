@@ -3,9 +3,8 @@ package ace.org.epms_backend.service.feedback360.impl;
 import ace.org.epms_backend.dto.feedback360.DepartmentFeedbackConfigDTO;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.model.employee.Department;
+import ace.org.epms_backend.model.employee.JobLevel;
 import ace.org.epms_backend.model.feedback360.DepartmentFeedbackConfig;
-import ace.org.epms_backend.repository.AppraisalCycleRepository; // actually need DepartmentRepository
-import ace.org.epms_backend.repository.EmployeeDepartmentRepository; // actually need DepartmentRepository from core
 import ace.org.epms_backend.repository.feedback360.DepartmentFeedbackConfigRepository;
 import ace.org.epms_backend.service.feedback360.DepartmentFeedbackConfigService;
 import lombok.RequiredArgsConstructor;
@@ -26,10 +25,10 @@ public class DepartmentFeedbackConfigServiceImpl implements DepartmentFeedbackCo
     @Override
     @Transactional
     public DepartmentFeedbackConfigDTO saveOrUpdate(DepartmentFeedbackConfigDTO dto) {
-        ace.org.epms_backend.model.employee.Department department = departmentRepository.findById(dto.getDepartmentId())
+        Department department = departmentRepository.findById(dto.getDepartmentId())
                 .orElseThrow(() -> new NotFoundException("Department not found: " + dto.getDepartmentId()));
 
-        ace.org.epms_backend.model.employee.JobLevel jobLevel = jobLevelRepository.findById(dto.getLevelId())
+        JobLevel jobLevel = jobLevelRepository.findById(dto.getLevelId())
                 .orElseThrow(() -> new NotFoundException("Level not found: " + dto.getLevelId()));
 
         DepartmentFeedbackConfig config = configRepository.findByDepartmentIdAndJobLevelLevelId(dto.getDepartmentId(), dto.getLevelId())

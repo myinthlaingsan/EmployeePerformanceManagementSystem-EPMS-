@@ -163,7 +163,14 @@ const KpiLibraryEntry: React.FC = () => {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500">
+    <div className="p-8 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
+      <button
+        onClick={() => navigate(-1)}
+        className="text-xs font-bold text-gray-400 hover:text-blue-600 flex items-center gap-1 uppercase tracking-wider transition-colors"
+      >
+        ← Back to Library
+      </button>
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-gray-100 pb-8">
         <div className="space-y-2">

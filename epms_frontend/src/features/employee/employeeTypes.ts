@@ -24,6 +24,7 @@ export interface CreateEmployeeRequest {
   otherName?: string;
   email: string;
   phoneNo: string;
+  profileImage?: string;
   stateCode?: number;
   township?: string;
   nrcType?: string;
@@ -63,6 +64,7 @@ export interface UpdateEmployeeRequest {
 
   email?: string;
   phoneNo?: string;
+  profileImage?: string;
 
   maritalStatus?: MaritalStatus;
   spouseName?: string;
@@ -93,6 +95,7 @@ export interface UpdateProfileRequest {
 
   email?: string;
   phoneNo?: string;
+  profileImage?: string;
 
   maritalStatus?: MaritalStatus;
   spouseName?: string;
@@ -106,6 +109,7 @@ export interface EmployeeResponse {
   otherName?: string;
   email: string;
   phoneNo: string;
+  profileImage?: string;
 
   stateCode?: number;
   township?: string;

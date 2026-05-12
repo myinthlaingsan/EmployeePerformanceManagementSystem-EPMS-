@@ -133,7 +133,7 @@ const AppraisalDetail: React.FC = () => {
         {/* Profile & Score Card */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 bg-white rounded-[2.5rem] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex items-center gap-8">
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-black text-3xl shadow-lg shadow-indigo-200">
+            <div className="w-24 h-24 rounded-3xl bg-linear-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-black text-3xl shadow-lg shadow-indigo-200">
               {appraisal.employeeName?.charAt(0)}
             </div>
             <div className="flex-1">
@@ -155,7 +155,7 @@ const AppraisalDetail: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[2.5rem] p-8 text-white shadow-xl shadow-slate-200 relative overflow-hidden">
+          <div className="bg-linear-to-br from-slate-900 to-indigo-950 rounded-[2.5rem] p-8 text-white shadow-xl shadow-slate-200 relative overflow-hidden">
             <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/5 rounded-full blur-3xl"></div>
             <h3 className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.2em] mb-4">Current Performance Score</h3>
             <div className="flex items-baseline gap-2">
@@ -167,7 +167,7 @@ const AppraisalDetail: React.FC = () => {
             <div className="mt-4 flex items-center gap-2">
               <div className="h-2 flex-1 bg-white/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-400 to-blue-400 transition-all duration-1000"
+                  className="h-full bg-linear-to-r from-indigo-400 to-blue-400 transition-all duration-1000"
                   style={{ width: `${appraisal.finalScore || 0}%` }}
                 ></div>
               </div>
@@ -178,7 +178,7 @@ const AppraisalDetail: React.FC = () => {
 
         {/* Action Center for Privileged Users */}
         {isPrivileged && (
-          <div className="bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm">
+          <div className="bg-white rounded-4xl border border-slate-200 p-8 shadow-sm">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-indigo-600" /> HR Administrator Controls
             </h3>
@@ -264,7 +264,7 @@ const AppraisalDetail: React.FC = () => {
         {(appraisal.status === 'HR_APPROVED' || appraisal.status === 'FINALIZED') && (
           <div
             onClick={() => navigate(`/appraisal/${id}/results`)}
-            className="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-[2rem] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all group"
+            className="bg-linear-to-r from-indigo-600 to-indigo-800 rounded-4xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all group"
           >
             <div className="flex items-center gap-6">
               <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-white backdrop-blur-md">
@@ -333,7 +333,7 @@ const AppraisalDetail: React.FC = () => {
                 <Lock className="w-10 h-10" />
               </div>
               <h3 className="text-2xl font-black text-slate-400 mb-2">Evaluation Locked</h3>
-              <p className="text-slate-400 font-medium max-w-[280px]">
+              <p className="text-slate-400 font-medium max-w-70">
                 {isPrivileged ? "Only submitted evaluations can be reviewed by HR." : "The manager evaluation will be available once submitted."}
               </p>
             </div>
@@ -384,7 +384,7 @@ const AppraisalDetail: React.FC = () => {
                 <Lock className="w-10 h-10" />
               </div>
               <h3 className="text-2xl font-black text-slate-400 mb-2">Self Assessment Locked</h3>
-              <p className="text-slate-400 font-medium max-w-[280px]">
+              <p className="text-slate-400 font-medium max-w-70">
                 {isPrivileged ? "Only submitted assessments can be reviewed by HR." : "You can view the employee's assessment once it has been submitted."}
               </p>
             </div>

@@ -1,9 +1,9 @@
-export type AppraisalStatus = 
-  | 'ASSIGNED' 
-  | 'PENDING_ASSESSMENT' 
-  | 'PENDING_EVALUATION' 
-  | 'PENDING_SIGN_OFF' 
-  | 'COMPLETED' 
+export type AppraisalStatus =
+  | 'ASSIGNED'
+  | 'PENDING_ASSESSMENT'
+  | 'PENDING_EVALUATION'
+  | 'PENDING_SIGN_OFF'
+  | 'COMPLETED'
   | 'ARCHIVED';
 
 export interface AssessmentResponse {
@@ -49,4 +49,21 @@ export interface Appraisal {
 
 export interface UpdateAssessmentPayload {
   responses: AssessmentResponse[];
+}
+
+export type PerformanceGrade =
+  | 'OUTSTANDING'
+  | 'EXCEEDS_EXPECTATIONS'
+  | 'MEETS_EXPECTATIONS'
+  | 'NEEDS_IMPROVEMENT'
+  | 'UNSATISFACTORY';
+
+export interface PerformanceCategory {
+  id?: number;
+  name: string;
+  minScore: number;
+  maxScore: number;
+  ratingValue: number;
+  grade: PerformanceGrade;
+  description: string;
 }

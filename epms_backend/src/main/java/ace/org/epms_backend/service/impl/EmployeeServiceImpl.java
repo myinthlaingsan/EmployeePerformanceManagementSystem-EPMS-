@@ -9,6 +9,7 @@ import ace.org.epms_backend.model.employee.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmployeeService;
+import ace.org.epms_backend.util.FileUploadUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import ace.org.epms_backend.repository.employee.ReportingLineRepository;
@@ -26,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -99,9 +101,24 @@ public class EmployeeServiceImpl implements EmployeeService {
                 resetToken.setToken(token);
                 resetToken.setEmployee(savedEmployee);
                 resetToken.setExpiryDate(LocalDateTime.now().plusHours(24));
+                employee.setEmail(email);
+                employee.setPosition(position);
+                employee.setLevel(position.getLevel()); // Set level from position
 
                 tokenRepository.save(resetToken);
 
+                // Assign Manager (Reporting Line)
+                // if (request.getDirectManagerId() != null) {
+                // Employee manager = employeeRepository.findById(request.getDirectManagerId())
+                // .orElseThrow(() -> new NotFoundException("Manager not found"));
+                //
+                // ReportingLine reportingLine = ReportingLine.builder()
+                // .employee(savedEmployee)
+                // .manager(manager)
+                // .isActive(true)
+                // .build();
+                // reportingLineRepository.save(reportingLine);
+                // }
                 // Assign Manager (Reporting Line)
                 if (request.getDirectManagerId() != null) {
                         Employee manager = employeeRepository.findById(request.getDirectManagerId())
@@ -117,7 +134,16 @@ public class EmployeeServiceImpl implements EmployeeService {
 
                 applicationEventPublisher.publishEvent(
                                 new EmployeeCreatedEvent(savedEmployee.getId(), token));
+                applicationEventPublisher.publishEvent(
+                                new EmployeeCreatedEvent(savedEmployee.getId(), token));
 
+                auditService.log(AuditRequest.builder()
+                                .tableName("employees")
+                                .recordId(savedEmployee.getId())
+                                .action(AuditAction.INSERT)
+                                .newState(savedEmployee)
+                                .status(AuditStatus.SUCCESS)
+                                .build());
                 auditService.log(AuditRequest.builder()
                                 .tableName("employees")
                                 .recordId(savedEmployee.getId())
@@ -169,7 +195,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         public EmployeeResponse getById(Long id) {
                 Employee emp = employeeRepository.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
-
                 return mapToResponse(emp);
         }
 
@@ -181,38 +206,52 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 .toList();
         }
 
-        @Override
-        public PagedResponse<EmployeeResponse> getAllPaginated(int page, int size) {
-                Pageable pageable = PageRequest.of(
-                                page,
-                                size,
-                                Sort.by("id").descending());
+    @Override
+    public PagedResponse<EmployeeResponse> getAllPaginated(int page, int size, Boolean excludeSelf) {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by("id").descending()
+        );
 
-                Page<Employee> employeePage = employeeRepository.findAllPaginated(pageable);
-
-                List<EmployeeResponse> content = employeePage.getContent()
-                                .stream()
-                                .map(this::mapToResponse)
-                                .toList();
-
-                return new PagedResponse<>(
-                                content,
-                                employeePage.getNumber(),
-                                employeePage.getSize(),
-                                employeePage.getTotalElements(),
-                                employeePage.getTotalPages(),
-                                employeePage.isLast());
+        Page<Employee> employeePage;
+        if (Boolean.TRUE.equals(excludeSelf)) {
+            Employee currentUser = authService.getCurrentUser();
+            employeePage = employeeRepository.findAllPaginatedExcluding(currentUser.getId(), pageable);
+        } else {
+            employeePage = employeeRepository.findAllPaginated(pageable);
         }
 
+        List<EmployeeResponse> content = employeePage.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+
+        return new PagedResponse<>(
+                content,
+                employeePage.getNumber(),
+                employeePage.getSize(),
+                employeePage.getTotalElements(),
+                employeePage.getTotalPages(),
+                employeePage.isLast()
+        );
+    }
+
         @Override
-        public PagedResponse<EmployeeResponse> search(String query, int page, int size) {
+        public PagedResponse<EmployeeResponse> search(String query, Long departmentId, Long teamId, int page,
+                        int size,Boolean excludeSelf) {
                 Pageable pageable = PageRequest.of(
                                 page,
                                 size,
                                 Sort.by("id").descending());
 
-                Page<Employee> employeePage = employeeRepository.searchEmployees(query, pageable);
-
+                Page<Employee> employeePage = employeeRepository.searchEmployees(query, departmentId, teamId, pageable);
+            if (Boolean.TRUE.equals(excludeSelf)) {
+                Employee currentUser = authService.getCurrentUser();
+                employeePage = employeeRepository.searchEmployeesExcluding(query, currentUser.getId(), pageable);
+            } else {
+                employeePage = employeeRepository.searchEmployees(query,departmentId, teamId,pageable);
+            }
                 List<EmployeeResponse> content = employeePage.getContent()
                                 .stream()
                                 .map(this::mapToResponse)
@@ -403,6 +442,24 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         @Override
+        public void uploadProfileImage(Long id, MultipartFile file) {
+                Employee emp = employeeRepository.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+                try {
+                        String uploadDir = System.getProperty("user.dir") + "/uploads/profiles/";
+                        String fileName = "emp_" + id;
+                        String savedFileName = FileUploadUtil.saveFile(uploadDir, fileName,
+                                        file);
+
+                        emp.setProfileImage("/uploads/profiles/" + savedFileName);
+                        employeeRepository.save(emp);
+                } catch (java.io.IOException e) {
+                        throw new RuntimeException("Could not upload profile image", e);
+                }
+        }
+
+        @Override
         public void changePassword(Long id, ChangePasswordRequest request) {
                 Employee emp = employeeRepository.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Employee not found"));
@@ -440,36 +497,36 @@ public class EmployeeServiceImpl implements EmployeeService {
                 EmployeeResponse response = employeeMapper.toResponse(emp);
                 List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(emp.getId());
                 List<String> roleNames = roles.stream()
-                        .map(role -> role.getRoleName().name())
-                        .toList();
+                                .map(role -> role.getRoleName().name())
+                                .toList();
                 response.setRoles(roleNames);
 
                 // Fetch permissions based on roles and level
                 List<String> permissions = roleLevelPermissionRepository
-                        .findPermissionsByRolesAndLevel(roles, emp.getLevel())
-                        .stream()
-                        .map(Permission::getPermissionName)
-                        .toList();
+                                .findPermissionsByRolesAndLevel(roles, emp.getLevel())
+                                .stream()
+                                .map(Permission::getPermissionName)
+                                .toList();
                 response.setPermissions(permissions);
 
                 // Set Department Name
                 employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
-                        .ifPresent(ed -> {
-                                response.setCurrentDepartmentName(
-                                        ed.getCurrentDepartment().getDepartmentName());
-                                response.setCurrentDepartmentId(
-                                        ed.getCurrentDepartment().getId());
-                                response.setParentDepartmentName(
-                                        ed.getParentDepartment().getDepartmentName());
-                                response.setParentDepartmentId(
-                                        ed.getParentDepartment().getId());
-                        });
+                                .ifPresent(ed -> {
+                                        response.setCurrentDepartmentName(
+                                                        ed.getCurrentDepartment().getDepartmentName());
+                                        response.setCurrentDepartmentId(
+                                                        ed.getCurrentDepartment().getId());
+                                        response.setParentDepartmentName(
+                                                        ed.getParentDepartment().getDepartmentName());
+                                        response.setParentDepartmentId(
+                                                        ed.getParentDepartment().getId());
+                                });
                 // Set Manager Info
                 reportingLineRepository.findByEmployeeAndIsActiveTrue(emp)
-                        .ifPresent(line -> {
-                                response.setDirectManagerId(line.getManager().getId());
-                                response.setDirectManagerName(line.getManager().getStaffName());
-                        });
+                                .ifPresent(line -> {
+                                        response.setDirectManagerId(line.getManager().getId());
+                                        response.setDirectManagerName(line.getManager().getStaffName());
+                                });
                 return response;
         }
 }

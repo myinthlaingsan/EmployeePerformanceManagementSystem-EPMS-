@@ -30,70 +30,78 @@ const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
   };
 
   return (
-    <div className="relative overflow-hidden bg-white rounded-[1.5rem] p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 group animate-fade-in" style={{ animationDelay: `${idx * 100}ms` }}>
-      {/* Background Progress Number */}
-      <div className="absolute top-4 right-8 text-[5rem] font-black text-blue-50 pointer-events-none select-none leading-none z-0">
-        {progress}%
+    <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex gap-2 mb-4">
+        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${getCategoryStyles(kpi.categoryName)}`}>
+          {kpi.categoryName || 'Strategic'}
+        </span>
+        <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 flex items-center gap-1">
+          <Award className="w-3 h-3" /> {kpi.weightPercent}% Weight
+        </span>
       </div>
 
-      <div className="relative z-10">
-        <div className="flex gap-3 mb-6">
-          <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-md ${getCategoryStyles(kpi.categoryName)}`}>
-            {kpi.categoryName || 'Strategic'}
-          </span>
-          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
-            <Award className="w-3 h-3" /> {kpi.weightPercent}% Weight
-          </span>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex-1 space-y-3">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">
+              {kpi.title}
+            </h3>
+            <p className="text-sm text-gray-500 mt-1 max-w-2xl">
+              {kpi.description || 'Implement proactive engagement strategies to optimize results and achieve targets.'}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6 pt-2">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Target</p>
+              <p className="text-sm font-bold text-gray-900">{kpi.targetValue}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Actual</p>
+              <p className="text-sm font-bold text-blue-600">{kpi.currentProgress}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Score</p>
+              <p className="text-sm font-bold text-emerald-600">{kpi.scorePercent ? `${kpi.scorePercent.toFixed(1)}%` : '-'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Weighted</p>
+              <p className="text-sm font-bold text-emerald-600">{kpi.weightedScore ? kpi.weightedScore.toFixed(2) : '-'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Unit</p>
+              <p className="text-sm font-bold text-gray-600">{kpi.unit || '-'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Status</p>
+              <div className="flex items-center text-xs font-bold text-gray-700">
+                <span className={`w-2 h-2 rounded-full mr-1.5 ${statusDisplay.color}`}></span>
+                {statusDisplay.label}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-          <div className="flex-1 space-y-5">
-            <div className="space-y-2">
-              <h3 className="text-xl font-black text-slate-900 leading-tight group-hover:text-blue-600 transition-colors">
-                {kpi.title}
-              </h3>
-              <p className="text-sm text-slate-400 font-medium leading-relaxed max-w-xl">
-                {kpi.description || 'Implement proactive engagement strategies to optimize results and achieve targets.'}
-              </p>
+        <div className="flex flex-col gap-4 min-w-[200px]">
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs font-bold text-gray-700">
+              <span>Progress</span>
+              <span>{progress}%</span>
             </div>
-
-            <div className="flex flex-wrap items-center gap-x-10 gap-y-4 pt-2">
-              <div className="space-y-1">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Target Value</p>
-                <p className="text-sm font-black text-slate-900">{kpi.targetValue} {kpi.unit}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Actual Value</p>
-                <p className="text-sm font-black text-blue-600">{kpi.currentProgress} {kpi.unit}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Status</p>
-                <div className="flex items-center text-[11px] font-bold text-slate-600">
-                  <span className={`w-2 h-2 rounded-full mr-2 ${statusDisplay.color}`}></span>
-                  {statusDisplay.label}
-                </div>
-              </div>
+            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-500 ${kpi.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+                style={{ width: `${progress}%` }}
+              ></div>
             </div>
           </div>
-
-          <div className="flex flex-col gap-5 min-w-[220px]">
-            <div className="space-y-2">
-              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all duration-1000 ease-out ${kpi.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-blue-600'}`} 
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
-            </div>
-            <button 
-              onClick={() => onUpdate(kpi)}
-              className="w-full py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-900 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2.5 group/btn border border-transparent hover:border-slate-200 shadow-sm"
-            >
-              {progress === 0 ? <Play className="w-3 h-3 fill-slate-900" /> : <TrendingUp className="w-4 h-4" />}
-              {progress === 0 ? 'Start Goal' : 'Update Progress'}
-              <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
-            </button>
-          </div>
+          <button 
+            onClick={() => onUpdate(kpi)}
+            className="w-full py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
+          >
+            {progress === 0 ? <Play className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+            {progress === 0 ? 'Start Goal' : 'Update Progress'}
+          </button>
         </div>
       </div>
     </div>
