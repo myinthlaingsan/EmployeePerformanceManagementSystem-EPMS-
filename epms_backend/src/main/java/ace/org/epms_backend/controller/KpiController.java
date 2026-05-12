@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -39,6 +41,19 @@ public class KpiController {
     @GetMapping("/library")
     public ResponseEntity<ApiResponse<List<KpiLibraryResponse>>> getAllLibraries() {
         return ResponseEntity.ok(ApiResponse.success(libraryService.getAllActiveLibraries()));
+    }
+
+    @PostMapping("/library/import")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<KpiImportResult>> importLibraries(
+            @RequestParam("file") MultipartFile file) throws IOException {
+        
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.toLowerCase().endsWith(".xlsx")) {
+            throw new IllegalArgumentException("Invalid file format. Only .xlsx files are supported.");
+        }
+        
+        return ResponseEntity.ok(ApiResponse.success(libraryService.importLibraries(file)));
     }
 
     @PatchMapping("/library/{id}/status")
