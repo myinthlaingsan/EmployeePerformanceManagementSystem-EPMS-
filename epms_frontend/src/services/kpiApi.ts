@@ -3,6 +3,7 @@ import type { ApiResponse } from './ApiResponse';
 import type {
   KpiLibraryRequest,
   KpiLibraryResponse,
+  KpiImportResult,
   KpiCategory,
   GoalAssignmentRequest,
   GoalSetResponse,
@@ -52,6 +53,15 @@ export const kpiApi = api.injectEndpoints({
     createLibrary: builder.mutation<ApiResponse<KpiLibraryResponse>, KpiLibraryRequest>({
       query: (body) => ({
         url: '/kpi/library',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Library'],
+    }),
+
+    importLibraries: builder.mutation<ApiResponse<KpiImportResult>, FormData>({
+      query: (body) => ({
+        url: '/kpi/library/import',
         method: 'POST',
         body,
       }),
@@ -262,6 +272,7 @@ export const {
   useBulkUpdateGoalItemsMutation,
   useApproveGoalSetMutation,
   useRevertGoalSetMutation,
+  useImportLibrariesMutation,
   useUpdateProgressMutation,
   useReviseKpiMutation,
   useCalculateScoreMutation,
