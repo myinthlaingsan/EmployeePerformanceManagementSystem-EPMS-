@@ -53,4 +53,8 @@ public class FeedbackRequest extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private FeedbackStatus status = FeedbackStatus.PENDING;
+
+    // Snapshot of limits at the time of generation
+    private Integer peerLimitSnapshot;
+    private Integer subordinateLimitSnapshot;
 }

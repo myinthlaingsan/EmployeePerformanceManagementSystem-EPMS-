@@ -55,12 +55,12 @@ public class KpiServiceImpl implements KpiService {
 
         @Override
         public AppraisalCycleResponse getActiveCycle() {
-                AppraisalCycle cycle = cycleRepository.findByIsActiveTrue().stream().findFirst()
-                                .orElseThrow(() -> new NotFoundException("No active appraisal cycle found"));
-                return AppraisalCycleResponse.builder()
-                                .cycleId(cycle.getCycleId())
-                                .cycleName(cycle.getCycleName())
-                                .build();
+                return cycleRepository.findByIsActiveTrue().stream().findFirst()
+                                .map(cycle -> AppraisalCycleResponse.builder()
+                                                .cycleId(cycle.getCycleId())
+                                                .cycleName(cycle.getCycleName())
+                                                .build())
+                                .orElse(null);
         }
 
         @Override

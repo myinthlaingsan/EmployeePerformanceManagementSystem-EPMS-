@@ -65,7 +65,8 @@ public class EvaluatorRotationServiceImpl implements EvaluatorRotationService {
         List<Employee> pool = getTopManagementPool();
 
         if (pool.isEmpty()) {
-            throw new RuntimeException("No Top Management evaluators (L01-L03) found in the system.");
+            log.warn("No Top Management evaluators (L01-L03) found. Skipping rotation rule for target [{}].", targetEmployeeId);
+            return null;
         }
 
         // 2. Get evaluators who already evaluated this target in the PREVIOUS cycle

@@ -12,4 +12,8 @@ public interface AppraisalCycleRepository extends JpaRepository<AppraisalCycle, 
     List<AppraisalCycle> findByEndDateAndIsActiveTrue(LocalDate endDate);
 
     List<AppraisalCycle> findAllByOrderByEndDateDesc();
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE AppraisalCycle c SET c.status = :status WHERE c.cycleId = :id")
+    void updateStatus(Long id, ace.org.epms_backend.enums.CycleStatus status);
 }

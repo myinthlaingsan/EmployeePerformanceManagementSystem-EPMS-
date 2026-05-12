@@ -86,6 +86,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                             .questionText(q.getQuestionText())
                             .questionType(q.getQuestionType() != null ? q.getQuestionType().name() : null)
                             .isRequired(q.getIsRequired())
+                            .requiresComment(q.getRequiresComment())
                             .build())
                     .toList();
 

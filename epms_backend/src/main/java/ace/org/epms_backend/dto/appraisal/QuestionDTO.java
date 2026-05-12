@@ -14,4 +14,5 @@ public class QuestionDTO {
     private String questionText;
     private String questionType;
     private Boolean isRequired;
+    private Boolean requiresComment;
 }

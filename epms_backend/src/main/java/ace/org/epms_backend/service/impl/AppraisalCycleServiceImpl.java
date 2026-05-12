@@ -43,6 +43,9 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         }
 
         AppraisalCycle cycle = appraisalCycleMapper.toEntity(request);
+        if (cycle.getStatus() == null) {
+            cycle.setStatus(CycleStatus.PLANNING);
+        }
         cycle = appraisalCycleRepository.save(cycle);
 
         // Save Scoring Weights
@@ -71,6 +74,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     @Override
     public List<AppraisalCycleResponse> getAll() {
         List<AppraisalCycle> cycles = appraisalCycleRepository.findAll();
+        System.out.println("DEBUG: Found " + cycles.size() + " cycles in database.");//debug 
         return cycles.stream().map(cycle -> {
             AppraisalCycleResponse resp = appraisalCycleMapper.toResponse(cycle);
             scoringWeightRepository.findByCycle_CycleId(cycle.getCycleId())
@@ -225,7 +229,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         return appraisalCycleRepository.findByIsActiveTrue().stream()
                 .findFirst()
                 .map(appraisalCycleMapper::toResponse)
-                .orElseThrow(() -> new ResourceNotFoundException("No active appraisal cycle found"));
+                .orElse(null);
     }
 
     private AppraisalCycle getCycleById(Long id) {

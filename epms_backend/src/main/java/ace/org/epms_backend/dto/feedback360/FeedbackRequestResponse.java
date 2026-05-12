@@ -21,9 +21,11 @@ public class FeedbackRequestResponse {
     private FeedbackRelationship relationship;
     private FeedbackStatus status;
     private String targetDepartmentName;
+    private String targetLevelCode;
     private String evaluatorDepartmentName;
+    private String evaluatorLevelCode;
     private Boolean isAnonymous;
-
     private Boolean isReciprocalFallback;
     private Long formTemplateId;
+    private Long formId;
 }

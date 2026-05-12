@@ -31,6 +31,6 @@ public class Question extends BaseEntity {
     private QuestionType questionType;
 
     private Boolean isRequired;
-
+    private Boolean requiresComment = false;
     private Boolean isActive = true;
 }

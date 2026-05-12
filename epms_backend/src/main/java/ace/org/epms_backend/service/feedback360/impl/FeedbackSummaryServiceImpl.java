@@ -79,7 +79,7 @@ public class FeedbackSummaryServiceImpl implements FeedbackSummaryService {
         if (feedbacks == null || feedbacks.isEmpty()) return BigDecimal.ZERO;
         
         BigDecimal total = feedbacks.stream()
-                .map(Feedback::getAverageScore)
+                .map(f -> f.getAverageScore() != null ? f.getAverageScore() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         return total.divide(BigDecimal.valueOf(feedbacks.size()), 2, RoundingMode.HALF_UP);
@@ -88,9 +88,15 @@ public class FeedbackSummaryServiceImpl implements FeedbackSummaryService {
     @Override
     @Transactional
     public void generateAllSummaries(Long cycleId) {
-        List<Employee> employees = employeeRepository.findAll();
-        for (Employee e : employees) {
-            generateSummary(e.getId(), cycleId);
+        // Only generate summaries for employees who actually have feedback requests in this cycle
+        List<Employee> participants = feedbackRepository.findParticipantsByCycleId(cycleId);
+        for (Employee e : participants) {
+            try {
+                generateSummary(e.getId(), cycleId);
+            } catch (Exception ex) {
+                // Log and continue to avoid failing the whole process
+                System.err.println("Failed to generate summary for employee " + e.getId() + ": " + ex.getMessage());
+            }
         }
     }
 

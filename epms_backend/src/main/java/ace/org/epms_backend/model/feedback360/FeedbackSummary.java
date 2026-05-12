@@ -27,8 +27,8 @@ public class FeedbackSummary extends BaseEntity {
     @JoinColumn(name = "employee_id")
     private Employee employee;
 
-    @ManyToOne
-    @JoinColumn(name = "cycle_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cycle_id", nullable = false)
     private AppraisalCycle cycle;
 
     private BigDecimal managerScore;

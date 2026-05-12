@@ -48,12 +48,12 @@ public class AppraisalCycleController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @PutMapping("/{id}/activate")
+    @PostMapping("/{id}/activate")
     public ResponseEntity<ApiResponse<AppraisalCycleResponse>> activate(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.activate(id)));
     }
 
-    @PutMapping("/{id}/close")
+    @PostMapping("/{id}/close")
     public ResponseEntity<ApiResponse<AppraisalCycleResponse>> close(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.close(id)));
     }

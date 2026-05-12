@@ -15,9 +15,11 @@ import java.util.List;
 public interface FeedbackRequestRepository extends JpaRepository<FeedbackRequest, Long> {
     List<FeedbackRequest> findByEvaluatorIdAndStatus(Long evaluatorId, FeedbackStatus status);
     boolean existsByTargetUserIdAndEvaluatorIdAndCycleCycleId(Long targetUserId, Long evaluatorId, Long cycleId);
+    java.util.Optional<FeedbackRequest> findByTargetUserIdAndEvaluatorIdAndCycleCycleId(Long targetUserId, Long evaluatorId, Long cycleId);
     List<FeedbackRequest> findByTargetUserIdAndCycleCycleId(Long targetUserId, Long cycleId);
     List<FeedbackRequest> findByCycleCycleId(Long cycleId);
     void deleteByTargetUserIdAndCycleCycleIdAndStatus(Long targetUserId, Long cycleId, FeedbackStatus status);
+    void deleteByCycleCycleIdAndStatus(Long cycleId, FeedbackStatus status);
 
     // --- Evaluator Rotation Rule Queries ---
 

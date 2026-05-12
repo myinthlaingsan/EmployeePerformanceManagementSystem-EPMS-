@@ -83,6 +83,16 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                             .build());
                 }
             }
+
+            if (feedback.getOverallComment() != null && !feedback.getOverallComment().isBlank()) {
+                detailedComments.add(DetailedComment.builder()
+                        .categoryName("Overall Summary")
+                        .evaluatorRole(relationship.name())
+                        .evaluatorName(evaluatorName)
+                        .comment(feedback.getOverallComment())
+                        .score(0)
+                        .build());
+            }
         }
 
         double totalAverageScore = totalOthersQuestions > 0

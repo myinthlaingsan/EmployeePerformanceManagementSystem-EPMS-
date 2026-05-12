@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "appraisal_cycles")
+@Table(name = "appraisal_cycle")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -39,6 +39,7 @@ public class AppraisalCycle extends BaseEntity {
     private String evaluationPeriod;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private CycleStatus status;
 
     @OneToMany(mappedBy = "cycle", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

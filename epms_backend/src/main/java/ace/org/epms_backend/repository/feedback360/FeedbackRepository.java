@@ -12,4 +12,7 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     Optional<Feedback> findByRequestId(Long requestId);
     List<Feedback> findByRequestEvaluatorId(Long evaluatorId);
     List<Feedback> findByRequestTargetUserIdAndRequestCycleCycleId(Long targetUserId, Long cycleId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT f.request.targetUser FROM Feedback f WHERE f.request.cycle.cycleId = :cycleId")
+    List<ace.org.epms_backend.model.employee.Employee> findParticipantsByCycleId(Long cycleId);
 }
