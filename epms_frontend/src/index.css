@@ -5,8 +5,8 @@
   --dark-mode: class;
 
   /* Brand Design System - Tonal Architecture */
-  --color-brand-primary: #0f172a;
-  --color-brand-secondary: #334155;
+  --color-brand-primary: #4f46e5;
+  --color-brand-secondary: #0f172a;
   
   --color-text-title: #0f172a;
   --color-text-body: #334155;
@@ -22,18 +22,29 @@
 /* Or explicitly specify the selector */
 @custom-variant dark (&:where(.dark, .dark *));
 
+@layer utilities {
+  .glass-morphism {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+}
+
 /* Global Smooth Scrolling */
 html {
   scroll-behavior: smooth;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.5s ease forwards;
+.animate-in {
+  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Premium Component Styling */
+input[type="range"]::-webkit-slider-thumb {
+  @apply appearance-none w-6 h-6 bg-indigo-600 rounded-full shadow-lg border-4 border-white cursor-pointer transition-transform hover:scale-125;
 }
 
 /* Custom Scrollbar for better UI */

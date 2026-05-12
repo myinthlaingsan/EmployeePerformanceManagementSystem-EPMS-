@@ -174,67 +174,42 @@ const Sidebar = () => {
             )}
           </div>
 
-          {/* 360 Feedback Accordion */}
-          <div>
-            <button
-              onClick={() => setFeedbackOpen(!feedbackOpen)}
-              className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <Users className="w-5 h-5" strokeWidth={2} />
-                360 Feedback
-              </div>
-              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${feedbackOpen ? 'rotate-180' : ''}`} />
-            </button>
+          {/* 360 Feedback Section */}
+          <NavLink
+            to="/feedback360"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${isActive ? activeClass : inactiveClass
+              }`
+            }
+          >
+            <Users className="w-5 h-5" strokeWidth={2} />
+            My 360 Reviews
+          </NavLink>
 
-            {feedbackOpen && (
-              <div className="bg-gray-50/50 py-1">
-                <NavLink
-                  to="/360-feedback"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                  }
-                >
-                  Dashboard
-                </NavLink>
-                <NavLink
-                  to="/360-feedback/my-summary"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                  }
-                >
-                  My Feedback
-                </NavLink>
-                <NavLink
-                  to="/360-feedback"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                  }
-                >
-                  Assignments
-                </NavLink>
-                <NavLink
-                  to="/360-feedback/analytics"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                  }
-                >
-                  Reports
-                </NavLink>
-                
-                {(isAdmin || isHR) && (
-                  <NavLink
-                    to="/360-feedback/admin"
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                    }
-                  >
-                    Admin Panel
-                  </NavLink>
-                )}
-              </div>
-            )}
-          </div>
+          {(isAdmin || isHR) && (
+            <>
+              <NavLink
+                to="/feedback360/manage"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${isActive ? activeClass : inactiveClass
+                  }`
+                }
+              >
+                <Target className="w-5 h-5" strokeWidth={2} />
+                360 Management
+              </NavLink>
+              <NavLink
+                to="/feedback360/results"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${isActive ? activeClass : inactiveClass
+                  }`
+                }
+              >
+                <BarChart3 className="w-5 h-5" strokeWidth={2} />
+                Cycle Results
+              </NavLink>
+            </>
+          )}
 
           {/* Management Accordion */}
           {(isAdmin || isHR) && (

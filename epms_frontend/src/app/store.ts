@@ -3,6 +3,7 @@ import authReducer from "../features/auth/authSlice";
 import notificationReducer from "../features/notification/notificationSlice";
 // import themeReducer from "../features/theme/themeSlice"
 import { api } from "../services/api";
+
 export const store = configureStore({
     reducer: {
         auth: authReducer,

@@ -1,104 +1,88 @@
 import { api } from '../../services/api';
-import type { ApiResponse } from '../../services/ApiResponse';
 import type {
   FeedbackRequestResponse,
   FullFormResponse,
   FeedbackSubmissionRequest,
   FeedbackSummaryResponse,
-  FeedbackPreviewItem,
-  DepartmentFeedbackConfigDTO,
+  EvaluatorAssignmentDTO,
+  GenerationValidationResponse,
 } from './feedback360Types';
 
+// Helper: unwrap the standard { data: ... } ApiResponse wrapper
 const transformResponse = (response: any) => response.data;
 
 export const feedback360Api = api.injectEndpoints({
   endpoints: (builder) => ({
 
-    // ── EMPLOYEE: My Pending Tasks ─────────────────────────────────────────
-    getFeedbackTasks: builder.query<FeedbackRequestResponse[], void>({
+    // ── EVALUATOR ENDPOINTS ────────────────────────────────────────────────────
+
+    // Step 4 in lifecycle: Get the logged-in user's pending feedback tasks
+    getMyFeedbackRequests: builder.query<FeedbackRequestResponse[], void>({
       query: () => '/feedback/my-requests',
       transformResponse,
-      providesTags: ['FeedbackRequest'],
+      providesTags: ['Feedback'],
     }),
 
-    getFeedbackRequest: builder.query<FeedbackRequestResponse, string | number>({
-      query: (id) => `/feedback/requests/${id}`,
+    // Step 5 in lifecycle: Get the form (questions) for a specific request
+    getFeedbackForm: builder.query<FullFormResponse, number>({
+      query: (requestId) => `/feedback/request/${requestId}/questions`,
       transformResponse,
-      providesTags: (result, error, id) => [{ type: 'FeedbackRequest', id }],
+      providesTags: (_res, _err, requestId) => [{ type: 'Feedback', id: requestId }],
     }),
 
-    // ── EMPLOYEE: Get Questions for a specific request ────────────────────
-    getFeedbackQuestions: builder.query<FullFormResponse, number>({
-      query: (requestId) => `/360-feedback/feedbacks/request/${requestId}/questions`,
-      transformResponse,
-    }),
-
-    // ── EMPLOYEE: Submit feedback ─────────────────────────────────────────
+    // Step 6 in lifecycle: Submit completed feedback form
     submitFeedback: builder.mutation<void, FeedbackSubmissionRequest>({
       query: (body) => ({
         url: '/feedback/submit',
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['FeedbackRequest', 'FeedbackSubmission'],
+      invalidatesTags: ['Feedback'],
     }),
 
-    // ── EMPLOYEE: My feedback summary (self view) ─────────────────────────
-    getMyFeedbackSummary: builder.query<FeedbackSummaryResponse, { targetUserId: number; cycleId: number }>({
+    // View a completed feedback summary for a target employee
+    getFeedbackSummary: builder.query<FeedbackSummaryResponse, { targetUserId: number; cycleId: number }>({
       query: ({ targetUserId, cycleId }) => `/feedback/summary/${targetUserId}/${cycleId}`,
       transformResponse,
       providesTags: ['FeedbackSummary'],
     }),
 
-    // ── EMPLOYEE: My submitted feedbacks ─────────────────────────────────
-    getMySubmittedFeedbacks: builder.query<any[], number>({
-      query: (evaluatorId) => `/360-feedback/feedbacks/my?evaluatorId=${evaluatorId}`,
-      transformResponse,
-      providesTags: ['FeedbackSubmission'],
-    }),
+    // ── HR / ADMIN ENDPOINTS ───────────────────────────────────────────────────
 
-    // ── MANAGER/HR: Feedbacks received by employee ────────────────────────
-    getFeedbacksReceivedByEmployee: builder.query<any[], { employeeId: number; cycleId: number }>({
-      query: ({ employeeId, cycleId }) =>
-        `/360-feedback/feedbacks/employee/${employeeId}?cycleId=${cycleId}`,
-      transformResponse,
-      providesTags: ['FeedbackSubmission'],
-    }),
-
-    // ── HR: Preview requests before generating ────────────────────────────
-    previewFeedbackRequests: builder.query<FeedbackPreviewItem[], {
+    // Preview requests before saving (dry-run)
+    previewFeedbackRequests: builder.query<FeedbackRequestResponse[], {
       cycleId: number;
-      previousCycleId?: number | null;
+      previousCycleId?: number;
       globalMaxLimit?: number;
       excludeLongTermLeave?: boolean;
     }>({
       query: ({ cycleId, previousCycleId, globalMaxLimit = 7, excludeLongTermLeave = true }) => ({
-        url: `/feedback/preview`,
+        url: '/feedback/preview',
         params: { cycleId, previousCycleId, globalMaxLimit, excludeLongTermLeave },
       }),
       transformResponse,
     }),
 
-    // ── HR: Generate all requests ─────────────────────────────────────────
+    // Generate and save all feedback requests for a cycle
     generateFeedbackRequests: builder.mutation<void, {
       cycleId: number;
-      previousCycleId?: number | null;
+      previousCycleId?: number;
       globalMaxLimit?: number;
       excludeLongTermLeave?: boolean;
     }>({
-      query: (params) => ({
+      query: ({ cycleId, previousCycleId, globalMaxLimit = 7, excludeLongTermLeave = true }) => ({
         url: '/feedback/generate',
         method: 'POST',
-        params,
+        params: { cycleId, previousCycleId, globalMaxLimit, excludeLongTermLeave },
       }),
-      invalidatesTags: ['FeedbackRequest'],
+      invalidatesTags: ['Feedback', 'Cycle'],
     }),
 
-    // ── HR: Regenerate for one employee ──────────────────────────────────
-    regenerateForEmployee: builder.mutation<void, {
+    // Regenerate for a single employee
+    regenerateEmployeeFeedback: builder.mutation<void, {
       targetEmployeeId: number;
       cycleId: number;
-      previousCycleId?: number | null;
+      previousCycleId?: number;
       globalMaxLimit?: number;
     }>({
       query: (params) => ({
@@ -106,31 +90,27 @@ export const feedback360Api = api.injectEndpoints({
         method: 'POST',
         params,
       }),
-      invalidatesTags: ['FeedbackRequest'],
+      invalidatesTags: ['Feedback'],
     }),
 
-    // ── HR: Summary management ─────────────────────────────────────────────
-    generateSummaryForEmployee: builder.mutation<void, { employeeId: number; cycleId: number }>({
-      query: ({ employeeId, cycleId }) => ({
-        url: `/360-feedback/summary/generate`,
-        method: 'POST',
-        params: { employeeId, cycleId },
-      }),
-      invalidatesTags: ['FeedbackSummary'],
-    }),
+    // Generate all FeedbackSummary records for a cycle
     generateAllSummaries: builder.mutation<void, number>({
       query: (cycleId) => ({
-        url: `/360-feedback/summary/generate-all`,
+        url: '/360-feedback/summary/generate-all',
         method: 'POST',
         params: { cycleId },
       }),
       invalidatesTags: ['FeedbackSummary'],
     }),
+
+    // Get all summaries for a cycle (HR list view)
     getSummariesByCycle: builder.query<FeedbackSummaryResponse[], number>({
       query: (cycleId) => `/360-feedback/summary/cycle/${cycleId}`,
       transformResponse,
       providesTags: ['FeedbackSummary'],
     }),
+
+    // Finalize a summary (lock it)
     finalizeSummary: builder.mutation<void, number>({
       query: (summaryId) => ({
         url: `/360-feedback/summary/${summaryId}/finalize`,
@@ -139,49 +119,77 @@ export const feedback360Api = api.injectEndpoints({
       invalidatesTags: ['FeedbackSummary'],
     }),
 
-    // ── HR: Department Config ─────────────────────────────────────────────
-    getFeedbackConfigs: builder.query<DepartmentFeedbackConfigDTO[], void>({
-      query: () => '/feedback/config',
-      transformResponse,
-      providesTags: ['FeedbackConfig'],
-    }),
-    setFeedbackLimit: builder.mutation<DepartmentFeedbackConfigDTO, {
-      deptId: number; levelId: number; maxPeers: number; maxSubs: number;
+    // Rotation Preview (Top Management → L04)
+    previewRotationAssignments: builder.query<EvaluatorAssignmentDTO[], {
+      currentCycleId: number;
+      previousCycleId?: number;
     }>({
-      query: (params) => ({
-        url: '/feedback/config/set-limit',
-        method: 'POST',
-        params,
+      query: ({ currentCycleId, previousCycleId }) => ({
+        url: '/feedback/rotation/preview',
+        params: { currentCycleId, previousCycleId },
       }),
-      invalidatesTags: ['FeedbackConfig'],
+      transformResponse,
     }),
-    updateFeedbackConfig: builder.mutation<any, any>({
-      query: (body) => ({
-        url: '/api/v1/feedback/configs',
+
+    // Finalize the evaluator population for a cycle (moves status to FINALIZED)
+    finalizeEvaluators: builder.mutation<void, number>({
+      query: (cycleId) => ({
+        url: '/feedback/finalize-evaluators',
         method: 'POST',
-        body
+        params: { cycleId },
       }),
-      invalidatesTags: ['FeedbackConfig']
-    })
+      invalidatesTags: ['Cycle'],
+    }),
+
+    resetCycleStatus: builder.mutation<void, number>({
+      query: (cycleId) => ({
+        url: '/feedback/reset-status',
+        method: 'POST',
+        params: { cycleId },
+      }),
+      invalidatesTags: ['Cycle', 'Feedback'],
+    }),
+
+    validateGeneration: builder.query<GenerationValidationResponse, { cycleId: number; excludeLongTermLeave?: boolean }>({
+      query: ({ cycleId, excludeLongTermLeave = true }) => ({
+        url: `/feedback/validate-generation/${cycleId}`,
+        params: { excludeLongTermLeave },
+      }),
+    }),
+
+    // Form Builder Endpoints
+    getFeedbackFormByCycle: builder.query<FullFormResponse, number>({
+      query: (cycleId) => `/feedback/form/cycle/${cycleId}`,
+      transformResponse,
+      providesTags: (_res, _err, cycleId) => [{ type: 'Cycle', id: cycleId }],
+    }),
+
+    saveFeedbackForm: builder.mutation<number, { cycleId: number; body: any }>({
+      query: ({ cycleId, body }) => ({
+        url: `/feedback/form/cycle/${cycleId}`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_res, _err, { cycleId }) => [{ type: 'Cycle', id: cycleId }],
+    }),
   }),
 });
 
 export const {
-  useGetFeedbackTasksQuery,
-  useGetFeedbackRequestQuery,
-  useGetFeedbackQuestionsQuery,
+  useGetMyFeedbackRequestsQuery,
+  useGetFeedbackFormQuery,
   useSubmitFeedbackMutation,
-  useGetMyFeedbackSummaryQuery,
-  useGetMySubmittedFeedbacksQuery,
-  useGetFeedbacksReceivedByEmployeeQuery,
-  useLazyPreviewFeedbackRequestsQuery,
+  useGetFeedbackSummaryQuery,
+  usePreviewFeedbackRequestsQuery,
   useGenerateFeedbackRequestsMutation,
-  useRegenerateForEmployeeMutation,
-  useGenerateSummaryForEmployeeMutation,
+  useRegenerateEmployeeFeedbackMutation,
   useGenerateAllSummariesMutation,
   useGetSummariesByCycleQuery,
   useFinalizeSummaryMutation,
-  useGetFeedbackConfigsQuery,
-  useSetFeedbackLimitMutation,
-  useUpdateFeedbackConfigMutation
+  usePreviewRotationAssignmentsQuery,
+  useFinalizeEvaluatorsMutation,
+  useResetCycleStatusMutation,
+  useValidateGenerationQuery,
+  useGetFeedbackFormByCycleQuery,
+  useSaveFeedbackFormMutation,
 } = feedback360Api;

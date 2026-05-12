@@ -1,49 +1,50 @@
-export type FeedbackRelationship = 'SELF' | 'MANAGER' | 'PEER' | 'SUBORDINATE' | 'SUPERIOR';
-export type FeedbackStatus = 'PENDING' | 'SUBMITTED' | 'DECLINED';
-export type FormType = 'SELF_ASSESSMENT' | 'MANAGER_EVALUATION' | 'FEEDBACK';
+// ─── Request / Response shapes that mirror the backend DTOs ───────────────────
+
+export type FeedbackRelationship = 'SELF' | 'MANAGER' | 'SUPERIOR' | 'PEER' | 'SUBORDINATE';
+export type FeedbackStatus = 'PENDING' | 'COMPLETED' | 'DECLINED';
 
 // GET /api/v1/feedback/my-requests
 export interface FeedbackRequestResponse {
   id: number;
   targetUserId: number;
   targetUserName: string;
+  targetDepartmentName: string;
+  targetLevelCode?: string;
   evaluatorId: number;
   evaluatorName: string;
-  cycleId: number;
+  evaluatorDepartmentName?: string;
+  evaluatorLevelCode?: string;
   relationship: FeedbackRelationship;
   status: FeedbackStatus;
-  targetDepartmentName: string;
-  evaluatorDepartmentName: string;
   isAnonymous: boolean;
-  isReciprocalFallback: boolean;
-  formTemplateId?: string | number;
+  cycleId: number;
+  formId?: number;
 }
 
-// GET /api/v1/360-feedback/feedbacks/request/{requestId}/questions
-export interface QuestionDTO {
+// GET /api/v1/360-feedback/feedbacks/request/{id}/questions
+export interface FormField {
   questionId: number;
   questionText: string;
-  questionType: 'RATING' | 'TEXT' | 'NUMBER';
-  isRequired: boolean;
+  questionType: string;
+  categoryName?: string;
 }
 
 export interface CategoryDTO {
   categoryId: number;
   categoryName: string;
-  questions: QuestionDTO[];
+  questions: FormField[];
 }
 
 export interface FullFormResponse {
   formId: number;
   formName: string;
-  formType: FormType;
   categories: CategoryDTO[];
 }
 
-// POST /api/v1/feedback/submit
+// POST /api/v1/feedback/submit — Request body
 export interface FeedbackResponseRequest {
   questionId: number;
-  score: number;           // rating value
+  score: number;       // 1–5
   comment?: string;
 }
 
@@ -56,54 +57,61 @@ export interface FeedbackSubmissionRequest {
 // GET /api/v1/feedback/summary/{targetUserId}/{cycleId}
 export interface CategoryScore {
   categoryName: string;
-  averageScore: number;
+  averageScore: number;  // 0–100
 }
 
 export interface DetailedComment {
   categoryName: string;
-  evaluatorRole: string;   // e.g. "PEER", masked
-  evaluatorName: string;   // "Anonymous Peer 1"
+  evaluatorRole: string;
+  evaluatorName: string;
   comment: string;
   score: number;
 }
 
 export interface FeedbackSummaryResponse {
-  summaryId: number;
+  summaryId?: number;
   targetUserId: number;
   targetUserName: string;
   cycleName: string;
   selfScores: CategoryScore[];
-  scores: CategoryScore[];           // All evaluator average scores
+  scores: CategoryScore[];       // Others (Mgr, Peer, Sub) aggregate
   detailedComments: DetailedComment[];
   totalAverageScore: number;
-  totalEvaluators: number;
   isFinalized: boolean;
 }
 
-// HR: Preview request structure
-export interface FeedbackPreviewItem {
-  id: number;
-  targetUserId: number;
-  targetUserName: string;
-  targetDepartmentName: string;
+// HR — Evaluator Assignment Preview
+export interface EvaluatorAssignmentDTO {
+  targetEmployeeId: number;
+  targetEmployeeName: string;
+  targetLevelCode: string;
   evaluatorId: number;
   evaluatorName: string;
-  evaluatorDepartmentName: string;
-  relationship: FeedbackRelationship;
-  status: FeedbackStatus;
-  isAnonymous: boolean;
-  isReciprocalFallback: boolean;
+  evaluatorLevelCode: string;
+  cycleId: number;
+  cycleName: string;
+  roundRobinFallback: boolean;
 }
 
-// HR: Department Config
-export interface DepartmentFeedbackConfigDTO {
-  departmentId: number;
-  departmentName?: string;
-  levelId: number;
-  levelName?: string;
-  minPeers: number;
-  maxPeers: number;
-  minSubordinates: number;
-  maxSubordinates: number;
-  allowCrossDepartment: boolean;
+export interface GenerationValidationResponse {
+  isValid: boolean;
+  warnings: string[];
+  errors: string[];
+}
+
+export interface QuestionPayload {
+  questionText: string;
+  questionType: 'RATING' | 'TEXT' | 'YESNO';
+  isRequired: boolean;
+  requiresComment?: boolean;
+}
+
+export interface CategoryPayload {
+  categoryName: string;
+  questions: QuestionPayload[];
+}
+
+export interface FeedbackFormCreationRequest {
+  formName: string;
+  categories: CategoryPayload[];
 }

@@ -24,12 +24,15 @@ export interface AppraisalForm {
 }
 
 export interface AppraisalCycle {
+  id: number;
+  name: string;
   cycleId: number;
   cycleName: string;
   startDate: string;
   endDate: string;
   evaluationPeriod: string;
   status: string;
+  isActive?: boolean;
 }
 
 export interface CycleRequest {
@@ -53,15 +56,21 @@ export const appraisalApi = api.injectEndpoints({
     getCycles: builder.query<AppraisalCycle[], void>({
       query: () => '/appraisal-cycles',
       transformResponse: (response: any) => {
-        const data = response.data || response;
-        if (Array.isArray(data)) {
-          return data.map((c: any) => ({
-            ...c,
-            id: c.cycleId || c.id,
-            name: c.cycleName || c.name
-          }));
+        let rawData = [];
+        if (response && response.data) {
+          rawData = response.data;
+        } else if (Array.isArray(response)) {
+          rawData = response;
         }
-        return data;
+
+        if (!Array.isArray(rawData)) return [];
+
+        return rawData.map((c: any) => ({
+          ...c,
+          id: c.cycleId || c.id,
+          name: c.cycleName || c.name || `Cycle ${c.cycleId || c.id}`,
+          isActive: c.isActive || c.status === 'ACTIVE'
+        }));
       },
       providesTags: ['Cycle'],
     }),
@@ -69,15 +78,13 @@ export const appraisalApi = api.injectEndpoints({
     getActiveCycle: builder.query<AppraisalCycle, void>({
       query: () => '/appraisal-cycles/active',
       transformResponse: (response: any) => {
-        const data = response.data || response;
-        if (data && typeof data === 'object') {
-          return {
-            ...data,
-            id: data.cycleId || data.id,
-            name: data.cycleName || data.name
-          };
-        }
-        return data;
+        const data = response && response.data ? response.data : response;
+        if (!data) return null;
+        return {
+          ...data,
+          id: data.cycleId || data.id,
+          name: data.cycleName || data.name
+        };
       },
       providesTags: ['Cycle'],
     }),
@@ -99,10 +106,30 @@ export const appraisalApi = api.injectEndpoints({
       transformResponse,
       invalidatesTags: ['Cycle'],
     }),
+    activateCycle: builder.mutation<AppraisalCycle, string | number>({
+      query: (id) => ({
+        url: `/appraisal-cycles/${id}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Cycle'],
+    }),
+    deactivateCycle: builder.mutation<AppraisalCycle, string | number>({
+      query: (id) => ({
+        url: `/appraisal-cycles/${id}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Cycle'],
+    }),
+    deleteAppraisalCycle: builder.mutation<void, string | number>({
+      query: (id) => ({
+        url: `/appraisal-cycles/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Cycle'],
+    }),
 
     getAppraisalForm: builder.query<AppraisalForm, string>({
       query: (id) => `/appraisal-forms/${id}`,
-      transformResponse,
       transformResponse: (response: any) => response.data || response,
       providesTags: ['Form'],
     }),
@@ -110,7 +137,6 @@ export const appraisalApi = api.injectEndpoints({
     // Appraisal Forms
     getAppraisalForms: builder.query<AppraisalForm[], void>({
       query: () => '/appraisal-forms',
-      transformResponse,
       transformResponse: (response: { data: AppraisalForm[] }) => response.data,
       providesTags: ['Form'],
     }),
@@ -265,6 +291,9 @@ export const {
   useGetActiveCycleQuery,
   useCreateCycleMutation,
   useUpdateCycleMutation,
+  useActivateCycleMutation,
+  useDeactivateCycleMutation,
+  useDeleteAppraisalCycleMutation,
   useGetAppraisalFormQuery,
   useGetAppraisalFormsQuery,
   useCreateAppraisalFormMutation,
