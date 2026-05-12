@@ -35,8 +35,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-  { label: "360 Feedback", to: "/appraisal/360", icon: Users },
-  { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck },
+  { label: "360 Feedback", to: "/appraisal/360", icon: Users},
+  { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck, end: true },
   { label: "Performance Pulse", to: "/performance-history", icon: History, privilegedOnly: true },
   { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true },
   { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true },

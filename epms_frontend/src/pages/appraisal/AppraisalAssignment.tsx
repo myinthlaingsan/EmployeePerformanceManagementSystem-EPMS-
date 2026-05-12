@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  useGetCyclesQuery,
   useAssignBulkMutation,
   useGetActiveCycleQuery,
   useGetAppraisalFormSetsQuery,
@@ -24,7 +23,7 @@ import {
 
 const AppraisalAssignment: React.FC = () => {
   const navigate = useNavigate();
-  const { data: cycles = [] } = useGetCyclesQuery();
+  // const { data: cycles = [] } = useGetCyclesQuery();
   const { data: activeCycle, isLoading: cycleLoading } = useGetActiveCycleQuery();
   const { data: formSets = [], isLoading: formsLoading } = useGetAppraisalFormSetsQuery(activeCycle?.cycleId, { skip: !activeCycle });
   const [syncFormSets, { isLoading: isSyncing }] = useSyncFormSetsMutation();

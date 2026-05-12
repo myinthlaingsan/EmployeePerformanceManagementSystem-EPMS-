@@ -186,7 +186,7 @@ const FormView: React.FC = () => {
                           </div>
                         </div>
                         
-                        <div className="flex-shrink-0 w-64 space-y-4">
+                        <div className="shrink-0 w-64 space-y-4">
                           {/* Rating 1 (Secondary) */}
                           {q.secondaryQuestionType && q.secondaryQuestionType !== 'NONE' && (
                             <div className="space-y-1.5">
