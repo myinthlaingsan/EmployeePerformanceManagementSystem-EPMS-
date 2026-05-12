@@ -52,6 +52,13 @@ export interface KpiLibraryResponse {
   details: KpiLibraryDetailResponse[];
 }
 
+export interface KpiImportResult {
+  totalSectionsFound: number;
+  successfulImports: number;
+  failedImports: number;
+  errors: string[];
+}
+
 // ==================== Goal Assignment ====================
 export interface GoalAssignmentRequest {
   employeeId: number;

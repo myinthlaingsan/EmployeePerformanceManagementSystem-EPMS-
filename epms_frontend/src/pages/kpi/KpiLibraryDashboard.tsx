@@ -13,14 +13,17 @@ import {
   Handshake,
   Brain,
   Filter,
-  MoreHorizontal
+  MoreHorizontal,
+  FileUp
 } from 'lucide-react';
+import KpiImportModal from '../../components/kpi/KpiImportModal';
 
 const KpiLibraryDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [positionFilter, setPositionFilter] = useState<number | 'all'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const { data: librariesResponse, isLoading } = useGetAllLibrariesQuery();
   const { data: positions = [] } = useGetPositionsQuery();
@@ -60,13 +63,22 @@ const KpiLibraryDashboard: React.FC = () => {
             Manage and deploy standardized performance indicators across your organization.
           </p>
         </div>
-        <button
-          onClick={() => navigate('/kpi/library/new')}
-          className="bg-[#2563EB] text-white px-6 py-3 rounded-xl font-bold shadow-sm hover:bg-blue-700 transition-all flex items-center gap-2 active:scale-95"
-        >
-          <Plus className="w-5 h-5" strokeWidth={3} />
-          Create New KPI
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="bg-white text-gray-700 border border-gray-200 px-6 py-3 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-all flex items-center gap-2 active:scale-95"
+          >
+            <FileUp className="w-5 h-5 text-blue-600" strokeWidth={2.5} />
+            Import Library Template
+          </button>
+          <button
+            onClick={() => navigate('/kpi/library/new')}
+            className="bg-[#2563EB] text-white px-6 py-3 rounded-xl font-bold shadow-sm hover:bg-blue-700 transition-all flex items-center gap-2 active:scale-95"
+          >
+            <Plus className="w-5 h-5" strokeWidth={3} />
+            Create New KPI
+          </button>
+        </div>
       </div>
 
       {/* Simplified Filter Toolbar */}
@@ -193,6 +205,11 @@ const KpiLibraryDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      <KpiImportModal 
+        isOpen={isImportModalOpen} 
+        onClose={() => setIsImportModalOpen(false)} 
+      />
     </div>
   );
 };
