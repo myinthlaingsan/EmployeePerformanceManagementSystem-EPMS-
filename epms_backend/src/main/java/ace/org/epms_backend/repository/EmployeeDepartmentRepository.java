@@ -1,24 +1,31 @@
 package ace.org.epms_backend.repository;
 
 import ace.org.epms_backend.model.employee.EmployeeDepartment;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 @Repository
 public interface EmployeeDepartmentRepository extends JpaRepository<EmployeeDepartment, Long> {
-    @org.springframework.data.jpa.repository.Query("SELECT ed FROM EmployeeDepartment ed WHERE ed.employee.id = :employeeId AND ed.isCurrent = true")
-    java.util.List<EmployeeDepartment> findAllByEmployeeIdAndIsCurrentTrue(Long employeeId);
+    @Query("SELECT ed FROM EmployeeDepartment ed WHERE ed.employee.id = :employeeId AND ed.isCurrent = true")
+    List<EmployeeDepartment> findAllByEmployeeIdAndIsCurrentTrue(Long employeeId);
 
-    default java.util.Optional<EmployeeDepartment> findByEmployeeIdAndIsCurrentTrue(Long employeeId) {
-        java.util.List<EmployeeDepartment> list = findAllByEmployeeIdAndIsCurrentTrue(employeeId);
-        return list.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(list.get(0));
+    default Optional<EmployeeDepartment> findByEmployeeIdAndIsCurrentTrue(Long employeeId) {
+        List<EmployeeDepartment> list = findAllByEmployeeIdAndIsCurrentTrue(employeeId);
+        return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
     }
 
-    java.util.Optional<EmployeeDepartment> findFirstByEmployeeIdAndIsCurrentTrue(Long employeeId);
-    java.util.List<EmployeeDepartment> findByCurrentDepartmentIdAndIsCurrentTrue(Long departmentId);
+    Optional<EmployeeDepartment> findFirstByEmployeeIdAndIsCurrentTrue(Long employeeId);
+
+    List<EmployeeDepartment> findByCurrentDepartmentIdAndIsCurrentTrue(Long departmentId);
+
     boolean existsByCurrentDepartmentIdAndIsCurrentTrue(Long departmentId);
+
     java.util.List<EmployeeDepartment> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
+
     long countByCurrentDepartmentIdAndIsCurrentTrue(Long departmentId);
 }

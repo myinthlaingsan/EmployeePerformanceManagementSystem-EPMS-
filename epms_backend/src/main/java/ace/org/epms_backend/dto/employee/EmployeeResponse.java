@@ -23,6 +23,7 @@ public class EmployeeResponse {
     private String otherName;
     private String email;
     private String phoneNo;
+    private String profileImage;
 
     private Integer stateCode;
     private String township;

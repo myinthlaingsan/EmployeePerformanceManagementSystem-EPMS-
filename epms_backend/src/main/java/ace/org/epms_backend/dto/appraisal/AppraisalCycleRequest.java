@@ -29,5 +29,7 @@ public class AppraisalCycleRequest {
     private BigDecimal managerWeight;
     private BigDecimal feedbackWeight;
     private BigDecimal selfWeight;
+    
+    private Long financialYearId;
 }
 

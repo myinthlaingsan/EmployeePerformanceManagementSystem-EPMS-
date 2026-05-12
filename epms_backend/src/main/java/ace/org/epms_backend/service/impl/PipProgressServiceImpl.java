@@ -11,7 +11,6 @@ import ace.org.epms_backend.mapper.PipProgressMapper;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.pip.PipObjective;
 import ace.org.epms_backend.model.pip.PipProgressLog;
-import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.PipObjectiveRepository;
 import ace.org.epms_backend.repository.PipProgressRepository;
 import ace.org.epms_backend.service.AuthService;
@@ -27,9 +26,9 @@ public class PipProgressServiceImpl implements PipProgressService {
 
     private final PipProgressRepository progressRepository;
     private final PipObjectiveRepository objectiveRepository;
-    private final EmployeeRepository employeeRepository;
     private final PipProgressMapper mapper;
     private final AuthService authService;
+
     @Override
     public PipProgressResponse addProgress(PipProgressRequest request) {
 
@@ -38,7 +37,8 @@ public class PipProgressServiceImpl implements PipProgressService {
         PipObjective objective = objectiveRepository.findById(request.getObjectiveId())
                 .orElseThrow(() -> new NotFoundException("Objective not found"));
 
-        if (objective.getPip().getStatus() != PipStatus.ACTIVE && objective.getPip().getStatus() != PipStatus.EXTENDED) {
+        if (objective.getPip().getStatus() != PipStatus.ACTIVE
+                && objective.getPip().getStatus() != PipStatus.EXTENDED) {
             throw new InvalidStateException("Can only log progress on ACTIVE or EXTENDED PIP");
         }
 
@@ -59,7 +59,8 @@ public class PipProgressServiceImpl implements PipProgressService {
                     .max(java.math.BigDecimal::compareTo)
                     .orElse(java.math.BigDecimal.ZERO);
             if (request.getProgressPercent().compareTo(maxPrevious) <= 0) {
-                throw new InvalidStateException("New progress must be greater than previous progress (" + maxPrevious + "%)");
+                throw new InvalidStateException(
+                        "New progress must be greater than previous progress (" + maxPrevious + "%)");
             }
         }
 

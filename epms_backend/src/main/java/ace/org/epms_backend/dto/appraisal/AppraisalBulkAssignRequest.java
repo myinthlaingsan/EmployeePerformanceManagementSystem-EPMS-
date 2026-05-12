@@ -16,6 +16,7 @@ public class AppraisalBulkAssignRequest {
     private List<Long> employeeIds;
     private List<Long> departmentIds; // Optional filter
     private Long formId;
+    private Long formSetId;
 }
 
 

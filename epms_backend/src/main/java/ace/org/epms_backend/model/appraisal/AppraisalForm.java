@@ -29,6 +29,10 @@ public class AppraisalForm extends BaseEntity {
     @JoinColumn(name = "cycle_id")
     private AppraisalCycle cycle;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "form_set_id")
+    private AppraisalFormSet formSet;
+
     private Long createdBy;
 }
 

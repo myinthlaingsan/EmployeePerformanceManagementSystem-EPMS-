@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useGetCurrentUserQuery, useUpdateProfileMutation, useChangePasswordMutation, useGetManagerQuery, useGetDirectReportsQuery } from "../features/employee/employeeapi";
+import { useGetCurrentUserQuery, useUpdateProfileMutation, useChangePasswordMutation, useGetManagerQuery, useGetDirectReportsQuery, useUploadProfileImageMutation } from "../features/employee/employeeapi";
 //import { useAuth } from "../hooks/useAuth";
 import type { UpdateProfileRequest, MaritalStatus } from "../features/employee/employeeTypes";
 
@@ -11,6 +11,9 @@ const ProfilePage = () => {
 
   const { data: manager } = useGetManagerQuery(profile?.id ?? 0, { skip: !profile?.id });
   const { data: directReports } = useGetDirectReportsQuery(profile?.id ?? 0, { skip: !profile?.id });
+
+  const [uploadProfileImage] = useUploadProfileImageMutation();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState<UpdateProfileRequest>({
     staffName: "",
@@ -50,6 +53,11 @@ const ProfilePage = () => {
     e.preventDefault();
     try {
       await updateProfile(formData).unwrap();
+      
+      if (selectedFile && profile?.id) {
+        await uploadProfileImage({ id: profile.id, file: selectedFile }).unwrap();
+      }
+      
       alert("Profile updated successfully!");
     } catch (err) {
       console.error("Update profile failed", err);
@@ -79,8 +87,19 @@ const ProfilePage = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <header className="flex items-center space-x-6">
-        <div className="w-24 h-24 rounded-3xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-xl">
-          {profile?.staffName.charAt(0)}
+        <div className="relative group">
+          <div className="w-24 h-24 rounded-3xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-xl overflow-hidden border-4 border-white">
+            {profile?.profileImage && profile.profileImage !== "default.jpg" ? (
+              <img 
+                src={`http://localhost:8080${profile.profileImage}`} 
+                alt={profile.staffName} 
+                className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.src = "/default.jpg" }}
+              />
+            ) : (
+              profile?.staffName.charAt(0)
+            )}
+          </div>
         </div>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{profile?.staffName}</h1>
@@ -152,6 +171,16 @@ const ProfilePage = () => {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Permanent Address</label>
                   <textarea className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition resize-none h-20"
                     value={formData.permanentAddress || ""} onChange={(e) => setFormData({ ...formData, permanentAddress: e.target.value })}></textarea>
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Profile Image</label>
+                  <input type="file" accept="image/*" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setSelectedFile(e.target.files[0]);
+                      }
+                    }} 
+                  />
                 </div>
               </div>
               <div className="pt-4">

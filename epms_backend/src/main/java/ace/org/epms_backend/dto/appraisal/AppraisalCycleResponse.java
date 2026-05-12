@@ -34,5 +34,8 @@ public class AppraisalCycleResponse {
     
     private Instant createdAt;
     private Instant updatedAt;
+    
+    private Long financialYearId;
+    private String financialYearTitle;
 }
 

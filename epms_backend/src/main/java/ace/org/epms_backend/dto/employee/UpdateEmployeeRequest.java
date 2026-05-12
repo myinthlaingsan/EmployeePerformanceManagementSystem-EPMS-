@@ -55,6 +55,8 @@ public class UpdateEmployeeRequest {
     @NotBlank(message = "phone number is required")
     private String phoneNo;
 
+    private String profileImage;
+
     private MaritalStatus maritalStatus;
     private String spouseName;
     private String fatherName;

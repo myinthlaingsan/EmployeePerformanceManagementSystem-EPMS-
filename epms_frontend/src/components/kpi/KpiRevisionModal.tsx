@@ -2,13 +2,6 @@ import React, { useState } from 'react';
 import { useReviseKpiMutation, useGetKpiCategoriesQuery } from '../../services/kpiApi';
 import type { GoalItemResponse, Priority } from '../../features/kpi/kpiTypes';
 
-const PRIORITY_WEIGHTS: Record<Priority, number> = {
-  CRITICAL: 25,
-  HIGH: 15,
-  MEDIUM: 10,
-  LOW: 5
-};
-
 interface KpiRevisionModalProps {
   item: GoalItemResponse;
   onClose: () => void;
@@ -24,17 +17,10 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
     unit: item.unit || '',
     targetValue: item.targetValue,
     weightPercent: item.weightPercent,
-    priority: 'MEDIUM' as Priority,
     categoryId: item.categoryId || 0,
   });
 
-  const handlePriorityChange = (priority: Priority) => {
-    setFormData({
-      ...formData,
-      priority,
-      weightPercent: PRIORITY_WEIGHTS[priority]
-    });
-  };
+
 
   const [changeReason, setChangeReason] = useState('');
 
@@ -46,7 +32,7 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
     }
 
     try {
-      const { priority, ...updatedDetails } = formData;
+      const updatedDetails = formData;
 
       await reviseKpi({
         itemId: item.id,
@@ -56,14 +42,14 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
         },
       }).unwrap();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to revise KPI:', err);
-      alert('Failed to revise KPI');
+      alert(`Failed to revise KPI: ${err?.data?.message || err.message}`);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden transition-all">
         <form onSubmit={handleSubmit}>
           <div className="p-6 border-b border-gray-100">
@@ -99,27 +85,19 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Priority</label>
-                <select
-                  value={formData.priority}
-                  onChange={(e) => handlePriorityChange(e.target.value as Priority)}
-                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                >
-                  <option value="LOW">Lower</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
-                </select>
-              </div>
+
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Target Value</label>
                 <input
                   type="number"
+                  min="0"
                   required
-                  value={formData.targetValue}
-                  onChange={(e) => setFormData({ ...formData, targetValue: parseFloat(e.target.value) })}
+                  value={formData.targetValue || ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value));
+                    setFormData({ ...formData, targetValue: val });
+                  }}
                   className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
@@ -128,10 +106,14 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Weight (%)</label>
                 <input
                   type="number"
+                  min="0"
                   max={35}
                   required
-                  value={formData.weightPercent}
-                  onChange={(e) => setFormData({ ...formData, weightPercent: parseFloat(e.target.value) })}
+                  value={formData.weightPercent || ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value));
+                    setFormData({ ...formData, weightPercent: val });
+                  }}
                   className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>

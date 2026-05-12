@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, 
@@ -6,20 +6,29 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Search, 
-  Filter, 
+  Filter,
   Download, 
-  Plus, 
-  ChevronRight
+  ChevronRight,
+  LayoutTemplate
 } from 'lucide-react';
-import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetAllEmployeesQuery, useGetDirectReportsQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
 import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
+import BulkAssignModal from '../../components/kpi/BulkAssignModal';
 
 const TeamKpiDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: employees = [], isLoading } = useGetEmployeesQuery();
+  const isAdminOrHr = user?.roles?.some(r => r === 'ADMIN' || r === 'HR');
+
+  // Conditional data fetching: Admins see everyone, Managers see direct reports
+  const { data: allEmployees = [], isLoading: loadingAll } = useGetAllEmployeesQuery(undefined, { skip: !isAdminOrHr });
+  const { data: directReports = [], isLoading: loadingReports } = useGetDirectReportsQuery(Number(user?.id), { skip: isAdminOrHr || !user?.id });
+  
+  const employees = isAdminOrHr ? allEmployees : directReports;
+  const isLoading = isAdminOrHr ? loadingAll : loadingReports;
+
   const { activeCycleId, activeCycleName } = useActiveCycle();
 
   const { data: teamGoalsResponse } = useGetTeamGoalSetsQuery({
@@ -29,17 +38,16 @@ const TeamKpiDashboard: React.FC = () => {
 
   const teamGoals = teamGoalsResponse?.data || [];
 
-  const teamMembers = useMemo(() => {
-    if (!user) return [];
-    
-    const isAdminOrHr = user.roles?.some(r => r === 'ADMIN' || r === 'HR');
-    
-    let baseList = employees;
-    if (!isAdminOrHr) {
-      baseList = employees.filter(emp => Number(emp.directManagerId) === Number(user.id));
-    }
+  // State
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'progress-high' | 'progress-low'>('name');
 
-    return baseList.map(emp => {
+  const teamMembers = useMemo(() => {
+    if (!user || !employees) return [];
+    
+    let members = employees.map(emp => {
       const goals = teamGoals.find(g => g.employeeId === emp.id);
       const items = goals?.items || [];
       let progress = 0;
@@ -59,7 +67,23 @@ const TeamKpiDashboard: React.FC = () => {
         progress
       };
     });
-  }, [employees, user, teamGoals]);
+
+    // Filter
+    if (searchTerm) {
+      members = members.filter(m => 
+        m.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Sort
+    return [...members].sort((a, b) => {
+      if (sortBy === 'name') return a.staffName.localeCompare(b.staffName);
+      if (sortBy === 'progress-high') return b.progress - a.progress;
+      if (sortBy === 'progress-low') return a.progress - b.progress;
+      return 0;
+    });
+  }, [employees, user, teamGoals, searchTerm, sortBy]);
 
   const stats = useMemo(() => {
     const totalReports = teamMembers.length;
@@ -73,6 +97,26 @@ const TeamKpiDashboard: React.FC = () => {
       phase: 'Goal Setting'
     };
   }, [teamMembers]);
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(teamMembers.map(m => m.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkAssignAll = () => {
+    if (teamMembers.length === 0) return;
+    setSelectedIds(teamMembers.map(m => m.id));
+    setIsBulkModalOpen(true);
+  };
 
   if (isLoading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -99,11 +143,20 @@ const TeamKpiDashboard: React.FC = () => {
                 type="text" 
                 placeholder="Search reports..."
                 className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all w-64 shadow-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <button className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 text-gray-900 text-xs font-black rounded-xl hover:bg-gray-50 transition-all shadow-sm uppercase tracking-widest">
               <Download className="w-4 h-4" />
               Report
+            </button>
+            <button 
+              onClick={handleBulkAssignAll}
+              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-xs font-black rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-100 uppercase tracking-widest active:scale-95"
+            >
+              <LayoutTemplate className="w-4 h-4" />
+              Bulk Assign Team
             </button>
           </div>
         </div>
@@ -168,17 +221,29 @@ const TeamKpiDashboard: React.FC = () => {
           <div className="flex justify-between items-center">
             <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">Direct Reports Tracking</h3>
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-[10px] font-black text-gray-600 hover:bg-gray-50 transition-colors uppercase tracking-widest">
-                <Filter className="w-3 h-3" />
-                Filter
-              </button>
-              <button 
-                onClick={() => navigate('/kpi/manage')}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-[10px] font-black hover:bg-black transition-all shadow-md uppercase tracking-widest active:scale-95"
-              >
-                <Plus className="w-3 h-3" />
-                Assign Goal
-              </button>
+              <div className="relative group">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors pointer-events-none" />
+                <select 
+                  className="pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black text-gray-600 outline-none appearance-none cursor-pointer hover:border-blue-200 transition-all shadow-sm uppercase tracking-widest"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                >
+                  <option value="name">Sort: Name (A-Z)</option>
+                  <option value="progress-high">Sort: High Progress</option>
+                  <option value="progress-low">Sort: Low Progress</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <div className="border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
+                </div>
+              </div>
+              {selectedIds.length > 0 && (
+                <button 
+                  onClick={() => setIsBulkModalOpen(true)}
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 uppercase tracking-widest active:scale-95 animate-in slide-in-from-right-4"
+                >
+                  Bulk Assign ({selectedIds.length})
+                </button>
+              )}
             </div>
           </div>
 
@@ -186,6 +251,14 @@ const TeamKpiDashboard: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
+                  <th className="px-6 py-4 w-10">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      checked={selectedIds.length === teamMembers.length && teamMembers.length > 0}
+                      onChange={handleSelectAll}
+                    />
+                  </th>
                   <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Direct Report</th>
                   <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Goal Status</th>
                   <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">KPI Items</th>
@@ -198,9 +271,23 @@ const TeamKpiDashboard: React.FC = () => {
                 {teamMembers.map((emp) => (
                   <tr 
                     key={emp.id} 
-                    className="hover:bg-blue-50/10 transition-colors group cursor-pointer" 
-                    onClick={() => navigate(`/kpi/assign/${emp.id}`)}
+                    className={`hover:bg-blue-50/10 transition-colors group cursor-pointer ${selectedIds.includes(emp.id) ? 'bg-blue-50/20' : ''}`} 
+                    onClick={() => {
+                      if (emp.goalSet?.status === 'APPROVED' || emp.goalSet?.status === 'LOCKED') {
+                        navigate(`/kpi/goals/${emp.id}`);
+                      } else {
+                        navigate(`/kpi/assign/${emp.id}`);
+                      }
+                    }}
                   >
+                    <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
+                       <input 
+                        type="checkbox" 
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        checked={selectedIds.includes(emp.id)}
+                        onChange={() => handleToggleSelect(emp.id)}
+                      />
+                    </td>
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black text-sm">
@@ -216,8 +303,7 @@ const TeamKpiDashboard: React.FC = () => {
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                         emp.goalSet?.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
                         emp.goalSet?.status === 'LOCKED' ? 'bg-gray-900 text-white' :
-                        emp.goalSet?.status === 'SUBMITTED' ? 'bg-yellow-50 text-yellow-600' :
-                        emp.goalSet?.status === 'REJECTED' ? 'bg-red-50 text-red-600' :
+
                         emp.goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
                         'bg-gray-50 text-gray-400'
                       }`}>
@@ -265,6 +351,17 @@ const TeamKpiDashboard: React.FC = () => {
             </table>
           </div>
         </div>
+
+        {isBulkModalOpen && (
+          <BulkAssignModal 
+            selectedEmployeeIds={selectedIds}
+            onClose={() => setIsBulkModalOpen(false)}
+            onSuccess={() => {
+              setIsBulkModalOpen(false);
+              setSelectedIds([]);
+            }}
+          />
+        )}
       </div>
     </div>
   );

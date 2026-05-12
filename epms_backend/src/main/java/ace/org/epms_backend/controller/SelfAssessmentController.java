@@ -13,7 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/self-assessments")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN', 'HR')")
+@PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN', 'HR')")
 public class SelfAssessmentController {
 
     private final SelfAssessmentService service;
@@ -33,8 +33,11 @@ public class SelfAssessmentController {
     }
 
     @PostMapping("/{selfAssessmentId}/draft")
-    public ResponseEntity<ApiResponse<Void>> saveDraft(@PathVariable Long selfAssessmentId) {
-        service.saveDraft(selfAssessmentId);
+    public ResponseEntity<ApiResponse<Void>> saveDraft(
+            @PathVariable Long selfAssessmentId,
+            @RequestParam(required = false) String overallReflection
+    ) {
+        service.saveDraft(selfAssessmentId, overallReflection);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 

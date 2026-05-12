@@ -30,6 +30,9 @@ public class Question extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private QuestionType questionType;
 
+    @Enumerated(EnumType.STRING)
+    private QuestionType secondaryQuestionType;
+
     private Boolean isRequired;
     private Boolean requiresComment = false;
     private Boolean isActive = true;

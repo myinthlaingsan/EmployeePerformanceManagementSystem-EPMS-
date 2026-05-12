@@ -61,6 +61,10 @@ public class Employee extends BaseEntity {
 
     private String spouseName;
     private String fatherName;
+
+    @Column(name = "profile_image")
+    private String profileImage;
+
     @ManyToOne
     @JoinColumn(name = "position_id")
     private Position position;

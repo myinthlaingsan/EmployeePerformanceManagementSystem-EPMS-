@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping("/api/v1/reports")
 @RequiredArgsConstructor
 public class ReportController {
 
@@ -161,6 +161,15 @@ public class ReportController {
             @RequestParam(defaultValue = "pdf") String format) {
         byte[] reportContent = reportService.exportPerformanceRankingReport(cycleId, format);
         return createDownloadResponse(reportContent, "Performance_Ranking_Report", format);
+    }
+
+    @GetMapping("/employees/download")
+    public ResponseEntity<byte[]> downloadEmployeeMasterReport(
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportEmployeeMasterReport(departmentId, teamId, format);
+        return createDownloadResponse(reportContent, "Employee_Master_Report", format);
     }
 
     private ResponseEntity<byte[]> createDownloadResponse(byte[] content, String baseName, String format) {

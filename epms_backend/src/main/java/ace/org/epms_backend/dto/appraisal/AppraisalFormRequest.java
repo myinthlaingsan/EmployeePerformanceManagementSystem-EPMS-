@@ -14,6 +14,7 @@ public class AppraisalFormRequest {
     private String formName;
     private FormType formType;
     private Long cycleId;
+    private Long formSetId;
     private Long createdBy;
 }
 

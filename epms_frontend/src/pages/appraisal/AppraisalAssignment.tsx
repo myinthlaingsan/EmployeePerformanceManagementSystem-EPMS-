@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  useGetCyclesQuery,
-  useAssignBulkMutation
+  useAssignBulkMutation,
+  useGetActiveCycleQuery,
+  useGetAppraisalFormSetsQuery,
+  useSyncFormSetsMutation
 } from '../../features/appraisal/appraisalApi';
-import { useGetEmployeesQuery } from '../../features/employee/employeeApi';
+import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import {
   Users,
   CheckCircle2,
@@ -13,20 +15,36 @@ import {
   ChevronLeft,
   UserPlus,
   Building2,
-  Mail
+  Mail,
+  Briefcase,
+  Layers,
+  RefreshCw
 } from 'lucide-react';
 
 const AppraisalAssignment: React.FC = () => {
   const navigate = useNavigate();
-  const { data: cycles = [] } = useGetCyclesQuery();
-  const { data: employeePaged, isLoading: empsLoading } = useGetEmployeesQuery({ page: 0, size: 100 } as any);
+  // const { data: cycles = [] } = useGetCyclesQuery();
+  const { data: activeCycle, isLoading: cycleLoading } = useGetActiveCycleQuery();
+  const { data: formSets = [], isLoading: formsLoading } = useGetAppraisalFormSetsQuery(activeCycle?.cycleId, { skip: !activeCycle });
+  const [syncFormSets, { isLoading: isSyncing }] = useSyncFormSetsMutation();
+  const { data: employeePaged, isLoading: empsLoading } = useGetEmployeesQuery({ page: 0, size: 100 });
   const [assignBulk, { isLoading: isAssigning }] = useAssignBulkMutation();
 
   // State
   const [selectedCycleId, setSelectedCycleId] = useState<string>('');
+  const [selectedFormSetId, setSelectedFormSetId] = useState<string>('');
+
+  // Auto-select active cycle
+  React.useEffect(() => {
+    if (activeCycle) {
+      setSelectedCycleId(activeCycle.cycleId.toString());
+    }
+  }, [activeCycle]);
+
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
+  const [posFilter, setPosFilter] = useState('');
 
   // Derived Data
   const employees = employeePaged?.content || [];
@@ -36,14 +54,21 @@ const AppraisalAssignment: React.FC = () => {
       const matchesSearch = emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         emp.email.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesDept = deptFilter === '' || emp.currentDepartmentName === deptFilter;
-      return matchesSearch && matchesDept;
+      const matchesPos = posFilter === '' || emp.positionName === posFilter;
+      return matchesSearch && matchesDept && matchesPos;
     });
-  }, [employees, searchTerm, deptFilter]);
+  }, [employees, searchTerm, deptFilter, posFilter]);
 
   const departments = useMemo(() => {
     const depts = new Set(employees.map(e => e.currentDepartmentName).filter(Boolean));
     return Array.from(depts);
   }, [employees]);
+
+  const positions = useMemo(() => {
+    const filteredEmps = deptFilter ? employees.filter(e => e.currentDepartmentName === deptFilter) : employees;
+    const poses = new Set(filteredEmps.map(e => e.positionName).filter(Boolean));
+    return Array.from(poses);
+  }, [employees, deptFilter]);
 
   // Handlers
   const toggleEmployee = (id: number) => {
@@ -70,17 +95,28 @@ const AppraisalAssignment: React.FC = () => {
       return;
     }
 
+    if (!selectedFormSetId || selectedFormSetId === '0') {
+      alert('Please select a valid Form Set.');
+      return;
+    }
+    if (selectedEmployeeIds.length === 0) {
+      alert('Please select at least one employee.');
+      return;
+    }
+
     try {
       await assignBulk({
         cycleId: Number(selectedCycleId),
+        formSetId: Number(selectedFormSetId),
         employeeIds: selectedEmployeeIds
       }).unwrap();
 
       alert(`Successfully assigned appraisals to ${selectedEmployeeIds.length} employees!`);
       navigate('/appraisal');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to assign appraisals. Ensure HR permissions are active.');
+      const message = err?.data?.message || 'Failed to assign appraisals. Ensure HR permissions are active.';
+      alert(message);
     }
   };
 
@@ -115,23 +151,92 @@ const AppraisalAssignment: React.FC = () => {
           <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
             <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Assignment Setup</h2>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Step 1: Active Cycle (Locked) */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">Active Cycle</label>
-                <select
-                  className={inputClass + " w-full"}
-                  value={selectedCycleId}
-                  onChange={e => setSelectedCycleId(e.target.value)}
-                >
-                  <option value="">Select Cycle...</option>
-                  {cycles.map(c => (
-                    <option key={c.cycleId} value={c.cycleId}>{c.cycleName}</option>
-                  ))}
-                </select>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">1. Active Cycle</label>
+                <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm font-bold flex items-center gap-3">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  {activeCycle?.cycleName || 'No Active Cycle'}
+                </div>
               </div>
 
+              {/* Step 2: Form Set */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">Search Employee</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">2. Choose Form Set</label>
+                <div className="relative">
+                  <Layers className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
+                  <select
+                    className={inputClass + " w-full pl-10"}
+                    value={selectedFormSetId}
+                    onChange={e => setSelectedFormSetId(e.target.value)}
+                  >
+                    <option value="">Select Form Set...</option>
+                    {formSets.map(fs => (
+                      <option key={fs.id} value={fs.id}>{fs.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {formSets.length === 0 && !formsLoading && (
+                  <button
+                    onClick={() => syncFormSets().unwrap().then((res) => alert(res || 'Successfully synced form sets!'))}
+                    disabled={isSyncing}
+                    className="mt-2 text-[10px] text-indigo-600 font-bold flex items-center gap-1 hover:text-indigo-800"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                    Sync Form Sets from Templates
+                  </button>
+                )}
+                {selectedFormSetId && selectedFormSetId !== '0' && (
+                  <p className="text-[10px] text-slate-400 mt-1.5 px-1 italic">
+                    Includes Self-Assessment & Manager Evaluation templates.
+                  </p>
+                )}
+              </div>
+
+              {/* Step 3: Department */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">3. Choose Department</label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
+                  <select
+                    className={inputClass + " w-full pl-10"}
+                    value={deptFilter}
+                    onChange={e => {
+                      setDeptFilter(e.target.value);
+                      setPosFilter(''); // Reset position when dept changes
+                    }}
+                  >
+                    <option value="">All Departments</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Step 4: Position */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">4. Choose Position</label>
+                <div className="relative">
+                  <Briefcase className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
+                  <select
+                    className={inputClass + " w-full pl-10"}
+                    value={posFilter}
+                    onChange={e => setPosFilter(e.target.value)}
+                    disabled={!deptFilter && employees.length > 0}
+                  >
+                    <option value="">All Positions</option>
+                    {positions.map(pos => (
+                      <option key={pos} value={pos}>{pos}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Search */}
+              <div className="pt-4 border-t border-slate-100">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Search Employee</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
                   <input
@@ -141,23 +246,6 @@ const AppraisalAssignment: React.FC = () => {
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                   />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">By Department</label>
-                <div className="relative">
-                  <Filter className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
-                  <select
-                    className={inputClass + " w-full pl-10"}
-                    value={deptFilter}
-                    onChange={e => setDeptFilter(e.target.value)}
-                  >
-                    <option value="">All Departments</option>
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
                 </div>
               </div>
             </div>
@@ -175,18 +263,37 @@ const AppraisalAssignment: React.FC = () => {
 
         {/* Employee List Section */}
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-8 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-              <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                {filteredEmployees.length} Employees found
-              </span>
-              <button
-                onClick={selectAll}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+          {!cycleLoading && !activeCycle ? (
+            <div className="bg-white rounded-[3rem] border-2 border-dashed border-slate-200 p-20 text-center flex flex-col items-center justify-center space-y-6">
+              <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center text-amber-500">
+                <Filter className="w-10 h-10" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 mb-2">No Active Appraisal Cycle</h3>
+                <p className="text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
+                  You cannot assign appraisals because there is no active cycle. Please create or activate a cycle in the management dashboard first.
+                </p>
+              </div>
+              <button 
+                onClick={() => navigate('/appraisal-cycles')}
+                className="px-8 py-3 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
               >
-                {selectedEmployeeIds.length === filteredEmployees.length ? 'Deselect All' : 'Select All'}
+                Go to Cycle Management
               </button>
             </div>
+          ) : (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-8 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                  {filteredEmployees.length} Employees found
+                </span>
+                <button
+                  onClick={selectAll}
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+                >
+                  {selectedEmployeeIds.length === filteredEmployees.length ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
 
             <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
               {empsLoading ? (
@@ -210,6 +317,9 @@ const AppraisalAssignment: React.FC = () => {
                         <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
                           <Building2 className="w-3 h-3" /> {emp.currentDepartmentName || 'No Department'}
                         </span>
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
+                          <Briefcase className="w-3 h-3" /> {emp.positionName || 'No Position'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -227,11 +337,11 @@ const AppraisalAssignment: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
-
+        )}
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default AppraisalAssignment;

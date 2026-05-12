@@ -17,30 +17,32 @@ import java.time.LocalDate;
 public class CreateEmployeeRequest {
     @NotBlank(message = "staff name is required")
     private String staffName;
-    
+
     private String otherName;
-    
+
     @NotBlank(message = "email is required")
     @Email(message = "invalid email format")
     private String email;
-    
+
     @NotBlank(message = "phone number is required")
     private String phoneNo;
 
+    private String profileImage;
+
     private Integer stateCode;
-    
+
     @NotBlank(message = "township is required")
     private String township;
-    
+
     @NotBlank(message = "NRC type is required")
     private String nrcType;
-    
+
     @NotBlank(message = "NRC number is required")
     private String number;
 
     @NotNull(message = "gender is required")
     private Gender gender;
-    
+
     @NotNull(message = "date of birth is required")
     private LocalDate dateOfBirth;
 
@@ -49,13 +51,13 @@ public class CreateEmployeeRequest {
 
     @Positive(message = "salary must be positive")
     private BigDecimal salary;
-    
+
     private String currency;
 
     @NotNull(message = "role is required")
     private Long roleId;
 
-    private Long parentDepartmentId;   //Banking
+    private Long parentDepartmentId; // Banking
     @NotNull(message = "current department is required")
     private Long currentDepartmentId;
 

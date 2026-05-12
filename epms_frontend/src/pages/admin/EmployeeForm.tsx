@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useCreateEmployeeMutation, useGetEmployeeByIdQuery, useUpdateEmployeeMutation, useGetEmployeesQuery } from "../../features/employee/employeeapi";
+import { useCreateEmployeeMutation, useGetEmployeeByIdQuery, useUpdateEmployeeMutation, useGetEmployeesQuery, useUploadProfileImageMutation } from "../../features/employee/employeeapi";
 import { useGetPositionsQuery } from "../../features/org/positionApi";
 import { useGetRolesQuery } from "../../features/org/roleApi";
 import { useGetActiveDepartmentsQuery } from "../../features/org/departmentApi";
@@ -20,6 +20,8 @@ const EmployeeForm = () => {
   
   const [createEmployee, { isLoading: isCreating }] = useCreateEmployeeMutation();
   const [updateEmployee, { isLoading: isUpdating }] = useUpdateEmployeeMutation();
+  const [uploadProfileImage, { isLoading: isUploading }] = useUploadProfileImageMutation();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState<Partial<CreateEmployeeRequest & UpdateEmployeeRequest>>({
     staffName: "",
@@ -39,6 +41,7 @@ const EmployeeForm = () => {
     dateOfBirth: "",
     salary: undefined,
     currency: "MMK",
+    profileImage: "",
     // Update specific fields
     race: "",
     religion: "",
@@ -91,12 +94,18 @@ const EmployeeForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      let targetId = Number(id);
       if (isEdit) {
-        // Strip out fields not in UpdateEmployeeRequest if necessary, or just cast
-        await updateEmployee({ id: Number(id), body: formData as UpdateEmployeeRequest }).unwrap();
+        await updateEmployee({ id: targetId, body: formData as UpdateEmployeeRequest }).unwrap();
       } else {
-        await createEmployee(formData as CreateEmployeeRequest).unwrap();
+        const response = await createEmployee(formData as CreateEmployeeRequest).unwrap();
+        targetId = response.id;
       }
+      
+      if (selectedFile) {
+        await uploadProfileImage({ id: targetId, file: selectedFile }).unwrap();
+      }
+      
       navigate("/employees");
     } catch (err: any) {
       console.error("Failed to save employee", err);
@@ -142,6 +151,15 @@ const EmployeeForm = () => {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Email Address *</label>
               <input type="email" required className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
                 value={formData.email || ""} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Profile Image</label>
+              <input type="file" accept="image/*" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                onChange={e => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setSelectedFile(e.target.files[0]);
+                  }
+                }} />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Phone Number *</label>
@@ -383,11 +401,11 @@ const EmployeeForm = () => {
           </button>
           <button
             type="submit"
-            disabled={isCreating || isUpdating}
+            disabled={isCreating || isUpdating || isUploading}
             className="px-10 py-3.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-xl shadow-gray-300 disabled:opacity-50 flex items-center gap-2"
           >
-            {(isCreating || isUpdating) ? "Saving..." : (isEdit ? "Update Employee" : "Register Employee")}
-            {!(isCreating || isUpdating) && (
+            {(isCreating || isUpdating || isUploading) ? "Saving..." : (isEdit ? "Update Employee" : "Register Employee")}
+            {!(isCreating || isUpdating || isUploading) && (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>

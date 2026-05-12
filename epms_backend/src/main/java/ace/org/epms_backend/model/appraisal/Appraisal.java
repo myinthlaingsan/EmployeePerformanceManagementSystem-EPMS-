@@ -39,8 +39,8 @@ public class Appraisal extends BaseEntity {
     private PerformanceCategory performanceCategory;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "form_id")
-    private AppraisalForm form;
+    @JoinColumn(name = "form_set_id")
+    private AppraisalFormSet formSet;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -62,10 +62,10 @@ public class Appraisal extends BaseEntity {
 
     private Instant lockedAt;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "employee_sign_comment")
     private String employeeSignComment;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "manager_sign_comment")
     private String managerSignComment;
 
     @ManyToOne(fetch = FetchType.LAZY)

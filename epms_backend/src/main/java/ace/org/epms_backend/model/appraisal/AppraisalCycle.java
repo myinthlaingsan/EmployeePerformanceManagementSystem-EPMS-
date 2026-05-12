@@ -45,5 +45,9 @@ public class AppraisalCycle extends BaseEntity {
     @OneToMany(mappedBy = "cycle", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<AppraisalForm> forms = new ArrayList<>();
 
-    private Boolean isActive = true;
+    private Boolean isActive = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "financial_year_id")
+    private FinancialYear financialYear;
 }

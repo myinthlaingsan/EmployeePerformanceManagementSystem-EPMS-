@@ -14,6 +14,9 @@ import java.time.Instant;
 public class AppraisalFormResponse {
     private Long formId;
     private String formName;
+    private String formType;
+    private Long cycleId;
+    private String cycleName;
     private Long createdBy;
     private Instant createdAt;
     private Instant updatedAt;

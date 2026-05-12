@@ -13,13 +13,60 @@ import java.util.List;
 
 @Repository
 public interface PerformanceHistoryRepository extends JpaRepository<PerformanceHistory, Long> {
+
     @Query("SELECT h FROM PerformanceHistory h WHERE " +
            "(h.employee.id = :id OR h.manager.id = :id OR h.performer.id = :id OR h.createdBy = :id) " +
            "AND (:sourceType IS NULL OR h.sourceType = :sourceType)")
-    Page<PerformanceHistory> findByEmployeeAndOptionalSource(@Param("id") Long id, @Param("sourceType") SourceType sourceType, Pageable pageable);
+    Page<PerformanceHistory> findByEmployeeAndOptionalSource(
+            @Param("id") Long id,
+            @Param("sourceType") SourceType sourceType,
+            Pageable pageable);
 
     @Query("SELECT h FROM PerformanceHistory h WHERE (:sourceType IS NULL OR h.sourceType = :sourceType)")
-    Page<PerformanceHistory> findAllByOptionalSource(@Param("sourceType") SourceType sourceType, Pageable pageable);
+    Page<PerformanceHistory> findAllByOptionalSource(
+            @Param("sourceType") SourceType sourceType,
+            Pageable pageable);
 
     Page<PerformanceHistory> findBySourceTypeAndSourceId(SourceType sourceType, Long sourceId, Pageable pageable);
+
+    /**
+     * Chart analytics — employee scope.
+     *
+     * Returns the single LATEST PerformanceHistory row per (sourceType, sourceId)
+     * that involves this employee (as subject, manager, performer, or creator).
+     *
+     * Using MAX(historyId) as the tiebreaker gives us the most-recent audit row,
+     * which carries the up-to-date feedbackType after any edits.
+     *
+     * Rows whose title is 'Feedback Deleted' or 'Meeting Deleted' are excluded so
+     * that soft-deleted entities are not counted in the chart.
+     *
+     * The query returns one row per unique entity → no double-counting.
+     */
+    @Query("SELECT h FROM PerformanceHistory h WHERE " +
+           "h.historyId IN (" +
+           "  SELECT MAX(h2.historyId) FROM PerformanceHistory h2 " +
+           "  WHERE h2.employee.id = :id OR h2.manager.id = :id " +
+           "     OR h2.performer.id = :id OR h2.createdBy = :id " +
+           "  GROUP BY h2.sourceType, h2.sourceId" +
+           ") " +
+           "AND h.title <> 'Feedback Deleted' " +
+           "AND h.title <> 'Meeting Deleted' " +
+           "ORDER BY h.createdAt ASC")
+    List<PerformanceHistory> findLatestStateByEmployee(@Param("id") Long id);
+
+    /**
+     * Chart analytics — global (Admin / HR) scope.
+     *
+     * Same logic as above but across the entire organisation.
+     */
+    @Query("SELECT h FROM PerformanceHistory h WHERE " +
+           "h.historyId IN (" +
+           "  SELECT MAX(h2.historyId) FROM PerformanceHistory h2 " +
+           "  GROUP BY h2.sourceType, h2.sourceId" +
+           ") " +
+           "AND h.title <> 'Feedback Deleted' " +
+           "AND h.title <> 'Meeting Deleted' " +
+           "ORDER BY h.createdAt ASC")
+    List<PerformanceHistory> findAllLatestStates();
 }

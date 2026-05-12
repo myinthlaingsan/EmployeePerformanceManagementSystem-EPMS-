@@ -17,9 +17,7 @@ import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.repository.PassowrdResetTokenRepository;
 import ace.org.epms_backend.repository.RoleLevelPermissionRepository;
 import ace.org.epms_backend.service.AuthService;
-import ace.org.epms_backend.service.EmailService;
 import ace.org.epms_backend.service.JwtService;
-import ace.org.epms_backend.service.TokenBlacklistService;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
@@ -56,12 +54,10 @@ public class AuthServiceImpl implements AuthService {
     private final EmployeeRoleRepository employeeRoleRepository;
     private final RoleLevelPermissionRepository roleLevelPermissionRepository;
     private final PassowrdResetTokenRepository resetTokenRepository;
-    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final AuditService auditService;
-    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     public AuthResponse login(AuthRequest authDto) {
@@ -152,8 +148,10 @@ public class AuthServiceImpl implements AuthService {
                 .getContext()
                 .getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new InvalidTokenException("No user logged in or session expired. Please provide a valid authentication token.");
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new InvalidTokenException(
+                    "No user logged in or session expired. Please provide a valid authentication token.");
         }
 
         Object principal = authentication.getPrincipal();
@@ -241,7 +239,7 @@ public class AuthServiceImpl implements AuthService {
                 .map(Permission::getPermissionName)
                 .toList();
         response.setPermissions(permissions);
-        
+
         // Set Department Info
         employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId())
                 .ifPresent(ed -> {
