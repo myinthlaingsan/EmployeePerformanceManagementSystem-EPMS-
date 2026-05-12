@@ -176,6 +176,10 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
     public KpiImportResult importLibraries(MultipartFile file) throws IOException {
         List<KpiLibraryRequest> requests = excelParser.parse(file);
         
+        if (requests.isEmpty()) {
+            throw new IllegalArgumentException("No valid KPI scorecards detected in the file. Please ensure you are using the official scorecard template.");
+        }
+        
         KpiImportResult result = KpiImportResult.builder()
                 .totalSectionsFound(requests.size())
                 .errors(new ArrayList<>())

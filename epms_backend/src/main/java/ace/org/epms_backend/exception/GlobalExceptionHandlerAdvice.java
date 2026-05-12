@@ -20,6 +20,12 @@ public class GlobalExceptionHandlerAdvice {
                 .body(new ApiResponse<>(500, ex.getMessage(), null, LocalDateTime.now()));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse<>(400, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
 //    @ExceptionHandler(MethodArgumentNotValidException.class)
 //    public ResponseEntity<Map<String,String>> handleValidationException(MethodArgumentNotValidException ex){
 //        Map<String,String> errors = new HashMap<>();
