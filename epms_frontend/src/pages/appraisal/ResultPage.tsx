@@ -380,7 +380,6 @@ const ResultPage: React.FC = () => {
             This document will be permanently stored in your employment records and can be exported as a PDF for personal filing.
           </p>
         </div>
-
       </div>
     </div>
   );
