@@ -3,10 +3,14 @@ package ace.org.epms_backend.controller.appraisal;
 import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.appraisal.AppraisalFormSetRequest;
 import ace.org.epms_backend.dto.appraisal.AppraisalFormSetResponse;
+import ace.org.epms_backend.enums.FormType;
+import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
+import ace.org.epms_backend.model.appraisal.AppraisalForm;
 import ace.org.epms_backend.model.appraisal.AppraisalFormSet;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.AppraisalFormRepository;
+import ace.org.epms_backend.repository.AppraisalRepository;
 import ace.org.epms_backend.repository.appraisal.AppraisalFormSetRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +30,7 @@ public class AppraisalFormSetController {
     private final AppraisalFormSetRepository formSetRepo;
     private final AppraisalFormRepository formRepo;
     private final AppraisalCycleRepository cycleRepo;
-    private final ace.org.epms_backend.repository.AppraisalRepository appraisalRepo;
+    private final AppraisalRepository appraisalRepo;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<AppraisalFormSetResponse>>> getAllFormSets() {
@@ -39,7 +43,7 @@ public class AppraisalFormSetController {
     @PostMapping
     public ResponseEntity<ApiResponse<AppraisalFormSetResponse>> createFormSet(@RequestBody AppraisalFormSetRequest request) {
         AppraisalCycle cycle = cycleRepo.findById(request.getCycleId())
-                .orElseThrow(() -> new ace.org.epms_backend.exception.NotFoundException("Cycle not found"));
+                .orElseThrow(() -> new NotFoundException("Cycle not found"));
         
         AppraisalFormSet set = AppraisalFormSet.builder()
                 .name(request.getName())
@@ -63,7 +67,7 @@ public class AppraisalFormSetController {
     @Transactional
     public ResponseEntity<ApiResponse<String>> syncFormSets() {
         // Find all forms
-        List<ace.org.epms_backend.model.appraisal.AppraisalForm> allForms = formRepo.findAll();
+        List<AppraisalForm> allForms = formRepo.findAll();
         
         // Group by cycle and normalized name
         var grouped = allForms.stream().collect(Collectors.groupingBy(
@@ -76,8 +80,8 @@ public class AppraisalFormSetController {
 
         for (var entry : grouped.entrySet()) {
             var forms = entry.getValue();
-            var self = forms.stream().filter(f -> f.getFormType() == ace.org.epms_backend.enums.FormType.SELF_ASSESSMENT).findFirst();
-            var eval = forms.stream().filter(f -> f.getFormType() == ace.org.epms_backend.enums.FormType.MANAGER_EVALUATION).findFirst();
+            var self = forms.stream().filter(f -> f.getFormType() == FormType.SELF_ASSESSMENT).findFirst();
+            var eval = forms.stream().filter(f -> f.getFormType() == FormType.MANAGER_EVALUATION).findFirst();
 
             if (self.isPresent() && eval.isPresent()) {
                 // Check if set already exists
@@ -113,10 +117,10 @@ public class AppraisalFormSetController {
     @Transactional
     public ResponseEntity<ApiResponse<AppraisalFormSetResponse>> updateFormSet(@PathVariable Long id, @RequestBody AppraisalFormSetRequest request) {
         AppraisalFormSet set = formSetRepo.findById(id)
-                .orElseThrow(() -> new ace.org.epms_backend.exception.NotFoundException("Form set not found"));
+                .orElseThrow(() -> new NotFoundException("Form set not found"));
         
         AppraisalCycle cycle = cycleRepo.findById(request.getCycleId())
-                .orElseThrow(() -> new ace.org.epms_backend.exception.NotFoundException("Cycle not found"));
+                .orElseThrow(() -> new NotFoundException("Cycle not found"));
         
         set.setName(request.getName());
         set.setCycle(cycle);

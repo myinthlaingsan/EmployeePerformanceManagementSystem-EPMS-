@@ -8,7 +8,6 @@ import ace.org.epms_backend.enums.PipStatus;
 import ace.org.epms_backend.exception.AccessDeniedException;
 import ace.org.epms_backend.exception.InvalidStateException;
 import ace.org.epms_backend.exception.NotFoundException;
-import ace.org.epms_backend.exception.UserNotFoundException;
 import ace.org.epms_backend.mapper.PipObjectiveMapper;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.pip.PipObjective;
@@ -23,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 
 import java.util.List;
 
@@ -68,9 +66,12 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
             throw new InvalidStateException("Objectives cannot be edited after PIP is CLOSED");
         }
 
-        if (request.getTitle() != null) objective.setTitle(request.getTitle());
-        if (request.getDescription() != null) objective.setDescription(request.getDescription());
-        if (request.getSuccessCriteria() != null) objective.setSuccessCriteria(request.getSuccessCriteria());
+        if (request.getTitle() != null)
+            objective.setTitle(request.getTitle());
+        if (request.getDescription() != null)
+            objective.setDescription(request.getDescription());
+        if (request.getSuccessCriteria() != null)
+            objective.setSuccessCriteria(request.getSuccessCriteria());
 
         return enrichObjectiveResponse(objectiveRepository.save(objective));
     }
@@ -86,7 +87,8 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
 
         Employee current = authService.getCurrentUser();
 
-        // 🔐 ACCESS CONTROL: Allow if HR, or if the user is the assigned MANAGER or the assigned EMPLOYEE
+        // 🔐 ACCESS CONTROL: Allow if HR, or if the user is the assigned MANAGER or the
+        // assigned EMPLOYEE
         boolean isHR = hasRole("HR");
         boolean isAssignedManager = pip.getManager().getId().equals(current.getId());
         boolean isAssignedEmployee = pip.getEmployee().getId().equals(current.getId());
@@ -117,7 +119,7 @@ public class PipObjectiveServiceImpl implements PipObjectiveService {
         if (objective.getPip().getStatus() == PipStatus.CLOSED) {
             throw new InvalidStateException("Objective status cannot be updated if PIP is CLOSED");
         }
-        
+
         if (objective.getPip().getStatus() == PipStatus.DRAFT) {
             throw new InvalidStateException("Objective status cannot be changed while PIP is in DRAFT");
         }

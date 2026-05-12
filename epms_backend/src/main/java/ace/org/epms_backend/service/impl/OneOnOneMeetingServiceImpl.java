@@ -6,7 +6,6 @@ import ace.org.epms_backend.dto.continuous.OneOnOneMeetingRequest;
 import ace.org.epms_backend.dto.continuous.OneOnOneMeetingResponse;
 import ace.org.epms_backend.enums.CommentType;
 import ace.org.epms_backend.enums.RoleType;
-import ace.org.epms_backend.enums.FeedbackType;
 import ace.org.epms_backend.enums.SourceType;
 import ace.org.epms_backend.exception.AccessDeniedException;
 import ace.org.epms_backend.exception.NotFoundException;
@@ -75,12 +74,16 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     }
 
     @Override
-    public ace.org.epms_backend.dto.PagedResponse<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId, int page, int size) {
+    public ace.org.epms_backend.dto.PagedResponse<OneOnOneMeetingResponse> getMeetingsByEmployee(Long employeeId,
+            int page, int size) {
         checkNotPurePrivileged();
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("meetingDate").descending().and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("meetingDate").descending()
+                        .and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
         Employee currentUser = authService.getCurrentUser();
 
-        org.springframework.data.domain.Page<OneOnOneMeeting> meetingPage = meetingRepository.findVisibleMeetingsByEmployee(employeeId, currentUser.getId(), pageable);
+        org.springframework.data.domain.Page<OneOnOneMeeting> meetingPage = meetingRepository
+                .findVisibleMeetingsByEmployee(employeeId, currentUser.getId(), pageable);
 
         List<OneOnOneMeetingResponse> content = meetingPage.getContent().stream()
                 .map(meetingMapper::toResponse)
@@ -92,17 +95,20 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 meetingPage.getSize(),
                 meetingPage.getTotalElements(),
                 meetingPage.getTotalPages(),
-                meetingPage.isLast()
-        );
+                meetingPage.isLast());
     }
 
     @Override
-    public ace.org.epms_backend.dto.PagedResponse<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId, int page, int size) {
+    public ace.org.epms_backend.dto.PagedResponse<OneOnOneMeetingResponse> getMeetingsByManager(Long managerId,
+            int page, int size) {
         checkNotPurePrivileged();
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("meetingDate").descending().and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("meetingDate").descending()
+                        .and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
         Employee currentUser = authService.getCurrentUser();
 
-        org.springframework.data.domain.Page<OneOnOneMeeting> meetingPage = meetingRepository.findVisibleMeetingsByManager(managerId, currentUser.getId(), pageable);
+        org.springframework.data.domain.Page<OneOnOneMeeting> meetingPage = meetingRepository
+                .findVisibleMeetingsByManager(managerId, currentUser.getId(), pageable);
 
         List<OneOnOneMeetingResponse> content = meetingPage.getContent().stream()
                 .map(meetingMapper::toResponse)
@@ -114,8 +120,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 meetingPage.getSize(),
                 meetingPage.getTotalElements(),
                 meetingPage.getTotalPages(),
-                meetingPage.isLast()
-        );
+                meetingPage.isLast());
     }
 
     @Override
@@ -145,10 +150,13 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
 
     @Override
     public ace.org.epms_backend.dto.PagedResponse<OneOnOneMeetingResponse> getAllMeetings(int page, int size) {
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("meetingDate").descending().and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("meetingDate").descending()
+                        .and(org.springframework.data.domain.Sort.by("meetingTime").descending()));
         Employee currentUser = authService.getCurrentUser();
 
-        org.springframework.data.domain.Page<OneOnOneMeeting> meetingPage = meetingRepository.findAllVisibleMeetings(currentUser.getId(), pageable);
+        org.springframework.data.domain.Page<OneOnOneMeeting> meetingPage = meetingRepository
+                .findAllVisibleMeetings(currentUser.getId(), pageable);
 
         List<OneOnOneMeetingResponse> content = meetingPage.getContent().stream()
                 .map(meetingMapper::toResponse)
@@ -160,21 +168,20 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 meetingPage.getSize(),
                 meetingPage.getTotalElements(),
                 meetingPage.getTotalPages(),
-                meetingPage.isLast()
-        );
+                meetingPage.isLast());
     }
 
     @Override
     public void deleteMeeting(Long meetingId) {
         OneOnOneMeeting meeting = fetchMeeting(meetingId);
         checkMeetingModificationAccess(meeting);
-        
+
         // Delete all comments first to avoid foreign key constraint violations
         List<MeetingComment> comments = commentRepository.findByMeetingMeetingId(meetingId);
         if (!comments.isEmpty()) {
             commentRepository.deleteAll(comments);
         }
-        
+
         meetingRepository.delete(meeting);
 
         Employee currentUser = authService.getCurrentUser();
@@ -219,7 +226,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
 
         MeetingComment comment = commentMapper.toEntity(request);
         comment.setMeeting(meeting);
-        
+
         if (request.getCommentType() == CommentType.MANAGER) {
             comment.setManager(currentUser);
             comment.setEmployee(null);
@@ -236,7 +243,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(meeting.getMeetingId())
                 .title("New Comment in Meeting")
-                .description((request.getCommentType() == CommentType.MANAGER ? "Manager " : "Employee ") + currentUser.getStaffName() + " commented: " + request.getComment())
+                .description((request.getCommentType() == CommentType.MANAGER ? "Manager " : "Employee ")
+                        + currentUser.getStaffName() + " commented: " + request.getComment())
                 .isPrivate(meeting.getIsPrivateNote())
                 .createdBy(currentUser.getId())
                 .manager(meeting.getManager())
@@ -262,12 +270,12 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     public MeetingCommentResponse updateComment(Long commentId, MeetingCommentRequest request) {
         MeetingComment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException("Comment not found"));
-                
+
         Employee currentUser = authService.getCurrentUser();
-        
+
         boolean isOwner = (comment.getManager() != null && comment.getManager().getId().equals(currentUser.getId())) ||
                 (comment.getEmployee() != null && comment.getEmployee().getId().equals(currentUser.getId()));
-                
+
         if (!isOwner && !isPrivileged(currentUser)) {
             throw new AccessDeniedException("You can only edit your own comments.");
         }
@@ -324,7 +332,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
 
     private void checkMeetingAccess(OneOnOneMeeting meeting) {
         Employee currentUser = authService.getCurrentUser();
-        
+
         // If private, only Manager can see
         if (Boolean.TRUE.equals(meeting.getIsPrivateNote())) {
             if (currentUser.getId().equals(meeting.getManager().getId())) {
@@ -349,18 +357,16 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         }
     }
 
-    private boolean isParticipant(OneOnOneMeeting meeting, Employee user) {
-        return user.getId().equals(meeting.getEmployee().getId()) ||
-                user.getId().equals(meeting.getManager().getId());
-    }
+    // private boolean isParticipant(OneOnOneMeeting meeting, Employee user) {
+    // return user.getId().equals(meeting.getEmployee().getId()) ||
+    // user.getId().equals(meeting.getManager().getId());
+    // }
 
     private boolean isPrivileged(Employee employee) {
         List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
         return roles.stream()
                 .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
     }
-
-
 
     private OneOnOneMeeting fetchMeeting(Long meetingId) {
         return meetingRepository.findById(meetingId)
@@ -375,11 +381,13 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     private void checkNotPurePrivileged() {
         Employee currentUser = authService.getCurrentUser();
         List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(currentUser.getId());
-        boolean hasPrivilegedRole = roles.stream().anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
+        boolean hasPrivilegedRole = roles.stream()
+                .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
         boolean isManager = roles.stream().anyMatch(r -> r.getRoleName() == RoleType.MANAGER);
-        
+
         if (hasPrivilegedRole && !isManager) {
-             throw new AccessDeniedException("Admins/HR cannot access meeting feeds directly. Use Performance Pulse instead.");
+            throw new AccessDeniedException(
+                    "Admins/HR cannot access meeting feeds directly. Use Performance Pulse instead.");
         }
     }
 }

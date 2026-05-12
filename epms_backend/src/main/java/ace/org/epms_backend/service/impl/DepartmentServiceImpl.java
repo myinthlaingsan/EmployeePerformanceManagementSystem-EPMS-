@@ -2,6 +2,7 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.org.DepartmentRequest;
 import ace.org.epms_backend.dto.org.DepartmentResponse;
+import ace.org.epms_backend.enums.RoleType;
 import ace.org.epms_backend.exception.CannotDeleteException;
 import ace.org.epms_backend.exception.CodeAlreadyExistsException;
 import ace.org.epms_backend.exception.NotFoundException;
@@ -27,7 +28,6 @@ public class DepartmentServiceImpl implements DepartmentService {
     private final DepartmentMapper departmentMapper;
     private final ace.org.epms_backend.service.AuthService authService;
     private final ace.org.epms_backend.repository.EmployeeRoleRepository employeeRoleRepository;
-    private final ace.org.epms_backend.repository.EmployeeRepository employeeRepository;
 
     @Override
     public DepartmentResponse createDepartment(DepartmentRequest request) {
@@ -44,14 +44,10 @@ public class DepartmentServiceImpl implements DepartmentService {
         Employee currentUser = authService.getCurrentUser();
         List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(currentUser.getId());
 
-        boolean isAdminOrHR = roles.stream().anyMatch(r -> 
-            r.getRoleName() == ace.org.epms_backend.enums.RoleType.ADMIN || 
-            r.getRoleName() == ace.org.epms_backend.enums.RoleType.HR
-        );
-        
-        boolean isManager = roles.stream().anyMatch(r -> 
-            r.getRoleName() == ace.org.epms_backend.enums.RoleType.MANAGER
-        );
+        boolean isAdminOrHR = roles.stream().anyMatch(r -> r.getRoleName() == RoleType.ADMIN ||
+                r.getRoleName() == RoleType.HR);
+
+        boolean isManager = roles.stream().anyMatch(r -> r.getRoleName() == RoleType.MANAGER);
 
         if (isManager && !isAdminOrHR) {
             return employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(currentUser.getId())
@@ -78,8 +74,8 @@ public class DepartmentServiceImpl implements DepartmentService {
                 .filter(Department::getIsActive)
                 .orElseThrow(() -> new NotFoundException("Department not found"));
 
-        if (!department.getDepartmentCode().equals(request.getDepartmentCode()) && 
-            departmentRepository.existsByDepartmentCodeAndIsActiveTrue(request.getDepartmentCode())) {
+        if (!department.getDepartmentCode().equals(request.getDepartmentCode()) &&
+                departmentRepository.existsByDepartmentCodeAndIsActiveTrue(request.getDepartmentCode())) {
             throw new CodeAlreadyExistsException("Department code already exists");
         }
         departmentMapper.updateEntity(request, department);
@@ -94,7 +90,8 @@ public class DepartmentServiceImpl implements DepartmentService {
                 .orElseThrow(() -> new NotFoundException("Department not found"));
 
         if (employeeDepartmentRepository.existsByCurrentDepartmentIdAndIsCurrentTrue(id)) {
-            throw new CannotDeleteException("Cannot delete department as it is assigned to one or more active employees");
+            throw new CannotDeleteException(
+                    "Cannot delete department as it is assigned to one or more active employees");
         }
 
         department.setIsActive(false);
@@ -104,16 +101,15 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     public List<DepartmentResponse> getActiveDepartments() {
         ace.org.epms_backend.model.employee.Employee currentUser = authService.getCurrentUser();
-        List<ace.org.epms_backend.model.employee.Role> roles = employeeRoleRepository.findRolesByEmployeeId(currentUser.getId());
-        
-        boolean isAdminOrHR = roles.stream().anyMatch(r -> 
-            r.getRoleName() == ace.org.epms_backend.enums.RoleType.ADMIN || 
-            r.getRoleName() == ace.org.epms_backend.enums.RoleType.HR
-        );
-        
-        boolean isManager = roles.stream().anyMatch(r -> 
-            r.getRoleName() == ace.org.epms_backend.enums.RoleType.MANAGER
-        );
+        List<ace.org.epms_backend.model.employee.Role> roles = employeeRoleRepository
+                .findRolesByEmployeeId(currentUser.getId());
+
+        boolean isAdminOrHR = roles.stream()
+                .anyMatch(r -> r.getRoleName() == ace.org.epms_backend.enums.RoleType.ADMIN ||
+                        r.getRoleName() == ace.org.epms_backend.enums.RoleType.HR);
+
+        boolean isManager = roles.stream()
+                .anyMatch(r -> r.getRoleName() == ace.org.epms_backend.enums.RoleType.MANAGER);
 
         if (isManager && !isAdminOrHR) {
             return employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(currentUser.getId())
@@ -125,6 +121,7 @@ public class DepartmentServiceImpl implements DepartmentService {
                 .map(departmentMapper::toResponse)
                 .collect(Collectors.toList());
     }
+
     @Override
     public long getHeadcount(Long departmentId) {
         if (!departmentRepository.existsById(departmentId)) {

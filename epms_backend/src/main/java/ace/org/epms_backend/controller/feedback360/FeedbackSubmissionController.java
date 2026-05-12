@@ -3,6 +3,7 @@ package ace.org.epms_backend.controller.feedback360;
 import ace.org.epms_backend.dto.appraisal.FullFormResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackDetailsResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackSubmissionRequest;
+import ace.org.epms_backend.service.feedback360.FeedbackFormService;
 import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,7 @@ import java.util.List;
 public class FeedbackSubmissionController {
 
     private final FeedbackSubmissionService feedbackService;
-    private final ace.org.epms_backend.service.feedback360.FeedbackFormService feedbackFormService;
+    private final FeedbackFormService feedbackFormService;
 
     @PostMapping
     public ResponseEntity<Void> submitFeedback(@RequestBody FeedbackSubmissionRequest request, @RequestParam Long evaluatorId) {
