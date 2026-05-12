@@ -1,5 +1,5 @@
 import { api } from "../../services/api";
-import { ApiResponse } from "../../services/ApiResponse";
+import type { ApiResponse } from "../../services/ApiResponse";
 
 export interface FinancialYear {
   id: number;

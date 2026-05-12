@@ -106,7 +106,7 @@ const AppraisalList: React.FC = () => {
       {appraisals.length > 0 ? appraisals.map((appraisal: any) => (
         <div
           key={appraisal.appraisalId}
-          className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
+          className="group bg-white rounded-4xl border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
           onClick={() => {
             navigate(`/appraisal/${appraisal.appraisalId}`);
           }}
@@ -238,14 +238,11 @@ const AppraisalList: React.FC = () => {
   );
 
   const renderCycles = () => {
-    // Î“Ã¶Ã‡Î“Ã¶Ã‡ Helper: Calculate Days Remaining Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡
     const getDaysRemaining = (endDate: string) => {
       const diff = new Date(endDate).getTime() - new Date().getTime();
       const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
       return days > 0 ? days : 0;
     };
-
-    // Î“Ã¶Ã‡Î“Ã¶Ã‡ LEVEL 2: Cycle Dashboard Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡
     if (selectedCycleId) {
       const cycle = cycles.find((c: any) => Number(c.cycleId) === Number(selectedCycleId));
       const cycleForms = forms.filter((f: any) => {
@@ -254,7 +251,7 @@ const AppraisalList: React.FC = () => {
         return idMatch || nameMatch;
       });
 
-      const daysLeft = getDaysRemaining(cycle?.endDate);
+      const daysLeft = getDaysRemaining(cycle?.endDate ?? '');
 
       return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

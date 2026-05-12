@@ -78,7 +78,7 @@ const Dashboard = () => {
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {metrics.map((m) => (
-          <div key={m.label} className={`bg-white p-8 rounded-[2rem] border border-surface-border border-l-4 ${m.color.replace('text-', 'border-')} shadow-premium flex items-center justify-between hover:shadow-hover transition-all cursor-default group`}>
+          <div key={m.label} className={`bg-white p-8 rounded-4xl border border-surface-border border-l-4 ${m.color.replace('text-', 'border-')} shadow-premium flex items-center justify-between hover:shadow-hover transition-all cursor-default group`}>
             <div>
               <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">{m.label}</p>
               <p className="text-3xl font-black text-brand-primary">{m.value}</p>
