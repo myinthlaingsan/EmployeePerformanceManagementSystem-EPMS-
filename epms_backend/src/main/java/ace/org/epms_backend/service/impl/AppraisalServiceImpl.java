@@ -3,21 +3,13 @@ package ace.org.epms_backend.service.impl;
 import ace.org.epms_backend.dto.AuditRequest;
 import ace.org.epms_backend.dto.appraisal.*;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
-import ace.org.epms_backend.enums.AppraisalStatus;
-import ace.org.epms_backend.enums.AuditAction;
-import ace.org.epms_backend.enums.AuditStatus;
-import ace.org.epms_backend.enums.FormType;
-import ace.org.epms_backend.enums.NotificationType;
-import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.enums.*;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.AppraisalMapper;
-import ace.org.epms_backend.model.appraisal.Appraisal;
-import ace.org.epms_backend.model.appraisal.AppraisalCycle;
-import ace.org.epms_backend.model.appraisal.AppraisalForm;
-import ace.org.epms_backend.model.employee.Employee;
-import ace.org.epms_backend.model.employee.EmployeeDepartment;
-import ace.org.epms_backend.model.employee.ReportingLine;
+import ace.org.epms_backend.model.appraisal.*;
+import ace.org.epms_backend.model.employee.*;
 import ace.org.epms_backend.repository.*;
+import ace.org.epms_backend.repository.appraisal.AppraisalFormSetRepository;
 import ace.org.epms_backend.repository.employee.ReportingLineRepository;
 import ace.org.epms_backend.service.AppraisalCalculationService;
 import ace.org.epms_backend.service.AppraisalService;
@@ -44,8 +36,10 @@ public class AppraisalServiceImpl implements AppraisalService {
         private final AppraisalFormRepository formRepo;
         private final ReportingLineRepository reportingLineRepo;
         private final EmployeeDepartmentRepository empDeptRepo;
+        private final AppraisalFormSetRepository formSetRepo;
         private final AppraisalMapper appraisalMapper;
         private final AppraisalCalculationService calculationService;
+        private final AppraisalSummaryRepository summaryRepo;
         private final SelfAssessmentService selfService;
         private final AuditService auditService;
         private final ApplicationEventPublisher eventPublisher;
@@ -58,21 +52,21 @@ public class AppraisalServiceImpl implements AppraisalService {
 
         @Override
         @Transactional
-        public AppraisalResponse assignAppraisal(AppraisalAssignRequest request) {
-                return assignSingle(request.getEmployeeId(), request.getCycleId(), request.getFormId());
-        }
-
-        @Override
-        @Transactional
         public List<AppraisalResponse> assignBulk(AppraisalBulkAssignRequest request) {
                 List<AppraisalResponse> responses = new ArrayList<>();
                 for (Long empId : request.getEmployeeIds()) {
-                        responses.add(assignSingle(empId, request.getCycleId(), request.getFormId()));
+                        responses.add(assignSingle(empId, request.getCycleId(), request.getFormId(), request.getFormSetId()));
                 }
                 return responses;
         }
 
-        private AppraisalResponse assignSingle(Long employeeId, Long cycleId, Long formId) {
+        @Override
+        @Transactional
+        public AppraisalResponse assignAppraisal(AppraisalAssignRequest request) {
+                return assignSingle(request.getEmployeeId(), request.getCycleId(), request.getFormId(), request.getFormSetId());
+        }
+
+        private AppraisalResponse assignSingle(Long employeeId, Long cycleId, Long formId, Long formSetId) {
                 if (appraisalRepo.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId).isPresent()) {
                         throw new RuntimeException("Appraisal already assigned to this employee for the given cycle");
                 }
@@ -83,10 +77,18 @@ public class AppraisalServiceImpl implements AppraisalService {
                 AppraisalCycle cycle = cycleRepo.findById(cycleId)
                                 .orElseThrow(() -> new NotFoundException("Cycle not found"));
 
-                // Resolve form
+                // Resolve form set or individual form
+                AppraisalFormSet formSet = null;
                 AppraisalForm form = null;
                 FormType formType = FormType.SELF_ASSESSMENT;
-                if (formId != null) {
+
+                if (formSetId != null) {
+                        formSet = formSetRepo.findById(formSetId)
+                                        .orElseThrow(() -> new NotFoundException("Form Set not found: " + formSetId));
+                        if (formSet.getSelfAssessmentForm() != null) {
+                                formType = formSet.getSelfAssessmentForm().getFormType();
+                        }
+                } else if (formId != null) {
                         form = formRepo.findById(formId)
                                         .orElseThrow(() -> new NotFoundException("Form not found: " + formId));
                         formType = form.getFormType();
@@ -102,8 +104,11 @@ public class AppraisalServiceImpl implements AppraisalService {
                                                         "No active manager found for employee: "
                                                                         + employee.getStaffName()));
                 } else if (formType == FormType.MANAGER_EVALUATION) {
-                        // The assigned person IS the manager doing the evaluation → no lookup needed
-                        manager = null;
+                        // If it's a standalone manager evaluation, we STILL need to know WHO the manager is.
+                        // Look up via ReportingLine so they can actually evaluate.
+                        manager = reportingLineRepo.findByEmployeeAndIsActiveTrue(manager)
+                                        .map(ReportingLine::getManager)
+                                        .orElse(null);
                 } else if (formType == FormType.FEEDBACK) {
                         // Feedback forms: manager is optional, look up if available
                         manager = reportingLineRepo.findFirstByEmployee_IdAndIsActiveTrue(employeeId)
@@ -115,7 +120,7 @@ public class AppraisalServiceImpl implements AppraisalService {
                 appraisal.setEmployee(employee);
                 appraisal.setManager(manager); // null for MANAGER_EVALUATION
                 appraisal.setCycle(cycle);
-                appraisal.setForm(form); // Link the specific form
+                appraisal.setFormSet(formSet);
                 appraisal.setStatus(AppraisalStatus.PENDING);
                 appraisal.setAssignedAt(Instant.now());
 
@@ -234,13 +239,27 @@ public class AppraisalServiceImpl implements AppraisalService {
         public AppraisalResponse getById(Long id) {
                 Appraisal appraisal = appraisalRepo.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
-                return appraisalMapper.toResponse(appraisal);
+                AppraisalResponse response = appraisalMapper.toResponse(appraisal);
+                
+                summaryRepo.findByEmployee_IdAndCycle_CycleId(appraisal.getEmployee().getId(), appraisal.getCycle().getCycleId())
+                    .ifPresent(s -> {
+                        response.setFinalScore(s.getTotalScore());
+                        response.setFinalGrade(s.getFinalGrade() != null ? s.getFinalGrade().name() : null);
+                    });
+                    
+                return response;
         }
 
         @Override
         @Transactional
         public ScoreBreakdownResponse calculate(Long id) {
                 return calculationService.calculateScore(id);
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public ScoreBreakdownResponse getScoreBreakdown(Long id) {
+                return calculationService.getScoreBreakdown(id);
         }
 
         @Override
@@ -325,9 +344,9 @@ public class AppraisalServiceImpl implements AppraisalService {
         public AppraisalResponse employeeSignOff(Long id, String comment) {
                 Appraisal appraisal = appraisalRepo.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
-        appraisal.setManagerSignedAt(Instant.now());
+        appraisal.setEmployeeSignedAt(Instant.now());
         if (comment != null) {
-            appraisal.setManagerSignComment(comment.getBytes());
+            appraisal.setEmployeeSignComment(comment);
         }
 
                 Appraisal saved = appraisalRepo.save(appraisal);
@@ -360,7 +379,7 @@ public class AppraisalServiceImpl implements AppraisalService {
 
                 appraisal.setManagerSignedAt(Instant.now());
             if (comment != null) {
-                appraisal.setManagerSignComment(comment.getBytes());
+                appraisal.setManagerSignComment(comment);
             }
 
                 Appraisal saved = appraisalRepo.save(appraisal);
@@ -413,7 +432,38 @@ public class AppraisalServiceImpl implements AppraisalService {
 
     @Override
     public List<AppraisalResponse> getByCycleId(Long cycleId) {
-        return appraisalMapper.toResponseList(appraisalRepo.findByCycle_CycleId(cycleId));
+        List<Appraisal> appraisals = appraisalRepo.findByCycle_CycleId(cycleId);
+        List<AppraisalResponse> responses = appraisalMapper.toResponseList(appraisals);
+        
+        // Map scores
+        for (int i = 0; i < appraisals.size(); i++) {
+            Appraisal a = appraisals.get(i);
+            AppraisalResponse r = responses.get(i);
+            summaryRepo.findByEmployee_IdAndCycle_CycleId(a.getEmployee().getId(), a.getCycle().getCycleId())
+                .ifPresent(s -> {
+                    r.setFinalScore(s.getTotalScore());
+                    r.setFinalGrade(s.getFinalGrade() != null ? s.getFinalGrade().name() : null);
+                });
+        }
+        return responses;
+    }
+
+    private final String UPLOAD_DIR = "uploads/signatures/";
+
+    private String saveSignatureFile(MultipartFile file, Long appraisalId, String type) throws java.io.IOException {
+        java.nio.file.Path uploadPath = java.nio.file.Paths.get(UPLOAD_DIR);
+        if (!java.nio.file.Files.exists(uploadPath)) {
+            java.nio.file.Files.createDirectories(uploadPath);
+        }
+        String originalFilename = file.getOriginalFilename();
+        String extension = originalFilename != null && originalFilename.contains(".")
+                ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                : ".png";
+        String fileName = type + "_" + appraisalId + "_" + Instant.now().toEpochMilli() + extension;
+        java.nio.file.Path filePath = uploadPath.resolve(fileName);
+        java.nio.file.Files.copy(file.getInputStream(), filePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        // We prepend a forward slash for serving
+        return "/uploads/signatures/" + fileName;
     }
 
     @Override
@@ -422,7 +472,8 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = appraisalRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
         try {
-            appraisal.setEmployeeSignComment(file.getBytes());
+            String path = saveSignatureFile(file, id, "employee");
+            appraisal.setEmployeeSignComment(path);
             appraisal.setEmployeeSignedAt(Instant.now());
             appraisalRepo.save(appraisal);
         } catch (java.io.IOException e) {
@@ -436,7 +487,8 @@ public class AppraisalServiceImpl implements AppraisalService {
         Appraisal appraisal = appraisalRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
         try {
-            appraisal.setManagerSignComment(file.getBytes());
+            String path = saveSignatureFile(file, id, "manager");
+            appraisal.setManagerSignComment(path);
             appraisal.setManagerSignedAt(Instant.now());
             appraisalRepo.save(appraisal);
         } catch (java.io.IOException e) {

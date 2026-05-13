@@ -38,4 +38,8 @@ public class CorsConfig implements WebMvcConfigurer {
         String uploadPath = uploadDir.toFile().getAbsolutePath();
         registry.addResourceHandler("/uploads/**").addResourceLocations("file:///" + uploadPath.replace("\\", "/") + "/");
     }
+//    public void addResourceHandlers(org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry registry) {
+//        registry.addResourceHandler("/uploads/**")
+//                .addResourceLocations("file:uploads/");
+//    }
 }

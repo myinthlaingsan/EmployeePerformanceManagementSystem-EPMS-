@@ -5,6 +5,7 @@ import ace.org.epms_backend.enums.QuestionType;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.model.appraisal.*;
 import ace.org.epms_backend.repository.*;
+import ace.org.epms_backend.repository.appraisal.AppraisalFormSetRepository;
 import ace.org.epms_backend.service.AppraisalFormService;
 import ace.org.epms_backend.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
     private final QuestionRepository questionRepository;
     private final AppraisalCycleRepository cycleRepository;
     private final AppraisalRepository appraisalRepository;
+    private final AppraisalFormSetRepository formSetRepository;
     private final AuthService authService;
 
     @Override
@@ -39,6 +41,24 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         }
 
         form.setCreatedBy(authService.getCurrentUser().getId());
+
+        if (request.getFormSetId() != null) {
+            AppraisalFormSet formSet = formSetRepository.findById(request.getFormSetId())
+                    .orElseThrow(() -> new NotFoundException("Form Set not found"));
+            form.setFormSet(formSet);
+            
+            AppraisalForm saved = formRepository.save(form);
+            
+            // Update the set's pointer based on form type
+            if (request.getFormType() == ace.org.epms_backend.enums.FormType.SELF_ASSESSMENT) {
+                formSet.setSelfAssessmentForm(saved);
+            } else if (request.getFormType() == ace.org.epms_backend.enums.FormType.MANAGER_EVALUATION) {
+                formSet.setManagerEvaluationForm(saved);
+            }
+            formSetRepository.save(formSet);
+            return saved.getFormId();
+        }
+
         return formRepository.save(form).getFormId();
     }
 
@@ -194,7 +214,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
     @Override
     @Transactional
     public void deleteForm(Long formId) {
-        if (appraisalRepository.existsByForm_FormId(formId)) {
+        if (appraisalRepository.existsByFormIdInFormSet(formId)) {
             throw new RuntimeException("Cannot delete form. It is currently in use by active appraisals.");
         }
         formRepository.deleteById(formId);
@@ -206,7 +226,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         FormCategory category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new NotFoundException("Category not found"));
 
-        if (appraisalRepository.existsByForm_FormId(category.getForm().getFormId())) {
+        if (appraisalRepository.existsByFormIdInFormSet(category.getForm().getFormId())) {
             throw new RuntimeException("Cannot delete category. The associated form is in use.");
         }
         categoryRepository.delete(category);
@@ -218,7 +238,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         Question question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new NotFoundException("Question not found"));
 
-        if (appraisalRepository.existsByForm_FormId(question.getCategory().getForm().getFormId())) {
+        if (appraisalRepository.existsByFormIdInFormSet(question.getCategory().getForm().getFormId())) {
             throw new RuntimeException("Cannot delete question. The associated form is in use.");
         }
         questionRepository.delete(question);

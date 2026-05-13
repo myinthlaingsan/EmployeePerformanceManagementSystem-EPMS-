@@ -45,12 +45,29 @@ const GoalDetail: React.FC = () => {
     }
   };
 
+  // const handleCalculate = async () => {
+  //   if (!goalSet) return;
+  //   try {
+  //     await calculateScore({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
+  //     alert('Score calculated successfully!');
+  //   } catch (err) {
+  //     alert('Failed to calculate score');
+  //   }
+  // };
   const handleCalculate = async () => {
     if (!goalSet) return;
+
     try {
-      await calculateScores({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
+      // This matches your backend parameters
+      const result = await calculateScores({
+        employeeId: goalSet.employeeId,
+        cycleId: goalSet.appraisalCycleId
+      }).unwrap();
+
+      console.log('Score calculation result:', result);
       alert('Score calculated successfully!');
     } catch (err) {
+      console.error('Calculation error:', err);
       alert('Failed to calculate score');
     }
   };

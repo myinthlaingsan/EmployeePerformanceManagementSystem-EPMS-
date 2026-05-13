@@ -11,7 +11,6 @@ import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.kpi.KpiFinalScore;
 import ace.org.epms_backend.model.kpi.KpiGoalItem;
 import ace.org.epms_backend.model.kpi.KpiGoals;
-import ace.org.epms_backend.model.kpi.KpiProgress;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.kpi.KpiScoringService;
@@ -21,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 
@@ -31,7 +29,6 @@ public class KpiScoringServiceImpl implements KpiScoringService {
 
     private final KpiGoalsRepository goalsRepository;
     private final KpiGoalItemRepository goalItemRepository;
-    private final KpiProgressRepository progressRepository;
     private final KpiFinalScoreRepository finalScoreRepository;
     private final EmployeeRepository employeeRepository;
     private final KpiMapper kpiMapper;
@@ -61,12 +58,13 @@ public class KpiScoringServiceImpl implements KpiScoringService {
 
         // Precondition 1: Is the appraisal cycle actually finished?
         // if (goalSet.getCycle().getIsActive()) {
-        //     throw new IllegalStateException("Cannot calculate final score while the appraisal cycle is still active.");
+        // throw new IllegalStateException("Cannot calculate final score while the
+        // appraisal cycle is still active.");
         // }
 
         // Precondition 2: Has the manager locked the goal set?
         if (!goalSet.getStatus().equals(KpiGoalStatus.LOCKED) &&
-            !goalSet.getStatus().equals(KpiGoalStatus.APPROVED)) {
+                !goalSet.getStatus().equals(KpiGoalStatus.APPROVED)) {
             throw new IllegalStateException("Goal set must be APPROVED or LOCKED before finalizing the score.");
         }
 
@@ -88,7 +86,8 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
-            throw new IllegalStateException("Total weight of active KPI items must be exactly 100%. Current: " + totalWeight + "%");
+            throw new IllegalStateException(
+                    "Total weight of active KPI items must be exactly 100%. Current: " + totalWeight + "%");
         }
 
         BigDecimal totalWeightedScore = items.stream()
@@ -114,7 +113,6 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                 .newState(savedScore)
                 .status(AuditStatus.SUCCESS)
                 .build());
-
         return kpiMapper.toScoreResponse(savedScore);
     }
 
@@ -123,4 +121,6 @@ public class KpiScoringServiceImpl implements KpiScoringService {
         return employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Current user not found"));
     }
+
+
 }

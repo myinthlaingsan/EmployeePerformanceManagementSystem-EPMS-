@@ -16,9 +16,9 @@ public interface EmployeeService {
 
     List<EmployeeResponse> getAll();
 
-    PagedResponse<EmployeeResponse> getAllPaginated(int page, int size);
+    PagedResponse<EmployeeResponse> getAllPaginated(int page, int size, Boolean excludeSelf);
 
-    PagedResponse<EmployeeResponse> search(String query, Long departmentId, Long teamId, int page, int size);
+    PagedResponse<EmployeeResponse> search(String query, Long departmentId, Long teamId, int page, int size, Boolean excludeSelf);
 
     EmployeeResponse updateEmployee(Long id, UpdateEmployeeRequest request);
 

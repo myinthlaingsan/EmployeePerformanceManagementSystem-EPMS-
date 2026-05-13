@@ -231,11 +231,14 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
     }
 
     private FullManagerEvaluationResponse buildFullResponse(Appraisal appraisal, ManagerEvaluation eval) {
-        // Use the specific form linked to the appraisal
-        AppraisalForm form = appraisal.getForm();
+        // Use the specific form linked to the appraisal via FormSet
+        AppraisalForm form = null;
+        if (appraisal.getFormSet() != null) {
+            form = appraisal.getFormSet().getManagerEvaluationForm();
+        }
 
         if (form == null) {
-            // Fallback: Find the first MANAGER_EVALUATION form in the cycle if none linked
+            // Fallback: Find the first MANAGER_EVALUATION form in the cycle
             form = appraisal.getCycle().getForms().stream()
                     .filter(f -> f.getFormType() == FormType.MANAGER_EVALUATION)
                     .findFirst()
@@ -309,6 +312,9 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 .appraisalId(appraisal.getAppraisalId())
                 .formName(form.getFormName())
                 .formType(form.getFormType())
+                // Manager Info
+                .managerId(appraisal.getManager() != null ? appraisal.getManager().getId() : null)
+                .isSelfSubmitted(appraisal.getSelfSubmittedAt() != null)
                 // Employee Info
                 .employeeName(appraisal.getEmployee().getStaffName())
                 .employeeId(appraisal.getEmployee().getId())
@@ -336,12 +342,8 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 .submittedAt(eval.getSubmittedAt())
                 .employeeSignedAt(appraisal.getEmployeeSignedAt())
                 .managerSignedAt(appraisal.getManagerSignedAt())
-                .employeeSignature(appraisal.getEmployeeSignComment() != null
-                        ? java.util.Base64.getEncoder().encodeToString(appraisal.getEmployeeSignComment())
-                        : null)
-                .managerSignature(appraisal.getManagerSignComment() != null
-                        ? java.util.Base64.getEncoder().encodeToString(appraisal.getManagerSignComment())
-                        : null)
+                .employeeSignature(appraisal.getEmployeeSignComment())
+                .managerSignature(appraisal.getManagerSignComment())
                 .categories(categoryDTOs)
                 .build();
 

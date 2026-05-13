@@ -120,6 +120,7 @@ public class KpiController {
     }
 
     // 6. KPI Score Calculation (System/Manager)
+//    @RequestMapping("/api/v1/kpi")
     @PostMapping("/calculate-score")
     @PreAuthorize("hasAnyRole('MANAGER', 'HR')")
     public ResponseEntity<ApiResponse<KpiScoreResponse>> calculateScore(@RequestParam Long employeeId,

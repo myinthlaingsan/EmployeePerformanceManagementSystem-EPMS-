@@ -13,7 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/manager-evaluations")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'HR')")
+@PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'HR', 'EMPLOYEE')")
 public class ManagerEvaluationController {
 
     private final ManagerEvaluationService service;

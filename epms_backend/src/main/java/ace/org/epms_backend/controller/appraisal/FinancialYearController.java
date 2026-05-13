@@ -1,5 +1,5 @@
 package ace.org.epms_backend.controller.appraisal;
-
+import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.appraisal.FinancialYearRequest;
 import ace.org.epms_backend.dto.appraisal.FinancialYearResponse;
 import ace.org.epms_backend.service.appraisal.FinancialYearService;
@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -17,33 +18,34 @@ public class FinancialYearController {
     private final FinancialYearService financialYearService;
 
     @PostMapping
-    public ResponseEntity<FinancialYearResponse> create(@RequestBody FinancialYearRequest request) {
-        return ResponseEntity.ok(financialYearService.createFinancialYear(request));
+    public ResponseEntity<ApiResponse<FinancialYearResponse>> create(@Valid @RequestBody FinancialYearRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(financialYearService.createFinancialYear(request)));
     }
 
+
     @GetMapping
-    public ResponseEntity<List<FinancialYearResponse>> getAll() {
-        return ResponseEntity.ok(financialYearService.getAllFinancialYears());
+    public ResponseEntity<ApiResponse<List<FinancialYearResponse>>> getAll() {
+        return ResponseEntity.ok(ApiResponse.success(financialYearService.getAllFinancialYears()));
     }
 
     @GetMapping("/current")
-    public ResponseEntity<FinancialYearResponse> getCurrent() {
-        return ResponseEntity.ok(financialYearService.getCurrentFinancialYear());
+    public ResponseEntity<ApiResponse<FinancialYearResponse>> getCurrent() {
+        return ResponseEntity.ok(ApiResponse.success(financialYearService.getCurrentFinancialYear()));
     }
 
     @PatchMapping("/{id}/set-current")
-    public ResponseEntity<FinancialYearResponse> setCurrent(@PathVariable Long id) {
-        return ResponseEntity.ok(financialYearService.setCurrentFinancialYear(id));
+    public ResponseEntity<ApiResponse<FinancialYearResponse>> setCurrent(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(financialYearService.setCurrentFinancialYear(id)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         financialYearService.deleteFinancialYear(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @PostMapping("/rollover")
-    public ResponseEntity<FinancialYearResponse> rollover() {
-        return ResponseEntity.ok(financialYearService.rollover());
+    public ResponseEntity<ApiResponse<FinancialYearResponse>> rollover() {
+        return ResponseEntity.ok(ApiResponse.success(financialYearService.rollover()));
     }
 }

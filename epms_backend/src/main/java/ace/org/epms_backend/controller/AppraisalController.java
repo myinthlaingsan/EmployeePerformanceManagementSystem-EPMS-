@@ -110,15 +110,22 @@ public class AppraisalController {
     }
 
     @PostMapping("/{id}/calculate")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<ScoreBreakdownResponse>> calculate(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 appraisalService.calculate(id)
         ));
     }
 
+    @GetMapping("/{id}/score-breakdown")
+    public ResponseEntity<ApiResponse<ScoreBreakdownResponse>> getScoreBreakdown(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.getScoreBreakdown(id)
+        ));
+    }
+
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<AppraisalResponse>> approve(
             @PathVariable Long id,
             @RequestParam(required = false) String comment
@@ -129,7 +136,7 @@ public class AppraisalController {
     }
 
     @PostMapping("/{id}/finalize")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<AppraisalResponse>> finalizeAppraisal(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 appraisalService.finalizeAppraisal(id)
@@ -193,10 +200,11 @@ public class AppraisalController {
 
     // Merged from AppraisalIntegrationController to resolve conflict
     @PostMapping("/sync-feedback")
-    public ResponseEntity<Void> syncFeedback(@RequestBody AppraisalSyncRequest request) {
+    public ResponseEntity<Void> syncFeedback(@Valid @RequestBody AppraisalSyncRequest request) {
         appraisalIntegrationService.syncFeedbackToAppraisal(request.getCycleId());
         return ResponseEntity.ok().build();
     }
+
 
     @GetMapping("/employee/{employeeId}/cycle/{cycleId}")
     public ResponseEntity<Appraisal> getAppraisalIntegration(@PathVariable Long employeeId, @PathVariable Long cycleId) {

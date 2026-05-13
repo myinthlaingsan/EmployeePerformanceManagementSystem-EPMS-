@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/appraisal-forms")
@@ -18,17 +19,17 @@ public class AppraisalFormController {
     private final AppraisalFormService formService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Long>> createForm(@RequestBody AppraisalFormRequest request) {
+    public ResponseEntity<ApiResponse<Long>> createForm(@Valid @RequestBody AppraisalFormRequest request) {
         return new ResponseEntity<>(ApiResponse.success(formService.createForm(request)), HttpStatus.CREATED);
     }
 
     @PostMapping("/{formId}/categories")
-    public ResponseEntity<ApiResponse<Long>> addCategory(@PathVariable Long formId, @RequestBody CategoryRequest request) {
+    public ResponseEntity<ApiResponse<Long>> addCategory(@PathVariable Long formId, @Valid @RequestBody CategoryRequest request) {
         return ResponseEntity.ok(ApiResponse.success(formService.addCategory(formId, request)));
     }
 
     @PostMapping("/categories/{categoryId}/questions")
-    public ResponseEntity<ApiResponse<Long>> addQuestion(@PathVariable Long categoryId, @RequestBody QuestionRequest request) {
+    public ResponseEntity<ApiResponse<Long>> addQuestion(@PathVariable Long categoryId, @Valid @RequestBody QuestionRequest request) {
         return ResponseEntity.ok(ApiResponse.success(formService.addQuestion(categoryId, request)));
     }
 
@@ -48,29 +49,29 @@ public class AppraisalFormController {
     }
  
     @PutMapping("/{formId}")
-    public ResponseEntity<Void> updateForm(@PathVariable Long formId, @RequestBody AppraisalFormRequest request) {
+    public ResponseEntity<Void> updateForm(@PathVariable Long formId, @Valid @RequestBody AppraisalFormRequest request) {
         formService.updateForm(formId, request);
         return ResponseEntity.ok().build();
     }
  
     @PutMapping("/{categoryId}")
-    public ResponseEntity<Void> updateCategory(@PathVariable Long categoryId, @RequestBody CategoryRequest request) {
+    public ResponseEntity<Void> updateCategory(@PathVariable Long categoryId, @Valid @RequestBody CategoryRequest request) {
         formService.updateCategory(categoryId, request);
         return ResponseEntity.ok().build();
     }
  
     @PutMapping("/{questionId}")
-    public ResponseEntity<Void> updateQuestion(@PathVariable Long questionId, @RequestBody QuestionRequest request) {
+    public ResponseEntity<Void> updateQuestion(@PathVariable Long questionId, @Valid @RequestBody QuestionRequest request) {
         formService.updateQuestion(questionId, request);
         return ResponseEntity.ok().build();
     }
- 
+
     @DeleteMapping("/{formId}")
     public ResponseEntity<Void> deleteForm(@PathVariable Long formId) {
         formService.deleteForm(formId);
         return ResponseEntity.noContent().build();
     }
- 
+
     @DeleteMapping("/{categoryId}")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long categoryId) {
         formService.deleteCategory(categoryId);

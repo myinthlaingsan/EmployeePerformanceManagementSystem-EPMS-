@@ -13,6 +13,7 @@ import ace.org.epms_backend.service.feedback360.FeedbackRequestService;
 import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,7 +34,7 @@ public class Feedback360Controller {
     // ─────────────────────────────────────────────────────────────────────────
 
     @PostMapping("/generate")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ROLE_HR')")
+    @PreAuthorize("hasRole('ROLE_HR')")
     public ResponseEntity<ApiResponse<?>> generateRequests(
             @RequestParam Long cycleId,
             @RequestParam(required = false) Long previousCycleId,
@@ -44,7 +45,7 @@ public class Feedback360Controller {
     }
 
     @GetMapping("/preview")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ROLE_HR')")
+    @PreAuthorize("hasRole('ROLE_HR')")
     public ResponseEntity<ApiResponse<List<FeedbackRequestResponse>>> preview360Requests(
             @RequestParam Long cycleId,
             @RequestParam(required = false) Long previousCycleId,
@@ -55,7 +56,7 @@ public class Feedback360Controller {
     }
 
     @PostMapping("/regenerate-user")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ROLE_HR')")
+    @PreAuthorize("hasRole('ROLE_HR')")
     public ResponseEntity<ApiResponse<?>> regenerateUserRequests(
             @RequestParam Long targetEmployeeId,
             @RequestParam Long cycleId,
@@ -109,7 +110,7 @@ public class Feedback360Controller {
      * </pre>
      */
     @PostMapping("/rotation/generate")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ROLE_HR')")
+    @PreAuthorize("hasRole('ROLE_HR')")
     public ResponseEntity<ApiResponse<?>> generateRotationAssignments(
             @RequestParam Long currentCycleId,
             @RequestParam(required = false) Long previousCycleId) {
@@ -134,7 +135,7 @@ public class Feedback360Controller {
      * </pre>
      */
     @GetMapping("/rotation/preview")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ROLE_HR')")
+    @PreAuthorize("hasRole('ROLE_HR')")
     public ResponseEntity<ApiResponse<List<EvaluatorAssignmentDTO>>> previewRotationAssignments(
             @RequestParam Long currentCycleId,
             @RequestParam(required = false) Long previousCycleId) {
@@ -157,7 +158,7 @@ public class Feedback360Controller {
      * </pre>
      */
     @GetMapping("/rotation/assign")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ROLE_HR')")
+    @PreAuthorize("hasRole('ROLE_HR')")
     public ResponseEntity<ApiResponse<EvaluatorAssignmentDTO>> getAssignedEvaluatorForTarget(
             @RequestParam Long targetEmployeeId,
             @RequestParam Long currentCycleId,

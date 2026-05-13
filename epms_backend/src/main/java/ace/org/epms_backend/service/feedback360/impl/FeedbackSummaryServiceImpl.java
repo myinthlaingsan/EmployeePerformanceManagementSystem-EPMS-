@@ -12,6 +12,7 @@ import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository;
+import ace.org.epms_backend.service.feedback360.FeedbackReportService;
 import ace.org.epms_backend.service.feedback360.FeedbackSummaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,8 +32,7 @@ public class FeedbackSummaryServiceImpl implements FeedbackSummaryService {
     private final FeedbackSummaryRepository summaryRepository;
     private final EmployeeRepository employeeRepository;
     private final AppraisalCycleRepository cycleRepository;
-    private final FeedbackMapper feedbackMapper;
-    private final ace.org.epms_backend.service.feedback360.FeedbackReportService feedbackReportService;
+    private final FeedbackReportService feedbackReportService;
 
     @Override
     @Transactional

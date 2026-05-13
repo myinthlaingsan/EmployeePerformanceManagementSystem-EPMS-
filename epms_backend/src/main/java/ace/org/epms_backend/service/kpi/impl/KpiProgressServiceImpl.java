@@ -15,7 +15,6 @@ import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.KpiGoalItemRepository;
 import ace.org.epms_backend.repository.KpiHistoryLogRepository;
 import ace.org.epms_backend.repository.KpiProgressRepository;
-import ace.org.epms_backend.service.kpi.KpiHistoryService;
 import ace.org.epms_backend.service.kpi.KpiProgressService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -61,7 +60,8 @@ public class KpiProgressServiceImpl implements KpiProgressService {
             throw new IllegalArgumentException("Actual value cannot be less than 0");
         }
         if (item.getTargetValue() != null && request.getActualValue().compareTo(item.getTargetValue()) > 0) {
-            throw new IllegalArgumentException("Actual value cannot exceed target value (" + item.getTargetValue() + ")");
+            throw new IllegalArgumentException(
+                    "Actual value cannot exceed target value (" + item.getTargetValue() + ")");
         }
 
         // Update item status and snapshot value
@@ -96,8 +96,8 @@ public class KpiProgressServiceImpl implements KpiProgressService {
                 .goalSetId(item.getGoalSet().getId())
                 .itemId(item.getId())
                 .action("PROGRESS_UPDATE")
-                .changeDetails(String.format("Updated progress for '%s': %s %s (%s%%)", 
-                    item.getTitle(), request.getActualValue(), item.getUnit(), request.getProgressPercent()))
+                .changeDetails(String.format("Updated progress for '%s': %s %s (%s%%)",
+                        item.getTitle(), request.getActualValue(), item.getUnit(), request.getProgressPercent()))
                 .changeReason(request.getEvidenceNote())
                 .changedBy(currentUser.getId())
                 .build());

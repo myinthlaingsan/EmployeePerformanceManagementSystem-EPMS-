@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -46,10 +45,11 @@ public class EmployeeController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<EmployeeResponse>>> getAll(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Boolean excludeSelf
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(employeeService.getAllPaginated(page, size))
+                ApiResponse.success(employeeService.getAllPaginated(page, size, excludeSelf))
         );
     }
 
@@ -59,10 +59,11 @@ public class EmployeeController {
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long teamId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Boolean excludeSelf
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success(employeeService.search(query, departmentId, teamId, page, size))
+                ApiResponse.success(employeeService.search(query, departmentId, teamId, page, size,excludeSelf))
         );
     }
 
@@ -101,15 +102,6 @@ public class EmployeeController {
         return ResponseEntity.ok(
                 ApiResponse.success(employeeService.updateProfile(request))
         );
-    }
-
-    @PostMapping(value = "/{id}/profile-image", consumes = "multipart/form-data")
-    public ResponseEntity<ApiResponse<?>> uploadProfileImage(
-            @PathVariable Long id,
-            @RequestParam("file") MultipartFile file
-    ) {
-        employeeService.uploadProfileImage(id, file);
-        return ResponseEntity.ok(ApiResponse.success());
     }
 
     @PostMapping("/{id}/change-password")

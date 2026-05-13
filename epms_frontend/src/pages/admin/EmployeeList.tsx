@@ -1,5 +1,4 @@
 import {
-  useGetEmployeesQuery,
   useSearchEmployeesQuery,
   useDeleteEmployeeMutation,
   useActivateEmployeeMutation
