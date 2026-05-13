@@ -3,8 +3,11 @@ package ace.org.epms_backend.service.kpi.impl;
 import ace.org.epms_backend.dto.kpi.GoalSetResponse;
 import ace.org.epms_backend.dto.kpi.KpiProgressResponse;
 import ace.org.epms_backend.dto.kpi.ProgressRequest;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.KpiGoalStatus;
 import ace.org.epms_backend.enums.KpiItemStatus;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.employee.Employee;
@@ -17,6 +20,7 @@ import ace.org.epms_backend.repository.KpiHistoryLogRepository;
 import ace.org.epms_backend.repository.KpiProgressRepository;
 import ace.org.epms_backend.service.kpi.KpiProgressService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +38,7 @@ public class KpiProgressServiceImpl implements KpiProgressService {
     private final EmployeeRepository employeeRepository;
     private final KpiHistoryLogRepository historyRepo;
     private final KpiMapper kpiMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -89,6 +94,20 @@ public class KpiProgressServiceImpl implements KpiProgressService {
             item.setStatus(KpiItemStatus.IN_PROGRESS);
         }
         goalItemRepository.save(item);
+
+        // Notify manager when a KPI item is completed
+        if (item.getStatus() == KpiItemStatus.COMPLETED && item.getGoalSet().getManager() != null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(item.getGoalSet().getManager().getId())
+                    .senderId(currentUser.getId())
+                    .type(NotificationType.KPI_PROGRESS_UPDATED)
+                    .title("KPI Goal Completed")
+                    .message(currentUser.getStaffName() + " has completed the KPI goal: '" + item.getTitle() + "'")
+                    .referenceType(ReferenceType.KPI)
+                    .referenceId(item.getGoalSet().getId())
+                    .actionUrl("/kpi/team")
+                    .build());
+        }
 
         // Add to history audit trail
         historyRepo.save(KpiHistoryLog.builder()

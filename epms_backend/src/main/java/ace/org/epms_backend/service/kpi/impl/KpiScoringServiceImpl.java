@@ -2,9 +2,12 @@ package ace.org.epms_backend.service.kpi.impl;
 
 import ace.org.epms_backend.dto.AuditRequest;
 import ace.org.epms_backend.dto.kpi.KpiScoreResponse;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.AuditAction;
 import ace.org.epms_backend.enums.AuditStatus;
 import ace.org.epms_backend.enums.KpiGoalStatus;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.employee.Employee;
@@ -15,6 +18,7 @@ import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.kpi.KpiScoringService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +37,7 @@ public class KpiScoringServiceImpl implements KpiScoringService {
     private final EmployeeRepository employeeRepository;
     private final KpiMapper kpiMapper;
     private final AuditService auditService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -104,6 +109,21 @@ public class KpiScoringServiceImpl implements KpiScoringService {
         finalScore.setFinalizedBy(getCurrentEmployee().getId());
 
         KpiFinalScore savedScore = finalScoreRepository.save(finalScore);
+
+        // Notify employee that their final KPI score has been published
+        if (goalSet.getEmployee() != null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(goalSet.getEmployee().getId())
+                    .senderId(getCurrentEmployee().getId())
+                    .type(NotificationType.FINAL_RESULT_PUBLISHED)
+                    .title("KPI Final Score Published")
+                    .message("Your KPI final score for the '" + goalSet.getCycle().getCycleName()
+                            + "' cycle has been calculated. Your weighted score is " + totalWeightedScore + "%.")
+                    .referenceType(ReferenceType.KPI)
+                    .referenceId(goalSet.getId())
+                    .actionUrl("/kpi/my")
+                    .build());
+        }
 
         // Log Audit
         auditService.log(AuditRequest.builder()
