@@ -67,9 +67,18 @@ const KpiImportModal: React.FC<KpiImportModalProps> = ({ isOpen, onClose }) => {
         setImportResult(response.data);
       }
     } catch (err: any) {
-      const errorMessage = err?.data?.message || 'An unexpected error occurred during import';
-      setGlobalError(errorMessage);
-      console.error('Import failed:', err);
+      if (err?.data?.errors && Array.isArray(err.data.errors)) {
+        setImportResult({
+          totalSectionsFound: 0,
+          successfulImports: 0,
+          failedImports: err.data.errors.length,
+          errors: err.data.errors
+        });
+      } else {
+        const errorMessage = err?.data?.message || 'An unexpected error occurred during import';
+        setGlobalError(errorMessage);
+        console.error('Import failed:', err);
+      }
     }
   };
 
