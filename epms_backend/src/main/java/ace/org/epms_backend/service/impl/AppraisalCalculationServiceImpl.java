@@ -92,28 +92,29 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                 // Note: We use compareTo(ZERO) != 0 as a simple check, but presence in DB is more robust.
                 // However, the user said "if score are not completed", so we should check if they were actually submitted.
                 
-                // 2. Fetch Weights
+                // 2. Fetch Weights (DB stores as percentage, e.g. 20.00 = 20%)
                 ScoringWeight weights = weightRepo.findByCycle_CycleId(cycleId)
                                 .orElseGet(() -> {
+                                        // Fallback defaults in % format to match DB convention
                                         ScoringWeight w = new ScoringWeight();
-                                        w.setSelfWeight(new BigDecimal("0.2"));
-                                        w.setManagerWeight(new BigDecimal("0.5"));
-                                        w.setFeedbackWeight(new BigDecimal("0.3"));
-                                        w.setKpiWeight(BigDecimal.ZERO);
+                                        w.setSelfWeight(new BigDecimal("10"));
+                                        w.setManagerWeight(new BigDecimal("30"));
+                                        w.setFeedbackWeight(new BigDecimal("20"));
+                                        w.setKpiWeight(new BigDecimal("40"));
                                         return w;
                                 });
 
-                // 3. Calculate Weighted Scores
-                BigDecimal selfWeighted = selfRaw
-                                .multiply(weights.getSelfWeight() != null ? weights.getSelfWeight() : BigDecimal.ZERO);
-                BigDecimal managerWeighted = managerRaw
-                                .multiply(weights.getManagerWeight() != null ? weights.getManagerWeight()
-                                                : BigDecimal.ZERO);
-                BigDecimal feedbackWeighted = feedbackRaw
-                                .multiply(weights.getFeedbackWeight() != null ? weights.getFeedbackWeight()
-                                                : BigDecimal.ZERO);
-                BigDecimal kpiWeighted = kpiRaw
-                                .multiply(weights.getKpiWeight() != null ? weights.getKpiWeight() : BigDecimal.ZERO);
+                // 3. Calculate Weighted Scores (weights stored as % e.g. 20.00 = 20%)
+                BigDecimal HUNDRED = new BigDecimal("100");
+                BigDecimal selfW    = (weights.getSelfWeight()     != null ? weights.getSelfWeight()     : BigDecimal.ZERO).divide(HUNDRED);
+                BigDecimal managerW = (weights.getManagerWeight()  != null ? weights.getManagerWeight()  : BigDecimal.ZERO).divide(HUNDRED);
+                BigDecimal feedbackW= (weights.getFeedbackWeight() != null ? weights.getFeedbackWeight() : BigDecimal.ZERO).divide(HUNDRED);
+                BigDecimal kpiW     = (weights.getKpiWeight()      != null ? weights.getKpiWeight()      : BigDecimal.ZERO).divide(HUNDRED);
+
+                BigDecimal selfWeighted     = selfRaw    .multiply(selfW);
+                BigDecimal managerWeighted  = managerRaw .multiply(managerW);
+                BigDecimal feedbackWeighted = feedbackRaw.multiply(feedbackW);
+                BigDecimal kpiWeighted      = kpiRaw     .multiply(kpiW);
 
                 BigDecimal finalScore = selfWeighted.add(managerWeighted).add(feedbackWeighted).add(kpiWeighted)
                                 .setScale(2, RoundingMode.HALF_UP);
