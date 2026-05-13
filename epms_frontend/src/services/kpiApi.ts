@@ -214,7 +214,7 @@ export const kpiApi = api.injectEndpoints({
     }),
 
     // ==================== Score Calculation ====================
-    calculateScore: builder.mutation<
+    calculateScores: builder.mutation<
       ApiResponse<KpiScoreResponse>,
       { employeeId: number; cycleId: number }
     >({
@@ -264,7 +264,7 @@ export const {
   useRevertGoalSetMutation,
   useUpdateProgressMutation,
   useReviseKpiMutation,
-  useCalculateScoreMutation,
+  useCalculateScoresMutation,
   useGetGoalSetByEmployeeQuery,
   useGetGoalSetByIdQuery,
   useGetProgressHistoryQuery,

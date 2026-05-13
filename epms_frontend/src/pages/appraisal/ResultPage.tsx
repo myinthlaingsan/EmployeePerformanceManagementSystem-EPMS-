@@ -4,7 +4,8 @@ import {
   useGetEmployeeAssessmentQuery,
   useUploadEmployeeSignatureMutation,
   useUploadManagerSignatureMutation,
-  useGetScoreBreakdownQuery
+  useGetScoreBreakdownQuery,
+  useCalculateScoreMutation
 } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
 import {
@@ -18,7 +19,8 @@ import {
   ArrowRight,
   Download,
   Target,
-  Clock
+  Clock,
+  Calculator
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -29,6 +31,7 @@ const ResultPage: React.FC = () => {
 
   const { data: appraisal, isLoading } = useGetEmployeeAssessmentQuery(id || '', { skip: !id });
   const { data: breakdown } = useGetScoreBreakdownQuery(id || '', { skip: !id });
+  const [calculateScore, { isLoading: isCalculating }] = useCalculateScoreMutation();
   const [uploadEmployeeSignature, { isLoading: isSigningEmployee }] = useUploadEmployeeSignatureMutation();
   const [uploadManagerSignature, { isLoading: isSigningManager }] = useUploadManagerSignatureMutation();
 
@@ -56,6 +59,15 @@ const ResultPage: React.FC = () => {
   const isEmployee = user?.id === appraisal.employeeId;
   const isManager = user?.id === appraisal.managerId;
   const isPrivileged = isHR || isAdmin;
+
+  const handleCalculate = async () => {
+    try {
+      await calculateScore(id!).unwrap();
+      alert('Scores calculated and synchronized successfully!');
+    } catch (err: any) {
+      alert(err?.data?.message || 'Calculation failed');
+    }
+  };
 
   const handleEmployeeSign = async () => {
     if (!employeeSigFile) return;
@@ -88,6 +100,8 @@ const ResultPage: React.FC = () => {
     return 'text-amber-500';
   };
 
+  const displayScore = breakdown?.finalTotalScore ?? appraisal.finalScore;
+
   return (
     <div className="min-h-screen pb-20" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
       {/* Header */}
@@ -103,9 +117,20 @@ const ResultPage: React.FC = () => {
             <h1 className="text-xl font-black text-slate-900 tracking-tight italic uppercase">Performance Report</h1>
           </div>
 
-          <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
-            <Download className="w-4 h-4" /> Export PDF
-          </button>
+          <div className="flex items-center gap-3">
+            {isPrivileged && (
+              <button 
+                onClick={handleCalculate}
+                disabled={isCalculating}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50"
+              >
+                <Calculator className="w-4 h-4" /> {isCalculating ? 'Calculating...' : 'Calculate Scores'}
+              </button>
+            )}
+            <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+              <Download className="w-4 h-4" /> Export PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -131,19 +156,19 @@ const ResultPage: React.FC = () => {
 
           <div className="flex flex-col items-center gap-3 px-16 py-10 bg-slate-50/50 rounded-[3rem] border border-slate-100 shadow-inner group">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Overall Performance Index</span>
-            <span className={`text-8xl font-black tracking-tighter ${getScoreColor(appraisal.finalScore || 0)} drop-shadow-sm transition-all group-hover:scale-105 duration-500`}>
-              {appraisal.finalScore !== null ? Number(appraisal.finalScore).toFixed(1) : '--'}
+            <span className={`text-8xl font-black tracking-tighter ${getScoreColor(Number(displayScore) || 0)} drop-shadow-sm transition-all group-hover:scale-105 duration-500`}>
+              {displayScore !== null && displayScore !== undefined ? Number(displayScore).toFixed(1) : '--'}
             </span>
             <div className="h-2 w-40 bg-slate-200 rounded-full overflow-hidden mt-2 p-0.5">
               <div
                 className="h-full bg-linear-to-r from-indigo-500 via-blue-500 to-emerald-500 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(99,102,241,0.3)]"
-                style={{ width: `${appraisal.finalScore || 0}%` }}
+                style={{ width: `${Number(displayScore) || 0}%` }}
               ></div>
             </div>
           </div>
         </div>
 
-      {/* Comments Section - Only HR Approval now */}
+        {/* Comments Section - Only HR Approval now */}
         <div className="max-w-4xl mx-auto w-full">
           <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.04)] relative overflow-hidden group hover:shadow-[0_30px_70px_rgba(0,0,0,0.06)] transition-all duration-500">
             <div className="absolute top-0 left-0 w-2 h-full bg-indigo-600"></div>

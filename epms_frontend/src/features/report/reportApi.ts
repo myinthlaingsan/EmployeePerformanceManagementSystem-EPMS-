@@ -12,7 +12,7 @@ import type {
   EmployeePerformanceSummaryDTO,
   PerformanceRankingReportDTO,
 } from "../../types/report";
- 
+
 export const reportApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getKpiAchievementReport: builder.query<ApiResponse<KpiAchievementReportDTO[]>, { cycleId: number; departmentId?: number }>({
@@ -69,7 +69,7 @@ export const reportApi = api.injectEndpoints({
         params: { cycleId },
       }),
     }),
-    downloadReport: builder.mutation<void, { endpoint: string; params?: any }>({
+    downloadReport: builder.mutation<void, { endpoint: string; params?: any; fileName: string }>({
       query: ({ endpoint, params }) => ({
         url: `/reports/${endpoint}/download`,
         params,
@@ -87,7 +87,7 @@ export const reportApi = api.injectEndpoints({
     }),
   }),
 });
- 
+
 export const {
   useGetKpiAchievementReportQuery,
   useGetAppraisalStatusReportQuery,

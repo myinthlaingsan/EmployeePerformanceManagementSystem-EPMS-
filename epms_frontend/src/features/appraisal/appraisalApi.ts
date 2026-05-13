@@ -409,7 +409,7 @@ export const appraisalApi = api.injectEndpoints({
       invalidatesTags: ['Appraisal'],
     }),
     getScoreBreakdown: builder.query<any, string>({
-      query: (id) => `/appraisals/${id}/calculate`,
+      query: (id) => `/appraisals/${id}/score-breakdown`,
       transformResponse,
       providesTags: ['Appraisal'],
     }),
