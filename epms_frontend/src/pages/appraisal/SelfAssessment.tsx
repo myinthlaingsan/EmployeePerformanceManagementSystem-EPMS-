@@ -61,7 +61,7 @@ const SelfAssessment = () => {
     [formData]);
 
   const completedCount = useMemo(() =>
-    Object.values(responses).filter(r => r.ratingValue > 0 && r.isCompleted !== null).length,
+    Object.values(responses).filter(r => r.ratingValue > 0).length,
     [responses]);
 
   const handleRatingChange = (qId: string, val: number) => setResponses(p => ({ ...p, [qId]: { ...p[qId], ratingValue: val } }));
@@ -71,7 +71,7 @@ const SelfAssessment = () => {
   const buildPayload = () => Object.keys(responses).map(qId => ({
     questionId: Number(qId),
     ratingValue: responses[qId].ratingValue,
-    isCompleted: responses[qId].isCompleted,
+    isCompleted: true,
     comment: responses[qId].comment || null,
   }));
 
