@@ -257,6 +257,12 @@ public class AppraisalServiceImpl implements AppraisalService {
         }
 
         @Override
+        @Transactional(readOnly = true)
+        public ScoreBreakdownResponse getScoreBreakdown(Long id) {
+                return calculationService.getScoreBreakdown(id);
+        }
+
+        @Override
         @Transactional
         public AppraisalResponse approve(Long id, String comment) {
                 Appraisal appraisal = appraisalRepo.findById(id)

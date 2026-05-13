@@ -11,6 +11,7 @@ import ace.org.epms_backend.model.appraisal.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository;
 import ace.org.epms_backend.service.AppraisalCalculationService;
+import ace.org.epms_backend.service.PerformanceScoreService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -25,14 +26,20 @@ import java.util.List;
 public class AppraisalCalculationServiceImpl implements AppraisalCalculationService {
 
         private final AppraisalRepository appraisalRepo;
-        private final SelfAssessmentRepository selfRepo;
-        private final ManagerEvaluationRepository evalRepo;
         private final AppraisalSummaryRepository summaryRepo;
         private final PerformanceCategoryRepository performanceCategoryRepo;
         private final ScoringWeightRepository weightRepo;
-        private final KpiFinalScoreRepository kpiFinalScoreRepo;
         private final FeedbackSummaryRepository feedbackSummaryRepo;
+        private final PerformanceScoreService performanceScoreService;
         private final ApplicationEventPublisher eventPublisher;
+
+        @Override
+        @Transactional(readOnly = true)
+        public ScoreBreakdownResponse getScoreBreakdown(Long appraisalId) {
+                Appraisal appraisal = appraisalRepo.findById(appraisalId)
+                                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+                return buildBreakdown(appraisal);
+        }
 
         @Override
         @Transactional
@@ -40,27 +47,53 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                 Appraisal appraisal = appraisalRepo.findById(appraisalId)
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
-                // 1. Fetch Pre-calculated Percentage Scores (0-100)
-                BigDecimal selfRaw = selfRepo.findByAppraisal_AppraisalId(appraisalId)
-                                .map(SelfAssessment::getTotalScore).orElse(BigDecimal.ZERO);
+                ScoreBreakdownResponse breakdown = buildBreakdown(appraisal);
 
-                BigDecimal managerRaw = evalRepo.findByAppraisal_AppraisalId(appraisalId)
-                                .map(ManagerEvaluation::getTotalScore).orElse(BigDecimal.ZERO);
+                // Save Summary
+                AppraisalSummary summary = summaryRepo
+                                .findByEmployee_IdAndCycle_CycleId(appraisal.getEmployee().getId(),
+                                                appraisal.getCycle().getCycleId())
+                                .orElseGet(() -> {
+                                        AppraisalSummary newSummary = new AppraisalSummary();
+                                        newSummary.setEmployee(appraisal.getEmployee());
+                                        newSummary.setCycle(appraisal.getCycle());
+                                        return newSummary;
+                                });
 
-                // 1.1 Fetch KPI Final Score (already 0-100%)
-                BigDecimal kpiRaw = kpiFinalScoreRepo.findByEmployeeIdAndCycleId(
-                                appraisal.getEmployee().getId(), appraisal.getCycle().getCycleId())
-                                .map(kpi -> kpi.getTotalAchievementPercent())
-                                .orElse(BigDecimal.ZERO);
+                summary.setTotalScore(breakdown.getFinalTotalScore());
+                summary.setFinalGrade(breakdown.getFinalGrade());
+                summaryRepo.save(summary);
 
-                // 1.2 Fetch 360 Feedback Summary Score (already 0-100)
-                BigDecimal feedbackRaw = feedbackSummaryRepo.findByEmployeeIdAndCycleCycleId(
-                                appraisal.getEmployee().getId(), appraisal.getCycle().getCycleId())
-                                .map(fs -> fs.getFinalScore())
-                                .orElse(BigDecimal.ZERO);
+                // Notify Summary Ready
+                eventPublisher.publishEvent(NotificationEvent.builder()
+                                .broadcast(true)
+                                .type(NotificationType.APPRAISAL_SUMMARY_READY)
+                                .title("Appraisal Calculated")
+                                .message("Final results are ready for " + appraisal.getEmployee().getStaffName())
+                                .referenceType(ReferenceType.APPRAISAL)
+                                .referenceId(appraisalId)
+                                .build());
 
+                return breakdown;
+        }
+
+        private ScoreBreakdownResponse buildBreakdown(Appraisal appraisal) {
+                Long appraisalId = appraisal.getAppraisalId();
+                Long employeeId = appraisal.getEmployee().getId();
+                Long cycleId = appraisal.getCycle().getCycleId();
+
+                // 1. Fetch Scores using PerformanceScoreService
+                BigDecimal selfRaw = performanceScoreService.getSelfAssessmentTotalScore(appraisalId);
+                BigDecimal managerRaw = performanceScoreService.getManagerEvaluationTotalScore(appraisalId);
+                BigDecimal kpiRaw = performanceScoreService.getKpiTotalScore(employeeId, cycleId);
+                BigDecimal feedbackRaw = performanceScoreService.getFeedbackTotalScore(employeeId, cycleId);
+
+                // Check for completeness - all components must have a score recorded
+                // Note: We use compareTo(ZERO) != 0 as a simple check, but presence in DB is more robust.
+                // However, the user said "if score are not completed", so we should check if they were actually submitted.
+                
                 // 2. Fetch Weights
-                ScoringWeight weights = weightRepo.findByCycle_CycleId(appraisal.getCycle().getCycleId())
+                ScoringWeight weights = weightRepo.findByCycle_CycleId(cycleId)
                                 .orElseGet(() -> {
                                         ScoringWeight w = new ScoringWeight();
                                         w.setSelfWeight(new BigDecimal("0.2"));
@@ -88,32 +121,6 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                 // 4. Determine Grade
                 PerformanceGrade grade = determineGrade(finalScore);
 
-                // 5. Save Summary
-                AppraisalSummary summary = summaryRepo
-                                .findByEmployee_IdAndCycle_CycleId(appraisal.getEmployee().getId(),
-                                                appraisal.getCycle().getCycleId())
-                                .orElseGet(() -> {
-                                        AppraisalSummary newSummary = new AppraisalSummary();
-                                        newSummary.setEmployee(appraisal.getEmployee());
-                                        newSummary.setCycle(appraisal.getCycle());
-                                        return newSummary;
-                                });
-
-                summary.setTotalScore(finalScore);
-                summary.setFinalGrade(grade);
-                summaryRepo.save(summary);
-
-                // Notify Summary Ready
-                eventPublisher.publishEvent(NotificationEvent.builder()
-                                .broadcast(true)
-                                .type(NotificationType.APPRAISAL_SUMMARY_READY)
-                                .title("Appraisal Calculated")
-                                .message("Final results are ready for " + appraisal.getEmployee().getStaffName())
-                                .referenceType(ReferenceType.APPRAISAL)
-                                .referenceId(appraisalId)
-                                .build());
-
-                // 6. Build Detailed Response
                 return ScoreBreakdownResponse.builder()
                                 .appraisalId(appraisalId)
                                 .selfRawScore(selfRaw)

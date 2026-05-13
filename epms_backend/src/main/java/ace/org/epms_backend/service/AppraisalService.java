@@ -25,6 +25,8 @@ public interface AppraisalService {
 
     ScoreBreakdownResponse calculate(Long id);
 
+    ScoreBreakdownResponse getScoreBreakdown(Long id);
+
     AppraisalResponse approve(Long id, String comment);
 
     AppraisalResponse finalizeAppraisal(Long id);
