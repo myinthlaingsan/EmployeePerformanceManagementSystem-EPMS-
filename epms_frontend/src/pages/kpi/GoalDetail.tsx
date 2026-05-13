@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   useGetGoalSetByEmployeeQuery,
   useApproveGoalSetMutation,
-  useCalculateScoreMutation
+  useCalculateScoresMutation
 } from '../../services/kpiApi';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
@@ -23,7 +23,7 @@ const GoalDetail: React.FC = () => {
   });
 
   const [approveGoal] = useApproveGoalSetMutation();
-  const [calculateScore] = useCalculateScoreMutation();
+  const [calculateScores] = useCalculateScoresMutation();
 
   const goalSet = goalSetResponse?.data;
   const items = goalSet?.items || [];
@@ -48,7 +48,7 @@ const GoalDetail: React.FC = () => {
   const handleCalculate = async () => {
     if (!goalSet) return;
     try {
-      await calculateScore({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
+      await calculateScores({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
       alert('Score calculated successfully!');
     } catch (err) {
       alert('Failed to calculate score');
@@ -89,7 +89,7 @@ const GoalDetail: React.FC = () => {
               >
                 Modify Goals
               </button>
-              
+
               {goalSet.status === 'DRAFT' && (
                 <button
                   onClick={handleApprove}
