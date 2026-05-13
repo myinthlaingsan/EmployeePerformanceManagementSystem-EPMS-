@@ -3,6 +3,7 @@ package ace.org.epms_backend.util.excel;
 import ace.org.epms_backend.dto.kpi.KpiLibraryDetailRequest;
 import ace.org.epms_backend.dto.kpi.KpiLibraryRequest;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.model.kpi.KpiCategory;
 import ace.org.epms_backend.repository.KpiCategoryRepository;
 import ace.org.epms_backend.repository.PositionRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +11,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
-
+import ace.org.epms_backend.model.kpi.KpiCategory; // adjust package to match yours
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
@@ -141,7 +142,7 @@ public class StyledKpiExcelParser {
                 tempMap.put(HEADER_TARGET, cell.getColumnIndex());
             else if (value.contains("UNIT"))
                 tempMap.put(HEADER_UNIT, cell.getColumnIndex());
-            else if (value.contains("WEIGHT"))
+            else if (value.contains("WEIGHT") && !value.contains("SCORE"))
                 tempMap.put(HEADER_WEIGHT, cell.getColumnIndex());
         }
 
@@ -207,9 +208,16 @@ public class StyledKpiExcelParser {
         KpiLibraryDetailRequest detail = new KpiLibraryDetailRequest();
         detail.setGoalTitle(goalTitle);
         detail.setUnit(unit);
-        detail.setCategoryId(categoryRepository.findByNameIgnoreCase(categoryName)
-                .orElseThrow(() -> new NotFoundException("Row " + rowNum + ": Category not found: " + categoryName))
-                .getId());
+
+        String normalizedName = categoryName.trim();
+        Long categoryId = categoryRepository.findByNameIgnoreCase(normalizedName)
+                .map(KpiCategory::getId)
+                .orElseGet(() -> {
+                    KpiCategory newCat = new KpiCategory();
+                    newCat.setName(normalizedName);
+                    return categoryRepository.save(newCat).getId();
+                });
+        detail.setCategoryId(categoryId);
 
         // Improved numeric parsing with explicit error handling
         detail.setTargetValue(parseBigDecimal(targetStr, "Target Value", goalTitle, rowNum));
