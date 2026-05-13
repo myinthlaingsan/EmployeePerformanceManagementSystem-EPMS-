@@ -11,9 +11,10 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PerformanceRankingReportDTO {
+    private Integer rank;
     private String employeeName;
     private String departmentName;
-    private BigDecimal currentScore;
+    private BigDecimal finalScore;
     private BigDecimal previousScore;
     private String rating;
     private String trend; // e.g., "UP", "DOWN", "STABLE"

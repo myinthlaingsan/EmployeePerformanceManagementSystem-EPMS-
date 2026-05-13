@@ -117,6 +117,13 @@ public class AppraisalController {
         ));
     }
 
+    @GetMapping("/{id}/score-breakdown")
+    public ResponseEntity<ApiResponse<ScoreBreakdownResponse>> getScoreBreakdown(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.getScoreBreakdown(id)
+        ));
+    }
+
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<AppraisalResponse>> approve(

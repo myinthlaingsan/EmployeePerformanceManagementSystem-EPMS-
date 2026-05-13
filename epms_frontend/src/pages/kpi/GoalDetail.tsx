@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   useGetGoalSetByEmployeeQuery,
   useApproveGoalSetMutation,
-  useCalculateScoreMutation
+  useCalculateScoresMutation
 } from '../../services/kpiApi';
 import { useAuth } from '../../hooks/useAuth';
 import { useActiveCycle } from '../../context/ActiveCycleContext';
@@ -23,7 +23,7 @@ const GoalDetail: React.FC = () => {
   });
 
   const [approveGoal] = useApproveGoalSetMutation();
-  const [calculateScore] = useCalculateScoreMutation();
+  const [calculateScores] = useCalculateScoresMutation();
 
   const goalSet = goalSetResponse?.data;
   const items = goalSet?.items || [];
@@ -45,15 +45,32 @@ const GoalDetail: React.FC = () => {
     }
   };
 
+  // const handleCalculate = async () => {
+  //   if (!goalSet) return;
+  //   try {
+  //     await calculateScore({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
+  //     alert('Score calculated successfully!');
+  //   } catch (err) {
+  //     alert('Failed to calculate score');
+  //   }
+  // };
   const handleCalculate = async () => {
     if (!goalSet) return;
+    
     try {
-      await calculateScore({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
+      // This matches your backend parameters
+      const result = await calculateScores({ 
+        employeeId: goalSet.employeeId, 
+        cycleId: goalSet.appraisalCycleId 
+      }).unwrap();
+      
+      console.log('Score calculation result:', result);
       alert('Score calculated successfully!');
     } catch (err) {
+      console.error('Calculation error:', err);
       alert('Failed to calculate score');
     }
-  };
+};
 
   if (isLoading) return <div className="p-8 text-center text-gray-500">Loading goal details...</div>;
   if (error || !goalSet) return <div className="p-8 text-center text-red-500">Goal set not found for this cycle.</div>;

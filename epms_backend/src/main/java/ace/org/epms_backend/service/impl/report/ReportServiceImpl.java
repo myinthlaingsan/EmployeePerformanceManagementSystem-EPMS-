@@ -548,7 +548,7 @@ public class ReportServiceImpl implements ReportService {
         final AppraisalCycle prevCycle = previousCycle;
         List<Appraisal> appraisals = appraisalRepository.findByCycle_CycleId(cycleId);
 
-        return appraisals.stream().filter(a -> a.getPerformanceCategory() != null).map(a -> {
+        List<PerformanceRankingReportDTO> results = appraisals.stream().filter(a -> a.getPerformanceCategory() != null).map(a -> {
             String name = a.getPerformanceCategory().getName();
             Integer rating = a.getPerformanceCategory().getRatingValue();
             boolean isHigh = name.contains("Exceed") || name.contains("Top") || (rating != null && rating >= 4);
@@ -583,7 +583,7 @@ public class ReportServiceImpl implements ReportService {
             return PerformanceRankingReportDTO.builder()
                     .employeeName(a.getEmployee().getStaffName())
                     .departmentName(ed != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
-                    .currentScore(currentScore)
+                    .finalScore(currentScore)
                     .previousScore(prevScore)
                     .rating(name)
                     .trend(trend)
@@ -596,9 +596,16 @@ public class ReportServiceImpl implements ReportService {
                         return -1;
                     if (!Boolean.TRUE.equals(d1.getIsHighPerformer()) && Boolean.TRUE.equals(d2.getIsHighPerformer()))
                         return 1;
-                    return d2.getCurrentScore().compareTo(d1.getCurrentScore());
+                    return d2.getFinalScore().compareTo(d1.getFinalScore());
                 })
                 .collect(Collectors.toList());
+
+        // Assign Rank
+        for (int i = 0; i < results.size(); i++) {
+            results.get(i).setRank(i + 1);
+        }
+
+        return results;
     }
 
     @Override

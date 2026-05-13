@@ -44,7 +44,7 @@ public class AppraisalCycleRequest {
     private BigDecimal feedbackWeight;
     private BigDecimal selfWeight;
     
-    @NotNull(message = "Financial year ID is required")
+//    @NotNull(message = "Financial year ID is required")
     private Long financialYearId;
 }
 

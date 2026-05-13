@@ -19,6 +19,7 @@ public class PerformanceScoreServiceImpl implements PerformanceScoreService {
     private final KpiFinalScoreRepository kpiFinalScoreRepo;
     private final SelfAssessmentRepository selfRepo;
     private final ManagerEvaluationRepository evalRepo;
+    private final ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository feedbackSummaryRepo;
 
     @Override
     public BigDecimal getKpiTotalScore(Long employeeId, Long cycleId) {
@@ -38,6 +39,13 @@ public class PerformanceScoreServiceImpl implements PerformanceScoreService {
     public BigDecimal getManagerEvaluationTotalScore(Long appraisalId) {
         return evalRepo.findByAppraisal_AppraisalId(appraisalId)
                 .map(ManagerEvaluation::getTotalScore)
+                .orElse(BigDecimal.ZERO);
+    }
+
+    @Override
+    public BigDecimal getFeedbackTotalScore(Long employeeId, Long cycleId) {
+        return feedbackSummaryRepo.findByEmployeeIdAndCycleCycleId(employeeId, cycleId)
+                .map(fs -> fs.getFinalScore())
                 .orElse(BigDecimal.ZERO);
     }
 }

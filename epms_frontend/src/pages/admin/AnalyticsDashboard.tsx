@@ -235,7 +235,7 @@ const AnalyticsDashboard: React.FC = () => {
                       </td>
                       <td className="px-8 py-5 text-right">
                         <span className="px-3 py-1 bg-indigo-50 text-indigo-700 font-black rounded-lg text-sm">
-                          {row.finalScore.toFixed(2)}%
+                          {Number(row.finalScore || 0).toFixed(2)}%
                         </span>
                       </td>
                     </tr>
