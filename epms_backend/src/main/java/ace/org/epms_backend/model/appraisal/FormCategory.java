@@ -24,6 +24,9 @@ public class FormCategory extends BaseEntity {
     private AppraisalForm form;
 
     private String categoryName;
+    
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<Question> questions;
 
     private Boolean isActive = true;
 }

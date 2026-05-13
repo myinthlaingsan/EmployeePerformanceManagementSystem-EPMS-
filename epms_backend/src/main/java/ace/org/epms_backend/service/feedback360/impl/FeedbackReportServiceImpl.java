@@ -3,6 +3,7 @@ package ace.org.epms_backend.service.feedback360.impl;
 import ace.org.epms_backend.dto.feedback360.CategoryScore;
 import ace.org.epms_backend.dto.feedback360.FeedbackSummaryResponse;
 import ace.org.epms_backend.dto.feedback360.DetailedComment;
+import ace.org.epms_backend.dto.feedback360.QuestionRatingReport;
 import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
@@ -30,6 +31,8 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
     private final EmployeeRepository employeeRepository;
     private final AppraisalCycleRepository appraisalCycleRepository;
     private final FeedbackSummaryRepository feedbackSummaryRepository;
+    private final ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository feedbackRequestRepository;
+    private final ace.org.epms_backend.repository.EmployeeDepartmentRepository employeeDepartmentRepository;
 
     @Override
     public FeedbackSummaryResponse getFeedbackSummary(Long targetUserId, Long cycleId) {
@@ -76,10 +79,10 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                 if (response.getComment() != null && !response.getComment().isBlank()) {
                     detailedComments.add(DetailedComment.builder()
                             .categoryName(categoryName)
-                            .evaluatorRole(relationship.name())
-                            .evaluatorName(evaluatorName)
                             .comment(response.getComment())
                             .score(score)
+                            .evaluatorName(evaluatorName)
+                            .evaluatorRole(relationship.name())
                             .build());
                 }
             }
@@ -105,10 +108,60 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
         Long summaryId = summary != null ? summary.getId() : null;
         Boolean isFinalized = summary != null ? summary.getIsFinalized() : false;
 
+        // Fetch metrics
+        int totalRequests = (int) feedbackRequestRepository.countByTargetUserIdAndCycleCycleId(targetUserId, cycleId);
+        int completedRequests = (int) feedbackRequestRepository.countByTargetUserIdAndCycleCycleIdAndStatus(targetUserId, cycleId, ace.org.epms_backend.enums.FeedbackStatus.COMPLETED);
+
+        String deptName = employeeDepartmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(targetUserId)
+                .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                .orElse("N/A");
+
+        // Calculate question-level averages (excluding SELF)
+        Map<String, List<Integer>> questionScoresMap = new HashMap<>();
+        Map<String, String> questionToCategoryMap = new HashMap<>();
+        
+        for (Feedback feedback : allFeedbacks) {
+            if (feedback.getRequest().getRelationship() == FeedbackRelationship.SELF) continue;
+            
+            List<FeedbackResponse> responses = feedbackResponseRepository.findByFeedbackId(feedback.getId());
+            for (FeedbackResponse response : responses) {
+                String qText = response.getQuestion().getQuestionText();
+                String catName = response.getQuestion().getCategory() != null 
+                        ? response.getQuestion().getCategory().getCategoryName() 
+                        : "General";
+                
+                questionScoresMap.computeIfAbsent(qText, k -> new ArrayList<>()).add(response.getScore());
+                questionToCategoryMap.put(qText, catName);
+            }
+        }
+
+        List<QuestionRatingReport> questionRatings = questionScoresMap.entrySet().stream()
+                .map(entry -> {
+                    String qText = entry.getKey();
+                    List<Integer> scores = entry.getValue();
+                    double avg = scores.stream().mapToInt(Integer::intValue).average().orElse(0.0);
+                    // Convert to 100% scale (assuming 1-5 rating)
+                    double percentage = (avg / 5.0) * 100.0;
+                    
+                    return QuestionRatingReport.builder()
+                            .questionText(qText)
+                            .categoryName(questionToCategoryMap.get(qText))
+                            .averageScore(Math.round(percentage * 100.0) / 100.0)
+                            .responseCount(scores.size())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
         return FeedbackSummaryResponse.builder()
                 .summaryId(summaryId)
                 .targetUserId(targetUserId)
                 .targetUserName(target.getStaffName())
+                .targetDepartmentName(deptName)
+                .targetJobLevelCode(target.getLevel() != null ? target.getLevel().getLevelCode() : "N/A")
+                .totalRequests(totalRequests)
+                .completedRequests(completedRequests)
+                .questionRatings(questionRatings)
+                .cycleId(cycleId)
                 .cycleName(cycle.getCycleName())
                 .selfScores(calculateAverages(selfScoresMap))
                 .scores(calculateAverages(othersScoresMap))

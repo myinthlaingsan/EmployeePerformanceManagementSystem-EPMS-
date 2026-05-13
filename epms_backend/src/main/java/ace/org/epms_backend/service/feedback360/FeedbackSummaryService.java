@@ -9,4 +9,5 @@ public interface FeedbackSummaryService {
     FeedbackSummaryResponse getSummary(Long employeeId, Long cycleId);
     List<FeedbackSummaryResponse> getSummariesByCycle(Long cycleId);
     void finalizeSummary(Long summaryId);
+    List<FeedbackSummaryResponse> getFinalizedSummariesForEmployee(Long employeeId);
 }

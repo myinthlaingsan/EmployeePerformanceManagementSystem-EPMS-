@@ -8,7 +8,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class DepartmentFeedbackConfigDTO {
-//    private Long id;
+    private Long id;
     private Long departmentId;
     private String departmentName;
     private Long levelId;

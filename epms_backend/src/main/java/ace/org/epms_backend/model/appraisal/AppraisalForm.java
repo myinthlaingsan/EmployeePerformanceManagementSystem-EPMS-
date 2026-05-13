@@ -33,6 +33,9 @@ public class AppraisalForm extends BaseEntity {
     @JoinColumn(name = "form_set_id")
     private AppraisalFormSet formSet;
 
+    @OneToMany(mappedBy = "form", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<FormCategory> categories;
+
     private Long createdBy;
 }
 

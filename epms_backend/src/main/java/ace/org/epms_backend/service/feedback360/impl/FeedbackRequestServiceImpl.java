@@ -114,10 +114,12 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         List<String> warnings = new ArrayList<>();
         AppraisalCycle cycle = cycleRepository.findById(cycleId).orElse(null);
         if (cycle != null) {
-            boolean hasForm = cycle.getForms().stream().anyMatch(f -> f.getFormType() == FormType.FEEDBACK);
+            boolean hasForm = formRepository.existsByCycleCycleIdAndFormType(cycleId, FormType.FEEDBACK);
             if (!hasForm) {
-                errors.add("Configuration Error: No 360 Feedback form is defined for this cycle.");
+                errors.add("Configuration Error: No 360 Feedback form is defined for cycle '" + cycle.getCycleName() + "'. Please save a form in the Form Builder first.");
             }
+        } else {
+            errors.add("Error: Appraisal cycle not found.");
         }
 
         for (Employee target : allEmployees) {

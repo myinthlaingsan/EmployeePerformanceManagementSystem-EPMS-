@@ -90,8 +90,10 @@ public class FeedbackSummaryServiceImpl implements FeedbackSummaryService {
     public void generateAllSummaries(Long cycleId) {
         // Only generate summaries for employees who actually have feedback requests in this cycle
         List<Employee> participants = feedbackRepository.findParticipantsByCycleId(cycleId);
+        System.out.println("DEBUG: Found " + participants.size() + " participants for cycle ID: " + cycleId);
         for (Employee e : participants) {
             try {
+                System.out.println("DEBUG: Generating summary for employee: " + e.getStaffName() + " (ID: " + e.getId() + ")");
                 generateSummary(e.getId(), cycleId);
             } catch (Exception ex) {
                 // Log and continue to avoid failing the whole process
@@ -120,5 +122,12 @@ public class FeedbackSummaryServiceImpl implements FeedbackSummaryService {
                 .orElseThrow(() -> new NotFoundException("Summary not found"));
         summary.setIsFinalized(true);
         summaryRepository.save(summary);
+    }
+
+    @Override
+    public List<FeedbackSummaryResponse> getFinalizedSummariesForEmployee(Long employeeId) {
+        return summaryRepository.findByEmployeeIdAndIsFinalizedTrue(employeeId).stream()
+                .map(s -> feedbackReportService.getFeedbackSummary(employeeId, s.getCycle().getCycleId()))
+                .collect(Collectors.toList());
     }
 }

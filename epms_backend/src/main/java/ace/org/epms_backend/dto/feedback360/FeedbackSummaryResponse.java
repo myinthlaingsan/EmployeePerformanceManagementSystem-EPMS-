@@ -14,10 +14,16 @@ public class FeedbackSummaryResponse {
     private Long summaryId;
     private Long targetUserId;
     private String targetUserName;
+    private Long cycleId;
     private String cycleName;
     private List<CategoryScore> selfScores;
     private List<CategoryScore> scores;
     private List<DetailedComment> detailedComments;
+    private String targetDepartmentName;
+    private String targetJobLevelCode;
+    private Integer totalRequests;
+    private Integer completedRequests;
+    private List<QuestionRatingReport> questionRatings;
     private Double totalAverageScore;
     private Boolean isFinalized;
 }

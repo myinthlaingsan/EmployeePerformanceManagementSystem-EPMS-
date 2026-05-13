@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface FeedbackSummaryRepository extends JpaRepository<FeedbackSummary, Long> {
     Optional<FeedbackSummary> findByEmployeeIdAndCycleCycleId(Long employeeId, Long cycleId);
     List<FeedbackSummary> findByCycleCycleId(Long cycleId);
+    List<FeedbackSummary> findByEmployeeIdAndIsFinalizedTrue(Long employeeId);
 }
