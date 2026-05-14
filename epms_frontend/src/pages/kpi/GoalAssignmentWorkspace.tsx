@@ -9,10 +9,10 @@ import {
   useApproveGoalSetMutation,
   useRevertGoalSetMutation,
   useGetKpiCategoriesQuery,
-  useAssignKpiToEmployeeMutation
+  useAssignKpiToEmployeeMutation,
+  useGetActiveCycleQuery
 } from '../../services/kpiApi';
 import { useGetEmployeeByIdQuery } from '../../features/employee/employeeapi';
-import { useActiveCycle } from '../../context/ActiveCycleContext';
 import { useAuth } from '../../hooks/useAuth';
 import {
   Search,
@@ -29,13 +29,18 @@ import {
 const GoalAssignmentWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
-  const { activeCycleId, activeCycleName } = useActiveCycle();
-  const { isAdmin, isHR } = useAuth();
+  const { 
+    isAdmin, 
+    isHR, 
+    activeCycleId, 
+    activeCycleName, 
+    isLoadingCycle: isLoadingActiveCycle 
+  } = useAuth();
 
   const { data: employee } = useGetEmployeeByIdQuery(Number(employeeId), { skip: !employeeId });
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
     employeeId: Number(employeeId),
-    cycleId: activeCycleId
+    cycleId: activeCycleId!
   }, { skip: !employeeId || !activeCycleId });
 
   const { data: librariesResponse } = useGetAllLibrariesQuery();
@@ -238,6 +243,39 @@ const GoalAssignmentWorkspace: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoadingActiveCycle) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Resolving Active Cycle...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeCycleId) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-8">
+        <div className="max-w-md w-full bg-white rounded-3xl p-12 border border-gray-200 shadow-xl text-center space-y-6">
+          <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
+            <Target className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">No Active Cycle</h2>
+            <p className="text-sm font-bold text-gray-400">An active appraisal cycle is required to assign or view KPIs. Please contact your system administrator to open a new cycle.</p>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            className="w-full py-4 bg-gray-900 text-white text-[11px] font-black rounded-xl hover:bg-black transition-all uppercase tracking-widest"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">

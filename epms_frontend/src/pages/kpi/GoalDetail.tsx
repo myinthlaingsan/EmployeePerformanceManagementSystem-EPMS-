@@ -14,13 +14,12 @@ import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
 const GoalDetail: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { activeCycleId } = useActiveCycle();
+  const { user, activeCycleId } = useAuth();
 
   const { data: goalSetResponse, isLoading, error } = useGetGoalSetByEmployeeQuery({
     employeeId: parseInt(employeeId!),
-    cycleId: activeCycleId
-  });
+    cycleId: Number(activeCycleId!)
+  }, { skip: !user?.id || !activeCycleId });
 
   const [approveGoal] = useApproveGoalSetMutation();
   const [calculateScores] = useCalculateScoresMutation();

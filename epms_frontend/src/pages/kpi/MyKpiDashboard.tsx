@@ -21,8 +21,7 @@ import {
 } from 'lucide-react';
 
 const MyKpiDashboard: React.FC = () => {
-  const { user } = useAuth();
-  const { activeCycleId, activeCycleName } = useActiveCycle();
+  const { user, activeCycleId, activeCycleName } = useAuth();
 
   const { data: goalSetResponse, isLoading } = useGetGoalSetByEmployeeQuery({
     employeeId: user?.id || 0,

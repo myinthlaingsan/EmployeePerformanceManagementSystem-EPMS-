@@ -239,7 +239,14 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
 
     @Override
     public AppraisalCycleResponse getActiveCycle() {
-        return appraisalCycleRepository.findByIsActiveTrue().stream()
+        List<AppraisalCycle> cycles = appraisalCycleRepository.findActiveCyclesByStatus(List.of(CycleStatus.PLANNING, CycleStatus.IN_PROGRESS));
+        
+        // Fallback: If status-specific search fails, return the first active cycle regardless of status
+        if (cycles.isEmpty()) {
+            cycles = appraisalCycleRepository.findByIsActiveTrue();
+        }
+
+        return cycles.stream()
                 .findFirst()
                 .map(appraisalCycleMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("No active appraisal cycle found"));

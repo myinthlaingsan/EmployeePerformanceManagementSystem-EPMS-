@@ -21,7 +21,7 @@ public class PerformanceScoreController {
     public ResponseEntity<ApiResponse<BigDecimal>> getKpiTotalScore(
             @RequestParam Long employeeId,
             @RequestParam Long cycleId) {
-        return ResponseEntity.ok(ApiResponse.success(performanceScoreService.getKpiTotalScore(employeeId, cycleId)));
+        return ResponseEntity.ok(ApiResponse.success(performanceScoreService.getKpiTotalScore(employeeId, cycleId, null)));
     }
 
     @GetMapping("/self-assessment/{appraisalId}")

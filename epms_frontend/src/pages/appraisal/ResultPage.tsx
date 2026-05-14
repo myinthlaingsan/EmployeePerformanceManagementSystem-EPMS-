@@ -236,7 +236,8 @@ const ResultPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-8 py-5 text-center text-xs font-bold text-slate-400">
-                      {row.weight !== undefined ? `${(Number(row.weight) * 100).toFixed(0)}%` : '--'}
+                      {/* {row.weight !== undefined ? `${(Number(row.weight) * 100).toFixed(0)}%` : '--'} */}
+                      {row.weight !== undefined ? `${(Number(row.weight)).toFixed(0)}%` : '--'}
                     </td>
                     <td className={`px-8 py-5 text-right text-sm font-black ${row.color}`}>
                       {row.weighted !== undefined ? Number(row.weighted).toFixed(2) : '--'}

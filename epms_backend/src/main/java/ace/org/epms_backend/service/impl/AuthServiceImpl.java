@@ -221,7 +221,6 @@ public class AuthServiceImpl implements AuthService {
                 .referenceId(emp.getId())
                 .actionUrl("/login")
                 .build());
-
         resetTokenRepository.delete(resetToken);
     }
 
