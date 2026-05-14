@@ -5,12 +5,10 @@ import {
   useGetAllLibrariesQuery,
   useGetGoalSetByEmployeeQuery
 } from '../../services/kpiApi';
-import { useActiveCycle } from '../../context/ActiveCycleContext';
 
 const KpiHub: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isHR, isAdmin } = useAuth();
-  const { activeCycleId, activeCycleName } = useActiveCycle();
+  const { user, isHR, isAdmin, activeCycleId, activeCycleName } = useAuth();
 
   const { data: librariesResponse } = useGetAllLibrariesQuery();
   const libraries = librariesResponse?.data || [];

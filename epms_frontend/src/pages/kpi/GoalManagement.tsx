@@ -45,7 +45,7 @@ const GoalManagement: React.FC = () => {
   const itemsPerPage = 10;
 
   // KPI Status Fetching - Adaptive based on role
-  const { activeCycleId, activeCycleName } = useActiveCycle();
+  const { activeCycleId, activeCycleName } = useAuth();
   const effectiveCycleId = selectedCycle === 'All' ? activeCycleId : Number(selectedCycle);
 
   // Fetch statuses based on permission level
