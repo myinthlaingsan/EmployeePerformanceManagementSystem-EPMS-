@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { 
-  useCreateLibraryMutation, 
+import {
+  useCreateLibraryMutation,
   useUpdateLibraryMutation,
   useGetKpiCategoriesQuery,
-  useGetLibraryByIdQuery 
+  useGetLibraryByIdQuery
 } from '../../services/kpiApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useGetJobLevelsQuery } from '../../features/org/jobLevelApi';
@@ -16,20 +16,20 @@ import LibraryBasicInfo from '../../components/kpi/LibraryBasicInfo';
 import LibraryKpiTable from '../../components/kpi/LibraryKpiTable';
 import LibrarySyncInfo from '../../components/kpi/LibrarySyncInfo';
 
-interface FormKpiDetail extends KpiLibraryDetailRequest {}
+interface FormKpiDetail extends KpiLibraryDetailRequest { }
 
 const KpiLibraryEntry: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
   const navigate = useNavigate();
-  
+
   const [createLibrary, { isLoading: isCreating }] = useCreateLibraryMutation();
   const [updateLibrary, { isLoading: isUpdating }] = useUpdateLibraryMutation();
-  
+
   const { data: libraryData, isLoading: libraryLoading } = useGetLibraryByIdQuery(parseInt(id || '0'), {
     skip: !isEdit
   });
-  
+
   const { data: positions = [] } = useGetPositionsQuery();
   const { data: jobLevels = [] } = useGetJobLevelsQuery();
   const { data: categoriesResponse, isLoading: categoriesLoading } = useGetKpiCategoriesQuery();
@@ -53,7 +53,7 @@ const KpiLibraryEntry: React.FC = () => {
       console.log('--- DEBUG: KPI Library Fetch ---');
       console.log('Library Data:', lib);
       console.log('Current Positions in state:', positions);
-      
+
       setFormData({
         title: lib.title || '',
         description: lib.description || '',
@@ -110,7 +110,7 @@ const KpiLibraryEntry: React.FC = () => {
       alert("Please select a Target Position.");
       return;
     }
-    
+
     for (let i = 0; i < details.length; i++) {
       const d = details[i];
       if (!d.goalTitle.trim()) {
@@ -121,8 +121,8 @@ const KpiLibraryEntry: React.FC = () => {
         alert(`KPI row ${i + 1}: Please select a Category.`);
         return;
       }
-      if (d.targetValue < 0) {
-        alert(`KPI row ${i + 1}: Target value cannot be negative.`);
+      if (d.targetValue <= 0) {
+        alert(`KPI row ${i + 1}: Target value must be greater than 0`);
         return;
       }
       if (!d.unit.trim()) {
