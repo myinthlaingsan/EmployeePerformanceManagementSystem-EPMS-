@@ -79,7 +79,3 @@ public class Appraisal extends BaseEntity {
 
     private Boolean isActive = true;
 }
-
-
-
-

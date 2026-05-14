@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -22,8 +23,17 @@ public class PerformanceScoreServiceImpl implements PerformanceScoreService {
     private final ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository feedbackSummaryRepo;
 
     @Override
-    public BigDecimal getKpiTotalScore(Long employeeId, Long cycleId) {
-        return kpiFinalScoreRepo.findByEmployeeIdAndCycleId(employeeId, cycleId)
+    public BigDecimal getKpiTotalScore(Long employeeId, Long cycleId, Long appraisalId) {
+        // Try to find by appraisalId first (most reliable)
+        if (appraisalId != null) {
+            Optional<KpiFinalScore> scoreByAppraisal = kpiFinalScoreRepo.findByAppraisal_AppraisalId(appraisalId);
+            if (scoreByAppraisal.isPresent()) {
+                return scoreByAppraisal.get().getTotalAchievementPercent();
+            }
+        }
+
+        // Fallback to employeeId and cycleId
+        return kpiFinalScoreRepo.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
                 .map(KpiFinalScore::getTotalAchievementPercent)
                 .orElse(BigDecimal.ZERO);
     }
@@ -43,7 +53,7 @@ public class PerformanceScoreServiceImpl implements PerformanceScoreService {
     }
 
     @Override
-    public BigDecimal getFeedbackTotalScore(Long employeeId, Long cycleId) {
+    public BigDecimal getFeedbackTotalScore(Long employeeId, Long cycleId, Long appraisalId) {
         return feedbackSummaryRepo.findByEmployeeIdAndCycleCycleId(employeeId, cycleId)
                 .map(fs -> fs.getFinalScore())
                 .orElse(BigDecimal.ZERO);

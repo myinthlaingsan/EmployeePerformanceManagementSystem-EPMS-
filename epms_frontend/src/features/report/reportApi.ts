@@ -70,7 +70,7 @@ export const reportApi = api.injectEndpoints({
       }),
     }),
     downloadReport: builder.mutation<void, { endpoint: string; params?: any; fileName: string }>({
-      query: ({ endpoint, params }) => ({
+      query: ({ endpoint, params, fileName }) => ({
         url: `/reports/${endpoint}/download`,
         params,
         responseHandler: async (response: Response) => {
@@ -78,7 +78,7 @@ export const reportApi = api.injectEndpoints({
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement("a");
           link.href = url;
-          link.setAttribute("download", params.fileName || "report.pdf");
+          link.setAttribute("download", fileName || "report.pdf");
           document.body.appendChild(link);
           link.click();
           link.remove();

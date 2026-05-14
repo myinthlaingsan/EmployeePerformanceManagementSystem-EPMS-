@@ -138,7 +138,7 @@ public class ReportServiceImpl implements ReportService {
 
         List<CycleScoreDTO> trends = appraisals.stream().map(a -> {
             BigDecimal kpiScore = kpiFinalScoreRepository
-                    .findByEmployeeIdAndCycleId(employeeId, a.getCycle().getCycleId())
+                    .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, a.getCycle().getCycleId())
                     .map(KpiFinalScore::getWeightedScore).orElse(BigDecimal.ZERO);
 
             return CycleScoreDTO.builder()
@@ -286,7 +286,7 @@ public class ReportServiceImpl implements ReportService {
 
             double avgKpi = deptAppraisals.stream()
                     .mapToDouble(
-                            a -> kpiFinalScoreRepository.findByEmployeeIdAndCycleId(a.getEmployee().getId(), cycleId)
+                            a -> kpiFinalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(a.getEmployee().getId(), cycleId)
                                     .map(s -> s.getWeightedScore().doubleValue()).orElse(0.0))
                     .average().orElse(0.0);
 
@@ -481,7 +481,7 @@ public class ReportServiceImpl implements ReportService {
 
         EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(employeeId).orElse(null);
 
-        BigDecimal kpiScore = kpiFinalScoreRepository.findByEmployeeIdAndCycleId(employeeId, cycleId)
+        BigDecimal kpiScore = kpiFinalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
                 .map(KpiFinalScore::getWeightedScore).orElse(BigDecimal.ZERO);
 
         BigDecimal selfScore = selfAssessmentRepository.findByAppraisal_AppraisalId(appraisal.getAppraisalId())

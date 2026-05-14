@@ -46,8 +46,17 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional(readOnly = true)
     public AppraisalCycleResponse getActiveCycle() {
-        AppraisalCycle cycle = cycleRepository.findByIsActiveTrue().stream().findFirst()
+        List<AppraisalCycle> cycles = cycleRepository.findActiveCyclesByStatus(List.of(CycleStatus.PLANNING, CycleStatus.IN_PROGRESS));
+        
+        // Fallback: If status-specific search fails, return the first active cycle regardless of status
+        if (cycles.isEmpty()) {
+            cycles = cycleRepository.findByIsActiveTrue();
+        }   
+
+        AppraisalCycle cycle = cycles.stream().findFirst()
                 .orElseThrow(() -> new NotFoundException("No active appraisal cycle found"));
+        System.out.println(cycle.getCycleId());
+        System.out.println(cycle.getCycleName());
         return AppraisalCycleResponse.builder()
                 .cycleId(cycle.getCycleId())
                 .cycleName(cycle.getCycleName())
@@ -69,9 +78,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             }
         }
         AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
-                .orElseGet(() -> cycleRepository.findByIsActiveTrue().stream().findFirst()
-                        .orElseThrow(() -> new NotFoundException(
-                                "No active appraisal cycle found in the system. Please create one in Admin settings.")));
+                .orElseThrow(() -> new NotFoundException("Selected appraisal cycle not found. ID: " + request.getAppraisalCycleId()));
 
         Employee currentManager = getCurrentEmployee();
 
@@ -88,12 +95,22 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         }
 
         // Atomic archive existing goals
-        if (request.isOverwriteExisting()) {
-            goalsRepository.archiveExistingGoalSets(request.getEmployeeId(), cycle.getCycleId());
-        } else {
-            List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
-                    request.getEmployeeId(), cycle.getCycleId());
-            if (!existing.isEmpty()) {
+        List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
+                request.getEmployeeId(), cycle.getCycleId());
+
+        if (!existing.isEmpty()) {
+            boolean hasApprovedOrLocked = existing.stream()
+                    .anyMatch(g -> g.getStatus() == KpiGoalStatus.APPROVED
+                            || g.getStatus() == KpiGoalStatus.LOCKED);
+
+            if (hasApprovedOrLocked) {
+                throw new IllegalStateException(
+                        "Employee already has APPROVED or LOCKED goals for this cycle. Cannot overwrite.");
+            }
+
+            if (request.isOverwriteExisting()) {
+                goalsRepository.archiveExistingGoalSets(request.getEmployeeId(), cycle.getCycleId());
+            } else {
                 throw new IllegalStateException(
                         "Employee already has goals assigned for this cycle. Use the overwrite option if you wish to replace them.");
             }
@@ -176,9 +193,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         }
 
         AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
-                .orElseGet(() -> cycleRepository.findByIsActiveTrue().stream().findFirst()
-                        .orElseThrow(() -> new NotFoundException(
-                                "No active appraisal cycle found in the system.")));
+                .orElseThrow(() -> new NotFoundException("Selected appraisal cycle not found. ID: " + request.getAppraisalCycleId()));
 
         Employee currentManager = getCurrentEmployee();
 
@@ -652,12 +667,24 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional(readOnly = true)
     public GoalSetResponse getGoalSetByEmployee(Long employeeId, Long cycleId) {
-        List<KpiGoals> goals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId,
-                cycleId);
+        if (cycleId == null) {
+            throw new IllegalArgumentException("Appraisal Cycle ID must be provided.");
+        }
+        // First try finding for the specific cycle provided
+        List<KpiGoals> goals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
+        
+        if (goals.isEmpty()) {
+            // Fallback: If cycleId was not provided or correctly matched, look for ANY current goal set 
+            // for the employee to see if they were accidentally assigned to a different cycle (like ID 1)
+            goals = goalsRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId).stream()
+                    .filter(KpiGoals::getIsCurrent)
+                    .collect(Collectors.toList());
+        }
+
         if (goals.isEmpty()) {
             throw new NotFoundException("Current goal set not found for employee ID: " + employeeId);
         }
-        // Return the most recently created one if duplicates exist
+        
         return kpiMapper.toGoalSetResponse(goals.get(0));
     }
 
@@ -698,22 +725,4 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         return employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Current user not found"));
     }
-
 }
-
-    
-
-    
-    
-    
-        
-                
-                
-    
-
-    
-        
-        
-                
-    
-

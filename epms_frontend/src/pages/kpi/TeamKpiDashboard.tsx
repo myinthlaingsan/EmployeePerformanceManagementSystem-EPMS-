@@ -13,13 +13,12 @@ import {
 } from 'lucide-react';
 import { useGetAllEmployeesQuery, useGetDirectReportsQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
-import { useActiveCycle } from '../../context/ActiveCycleContext';
 import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
 
 const TeamKpiDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, activeCycleId, activeCycleName } = useAuth();
   const isAdminOrHr = user?.roles?.some(r => r === 'ADMIN' || r === 'HR');
 
   // Conditional data fetching: Admins see everyone, Managers see direct reports
@@ -28,8 +27,6 @@ const TeamKpiDashboard: React.FC = () => {
   
   const employees = isAdminOrHr ? allEmployees : directReports;
   const isLoading = isAdminOrHr ? loadingAll : loadingReports;
-
-  const { activeCycleId, activeCycleName } = useActiveCycle();
 
   const { data: teamGoalsResponse } = useGetTeamGoalSetsQuery({
     managerId: Number(user?.id),
