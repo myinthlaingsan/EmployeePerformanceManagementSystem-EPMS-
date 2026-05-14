@@ -121,8 +121,8 @@ const KpiLibraryEntry: React.FC = () => {
         alert(`KPI row ${i + 1}: Please select a Category.`);
         return;
       }
-      if (d.targetValue <= 0) {
-        alert(`KPI row ${i + 1}: Target value must be greater than 0.`);
+      if (d.targetValue < 0) {
+        alert(`KPI row ${i + 1}: Target value cannot be negative.`);
         return;
       }
       if (!d.unit.trim()) {

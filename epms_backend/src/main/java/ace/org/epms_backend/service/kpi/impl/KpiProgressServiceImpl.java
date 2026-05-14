@@ -74,10 +74,17 @@ public class KpiProgressServiceImpl implements KpiProgressService {
 
         // Calculate Score Percent and Weighted Score
         BigDecimal scorePercent = BigDecimal.ZERO;
-        if (item.getTargetValue() != null && item.getTargetValue().compareTo(BigDecimal.ZERO) != 0) {
-            scorePercent = request.getActualValue()
-                    .divide(item.getTargetValue(), 4, java.math.RoundingMode.HALF_UP)
-                    .multiply(new BigDecimal("100"));
+        if (item.getTargetValue() != null) {
+            if (item.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
+                // If target is 0, 100% achievement if actual is 0, else 0% (Zero Tolerance Item)
+                scorePercent = request.getActualValue().compareTo(BigDecimal.ZERO) == 0
+                        ? new BigDecimal("100")
+                        : BigDecimal.ZERO;
+            } else {
+                scorePercent = request.getActualValue()
+                        .divide(item.getTargetValue(), 4, java.math.RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"));
+            }
         }
         item.setScorePercent(scorePercent);
 
