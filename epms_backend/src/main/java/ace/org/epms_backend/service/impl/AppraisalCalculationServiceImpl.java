@@ -85,8 +85,8 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                 // 1. Fetch Scores using PerformanceScoreService
                 BigDecimal selfRaw = performanceScoreService.getSelfAssessmentTotalScore(appraisalId);
                 BigDecimal managerRaw = performanceScoreService.getManagerEvaluationTotalScore(appraisalId);
-                BigDecimal kpiRaw = performanceScoreService.getKpiTotalScore(employeeId, cycleId);
-                BigDecimal feedbackRaw = performanceScoreService.getFeedbackTotalScore(employeeId, cycleId);
+                BigDecimal kpiRaw = performanceScoreService.getKpiTotalScore(employeeId, cycleId, appraisalId);
+                BigDecimal feedbackRaw = performanceScoreService.getFeedbackTotalScore(employeeId, cycleId, appraisalId);
 
                 // Check for completeness - all components must have a score recorded
                 // Note: We use compareTo(ZERO) != 0 as a simple check, but presence in DB is more robust.

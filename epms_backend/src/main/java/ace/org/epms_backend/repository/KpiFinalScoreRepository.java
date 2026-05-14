@@ -12,8 +12,7 @@ public interface KpiFinalScoreRepository extends JpaRepository<KpiFinalScore, Lo
     // Optional<KpiFinalScore> findByEmployeeIdAndCycleId(Long employeeId, Long
     // cycleId);
 
-    @Query("SELECT k FROM KpiFinalScore k WHERE k.employee.id = :employeeId AND k.goalSet.cycle.cycleId = :cycleId")
-    Optional<KpiFinalScore> findByEmployeeIdAndCycleId(
-            @Param("employeeId") Long employeeId,
-            @Param("cycleId") Long cycleId);
+    Optional<KpiFinalScore> findByEmployee_IdAndGoalSet_Cycle_CycleId(Long employeeId, Long cycleId);
+
+    Optional<KpiFinalScore> findByAppraisal_AppraisalId(Long appraisalId);
 }
