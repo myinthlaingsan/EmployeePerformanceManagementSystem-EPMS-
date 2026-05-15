@@ -321,7 +321,9 @@ const AppraisalDetail: React.FC = () => {
 
               <div className="pt-8 border-t border-slate-50 flex items-center justify-between relative z-10">
                 <span className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">
-                  {appraisal.managerSubmittedAt ? 'View Evaluation' : (isManager ? 'Start Evaluating' : 'View Progress')}
+                  {appraisal.managerSubmittedAt 
+                    ? (isManager && appraisal.status !== 'FINALIZED' && appraisal.status !== 'HR_APPROVED' ? 'Edit Evaluation' : 'View Evaluation') 
+                    : (isManager ? 'Start Evaluating' : 'View Progress')}
                 </span>
                 <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-2 shadow-sm">
                   <ArrowRight className="w-5 h-5" />

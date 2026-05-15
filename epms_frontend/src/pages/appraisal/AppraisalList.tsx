@@ -10,7 +10,9 @@ import {
   useCloseCycleMutation,
   useGetTeamEvaluationsQuery,
   useCreateFormSetMutation,
-  useGetAppraisalFormSetsQuery
+  useGetAppraisalFormSetsQuery,
+  useDeleteAppraisalFormMutation,
+  useDeleteFormSetMutation
 } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
 import {
@@ -29,7 +31,8 @@ import {
   Filter,
   Mail,
   Share2,
-  Trophy
+  Trophy,
+  Trash2
 } from 'lucide-react';
 
 import { useAuth } from '../../hooks/useAuth';
@@ -58,6 +61,8 @@ const AppraisalList: React.FC = () => {
   const [activateCycle, { isLoading: isActivating }] = useActivateCycleMutation();
   const [closeCycle, { isLoading: isClosing }] = useCloseCycleMutation();
   const [createFormSet] = useCreateFormSetMutation();
+  const [deleteFormSet] = useDeleteFormSetMutation();
+  const [deleteForm] = useDeleteAppraisalFormMutation();
   const { data: formSets = [] } = useGetAppraisalFormSetsQuery(undefined, { skip: !isPrivileged });
 
   const isLoading = loadingAppraisals || loadingTeam || (isPrivileged && (loadingCycles || loadingForms || (selectedCycleId && loadingCycleData)));
@@ -639,12 +644,12 @@ const AppraisalList: React.FC = () => {
     const getSetDetails = (set: any) => {
       const self = forms.find(f => f.formId === set.selfAssessmentFormId);
       const manager = forms.find(f => f.formId === set.managerEvaluationFormId);
-      return { self, manager, id: set.id };
+      return { self, manager, id: set.id, isAssigned: set.isAssigned };
     };
 
     const buildSetMap = (cycleName: string) => {
       const setsForCycle = groupedSets[cycleName] || [];
-      const setMap = new Map<string, { self: any, manager: any, id: number }>();
+      const setMap = new Map<string, { self: any, manager: any, id: number, isAssigned: boolean }>();
       setsForCycle.forEach(set => {
         setMap.set(set.name, getSetDetails(set));
       });
@@ -709,14 +714,42 @@ const AppraisalList: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="pt-8 border-t border-slate-50 relative z-10">
+                <div className="pt-8 border-t border-slate-50 relative z-10 flex flex-col gap-3">
                   {form ? (
-                    <button
-                      onClick={() => navigate(`/appraisal/forms/${form.formId}`)}
-                      className="w-full py-4 bg-slate-50 text-slate-700 font-black rounded-2xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 group-hover:shadow-lg"
-                    >
-                      View Full Template <ChevronRight className="w-4 h-4" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => navigate(`/appraisal/forms/${form.formId}`)}
+                        className="w-full py-4 bg-slate-50 text-slate-700 font-black rounded-2xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
+                      >
+                        View Full Template <ChevronRight className="w-4 h-4" />
+                      </button>
+                      {!form.isAssigned && (
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formId=${form.formId}&edit=true`)}
+                            className="flex-1 py-4 bg-white text-indigo-600 border border-indigo-200 font-black rounded-2xl hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-sm"
+                          >
+                            Edit Structure <Plus className="w-4 h-4 rotate-45" />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (window.confirm('Are you sure you want to delete this template? This cannot be undone.')) {
+                                try {
+                                  await deleteForm(form.formId).unwrap();
+                                  toast.success('Template deleted successfully');
+                                } catch (err: any) {
+                                  toast.error(err?.data?.message || 'Failed to delete template');
+                                }
+                              }
+                            }}
+                            className="p-4 bg-white text-rose-500 border border-rose-100 rounded-2xl hover:bg-rose-50 transition-all shadow-sm"
+                            title="Delete Template"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <button
                       onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}`)}
@@ -834,7 +867,26 @@ const AppraisalList: React.FC = () => {
                       {set.manager ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4 opacity-20" />}
                     </div>
                   </div>
-                  <div className="mt-8 flex justify-end">
+                  <div className="mt-8 flex justify-between items-center">
+                    {!set.isAssigned ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Delete form set "${setName}"?`)) {
+                            deleteFormSet(set.id)
+                              .unwrap()
+                              .then(() => toast.success('Form set deleted'))
+                              .catch(err => toast.error(err?.data?.message || 'Delete failed'));
+                          }
+                        }}
+                        className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                        title="Delete Form Set"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <div className="w-4" />
+                    )}
                     <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
                       <ChevronRight className="w-4 h-4" />
                     </div>

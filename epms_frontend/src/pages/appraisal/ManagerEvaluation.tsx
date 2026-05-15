@@ -149,8 +149,11 @@ const ManagerEvaluation = () => {
       : true; // if no manager assigned, let role-based MANAGER access it
   const isPrivileged = isHR || isAdmin;
 
-  // Read-only if already submitted OR if the current user is not the assigned manager
-  const isReadOnly = !!formData.submitted || !isManager;
+  // Read-only if the current user is not the assigned manager
+  // OR if the appraisal is already approved/finalized
+  const isReadOnly = !isManager || 
+                    formData.appraisalStatus === 'HR_APPROVED' || 
+                    formData.appraisalStatus === 'FINALIZED';
   const isDisabled = isSubmitting || isReadOnly;
 
   const grandTotal = Object.values(managerRatings).reduce((a, b) => a + b, 0);
@@ -195,10 +198,18 @@ const ManagerEvaluation = () => {
                 <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                {formData.submitted ? 'Submitted' : 'View Only'}
+                {formData.appraisalStatus === 'FINALIZED' ? 'Finalized' : 'Approved'}
               </div>
             ) : (
               <>
+                {formData.submitted && (
+                  <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl px-4 py-2 text-sm font-black mr-2">
+                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Submitted
+                  </div>
+                )}
                 <button
                   onClick={() => navigate(-1)}
                   className="text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors px-3"
@@ -214,7 +225,7 @@ const ManagerEvaluation = () => {
                 >
                   {!formData.isSelfSubmitted
                     ? 'Awaiting Employee'
-                    : (isSubmitting ? 'Submitting...' : 'Submit Evaluation')}
+                    : (isSubmitting ? 'Submitting...' : (formData.submitted ? 'Update Evaluation' : 'Submit Evaluation'))}
                 </button>
                 <button
                   onClick={async () => {
