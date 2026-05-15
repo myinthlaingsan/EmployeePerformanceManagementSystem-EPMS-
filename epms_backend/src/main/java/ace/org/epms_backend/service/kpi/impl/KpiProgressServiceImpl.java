@@ -52,7 +52,18 @@ public class KpiProgressServiceImpl implements KpiProgressService {
 
         Employee currentUser = getCurrentEmployee();
         if (!item.getGoalSet().getEmployee().getId().equals(currentUser.getId())) {
-            throw new SecurityException("Only the employee can update their own progress");
+            // Check if compliance row being verified by manager/HR/Admin
+            boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_HR") || a.getAuthority().equals("ROLE_ADMIN"));
+            
+            boolean isManager = item.getGoalSet().getManager() != null && 
+                               item.getGoalSet().getManager().getId().equals(currentUser.getId());
+
+            if (Boolean.TRUE.equals(item.getIsCompliance()) && (isHrOrAdmin || isManager)) {
+                // Allowed for manager verification
+            } else {
+                throw new SecurityException("Only the employee can update their own progress");
+            }
         }
 
         KpiProgress progress = kpiMapper.toProgressEntity(request);
