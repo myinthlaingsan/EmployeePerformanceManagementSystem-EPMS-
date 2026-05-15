@@ -47,7 +47,7 @@ const AppraisalCycleCreate: React.FC = () => {
   React.useEffect(() => {
     if (!formData.financialYearId && financialYears.length > 0) {
       const currentYear = financialYears.find(y => y.isCurrent);
-      if (currentYear) {
+      if (currentYear?.id != null) {
         setFormData(prev => ({ ...prev, financialYearId: currentYear.id.toString() }));
       }
     }
@@ -56,7 +56,7 @@ const AppraisalCycleCreate: React.FC = () => {
   // Automated Date Calculations for Financial Year Mode
   React.useEffect(() => {
     if (creationMode === 'FINANCIAL_YEAR' && formData.financialYearId && financialYears.length > 0) {
-      const selectedYear = financialYears.find(y => y.id.toString() === formData.financialYearId);
+      const selectedYear = financialYears.find(y => y.id?.toString() === formData.financialYearId);
       if (selectedYear) {
         const fyStart = new Date(selectedYear.startDate);
         const fyEnd = new Date(selectedYear.endDate);

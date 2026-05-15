@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   useAssignBulkMutation,
-  useGetActiveCycleQuery,
   useGetAppraisalFormSetsQuery,
   useSyncFormSetsMutation
 } from '../../features/appraisal/appraisalApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useAuth } from '../../hooks/useAuth';
 import {
   Users,
   CheckCircle2,
@@ -24,9 +24,13 @@ import {
 
 const AppraisalAssignment: React.FC = () => {
   const navigate = useNavigate();
-  // const { data: cycles = [] } = useGetCyclesQuery();
-  const { data: activeCycle, isLoading: cycleLoading } = useGetActiveCycleQuery();
-  const { data: formSets = [], isLoading: formsLoading } = useGetAppraisalFormSetsQuery(activeCycle?.cycleId, { skip: !activeCycle });
+  const {
+    activeCycleId,
+    activeCycleName,
+    isLoadingCycle: cycleLoading
+  } = useAuth();
+
+  const { data: formSets = [], isLoading: formsLoading } = useGetAppraisalFormSetsQuery(activeCycleId, { skip: !activeCycleId });
   const [syncFormSets, { isLoading: isSyncing }] = useSyncFormSetsMutation();
   const { data: employeePaged, isLoading: empsLoading } = useGetEmployeesQuery({ page: 0, size: 100 });
   const [assignBulk, { isLoading: isAssigning }] = useAssignBulkMutation();
@@ -37,10 +41,10 @@ const AppraisalAssignment: React.FC = () => {
 
   // Auto-select active cycle
   React.useEffect(() => {
-    if (activeCycle) {
-      setSelectedCycleId(activeCycle.cycleId.toString());
+    if (activeCycleId != null) {
+      setSelectedCycleId(activeCycleId.toString());
     }
-  }, [activeCycle]);
+  }, [activeCycleId]);
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -157,8 +161,8 @@ const AppraisalAssignment: React.FC = () => {
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">1. Active Cycle</label>
                 <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm font-bold flex items-center gap-3">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  {activeCycle?.cycleName || 'No Active Cycle'}
+                  <CheckCircle2 className={`w-4 h-4 ${cycleLoading ? 'animate-spin text-slate-300' : 'text-emerald-500'}`} />
+                  {cycleLoading ? 'Finding active cycle...' : activeCycleName}
                 </div>
               </div>
 
@@ -264,7 +268,7 @@ const AppraisalAssignment: React.FC = () => {
 
         {/* Employee List Section */}
         <div className="lg:col-span-3">
-          {!cycleLoading && !activeCycle ? (
+          {!cycleLoading && !activeCycleId ? (
             <div className="bg-white rounded-[3rem] border-2 border-dashed border-slate-200 p-20 text-center flex flex-col items-center justify-center space-y-6">
               <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center text-amber-500">
                 <Filter className="w-10 h-10" />
@@ -275,7 +279,7 @@ const AppraisalAssignment: React.FC = () => {
                   You cannot assign appraisals because there is no active cycle. Please create or activate a cycle in the management dashboard first.
                 </p>
               </div>
-              <button 
+              <button
                 onClick={() => navigate('/appraisal-cycles')}
                 className="px-8 py-3 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
               >
@@ -296,53 +300,53 @@ const AppraisalAssignment: React.FC = () => {
                 </button>
               </div>
 
-            <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
-              {empsLoading ? (
-                <div className="p-20 text-center text-slate-400">Loading directory...</div>
-              ) : filteredEmployees.map(emp => (
-                <div
-                  key={emp.id}
-                  onClick={() => toggleEmployee(emp.id)}
-                  className={`px-8 py-4 flex items-center justify-between cursor-pointer transition-all hover:bg-slate-50 ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-50/30' : ''}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                      {emp.staffName.charAt(0)}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm">{emp.staffName}</h4>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
-                          <Mail className="w-3 h-3" /> {emp.email}
-                        </span>
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
-                          <Building2 className="w-3 h-3" /> {emp.currentDepartmentName || 'No Department'}
-                        </span>
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
-                          <Briefcase className="w-3 h-3" /> {emp.positionName || 'No Position'}
-                        </span>
+              <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
+                {empsLoading ? (
+                  <div className="p-20 text-center text-slate-400">Loading directory...</div>
+                ) : filteredEmployees.map(emp => (
+                  <div
+                    key={emp.id}
+                    onClick={() => toggleEmployee(emp.id)}
+                    className={`px-8 py-4 flex items-center justify-between cursor-pointer transition-all hover:bg-slate-50 ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-50/30' : ''}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                        {emp.staffName.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-sm">{emp.staffName}</h4>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
+                            <Mail className="w-3 h-3" /> {emp.email}
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
+                            <Building2 className="w-3 h-3" /> {emp.currentDepartmentName || 'No Department'}
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
+                            <Briefcase className="w-3 h-3" /> {emp.positionName || 'No Position'}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200'}`}>
+                      {selectedEmployeeIds.includes(emp.id) && <CheckCircle2 className="w-4 h-4 text-white" />}
+                    </div>
                   </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200'}`}>
-                    {selectedEmployeeIds.includes(emp.id) && <CheckCircle2 className="w-4 h-4 text-white" />}
-                  </div>
-                </div>
-              ))}
+                ))}
 
-              {filteredEmployees.length === 0 && !empsLoading && (
-                <div className="p-20 text-center text-slate-300">
-                  <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  <p className="text-sm font-medium">No employees found matching your filters.</p>
-                </div>
-              )}
+                {filteredEmployees.length === 0 && !empsLoading && (
+                  <div className="p-20 text-center text-slate-300">
+                    <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                    <p className="text-sm font-medium">No employees found matching your filters.</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default AppraisalAssignment;
