@@ -1,10 +1,7 @@
 package ace.org.epms_backend.service.kpi.impl;
 
 import ace.org.epms_backend.dto.PagedResponse;
-import ace.org.epms_backend.dto.kpi.KpiImportResult;
-import ace.org.epms_backend.dto.kpi.KpiLibraryDetailRequest;
-import ace.org.epms_backend.dto.kpi.KpiLibraryRequest;
-import ace.org.epms_backend.dto.kpi.KpiLibraryResponse;
+import ace.org.epms_backend.dto.kpi.*;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.kpi.KpiLibrary;
@@ -173,30 +170,28 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
     @Override
     @Transactional
     public KpiImportResult importLibraries(MultipartFile file) throws IOException {
-        List<KpiLibraryRequest> requests = excelParser.parse(file);
-        
-        if (requests.isEmpty()) {
-            throw new IllegalArgumentException("No valid KPI scorecards detected in the file. Please ensure you are using the official scorecard template.");
-        }
-        
+        KpiParseResult parseResult = excelParser.parse(file);
+
         KpiImportResult result = KpiImportResult.builder()
-                .totalSectionsFound(requests.size())
-                .errors(new ArrayList<>())
+                .totalSectionsFound(parseResult.getRequests().size() + parseResult.getErrors().size())
+                .errors(new ArrayList<>(parseResult.getErrors())) // Start with parsing errors
+                .failedImports(parseResult.getErrors().size())
                 .build();
 
-        if (requests.isEmpty()) {
-            throw new IllegalArgumentException("No valid KPI libraries found in the Excel file. Please ensure you are using the correct template.");
+        if (parseResult.getRequests().isEmpty() && parseResult.getErrors().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No valid KPI scorecards detected in the file. Please ensure you are using the official scorecard template.");
         }
 
-        for (KpiLibraryRequest request : requests) {
+        for (KpiLibraryRequest request : parseResult.getRequests()) {
             try {
                 // Soft Replace: Deactivate existing library with same title and position
                 libraryRepository.findByTitleAndPositionPositionIdAndIsActiveTrue(
                         request.getTitle(), request.getPositionId())
-                    .ifPresent(existing -> {
-                        existing.setIsActive(false);
-                        libraryRepository.save(existing);
-                    });
+                        .ifPresent(existing -> {
+                            existing.setIsActive(false);
+                            libraryRepository.save(existing);
+                        });
 
                 createLibrary(request);
                 result.incrementSuccess();
