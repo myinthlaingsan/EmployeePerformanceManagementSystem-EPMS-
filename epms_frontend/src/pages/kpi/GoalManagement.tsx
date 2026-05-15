@@ -159,7 +159,13 @@ const GoalManagement: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           <div className="space-y-1">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Organization-wide Goal Assignment</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Organization-wide Goal Assignment</h1>
+              <div className="px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-blue-100 flex items-center gap-1.5 mt-1">
+                <div className={`w-1.5 h-1.5 rounded-full ${activeCycleId ? 'bg-blue-600 animate-pulse' : 'bg-slate-400'}`}></div>
+                {activeCycleId ? activeCycleName : 'No Cycle Yet'}
+              </div>
+            </div>
             <p className="text-sm text-slate-500 font-medium max-w-2xl">
               Manage and track performance cycle milestones across all departments.
             </p>
@@ -237,7 +243,7 @@ const GoalManagement: React.FC = () => {
                   value={selectedCycle}
                   onChange={(e) => setSelectedCycle(e.target.value)}
                 >
-                  <option value="All">Cycle: All</option>
+                  <option value="All">{activeCycleId ? 'Cycle: Current' : 'No Cycle Yet'}</option>
                   {cycles.map((cycle: any, idx: number) => (
                     <option key={`${cycle.cycleId}-${idx}`} value={cycle.cycleId}>{cycle.cycleName}</option>
                   ))}
