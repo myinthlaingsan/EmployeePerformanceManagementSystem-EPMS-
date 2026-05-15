@@ -38,6 +38,7 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
               <th className="px-3 py-2 text-sm font-bold text-gray-900 border-r border-gray-200 text-center w-24">Target</th>
               <th className="px-3 py-2 text-sm font-bold text-gray-900 border-r border-gray-200 text-center w-40">Unit</th>
               <th className="px-3 py-2 text-sm font-bold text-gray-900 border-r border-gray-200 text-center w-24">Weight (%)</th>
+              <th className="px-3 py-2 text-sm font-bold text-gray-900 border-r border-gray-200 text-center w-20">Compliance</th>
               <th className="w-10"></th>
             </tr>
           </thead>
@@ -69,8 +70,9 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                   <input
                     type="number"
                     value={detail.targetValue}
+                    disabled={detail.isCompliance}
                     onChange={(e) => onDetailChange(index, 'targetValue', e.target.value)}
-                    className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-medium"
+                    className={`w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-right font-medium ${detail.isCompliance ? 'text-gray-400 bg-gray-50/50' : 'text-gray-900'}`}
                   />
                 </td>
                 <td className="border-r border-gray-200 p-0">
@@ -90,6 +92,17 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                     className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-bold"
                   />
                 </td>
+                <td className="border-r border-gray-200 p-0 text-center align-middle">
+                   <div className="flex items-center justify-center h-full">
+                    <input
+                      type="checkbox"
+                      checked={detail.isCompliance || false}
+                      onChange={(e) => onDetailChange(index, 'isCompliance', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                      title="Flag as Pass/Fail Compliance KPI"
+                    />
+                   </div>
+                </td>
                 <td className="p-0 text-center">
                   {details.length > 1 && (
                     <button 
@@ -106,7 +119,7 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
           </tbody>
           <tfoot className="bg-gray-50 border-t-2 border-gray-800">
             <tr>
-              <td colSpan={4} className="px-3 py-2 text-right text-sm font-bold text-gray-900 border-r border-gray-200">
+              <td colSpan={5} className="px-3 py-2 text-right text-sm font-bold text-gray-900 border-r border-gray-200">
                 Total Score
               </td>
               <td className="px-3 py-2 text-right border-r border-gray-200">

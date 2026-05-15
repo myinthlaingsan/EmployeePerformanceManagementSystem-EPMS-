@@ -43,7 +43,7 @@ const KpiLibraryEntry: React.FC = () => {
   });
 
   const [details, setDetails] = useState<FormKpiDetail[]>([
-    { goalTitle: '', unit: '', targetValue: 0, weightPercent: 5, categoryId: 0 }
+    { goalTitle: '', unit: '', targetValue: 0, weightPercent: 5, categoryId: 0, isCompliance: false }
   ]);
 
   // Populate data if in edit mode
@@ -67,7 +67,8 @@ const KpiLibraryEntry: React.FC = () => {
           unit: d.unit || '',
           targetValue: Number(d.targetValue) || 0,
           weightPercent: Number(d.weightPercent) || 0,
-          categoryId: Number(d.categoryId) || 0
+          categoryId: Number(d.categoryId) || 0,
+          isCompliance: d.isCompliance || false
         })));
       }
     }
@@ -84,15 +85,24 @@ const KpiLibraryEntry: React.FC = () => {
     const newDetails = [...details];
     let updatedItem = {
       ...newDetails[index],
-      [field]: field === 'categoryId' ? parseInt(value) || 0 : ['targetValue', 'weightPercent'].includes(field as string) ? parseFloat(value) || 0 : value
+      [field]: field === 'categoryId' ? parseInt(value) || 0 
+               : field === 'isCompliance' ? !!value
+               : ['targetValue', 'weightPercent'].includes(field as string) ? parseFloat(value) || 0 
+               : value
     };
+
+    // Auto-setup for Compliance items: Target must be 1 for Pass/Fail logic
+    if (field === 'isCompliance' && value === true) {
+        updatedItem.targetValue = 1;
+        if (!updatedItem.unit) updatedItem.unit = 'Score';
+    }
 
     newDetails[index] = updatedItem;
     setDetails(newDetails);
   };
 
   const addRow = () => {
-    setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, categoryId: 0 }]);
+    setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, categoryId: 0, isCompliance: false }]);
   };
 
   const removeRow = (index: number) => {
