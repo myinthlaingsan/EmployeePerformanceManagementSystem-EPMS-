@@ -15,4 +15,6 @@ public interface KpiLibraryRepository extends JpaRepository<KpiLibrary, Long> {
     Page<KpiLibrary> findByTitleContainingIgnoreCase(String title, Pageable pageable);
 
     Optional<KpiLibrary> findByTitleAndPositionPositionIdAndIsActiveTrue(String title, Long positionId);
+
+    List<KpiLibrary> findByPositionPositionIdOrderByUpdatedAtDesc(Long positionId);
 }

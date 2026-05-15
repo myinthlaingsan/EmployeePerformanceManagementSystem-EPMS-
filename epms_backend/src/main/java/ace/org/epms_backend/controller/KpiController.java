@@ -181,6 +181,11 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(libraryService.searchLibraries(keyword, page, size)));
     }
 
+    @GetMapping("/library/history/{positionId}")
+    public ResponseEntity<ApiResponse<List<KpiLibraryResponse>>> getLibraryHistory(@PathVariable Long positionId) {
+        return ResponseEntity.ok(ApiResponse.success(libraryService.getLibraryHistory(positionId)));
+    }
+
     // The submit and reject endpoints have been removed for the top-down approval workflow.
 
     @GetMapping("/goal-set/employee/all/{employeeId}")

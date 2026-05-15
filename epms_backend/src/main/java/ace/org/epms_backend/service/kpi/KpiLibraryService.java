@@ -17,4 +17,5 @@ public interface KpiLibraryService {
     KpiLibraryResponse cloneLibrary(Long id, String newTitle);
     PagedResponse<KpiLibraryResponse> searchLibraries(String keyword, int page, int size);
     KpiImportResult importLibraries(MultipartFile file) throws IOException;
+    List<KpiLibraryResponse> getLibraryHistory(Long positionId);
 }

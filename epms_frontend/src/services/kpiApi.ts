@@ -97,6 +97,10 @@ export const kpiApi = api.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { id }) => [{ type: 'Library', id }, 'Library'],
     }),
+    getLibraryHistory: builder.query<ApiResponse<KpiLibraryResponse[]>, number>({
+      query: (positionId) => `/kpi/library/history/${positionId}`,
+      providesTags: ['Library'],
+    }),
 
     // ==================== Assignment ====================
     assignKpiToEmployee: builder.mutation<ApiResponse<GoalSetResponse>, GoalAssignmentRequest>({
@@ -282,6 +286,7 @@ export const {
   useGetActiveCycleQuery,
   useGetLibraryByIdQuery,
   useUpdateLibraryMutation,
+  useGetLibraryHistoryQuery,
   useGetTeamGoalSetsQuery,
   useGetDepartmentGoalSetsQuery,
 

@@ -202,6 +202,14 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
 
         return result;
     }
+    
+    @Override
+    public List<KpiLibraryResponse> getLibraryHistory(Long positionId) {
+        return libraryRepository.findByPositionPositionIdOrderByUpdatedAtDesc(positionId).stream()
+                .map(kpiMapper::toLibraryResponse)
+                .collect(Collectors.toList());
+    }
+
     private void validateLibraryWeights(KpiLibraryRequest request) {
         if (request.getDetails() == null || request.getDetails().isEmpty()) {
             throw new IllegalArgumentException("At least one KPI detail is required");

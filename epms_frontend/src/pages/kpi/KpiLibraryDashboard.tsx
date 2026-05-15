@@ -14,9 +14,11 @@ import {
   Brain,
   Filter,
   MoreHorizontal,
-  FileUp
+  FileUp,
+  History
 } from 'lucide-react';
 import KpiImportModal from '../../components/kpi/KpiImportModal';
+import KpiLibraryHistoryModal from '../../components/kpi/KpiLibraryHistoryModal';
 
 const KpiLibraryDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +26,11 @@ const KpiLibraryDashboard: React.FC = () => {
   const [positionFilter, setPositionFilter] = useState<number | 'all'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [historyModalState, setHistoryModalState] = useState<{ isOpen: boolean; positionId: number; positionName: string }>({
+    isOpen: false,
+    positionId: 0,
+    positionName: ''
+  });
 
   const { data: librariesResponse, isLoading } = useGetAllLibrariesQuery();
   const { data: positions = [] } = useGetPositionsQuery();
@@ -165,6 +172,17 @@ const KpiLibraryDashboard: React.FC = () => {
                   View Details
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
+                <button 
+                  onClick={() => setHistoryModalState({
+                    isOpen: true,
+                    positionId: library.positionId || 0,
+                    positionName: library.positionName || library.title
+                  })}
+                  className="text-gray-400 text-xs font-bold flex items-center gap-1.5 hover:text-blue-600 transition-all ml-4"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  History
+                </button>
               </div>
             </div>
           ) : (
@@ -193,6 +211,17 @@ const KpiLibraryDashboard: React.FC = () => {
                 >
                   <ArrowRight className="w-4 h-4" />
                 </button>
+                <button 
+                  onClick={() => setHistoryModalState({
+                    isOpen: true,
+                    positionId: library.positionId || 0,
+                    positionName: library.positionName || library.title
+                  })}
+                  className="p-1.5 text-gray-300 hover:text-blue-600 transition-all"
+                  title="View History"
+                >
+                  <History className="w-4 h-4" />
+                </button>
               </div>
             </div>
           )
@@ -209,6 +238,13 @@ const KpiLibraryDashboard: React.FC = () => {
       <KpiImportModal 
         isOpen={isImportModalOpen} 
         onClose={() => setIsImportModalOpen(false)} 
+      />
+
+      <KpiLibraryHistoryModal
+        isOpen={historyModalState.isOpen}
+        onClose={() => setHistoryModalState(prev => ({ ...prev, isOpen: false }))}
+        positionId={historyModalState.positionId}
+        positionName={historyModalState.positionName}
       />
     </div>
   );
