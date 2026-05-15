@@ -9,6 +9,7 @@ public interface NotificationService {
     void send(NotificationRequest request);
 
     void notifyAllEmployees(NotificationRequest request);
+    void sendToRole(String roleName, NotificationRequest request);
 
     List<NotificationResponse> getMyNotifications();
 

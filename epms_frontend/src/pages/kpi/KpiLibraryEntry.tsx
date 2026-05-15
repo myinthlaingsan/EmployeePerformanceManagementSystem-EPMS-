@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useCreateLibraryMutation,
   useUpdateLibraryMutation,
@@ -85,16 +86,16 @@ const KpiLibraryEntry: React.FC = () => {
     const newDetails = [...details];
     let updatedItem = {
       ...newDetails[index],
-      [field]: field === 'categoryId' ? parseInt(value) || 0 
-               : field === 'isCompliance' ? !!value
-               : ['targetValue', 'weightPercent'].includes(field as string) ? parseFloat(value) || 0 
-               : value
+      [field]: field === 'categoryId' ? parseInt(value) || 0
+        : field === 'isCompliance' ? !!value
+          : ['targetValue', 'weightPercent'].includes(field as string) ? parseFloat(value) || 0
+            : value
     };
 
     // Auto-setup for Compliance items: Target must be 1 for Pass/Fail logic
     if (field === 'isCompliance' && value === true) {
-        updatedItem.targetValue = 1;
-        if (!updatedItem.unit) updatedItem.unit = 'Score';
+      updatedItem.targetValue = 1;
+      if (!updatedItem.unit) updatedItem.unit = 'Score';
     }
 
     newDetails[index] = updatedItem;
@@ -113,36 +114,36 @@ const KpiLibraryEntry: React.FC = () => {
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      alert("Please enter a Template Title.");
+      toast.warning("Please enter a Template Title.");
       return;
     }
     if (formData.positionId === 0) {
-      alert("Please select a Target Position.");
+      toast.warning("Please select a Target Position.");
       return;
     }
 
     for (let i = 0; i < details.length; i++) {
       const d = details[i];
       if (!d.goalTitle.trim()) {
-        alert(`KPI row ${i + 1}: Please enter a KPI description.`);
+        toast.warning(`KPI row ${i + 1}: Please enter a KPI description.`);
         return;
       }
       if (d.categoryId === 0) {
-        alert(`KPI row ${i + 1}: Please select a Category.`);
+        toast.warning(`KPI row ${i + 1}: Please select a Category.`);
         return;
       }
       if (d.targetValue <= 0) {
-        alert(`KPI row ${i + 1}: Target value must be greater than 0`);
+        toast.warning(`KPI row ${i + 1}: Target value must be greater than 0.`);
         return;
       }
       if (!d.unit.trim()) {
-        alert(`KPI row ${i + 1}: Please enter a Unit.`);
+        toast.warning(`KPI row ${i + 1}: Please enter a Unit.`);
         return;
       }
     }
 
     if (!isValid) {
-      alert(errors.join('\n'));
+      toast.error(errors.join('\n'));
       return;
     }
 
@@ -160,7 +161,7 @@ const KpiLibraryEntry: React.FC = () => {
       navigate('/kpi/library');
     } catch (err: any) {
       console.error('Save failed:', err);
-      alert(err?.data?.message || err?.data?.error || 'Failed to save template. Please check your inputs.');
+      toast.error(err?.data?.message || err?.data?.error || 'Failed to save template. Please check your inputs.');
     }
   };
 

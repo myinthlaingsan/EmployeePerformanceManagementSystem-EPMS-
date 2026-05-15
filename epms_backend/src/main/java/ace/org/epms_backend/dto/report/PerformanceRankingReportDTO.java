@@ -14,7 +14,7 @@ public class PerformanceRankingReportDTO {
     private Integer rank;
     private String employeeName;
     private String departmentName;
-    private BigDecimal finalScore;
+    private BigDecimal currentScore;
     private BigDecimal previousScore;
     private String rating;
     private String trend; // e.g., "UP", "DOWN", "STABLE"

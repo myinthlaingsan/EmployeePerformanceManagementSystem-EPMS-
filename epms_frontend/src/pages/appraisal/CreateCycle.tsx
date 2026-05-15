@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useCreateCycleMutation } from '../../features/appraisal/appraisalApi';
 import { useGetFinancialYearsQuery } from '../../features/appraisal/financialYearApi';
 import {
@@ -46,7 +47,7 @@ const AppraisalCycleCreate: React.FC = () => {
   React.useEffect(() => {
     if (!formData.financialYearId && financialYears.length > 0) {
       const currentYear = financialYears.find(y => y.isCurrent);
-      if (currentYear) {
+      if (currentYear?.id != null) {
         setFormData(prev => ({ ...prev, financialYearId: currentYear.id.toString() }));
       }
     }
@@ -55,7 +56,7 @@ const AppraisalCycleCreate: React.FC = () => {
   // Automated Date Calculations for Financial Year Mode
   React.useEffect(() => {
     if (creationMode === 'FINANCIAL_YEAR' && formData.financialYearId && financialYears.length > 0) {
-      const selectedYear = financialYears.find(y => y.id.toString() === formData.financialYearId);
+      const selectedYear = financialYears.find(y => y.id?.toString() === formData.financialYearId);
       if (selectedYear) {
         const fyStart = new Date(selectedYear.startDate);
         const fyEnd = new Date(selectedYear.endDate);
@@ -109,22 +110,22 @@ const AppraisalCycleCreate: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (totalWeight !== 100) {
-      alert('Total weights must sum to 100%');
+      toast.warning('Total weights must sum to 100%');
       return;
     }
 
     if (creationMode === 'FINANCIAL_YEAR' && !formData.financialYearId) {
-      alert('Please select a Financial Year.');
+      toast.warning('Please select a Financial Year.');
       return;
     }
 
     if (!formData.startDate || !formData.endDate) {
-      alert('Please ensure both Start Date and End Date are selected.');
+      toast.warning('Please ensure both Start Date and End Date are selected.');
       return;
     }
 
     if (new Date(formData.endDate) < new Date(formData.startDate)) {
-      alert('End Date cannot be before Start Date');
+      toast.warning('End Date cannot be before Start Date');
       return;
     }
 
@@ -134,7 +135,7 @@ const AppraisalCycleCreate: React.FC = () => {
         financialYearId: (creationMode === 'FINANCIAL_YEAR' && formData.financialYearId) ? Number(formData.financialYearId) : undefined
       };
       await createCycle(requestData).unwrap();
-      alert('Appraisal Cycle created successfully!');
+      toast.success('Appraisal Cycle created successfully!');
       navigate('/appraisal', {
         state: {
           activeTab: 'forms',
@@ -144,7 +145,7 @@ const AppraisalCycleCreate: React.FC = () => {
     } catch (err: any) {
       console.error('Failed to create cycle:', err);
       const errorMessage = err?.data?.message || err?.error || err?.message || JSON.stringify(err);
-      alert(`Error creating cycle:\n\n${errorMessage}`);
+      toast.error(`Error creating cycle:\n\n${errorMessage}`);
     }
   };
 

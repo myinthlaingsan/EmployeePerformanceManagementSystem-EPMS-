@@ -7,7 +7,9 @@ import {
   Calendar,
   Layers,
   CheckCircle2,
-  Printer
+  Printer,
+  Edit3,
+  Plus
 } from 'lucide-react';
 
 const FormView: React.FC = () => {
@@ -114,6 +116,15 @@ const FormView: React.FC = () => {
              <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
                <Printer className="w-5 h-5" />
              </button>
+             {!form.isAssigned && (
+               <button 
+                 onClick={() => navigate(`/appraisal/design-form?cycleId=${form.cycleId}&type=${form.formType}&setName=${encodeURIComponent(getSetName(form.formName))}&formId=${form.formId}&edit=true`)}
+                 className="px-5 py-2 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-indigo-100 transition-all border border-indigo-200 flex items-center gap-2"
+               >
+                 <Edit3 className="w-3.5 h-3.5" />
+                 Edit Structure
+               </button>
+             )}
              <button className="px-5 py-2 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-slate-800 transition-all shadow-sm">
                Publish Template
              </button>

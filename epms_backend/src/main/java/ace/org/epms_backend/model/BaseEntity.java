@@ -17,15 +17,18 @@ public class BaseEntity {
     private Instant createdAt;
 
     private Instant updatedAt;
-//    @Builder.Default
-//    private Boolean isDeleted = false;
-//
     private Instant deletedAt;
+
+    private Boolean isDeleted = false;
+
     @PrePersist
     protected void onCreate(){
         Instant now = Instant.now();
         this.createdAt = now;
         this.updatedAt = now;
+        if (this.isDeleted == null) {
+            this.isDeleted = false;
+        }
     }
 
     @PreUpdate

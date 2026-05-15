@@ -123,7 +123,7 @@ const TeamKpiDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <div className="p-8 max-w-[1600px] mx-auto space-y-8">
+      <div className="p-8 max-w-400 mx-auto space-y-8">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-10">
           <div className="space-y-2">

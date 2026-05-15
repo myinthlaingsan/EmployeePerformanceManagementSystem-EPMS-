@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetSelfAssessmentFormQuery,
   useSaveSelfAssessmentAnswersMutation,
@@ -80,25 +81,25 @@ const SelfAssessment = () => {
     try {
       await saveAnswers({ id: formData.selfAssessmentId, answers: buildPayload() }).unwrap();
       await saveDraftMutation({ selfAssessmentId: formData.selfAssessmentId, overallReflection: comment }).unwrap();
-      alert('Draft saved successfully!');
+      toast.success('Draft saved successfully!');
     } catch (err: any) {
-      alert(err?.data?.message || 'Operation failed. Please try again.');
+      toast.error(err?.data?.message || 'Operation failed. Please try again.');
     }
   };
 
   const handleSubmit = async () => {
     if (completedCount < totalQuestions) {
-      alert('Please answer all questions before submitting.');
+      toast.warning('Please answer all questions before submitting.');
       return;
     }
     try {
       await saveAnswers({ id: formData.selfAssessmentId, answers: buildPayload() }).unwrap();
       await saveDraftMutation({ selfAssessmentId: formData.selfAssessmentId, overallReflection: comment }).unwrap();
       await submitSelfAssessment(formData.selfAssessmentId).unwrap();
-      alert('Self-assessment submitted successfully!');
+      toast.success('Self-assessment submitted successfully!');
       navigate('/appraisal');
     } catch (err: any) {
-      alert(err?.data?.message || 'Operation failed. Please try again.');
+      toast.error(err?.data?.message || 'Operation failed. Please try again.');
     }
   };
 

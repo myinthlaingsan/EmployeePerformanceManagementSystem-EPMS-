@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetEmployeeAssessmentQuery,
   useCalculateScoreMutation,
@@ -66,27 +67,27 @@ const AppraisalDetail: React.FC = () => {
   const handleCalculate = async () => {
     try {
       await calculateScore(id!).unwrap();
-      alert('Scores calculated successfully!');
+      toast.success('Scores calculated successfully!');
     } catch (err: any) {
-      alert(err?.data?.message || 'Calculation failed');
+      toast.error(err?.data?.message || 'Calculation failed');
     }
   };
 
   const handleApprove = async () => {
     try {
       await approveAppraisal({ id: id!, comment: approvalComment }).unwrap();
-      alert('Appraisal approved by HR!');
+      toast.success('Appraisal approved by HR!');
     } catch (err: any) {
-      alert(err?.data?.message || 'Approval failed');
+      toast.error(err?.data?.message || 'Approval failed');
     }
   };
 
   const handleFinalize = async () => {
     try {
       await finalizeAppraisal(id!).unwrap();
-      alert('Appraisal finalized and locked!');
+      toast.success('Appraisal finalized and locked!');
     } catch (err: any) {
-      alert(err?.data?.message || 'Finalization failed');
+      toast.error(err?.data?.message || 'Finalization failed');
     }
   };
 
@@ -320,7 +321,9 @@ const AppraisalDetail: React.FC = () => {
 
               <div className="pt-8 border-t border-slate-50 flex items-center justify-between relative z-10">
                 <span className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">
-                  {appraisal.managerSubmittedAt ? 'View Evaluation' : (isManager ? 'Start Evaluating' : 'View Progress')}
+                  {appraisal.managerSubmittedAt 
+                    ? (isManager && appraisal.status !== 'FINALIZED' && appraisal.status !== 'HR_APPROVED' ? 'Edit Evaluation' : 'View Evaluation') 
+                    : (isManager ? 'Start Evaluating' : 'View Progress')}
                 </span>
                 <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-2 shadow-sm">
                   <ArrowRight className="w-5 h-5" />

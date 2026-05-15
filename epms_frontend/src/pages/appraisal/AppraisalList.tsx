@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetAppraisalsQuery,
   useGetCyclesQuery,
@@ -9,7 +10,9 @@ import {
   useCloseCycleMutation,
   useGetTeamEvaluationsQuery,
   useCreateFormSetMutation,
-  useGetAppraisalFormSetsQuery
+  useGetAppraisalFormSetsQuery,
+  useDeleteAppraisalFormMutation,
+  useDeleteFormSetMutation
 } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
 import {
@@ -19,20 +22,17 @@ import {
   Calendar,
   FileText,
   ChevronRight,
-  Settings,
   Clock,
   Target,
   Users,
   CheckCircle2,
-  CheckCircle,
   Circle,
-  AlertCircle,
   Search,
   Filter,
   Mail,
   Share2,
-  ArrowUpRight,
-  Trophy
+  Trophy,
+  Trash2
 } from 'lucide-react';
 
 import { useAuth } from '../../hooks/useAuth';
@@ -52,6 +52,12 @@ const AppraisalList: React.FC = () => {
   const [showNewSetModal, setShowNewSetModal] = React.useState(false);
   const [newSetName, setNewSetName] = React.useState('');
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [confirmModal, setConfirmModal] = React.useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const { data: appraisals = [], isLoading: loadingAppraisals, error: errorAppraisals } = useGetAppraisalsQuery();
   const { data: teamEvaluations = [], isLoading: loadingTeam } = useGetTeamEvaluationsQuery(undefined, { skip: !isManager });
@@ -61,6 +67,8 @@ const AppraisalList: React.FC = () => {
   const [activateCycle, { isLoading: isActivating }] = useActivateCycleMutation();
   const [closeCycle, { isLoading: isClosing }] = useCloseCycleMutation();
   const [createFormSet] = useCreateFormSetMutation();
+  const [deleteFormSet] = useDeleteFormSetMutation();
+  const [deleteForm] = useDeleteAppraisalFormMutation();
   const { data: formSets = [] } = useGetAppraisalFormSetsQuery(undefined, { skip: !isPrivileged });
 
   const isLoading = loadingAppraisals || loadingTeam || (isPrivileged && (loadingCycles || loadingForms || (selectedCycleId && loadingCycleData)));
@@ -76,7 +84,7 @@ const AppraisalList: React.FC = () => {
   if (errorAppraisals) {
     return (
       <div className="p-8 text-center text-red-500 font-bold bg-red-50 rounded-2xl border border-red-100 max-w-2xl mx-auto mt-20">
-        Operation failed. Please try again.
+        {/* Operation failed. Please try again. */}No Assessment are assigned.
       </div>
     );
   }
@@ -175,7 +183,7 @@ const AppraisalList: React.FC = () => {
       {teamEvaluations.length > 0 ? teamEvaluations.map((appraisal: any) => (
         <div
           key={appraisal.appraisalId}
-          className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
+          className="group bg-white rounded-4xl border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
           onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}
         >
           {/* Background Accent */}
@@ -291,10 +299,15 @@ const AppraisalList: React.FC = () => {
               {cycle?.isActive ? (
                 <button
                   onClick={() => {
-                    if (window.confirm(`Close "${cycle.cycleName}"? This will deactivate it and lock all appraisals.`)) {
-                      closeCycle(Number(selectedCycleId));
-                      setSelectedCycleId(null);
-                    }
+                    setConfirmModal({
+                      isOpen: true,
+                      title: 'Close Appraisal Cycle',
+                      message: `Are you sure you want to close "${cycle.cycleName}"? This will deactivate it and lock all related appraisals from further editing.`,
+                      onConfirm: () => {
+                        closeCycle(Number(selectedCycleId));
+                        setSelectedCycleId(null);
+                      }
+                    });
                   }}
                   disabled={isClosing}
                   className="px-6 py-3 bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all flex items-center gap-2 disabled:opacity-50"
@@ -328,7 +341,7 @@ const AppraisalList: React.FC = () => {
                 const totalRate = total > 0 ? Math.round((selfRate + managerRate + finalRate) / 3) : 0;
 
                 return (
-                  <div className="bg-white rounded-[1rem] border border-slate-100 p-8 shadow-sm relative overflow-hidden group w-full flex flex-col justify-between min-h-[320px]">
+                  <div className="bg-white rounded-2xl border border-slate-100 p-8 shadow-sm relative overflow-hidden group w-full flex flex-col justify-between min-h-80">
                     <div className="flex justify-between items-start relative z-10 mb-20">
                       <div>
                         <h3 className="text-[11px] font-black text-[#5E718D] uppercase tracking-[0.15em] mb-1">Global Completion Rates</h3>
@@ -350,7 +363,7 @@ const AppraisalList: React.FC = () => {
                             <span className="text-[14px] font-bold text-slate-700">{stat.label}</span>
                             <span className="text-[14px] font-black text-slate-900">{stat.rate}%</span>
                           </div>
-                          <div className="h-[8px] bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                             <div className={`h-full ${stat.color} transition-all duration-1000 rounded-full`} style={{ width: `${stat.rate}%` }}></div>
                           </div>
                           <p className="text-[11px] font-medium text-slate-400">{stat.sub}</p>
@@ -642,12 +655,12 @@ const AppraisalList: React.FC = () => {
     const getSetDetails = (set: any) => {
       const self = forms.find(f => f.formId === set.selfAssessmentFormId);
       const manager = forms.find(f => f.formId === set.managerEvaluationFormId);
-      return { self, manager, id: set.id };
+      return { self, manager, id: set.id, isAssigned: set.isAssigned };
     };
 
     const buildSetMap = (cycleName: string) => {
       const setsForCycle = groupedSets[cycleName] || [];
-      const setMap = new Map<string, { self: any, manager: any, id: number }>();
+      const setMap = new Map<string, { self: any, manager: any, id: number, isAssigned: boolean }>();
       setsForCycle.forEach(set => {
         setMap.set(set.name, getSetDetails(set));
       });
@@ -712,14 +725,47 @@ const AppraisalList: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="pt-8 border-t border-slate-50 relative z-10">
+                <div className="pt-8 border-t border-slate-50 relative z-10 flex flex-col gap-3">
                   {form ? (
-                    <button
-                      onClick={() => navigate(`/appraisal/forms/${form.formId}`)}
-                      className="w-full py-4 bg-slate-50 text-slate-700 font-black rounded-2xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 group-hover:shadow-lg"
-                    >
-                      View Full Template <ChevronRight className="w-4 h-4" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => navigate(`/appraisal/forms/${form.formId}`)}
+                        className="w-full py-4 bg-slate-50 text-slate-700 font-black rounded-2xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
+                      >
+                        View Full Template <ChevronRight className="w-4 h-4" />
+                      </button>
+                      {!form.isAssigned && (
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formId=${form.formId}&edit=true`)}
+                            className="flex-1 py-4 bg-white text-indigo-600 border border-indigo-200 font-black rounded-2xl hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-sm"
+                          >
+                            Edit Structure <Plus className="w-4 h-4 rotate-45" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Delete Template',
+                                message: 'Are you sure you want to delete this template? This action cannot be undone.',
+                                onConfirm: async () => {
+                                  try {
+                                    await deleteForm(form.formId).unwrap();
+                                    toast.success('Template deleted successfully');
+                                  } catch (err: any) {
+                                    toast.error(err?.data?.message || 'Failed to delete template');
+                                  }
+                                }
+                              });
+                            }}
+                            className="p-4 bg-white text-rose-500 border border-rose-100 rounded-2xl hover:bg-rose-50 transition-all shadow-sm"
+                            title="Delete Template"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <button
                       onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}`)}
@@ -791,7 +837,7 @@ const AppraisalList: React.FC = () => {
                         setExpandedSet(newSetName);
                         setShowNewSetModal(false);
                       } catch (err) {
-                        alert('Failed to create form set');
+                        toast.error('Failed to create form set');
                       }
                     }
                   }}
@@ -837,7 +883,33 @@ const AppraisalList: React.FC = () => {
                       {set.manager ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4 opacity-20" />}
                     </div>
                   </div>
-                  <div className="mt-8 flex justify-end">
+                  <div className="mt-8 flex justify-between items-center">
+                    {!set.isAssigned ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmModal({
+                            isOpen: true,
+                            title: 'Delete Form Set',
+                            message: `Are you sure you want to delete the form set "${setName}"?`,
+                            onConfirm: async () => {
+                              try {
+                                await deleteFormSet(set.id).unwrap();
+                                toast.success('Form set deleted');
+                              } catch (err: any) {
+                                toast.error(err?.data?.message || 'Delete failed');
+                              }
+                            }
+                          });
+                        }}
+                        className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                        title="Delete Form Set"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <div className="w-4" />
+                    )}
                     <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
                       <ChevronRight className="w-4 h-4" />
                     </div>
@@ -968,8 +1040,41 @@ const AppraisalList: React.FC = () => {
           {activeTab === 'cycles' && renderCycles()}
           {activeTab === 'forms' && renderForms()}
         </div>
-
       </div>
+
+      {/* Centered Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center text-rose-500 mb-8">
+                <Trash2 className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-4">{confirmModal.title}</h3>
+              <p className="text-slate-500 font-medium leading-relaxed mb-10">
+                {confirmModal.message}
+              </p>
+              <div className="flex items-center gap-4 w-full">
+                <button
+                  onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                  className="flex-1 py-4 bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    confirmModal.onConfirm();
+                    setConfirmModal({ ...confirmModal, isOpen: false });
+                  }}
+                  className="flex-1 py-4 bg-rose-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-rose-700 transition-all shadow-lg shadow-rose-100"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

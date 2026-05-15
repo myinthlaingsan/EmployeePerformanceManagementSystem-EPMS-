@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useAssignBulkMutation,
-  useGetActiveCycleQuery,
   useGetAppraisalFormSetsQuery,
   useSyncFormSetsMutation
 } from '../../features/appraisal/appraisalApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useAuth } from '../../hooks/useAuth';
 import {
   Users,
   CheckCircle2,
@@ -23,9 +24,13 @@ import {
 
 const AppraisalAssignment: React.FC = () => {
   const navigate = useNavigate();
-  // const { data: cycles = [] } = useGetCyclesQuery();
-  const { data: activeCycle, isLoading: cycleLoading } = useGetActiveCycleQuery();
-  const { data: formSets = [], isLoading: formsLoading } = useGetAppraisalFormSetsQuery(activeCycle?.cycleId, { skip: !activeCycle });
+  const {
+    activeCycleId,
+    activeCycleName,
+    isLoadingCycle: cycleLoading
+  } = useAuth();
+
+  const { data: formSets = [], isLoading: formsLoading } = useGetAppraisalFormSetsQuery(activeCycleId, { skip: !activeCycleId });
   const [syncFormSets, { isLoading: isSyncing }] = useSyncFormSetsMutation();
   const { data: employeePaged, isLoading: empsLoading } = useGetEmployeesQuery({ page: 0, size: 100 });
   const [assignBulk, { isLoading: isAssigning }] = useAssignBulkMutation();
@@ -36,10 +41,10 @@ const AppraisalAssignment: React.FC = () => {
 
   // Auto-select active cycle
   React.useEffect(() => {
-    if (activeCycle) {
-      setSelectedCycleId(activeCycle.cycleId.toString());
+    if (activeCycleId != null) {
+      setSelectedCycleId(activeCycleId.toString());
     }
-  }, [activeCycle]);
+  }, [activeCycleId]);
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,24 +55,29 @@ const AppraisalAssignment: React.FC = () => {
   const employees = employeePaged?.content || [];
 
   const filteredEmployees = useMemo(() => {
+    if (!Array.isArray(employees)) return [];
     return employees.filter(emp => {
-      const matchesSearch = emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesDept = deptFilter === '' || emp.currentDepartmentName === deptFilter;
-      const matchesPos = posFilter === '' || emp.positionName === posFilter;
+      const name = String(emp?.staffName || '');
+      const email = String(emp?.email || '');
+      const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesDept = deptFilter === '' || emp?.currentDepartmentName === deptFilter;
+      const matchesPos = posFilter === '' || emp?.positionName === posFilter;
       return matchesSearch && matchesDept && matchesPos;
     });
   }, [employees, searchTerm, deptFilter, posFilter]);
 
   const departments = useMemo(() => {
-    const depts = new Set(employees.map(e => e.currentDepartmentName).filter(Boolean));
-    return Array.from(depts);
+    if (!Array.isArray(employees)) return [];
+    const depts = new Set(employees.map(e => e?.currentDepartmentName).filter(name => !!name));
+    return Array.from(depts) as string[];
   }, [employees]);
 
   const positions = useMemo(() => {
-    const filteredEmps = deptFilter ? employees.filter(e => e.currentDepartmentName === deptFilter) : employees;
-    const poses = new Set(filteredEmps.map(e => e.positionName).filter(Boolean));
-    return Array.from(poses);
+    if (!Array.isArray(employees)) return [];
+    const filteredEmps = deptFilter ? employees.filter(e => e?.currentDepartmentName === deptFilter) : employees;
+    const poses = new Set(filteredEmps.map(e => e?.positionName).filter(name => !!name));
+    return Array.from(poses) as string[];
   }, [employees, deptFilter]);
 
   // Handlers
@@ -87,20 +97,20 @@ const AppraisalAssignment: React.FC = () => {
 
   const handleAssign = async () => {
     if (!selectedCycleId) {
-      alert('Please select an appraisal cycle.');
+      toast.warning('Please select an appraisal cycle.');
       return;
     }
     if (selectedEmployeeIds.length === 0) {
-      alert('Please select at least one employee.');
+      toast.warning('Please select at least one employee.');
       return;
     }
 
     if (!selectedFormSetId || selectedFormSetId === '0') {
-      alert('Please select a valid Form Set.');
+      toast.warning('Please select a valid Form Set.');
       return;
     }
     if (selectedEmployeeIds.length === 0) {
-      alert('Please select at least one employee.');
+      toast.warning('Please select at least one employee.');
       return;
     }
 
@@ -111,12 +121,12 @@ const AppraisalAssignment: React.FC = () => {
         employeeIds: selectedEmployeeIds
       }).unwrap();
 
-      alert(`Successfully assigned appraisals to ${selectedEmployeeIds.length} employees!`);
+      toast.success(`Successfully assigned appraisals to ${selectedEmployeeIds.length} employees!`);
       navigate('/appraisal');
     } catch (err: any) {
       console.error(err);
       const message = err?.data?.message || 'Failed to assign appraisals. Ensure HR permissions are active.';
-      alert(message);
+      toast.error(message);
     }
   };
 
@@ -156,8 +166,8 @@ const AppraisalAssignment: React.FC = () => {
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">1. Active Cycle</label>
                 <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm font-bold flex items-center gap-3">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  {activeCycle?.cycleName || 'No Active Cycle'}
+                  <CheckCircle2 className={`w-4 h-4 ${cycleLoading ? 'animate-spin text-slate-300' : 'text-emerald-500'}`} />
+                  {cycleLoading ? 'Finding active cycle...' : activeCycleName}
                 </div>
               </div>
 
@@ -166,20 +176,20 @@ const AppraisalAssignment: React.FC = () => {
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">2. Choose Form Set</label>
                 <div className="relative">
                   <Layers className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
-                  <select
-                    className={inputClass + " w-full pl-10"}
-                    value={selectedFormSetId}
-                    onChange={e => setSelectedFormSetId(e.target.value)}
-                  >
-                    <option value="">Select Form Set...</option>
-                    {formSets.map(fs => (
-                      <option key={fs.id} value={fs.id}>{fs.name}</option>
-                    ))}
-                  </select>
+                    <select
+                      className={inputClass + " w-full pl-10"}
+                      value={selectedFormSetId}
+                      onChange={e => setSelectedFormSetId(e.target.value)}
+                    >
+                      <option value="">Select Form Set...</option>
+                      {Array.isArray(formSets) && formSets.map(fs => (
+                        <option key={fs.id} value={fs.id}>{fs.name}</option>
+                      ))}
+                    </select>
                 </div>
                 {formSets.length === 0 && !formsLoading && (
                   <button
-                    onClick={() => syncFormSets().unwrap().then((res) => alert(res || 'Successfully synced form sets!'))}
+                    onClick={() => syncFormSets().unwrap().then((res) => toast.success(res || 'Successfully synced form sets!'))}
                     disabled={isSyncing}
                     className="mt-2 text-[10px] text-indigo-600 font-bold flex items-center gap-1 hover:text-indigo-800"
                   >
@@ -263,7 +273,7 @@ const AppraisalAssignment: React.FC = () => {
 
         {/* Employee List Section */}
         <div className="lg:col-span-3">
-          {!cycleLoading && !activeCycle ? (
+          {!cycleLoading && !activeCycleId ? (
             <div className="bg-white rounded-[3rem] border-2 border-dashed border-slate-200 p-20 text-center flex flex-col items-center justify-center space-y-6">
               <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center text-amber-500">
                 <Filter className="w-10 h-10" />
@@ -274,7 +284,7 @@ const AppraisalAssignment: React.FC = () => {
                   You cannot assign appraisals because there is no active cycle. Please create or activate a cycle in the management dashboard first.
                 </p>
               </div>
-              <button 
+              <button
                 onClick={() => navigate('/appraisal-cycles')}
                 className="px-8 py-3 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
               >
@@ -295,53 +305,57 @@ const AppraisalAssignment: React.FC = () => {
                 </button>
               </div>
 
-            <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
-              {empsLoading ? (
-                <div className="p-20 text-center text-slate-400">Loading directory...</div>
-              ) : filteredEmployees.map(emp => (
-                <div
-                  key={emp.id}
-                  onClick={() => toggleEmployee(emp.id)}
-                  className={`px-8 py-4 flex items-center justify-between cursor-pointer transition-all hover:bg-slate-50 ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-50/30' : ''}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                      {emp.staffName.charAt(0)}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm">{emp.staffName}</h4>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
-                          <Mail className="w-3 h-3" /> {emp.email}
-                        </span>
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
-                          <Building2 className="w-3 h-3" /> {emp.currentDepartmentName || 'No Department'}
-                        </span>
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
-                          <Briefcase className="w-3 h-3" /> {emp.positionName || 'No Position'}
-                        </span>
+              <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
+                {empsLoading ? (
+                  <div className="p-20 text-center text-slate-400">Loading directory...</div>
+                ) : (
+                  <>
+                    {Array.isArray(filteredEmployees) && filteredEmployees.map(emp => (
+                      <div
+                        key={emp.id}
+                        onClick={() => toggleEmployee(emp.id)}
+                        className={`px-8 py-4 flex items-center justify-between cursor-pointer transition-all hover:bg-slate-50 ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-50/30' : ''}`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                            {(emp.staffName || 'E').charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-slate-800 text-sm">{emp.staffName || 'Unknown Employee'}</h4>
+                            <div className="flex items-center gap-3 mt-0.5">
+                              <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
+                                <Mail className="w-3 h-3" /> {emp.email || 'No Email'}
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
+                                <Building2 className="w-3 h-3" /> {emp.currentDepartmentName || 'No Dept'}
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
+                                <Briefcase className="w-3 h-3" /> {emp.positionName || 'No Pos'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200'}`}>
+                          {selectedEmployeeIds.includes(emp.id) && <CheckCircle2 className="w-4 h-4 text-white" />}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200'}`}>
-                    {selectedEmployeeIds.includes(emp.id) && <CheckCircle2 className="w-4 h-4 text-white" />}
-                  </div>
-                </div>
-              ))}
+                    ))}
 
-              {filteredEmployees.length === 0 && !empsLoading && (
-                <div className="p-20 text-center text-slate-300">
-                  <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  <p className="text-sm font-medium">No employees found matching your filters.</p>
-                </div>
-              )}
+                    {filteredEmployees.length === 0 && !empsLoading && (
+                      <div className="p-20 text-center text-slate-300">
+                        <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                        <p className="text-sm font-medium">No employees found matching your filters.</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default AppraisalAssignment;

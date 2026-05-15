@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface AppraisalCycleRepository extends JpaRepository<AppraisalCycle, Long> {
-    List<AppraisalCycle> findByIsActiveTrue();
+    List<AppraisalCycle> findByIsActiveTrueOrderByCycleIdDesc();
 
     @Query("SELECT c FROM AppraisalCycle c WHERE c.isActive = true AND (c.status IN :statuses OR c.status IS NULL) ORDER BY c.cycleId DESC")
     List<AppraisalCycle> findActiveCyclesByStatus(@Param("statuses") List<CycleStatus> statuses);

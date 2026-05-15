@@ -239,11 +239,13 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
 
     @Override
     public AppraisalCycleResponse getActiveCycle() {
-        List<AppraisalCycle> cycles = appraisalCycleRepository.findActiveCyclesByStatus(List.of(CycleStatus.PLANNING, CycleStatus.IN_PROGRESS));
+        List<AppraisalCycle> cycles = appraisalCycleRepository.findActiveCyclesByStatus(
+            List.of(CycleStatus.PLANNING, CycleStatus.IN_PROGRESS, CycleStatus.EVALUATION)
+        );
         
-        // Fallback: If status-specific search fails, return the first active cycle regardless of status
+        // Fallback: If status-specific search fails, return the most recent active cycle regardless of status
         if (cycles.isEmpty()) {
-            cycles = appraisalCycleRepository.findByIsActiveTrue();
+            cycles = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
         }
 
         return cycles.stream()
@@ -258,7 +260,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     }
 
     private void deactivateCurrentActiveCycles() {
-        List<AppraisalCycle> activeCycles = appraisalCycleRepository.findByIsActiveTrue();
+        List<AppraisalCycle> activeCycles = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
         for (AppraisalCycle c : activeCycles) {
             c.setIsActive(false);
         }

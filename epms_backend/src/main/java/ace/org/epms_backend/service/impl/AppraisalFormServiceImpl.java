@@ -127,6 +127,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                 .cycleId(form.getCycle() != null ? form.getCycle().getCycleId() : null)
                 .cycleName(form.getCycle() != null ? form.getCycle().getCycleName() : null)
                 .categories(categoryDTOs)
+                .isAssigned(appraisalRepository.existsByFormIdInFormSet(formId))
                 .build();
     }
 
@@ -179,6 +180,14 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         AppraisalForm form = formRepository.findById(formId)
                 .orElseThrow(() -> new NotFoundException("Form not found"));
 
+        if (appraisalRepository.existsByFormIdInFormSet(formId)) {
+            throw new RuntimeException("Cannot modify template structure. This form is already assigned to active appraisals.");
+        }
+
+        // Clear existing structure to prevent duplication when re-adding from frontend
+        questionRepository.deleteByFormId(formId);
+        categoryRepository.deleteByFormId(formId);
+
         form.setFormName(request.getFormName());
         form.setFormType(request.getFormType());
         if (request.getCycleId() != null) {
@@ -217,6 +226,23 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         if (appraisalRepository.existsByFormIdInFormSet(formId)) {
             throw new RuntimeException("Cannot delete form. It is currently in use by active appraisals.");
         }
+
+        // Nullify references in FormSets first to avoid foreign key constraint violations
+        List<AppraisalFormSet> linkedSets = formSetRepository.findBySelfAssessmentForm_FormIdOrManagerEvaluationForm_FormId(formId, formId);
+        for (AppraisalFormSet set : linkedSets) {
+            if (set.getSelfAssessmentForm() != null && set.getSelfAssessmentForm().getFormId().equals(formId)) {
+                set.setSelfAssessmentForm(null);
+            }
+            if (set.getManagerEvaluationForm() != null && set.getManagerEvaluationForm().getFormId().equals(formId)) {
+                set.setManagerEvaluationForm(null);
+            }
+            formSetRepository.save(set);
+        }
+
+        // Delete structure first (Questions then Categories) to satisfy foreign key constraints
+        questionRepository.deleteByFormId(formId);
+        categoryRepository.deleteByFormId(formId);
+
         formRepository.deleteById(formId);
     }
 
@@ -229,6 +255,10 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
         if (appraisalRepository.existsByFormIdInFormSet(category.getForm().getFormId())) {
             throw new RuntimeException("Cannot delete category. The associated form is in use.");
         }
+        
+        // Delete child questions first
+        questionRepository.deleteByCategoryId(categoryId);
+        
         categoryRepository.delete(category);
     }
 

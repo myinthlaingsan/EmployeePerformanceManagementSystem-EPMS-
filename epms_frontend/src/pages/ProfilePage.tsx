@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useGetCurrentUserQuery, useUpdateProfileMutation, useChangePasswordMutation, useGetManagerQuery, useGetDirectReportsQuery, useUploadProfileImageMutation } from "../features/employee/employeeapi";
+import { toast } from "react-toastify";
 //import { useAuth } from "../hooks/useAuth";
 import type { UpdateProfileRequest, MaritalStatus } from "../features/employee/employeeTypes";
 
@@ -58,10 +59,10 @@ const ProfilePage = () => {
         await uploadProfileImage({ id: profile.id, file: selectedFile }).unwrap();
       }
       
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
     } catch (err) {
       console.error("Update profile failed", err);
-      alert("Failed to update profile.");
+      toast.error("Failed to update profile.");
     }
   };
 
@@ -69,16 +70,16 @@ const ProfilePage = () => {
     e.preventDefault();
     if (!profile?.id) return;
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("Passwords do not match!");
+      toast.warning("Passwords do not match!");
       return;
     }
     try {
       await changePassword({ id: profile.id, body: passwordData }).unwrap();
       setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
-      alert("Password changed successfully!");
+      toast.success("Password changed successfully!");
     } catch (err) {
       console.error("Change password failed", err);
-      alert("Failed to change password.");
+      toast.error("Failed to change password.");
     }
   };
 

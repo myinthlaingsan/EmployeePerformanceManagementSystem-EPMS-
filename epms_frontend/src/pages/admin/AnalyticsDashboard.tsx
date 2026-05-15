@@ -9,7 +9,7 @@ import {
 import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend,
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import {
@@ -138,7 +138,7 @@ const AnalyticsDashboard: React.FC = () => {
                       paddingAngle={8}
                       dataKey="value"
                     >
-                      {appraisalPieData.map((entry, index) => (
+                      {appraisalPieData.map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -182,7 +182,7 @@ const AnalyticsDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="h-[20rem]">
+            <div className="h-80">
               {loadingKpi ? (
                 <div className="h-full flex items-center justify-center text-slate-400 font-bold">Calculating Data...</div>
               ) : (
@@ -192,7 +192,7 @@ const AnalyticsDashboard: React.FC = () => {
                     <XAxis dataKey="employeeName" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
                     <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                    <Bar dataKey="achievementPercentage" fill="#6366f1" radius={[8, 8, 0, 0]} barSize={40} />
+                    <Bar dataKey="totalWeightedScore" fill="#6366f1" radius={[8, 8, 0, 0]} barSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -235,7 +235,7 @@ const AnalyticsDashboard: React.FC = () => {
                       </td>
                       <td className="px-8 py-5 text-right">
                         <span className="px-3 py-1 bg-indigo-50 text-indigo-700 font-black rounded-lg text-sm">
-                          {Number(row.finalScore || 0).toFixed(2)}%
+                          {Number(row.currentScore || 0).toFixed(2)}%
                         </span>
                       </td>
                     </tr>
