@@ -158,7 +158,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
 
         // Notify HR
         eventPublisher.publishEvent(NotificationEvent.builder()
-                .broadcast(true)
+                .targetRole("HR")
                 .type(NotificationType.MANAGER_EVALUATION_SUBMITTED)
                 .title("Evaluation Submitted")
                 .message("Manager " + appraisal.getManager().getStaffName()

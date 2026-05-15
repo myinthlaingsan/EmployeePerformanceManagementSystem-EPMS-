@@ -97,7 +97,7 @@ export interface PerformanceRankingReportDTO {
   rank: number;
   employeeName: string;
   departmentName: string;
-  finalScore: number;
+  currentScore: number;
   previousScore: number;
   rating: string;
   trend: string;

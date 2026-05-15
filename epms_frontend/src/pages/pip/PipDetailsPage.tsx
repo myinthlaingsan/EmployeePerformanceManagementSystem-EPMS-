@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
     useGetPipByIdQuery,
     useGetObjectivesByPipQuery,
@@ -115,10 +116,10 @@ const PipDetailsPage: React.FC = () => {
     const handleActivate = async () => {
         try {
             await activatePip(pipId).unwrap();
-            alert("PIP Activated Successfully!");
+            toast.success("PIP Activated Successfully!");
         } catch (err: any) {
             console.error('Failed to activate PIP:', err);
-            alert("Failed to activate PIP: " + (err.data?.message || "Check permissions or state."));
+            toast.error("Failed to activate PIP: " + (err.data?.message || "Check permissions or state."));
         }
     };
 
@@ -129,7 +130,7 @@ const PipDetailsPage: React.FC = () => {
                 navigate('/pip');
             } catch (err: any) {
                 console.error('Failed to delete PIP:', err);
-                alert('Failed to delete PIP: ' + (err?.data?.message || 'Check permissions.'));
+                toast.error('Failed to delete PIP: ' + (err?.data?.message || 'Check permissions.'));
             }
         }
     };
@@ -138,10 +139,10 @@ const PipDetailsPage: React.FC = () => {
         try {
             await createReview({ ...data, pipId }).unwrap();
             setIsReviewModalOpen(false);
-            alert("Review added successfully!");
+            toast.success("Review added successfully!");
         } catch (err: any) {
             console.error('Failed to create review:', err);
-            alert("Failed to add review: " + (err?.data?.message || "Check permissions."));
+            toast.error("Failed to add review: " + (err?.data?.message || "Check permissions."));
         }
     };
 
@@ -169,10 +170,10 @@ const PipDetailsPage: React.FC = () => {
         try {
             await updatePip({ id: pipId, body: { reason: editedReason } }).unwrap();
             setIsEditingReason(false);
-            alert("PIP Reason updated successfully!");
+            toast.success("PIP Reason updated successfully!");
         } catch (err: any) {
             console.error('Failed to save reason:', err);
-            alert("Failed to update reason: " + (err?.data?.message || "Check permissions."));
+            toast.error("Failed to update reason: " + (err?.data?.message || "Check permissions."));
         }
     };
 
@@ -181,7 +182,7 @@ const PipDetailsPage: React.FC = () => {
             await updateObjectiveStatus({ id: objectiveId, status }).unwrap();
         } catch (err: any) {
             console.error('Failed to update objective status:', err);
-            alert('Failed to update objective status: ' + (err?.data?.message || 'Check permissions.'));
+            toast.error('Failed to update objective status: ' + (err?.data?.message || 'Check permissions.'));
         }
     };
 
@@ -199,10 +200,10 @@ const PipDetailsPage: React.FC = () => {
             }
 
             setIsProgressModalOpen(false);
-            alert("Progress logged successfully!");
+            toast.success("Progress logged successfully!");
         } catch (err: any) {
             console.error('Failed to add progress:', err);
-            alert("Failed to log progress: " + (err?.data?.message || "Check permissions."));
+            toast.error("Failed to log progress: " + (err?.data?.message || "Check permissions."));
         }
     };
 
@@ -224,10 +225,10 @@ const PipDetailsPage: React.FC = () => {
             }).unwrap();
 
             setIsFinalizeModalOpen(false);
-            alert(`PIP Finalized as ${data.outcome}`);
+            toast.success(`PIP Finalized as ${data.outcome}`);
         } catch (err: any) {
             console.error('Failed to finalize PIP:', err);
-            alert("Failed to finalize: " + (err.data?.message || "Check fields and permissions."));
+            toast.error("Failed to finalize: " + (err.data?.message || "Check fields and permissions."));
         }
     };
 
@@ -237,10 +238,10 @@ const PipDetailsPage: React.FC = () => {
                 ? { employeePrivateNote: privateNote }
                 : { managerPrivateNote: privateNote };
             await updatePip({ id: pipId, body }).unwrap();
-            alert("Private note saved successfully!");
+            toast.success("Private note saved successfully!");
         } catch (err: any) {
             console.error('Failed to save private note:', err);
-            alert("Failed to save private note: " + (err?.data?.message || "Check permissions."));
+            toast.error("Failed to save private note: " + (err?.data?.message || "Check permissions."));
         }
     };
 

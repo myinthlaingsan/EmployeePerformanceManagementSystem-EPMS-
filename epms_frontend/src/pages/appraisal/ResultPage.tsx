@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetEmployeeAssessmentQuery,
   useUploadEmployeeSignatureMutation,
@@ -63,9 +64,9 @@ const ResultPage: React.FC = () => {
   const handleCalculate = async () => {
     try {
       await calculateScore(id!).unwrap();
-      alert('Scores calculated and synchronized successfully!');
+      toast.success('Scores calculated and synchronized successfully!');
     } catch (err: any) {
-      alert(err?.data?.message || 'Calculation failed');
+      toast.error(err?.data?.message || 'Calculation failed');
     }
   };
 
@@ -73,11 +74,11 @@ const ResultPage: React.FC = () => {
     if (!employeeSigFile) return;
     try {
       await uploadEmployeeSignature({ id: id!, file: employeeSigFile }).unwrap();
-      alert('Sign-off successful!');
+      toast.success('Sign-off successful!');
       setEmployeeSigFile(null);
       setEmployeeSigPreview(null);
     } catch (err: any) {
-      alert(err?.data?.message || 'Upload failed');
+      toast.error(err?.data?.message || 'Upload failed');
     }
   };
 
@@ -85,11 +86,11 @@ const ResultPage: React.FC = () => {
     if (!managerSigFile) return;
     try {
       await uploadManagerSignature({ id: id!, file: managerSigFile }).unwrap();
-      alert('Manager sign-off successful!');
+      toast.success('Manager sign-off successful!');
       setManagerSigFile(null);
       setManagerSigPreview(null);
     } catch (err: any) {
-      alert(err?.data?.message || 'Upload failed');
+      toast.error(err?.data?.message || 'Upload failed');
     }
   };
 

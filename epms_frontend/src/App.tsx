@@ -17,6 +17,8 @@ import {
 } from "./routes";
 import { ActiveCycleProvider } from "./context/ActiveCycleContext";
 import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Specialized Manager Component (Temporary here, can be moved later)
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
@@ -127,6 +129,7 @@ const App = () => {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<div className="p-6 text-center mt-20 font-bold text-gray-400">404 | Page Not Found</div>} />
       </Routes>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
     </BrowserRouter>
   );
 };

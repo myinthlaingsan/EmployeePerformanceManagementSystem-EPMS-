@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
@@ -168,7 +169,7 @@ const GoalManagement: React.FC = () => {
             <button
               onClick={() => {
                 if (selectedIds.length === 0) {
-                  alert('Please select at least one employee');
+                  toast.warning('Please select at least one employee');
                   return;
                 }
                 setIsBulkModalOpen(true);

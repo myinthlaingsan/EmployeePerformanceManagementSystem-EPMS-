@@ -63,6 +63,51 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    public void sendToRole(String roleName, NotificationRequest request) {
+        Employee sender = null;
+        if (request.getSenderId() != null) {
+            sender = employeeRepository.findById(request.getSenderId()).orElse(null);
+        }
+
+        ace.org.epms_backend.enums.RoleType roleType;
+        try {
+            roleType = ace.org.epms_backend.enums.RoleType.valueOf(roleName.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid role name: " + roleName);
+        }
+
+        List<Employee> recipients = employeeRepository.findByRoleName(roleType);
+        Employee finalSender = sender;
+
+        List<Notification> notifications = recipients.stream()
+                .map(emp -> Notification.builder()
+                        .recipient(emp)
+                        .sender(finalSender)
+                        .notificationType(request.getType())
+                        .title(request.getTitle())
+                        .message(request.getMessage())
+                        .referenceType(request.getReferenceType())
+                        .referenceId(request.getReferenceId())
+                        .actionUrl(request.getActionUrl())
+                        .build())
+                .collect(Collectors.toList());
+
+        notificationRepository.saveAll(notifications);
+
+        // Push real-time notification to each recipient
+        for (Employee recipient : recipients) {
+            messagingTemplate.convertAndSendToUser(
+                    recipient.getEmail(),
+                    "/queue/notifications",
+                    notificationMapper.toResponse(notifications.stream()
+                            .filter(n -> n.getRecipient().getId().equals(recipient.getId()))
+                            .findFirst().orElse(null))
+            );
+        }
+    }
+
+    @Override
+    @Transactional
     public void notifyAllEmployees(NotificationRequest request) {
         Employee sender = null;
         if (request.getSenderId() != null) {

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetManagerEvaluationFormQuery,
   useSaveManagerDraftMutation,
@@ -108,7 +109,7 @@ const ManagerEvaluation = () => {
 
   const handleSubmit = async () => {
     if (completedCount < totalQuestions) {
-      alert('Please provide a rating for all questions before submitting.');
+      toast.warning('Please provide a rating for all questions before submitting.');
       return;
     }
     try {
@@ -121,10 +122,10 @@ const ManagerEvaluation = () => {
       await saveAnswers({ id: formData.evaluationId, answers: answersPayload }).unwrap();
       await saveManagerDraft({ evaluationId: formData.evaluationId, finalComment: managerComment }).unwrap();
       await submitEvaluation(formData.evaluationId).unwrap();
-      alert('Manager evaluation submitted successfully!');
+      toast.success('Manager evaluation submitted successfully!');
       navigate('/appraisal');
     } catch (err: any) {
-      alert(err?.data?.message || 'Operation failed. Please try again.');
+      toast.error(err?.data?.message || 'Operation failed. Please try again.');
     }
   };
 
@@ -226,9 +227,9 @@ const ManagerEvaluation = () => {
                       }));
                       await saveAnswers({ id: formData.evaluationId, answers: answersPayload }).unwrap();
                       await saveManagerDraft({ evaluationId: formData.evaluationId, finalComment: managerComment }).unwrap();
-                      alert('Draft saved successfully!');
+                      toast.success('Draft saved successfully!');
                     } catch (err: any) {
-                      alert(err?.data?.message || 'Save failed');
+                      toast.error(err?.data?.message || 'Save failed');
                     }
                   }}
                   disabled={isSubmitting || isSaving || isDrafting}

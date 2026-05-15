@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { 
   useCreateAppraisalFormMutation, 
   useAddCategoryMutation, 
@@ -143,7 +144,7 @@ const AppraisalFormDesign: React.FC = () => {
       setShowLibrary(false);
     } catch (err) {
       console.error('Failed to load template:', err);
-      alert('Could not load this template. Please try another.');
+      toast.error('Could not load this template. Please try another.');
     }
   };
 
@@ -181,17 +182,17 @@ const AppraisalFormDesign: React.FC = () => {
 
   const handleSaveForm = async () => {
     if (!selectedCycleId) {
-      alert('Please select an Appraisal Cycle first.');
+      toast.warning('Please select an Appraisal Cycle first.');
       return;
     }
     if (!setName.trim()) {
-      alert('Please provide a Form Set name (e.g. the position name).');
+      toast.warning('Please provide a Form Set name (e.g. the position name).');
       return;
     }
     const prefixedFormName = `${setName.trim()} | ${formName}`;
     
     if (isAssigned) {
-      alert('Cannot save changes: This form template is already assigned to active appraisals and cannot be modified.');
+      toast.error('Cannot save changes: This form template is already assigned to active appraisals and cannot be modified.');
       return;
     }
 
@@ -237,7 +238,7 @@ const AppraisalFormDesign: React.FC = () => {
       const cycle = cycles.find(c => Number(c.cycleId) === Number(selectedCycleId));
       const cycleName = cycle?.cycleName || '';
 
-      alert(isEditMode ? 'Form updated successfully!' : 'Form saved successfully!');
+      toast.success(isEditMode ? 'Form updated successfully!' : 'Form saved successfully!');
       navigate('/appraisal', { 
         state: { 
           activeTab: 'forms', 
@@ -247,7 +248,7 @@ const AppraisalFormDesign: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       const errorMsg = err?.data?.message || err?.message || 'Unknown error';
-      alert(`Failed to save form design: ${errorMsg}`);
+      toast.error(`Failed to save form design: ${errorMsg}`);
     } finally {
       setIsSubmitting(false);
     }

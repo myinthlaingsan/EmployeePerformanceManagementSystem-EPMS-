@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from 'react-toastify';
 
 import { useAuth } from "../../hooks/useAuth";
 import { 
@@ -200,12 +201,12 @@ const MeetingPage = () => {
   const handleSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || !newMeeting.actionItems || !user) {
-      alert("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
+      toast.warning("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
       return;
     }
 
     if (newMeeting.followUpDate && newMeeting.followUpDate < newMeeting.meetingDate) {
-      alert("Follow up date cannot be earlier than the meeting date.");
+      toast.warning("Follow up date cannot be earlier than the meeting date.");
       return;
     }
 
@@ -229,7 +230,7 @@ const MeetingPage = () => {
         isPrivateNote: false
       });
     } catch (err: any) {
-      alert(err.data?.message || "Failed to save meeting");
+      toast.error(err.data?.message || "Failed to save meeting");
     }
   };
 
@@ -254,7 +255,7 @@ const MeetingPage = () => {
       await deleteMeeting(meetingToDelete).unwrap();
       setMeetingToDelete(null);
     } catch (err: any) {
-      alert(err.data?.message || "Failed to delete meeting");
+      toast.error(err.data?.message || "Failed to delete meeting");
     }
   };
 

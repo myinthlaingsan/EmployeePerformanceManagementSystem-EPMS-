@@ -64,12 +64,23 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                 summary.setFinalGrade(breakdown.getFinalGrade());
                 summaryRepo.save(summary);
 
-                // Notify Summary Ready
+                // Notify Employee
                 eventPublisher.publishEvent(NotificationEvent.builder()
-                                .broadcast(true)
+                                .recipientId(appraisal.getEmployee().getId())
                                 .type(NotificationType.APPRAISAL_SUMMARY_READY)
                                 .title("Appraisal Calculated")
-                                .message("Final results are ready for " + appraisal.getEmployee().getStaffName())
+                                .message("Your final appraisal results for " + appraisal.getCycle().getCycleName() + " are ready.")
+                                .referenceType(ReferenceType.APPRAISAL)
+                                .referenceId(appraisalId)
+                                .actionUrl("/appraisals/my-results")
+                                .build());
+
+                // Notify HR
+                eventPublisher.publishEvent(NotificationEvent.builder()
+                                .targetRole("HR")
+                                .type(NotificationType.APPRAISAL_SUMMARY_READY)
+                                .title("Appraisal Calculated: " + appraisal.getEmployee().getStaffName())
+                                .message("Final results are ready for " + appraisal.getEmployee().getStaffName() + " (" + appraisal.getEmployee().getEmployeeCode() + ")")
                                 .referenceType(ReferenceType.APPRAISAL)
                                 .referenceId(appraisalId)
                                 .build());

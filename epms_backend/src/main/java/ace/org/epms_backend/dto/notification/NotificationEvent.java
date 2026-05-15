@@ -17,4 +17,5 @@ public class NotificationEvent {
     private Long referenceId;
     private String actionUrl;
     private boolean broadcast;
+    private String targetRole;
 }

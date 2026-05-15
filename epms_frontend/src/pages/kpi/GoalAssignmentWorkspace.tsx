@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetGoalSetByEmployeeQuery,
   useGetAllLibrariesQuery,
@@ -113,11 +114,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
         }
       }
       refetchGoals();
-      alert(overwriteExisting ? "Goals replaced successfully!" : "Template items appended successfully!");
+      toast.success(overwriteExisting ? "Goals replaced successfully!" : "Template items appended successfully!");
     } catch (err: any) {
       console.error('Failed to apply template:', err);
       const errorMsg = err?.data?.message || err?.message || "Check network/permissions";
-      alert(`Failed to apply template: ${errorMsg}`);
+      toast.error(`Failed to apply template: ${errorMsg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -152,7 +153,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
       refetchGoals();
     } catch (err: any) {
       console.error('Failed to add custom goal:', err);
-      alert(`Failed to add custom goal: ${err?.data?.message || err.message}`);
+      toast.error(`Failed to add custom goal: ${err?.data?.message || err.message}`);
     }
   };
 
@@ -181,10 +182,10 @@ const GoalAssignmentWorkspace: React.FC = () => {
         }
       }).unwrap();
       setIsModified(false);
-      alert("Draft saved successfully!");
+      toast.success("Draft saved successfully!");
     } catch (err: any) {
       console.error('Failed to save draft:', err);
-      alert(`Failed to save draft: ${err?.data?.message || err.message}`);
+      toast.error(`Failed to save draft: ${err?.data?.message || err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -199,7 +200,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
       await revertToDraft(goalSet.id).unwrap();
     } catch (err: any) {
       console.error('Failed to revert to draft:', err);
-      alert(`Failed to revert: ${err?.data?.message || err.message}`);
+      toast.error(`Failed to revert: ${err?.data?.message || err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -212,26 +213,26 @@ const GoalAssignmentWorkspace: React.FC = () => {
       // Tag invalidation will refetch, which will trigger useEffect to sync localItems
     } catch (err: any) {
       const message = err?.data?.message || 'Failed to delete goal bc of progress exists';
-      alert(message);
+      toast.error(message);
     }
   };
 
   const handleApprove = async () => {
     if (!goalSet) return;
     if (totalWeight !== 100) {
-      alert("Total weight must be exactly 100% before approving.");
+      toast.warning("Total weight must be exactly 100% before approving.");
       return;
     }
 
     if (isModified) {
-      alert("Please save your draft changes before approving.");
+      toast.warning("Please save your draft changes before approving.");
       return;
     }
 
     setIsSubmitting(true);
     try {
       await approveGoalSet(goalSet.id).unwrap();
-      alert("Goals approved and locked!");
+      toast.success("Goals approved and locked!");
       if (isAdmin || isHR) {
         navigate('/kpi/manage');
       } else {
@@ -415,7 +416,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                     }).unwrap();
                     refetchGoals();
                   } catch (err: any) {
-                    alert(`Failed to start blank session: ${err?.data?.message || err.message}`);
+                    toast.error(`Failed to start blank session: ${err?.data?.message || err.message}`);
                   }
                 }}
                 className="w-full mt-8 py-4 border-2 border-dashed border-gray-100 rounded-xl text-[10px] font-black text-gray-400 uppercase tracking-widest hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"

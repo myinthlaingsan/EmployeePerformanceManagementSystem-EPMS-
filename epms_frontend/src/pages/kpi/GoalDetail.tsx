@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetGoalSetByEmployeeQuery,
   useApproveGoalSetMutation,
@@ -38,9 +39,9 @@ const GoalDetail: React.FC = () => {
     if (!goalSet) return;
     try {
       await approveGoal(goalSet.id).unwrap();
-      alert('Goal set approved!');
+      toast.success('Goal set approved!');
     } catch (err) {
-      alert('Failed to approve goal set');
+      toast.error('Failed to approve goal set');
     }
   };
 
@@ -64,10 +65,10 @@ const GoalDetail: React.FC = () => {
       }).unwrap();
       
       console.log('Score calculation result:', result);
-      alert('Score calculated successfully!');
+      toast.success('Score calculated successfully!');
     } catch (err) {
       console.error('Calculation error:', err);
-      alert('Failed to calculate score');
+      toast.error('Failed to calculate score');
     }
 };
 

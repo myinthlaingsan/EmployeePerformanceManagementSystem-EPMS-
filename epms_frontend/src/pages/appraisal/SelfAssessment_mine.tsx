@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetSelfAssessmentFormQuery,
   useSaveSelfAssessmentAnswersMutation,
@@ -93,15 +94,15 @@ const SelfAssessment = () => {
       }));
       await saveAnswers({ id: formData.selfAssessmentId, answers: answersPayload }).unwrap();
       await saveDraftMutation(formData.selfAssessmentId).unwrap();
-      alert('Draft saved successfully!');
+      toast.success('Draft saved successfully!');
     } catch (err: any) {
-      alert(err?.data?.message || 'Operation failed. Please try again.');
+      toast.error(err?.data?.message || 'Operation failed. Please try again.');
     }
   };
 
   const handleSubmit = async () => {
     if (completedCount < totalQuestions) {
-      alert('Please answer all questions before submitting.');
+      toast.warning('Please answer all questions before submitting.');
       return;
     }
 
@@ -119,11 +120,11 @@ const SelfAssessment = () => {
       // Step 2: Perform final submission
       await submitSelfAssessment(formData.selfAssessmentId).unwrap();
 
-      alert('Self-assessment submitted successfully!');
+      toast.success('Self-assessment submitted successfully!');
       navigate('/appraisal');
     } catch (err: any) {
       const errMsg = err?.data?.message || 'Operation failed. Please try again.';
-      alert(errMsg);
+      toast.error(errMsg);
     }
   };
 
@@ -282,9 +283,9 @@ const SelfAssessment = () => {
                       if (file && id) {
                         try {
                           await uploadSignature({ id, file }).unwrap();
-                          alert("Signature photo uploaded successfully!");
+                          toast.success("Signature photo uploaded successfully!");
                         } catch (err) {
-                          alert("Failed to upload signature photo.");
+                          toast.error("Failed to upload signature photo.");
                         }
                       }
                     }}
