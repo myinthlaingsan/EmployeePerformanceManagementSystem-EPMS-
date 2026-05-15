@@ -169,7 +169,7 @@ const KpiLibraryDashboard: React.FC = () => {
                   onClick={() => navigate(`/kpi/library/edit/${library.id}`)}
                   className="text-gray-900 text-xs font-black flex items-center gap-1.5 hover:text-blue-600 transition-all"
                 >
-                  View Details
+                  Edit
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
                 <button 
@@ -178,7 +178,7 @@ const KpiLibraryDashboard: React.FC = () => {
                     positionId: library.positionId || 0,
                     positionName: library.positionName || library.title
                   })}
-                  className="text-gray-400 text-xs font-bold flex items-center gap-1.5 hover:text-blue-600 transition-all ml-4"
+                  className="text-blue-600 text-xs font-bold flex items-center gap-1.5 hover:text-blue-700 transition-all ml-4"
                 >
                   <History className="w-3.5 h-3.5" />
                   History
@@ -217,7 +217,7 @@ const KpiLibraryDashboard: React.FC = () => {
                     positionId: library.positionId || 0,
                     positionName: library.positionName || library.title
                   })}
-                  className="p-1.5 text-gray-300 hover:text-blue-600 transition-all"
+                  className="p-1.5 text-blue-500 hover:text-blue-700 transition-all"
                   title="View History"
                 >
                   <History className="w-4 h-4" />
