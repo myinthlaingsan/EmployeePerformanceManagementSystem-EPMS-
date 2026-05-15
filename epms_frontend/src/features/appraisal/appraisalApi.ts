@@ -186,6 +186,13 @@ export const appraisalApi = api.injectEndpoints({
       transformResponse,
       invalidatesTags: (_result, _error, { id }) => [{ type: 'Form', id }, { type: 'Form', id: 'LIST' }],
     }),
+    deleteAppraisalForm: builder.mutation<any, number>({
+      query: (id) => ({
+        url: `/appraisal-forms/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: 'Form' as const, id: 'LIST' }],
+    }),
 
     // Categories
     getCategories: builder.query<any[], string>({
@@ -453,6 +460,7 @@ export const {
   useGetDiagnosticHealthQuery,
   useAddCategoryMutation,
   useAddQuestionMutation,
+  useDeleteAppraisalFormMutation,
   useAssignBulkMutation,
   useUploadEmployeeSignatureMutation,
   useUploadManagerSignatureMutation,

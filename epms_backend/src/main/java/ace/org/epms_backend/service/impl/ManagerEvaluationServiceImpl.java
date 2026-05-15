@@ -81,8 +81,9 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
         ManagerEvaluation eval = evalRepo.findById(evaluationId)
                 .orElseThrow(() -> new NotFoundException("Evaluation not found"));
 
-        if (Boolean.TRUE.equals(eval.getSubmitted())) {
-            throw new RuntimeException("Cannot modify a submitted manager evaluation");
+        if (eval.getAppraisal().getStatus() == AppraisalStatus.HR_APPROVED || 
+            eval.getAppraisal().getStatus() == AppraisalStatus.FINALIZED) {
+            throw new RuntimeException("Cannot modify an evaluation that has been approved or finalized");
         }
 
         for (ManagerEvaluationAnswerRequest req : answers) {
@@ -122,8 +123,9 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
         ManagerEvaluation eval = evalRepo.findById(evaluationId)
                 .orElseThrow(() -> new NotFoundException("Evaluation not found"));
 
-        if (Boolean.TRUE.equals(eval.getSubmitted())) {
-            throw new RuntimeException("Manager evaluation is already submitted");
+        if (eval.getAppraisal().getStatus() == AppraisalStatus.HR_APPROVED || 
+            eval.getAppraisal().getStatus() == AppraisalStatus.FINALIZED) {
+            throw new RuntimeException("Cannot submit an evaluation that has been approved or finalized");
         }
 
         // Calculate total score based on formula: (Total Point * 100) / (Number of Questions Answered * 5)
@@ -312,6 +314,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 .appraisalId(appraisal.getAppraisalId())
                 .formName(form.getFormName())
                 .formType(form.getFormType())
+                .appraisalStatus(appraisal.getStatus().name())
                 // Manager Info
                 .managerId(appraisal.getManager() != null ? appraisal.getManager().getId() : null)
                 .isSelfSubmitted(appraisal.getSelfSubmittedAt() != null)

@@ -55,24 +55,29 @@ const AppraisalAssignment: React.FC = () => {
   const employees = employeePaged?.content || [];
 
   const filteredEmployees = useMemo(() => {
+    if (!Array.isArray(employees)) return [];
     return employees.filter(emp => {
-      const matchesSearch = emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesDept = deptFilter === '' || emp.currentDepartmentName === deptFilter;
-      const matchesPos = posFilter === '' || emp.positionName === posFilter;
+      const name = String(emp?.staffName || '');
+      const email = String(emp?.email || '');
+      const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesDept = deptFilter === '' || emp?.currentDepartmentName === deptFilter;
+      const matchesPos = posFilter === '' || emp?.positionName === posFilter;
       return matchesSearch && matchesDept && matchesPos;
     });
   }, [employees, searchTerm, deptFilter, posFilter]);
 
   const departments = useMemo(() => {
-    const depts = new Set(employees.map(e => e.currentDepartmentName).filter(Boolean));
-    return Array.from(depts);
+    if (!Array.isArray(employees)) return [];
+    const depts = new Set(employees.map(e => e?.currentDepartmentName).filter(name => !!name));
+    return Array.from(depts) as string[];
   }, [employees]);
 
   const positions = useMemo(() => {
-    const filteredEmps = deptFilter ? employees.filter(e => e.currentDepartmentName === deptFilter) : employees;
-    const poses = new Set(filteredEmps.map(e => e.positionName).filter(Boolean));
-    return Array.from(poses);
+    if (!Array.isArray(employees)) return [];
+    const filteredEmps = deptFilter ? employees.filter(e => e?.currentDepartmentName === deptFilter) : employees;
+    const poses = new Set(filteredEmps.map(e => e?.positionName).filter(name => !!name));
+    return Array.from(poses) as string[];
   }, [employees, deptFilter]);
 
   // Handlers
@@ -171,16 +176,16 @@ const AppraisalAssignment: React.FC = () => {
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">2. Choose Form Set</label>
                 <div className="relative">
                   <Layers className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
-                  <select
-                    className={inputClass + " w-full pl-10"}
-                    value={selectedFormSetId}
-                    onChange={e => setSelectedFormSetId(e.target.value)}
-                  >
-                    <option value="">Select Form Set...</option>
-                    {formSets.map(fs => (
-                      <option key={fs.id} value={fs.id}>{fs.name}</option>
-                    ))}
-                  </select>
+                    <select
+                      className={inputClass + " w-full pl-10"}
+                      value={selectedFormSetId}
+                      onChange={e => setSelectedFormSetId(e.target.value)}
+                    >
+                      <option value="">Select Form Set...</option>
+                      {Array.isArray(formSets) && formSets.map(fs => (
+                        <option key={fs.id} value={fs.id}>{fs.name}</option>
+                      ))}
+                    </select>
                 </div>
                 {formSets.length === 0 && !formsLoading && (
                   <button
@@ -303,42 +308,46 @@ const AppraisalAssignment: React.FC = () => {
               <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
                 {empsLoading ? (
                   <div className="p-20 text-center text-slate-400">Loading directory...</div>
-                ) : filteredEmployees.map(emp => (
-                  <div
-                    key={emp.id}
-                    onClick={() => toggleEmployee(emp.id)}
-                    className={`px-8 py-4 flex items-center justify-between cursor-pointer transition-all hover:bg-slate-50 ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-50/30' : ''}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                        {emp.staffName.charAt(0)}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-slate-800 text-sm">{emp.staffName}</h4>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
-                            <Mail className="w-3 h-3" /> {emp.email}
-                          </span>
-                          <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
-                            <Building2 className="w-3 h-3" /> {emp.currentDepartmentName || 'No Department'}
-                          </span>
-                          <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
-                            <Briefcase className="w-3 h-3" /> {emp.positionName || 'No Position'}
-                          </span>
+                ) : (
+                  <>
+                    {Array.isArray(filteredEmployees) && filteredEmployees.map(emp => (
+                      <div
+                        key={emp.id}
+                        onClick={() => toggleEmployee(emp.id)}
+                        className={`px-8 py-4 flex items-center justify-between cursor-pointer transition-all hover:bg-slate-50 ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-50/30' : ''}`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                            {(emp.staffName || 'E').charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-slate-800 text-sm">{emp.staffName || 'Unknown Employee'}</h4>
+                            <div className="flex items-center gap-3 mt-0.5">
+                              <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
+                                <Mail className="w-3 h-3" /> {emp.email || 'No Email'}
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
+                                <Building2 className="w-3 h-3" /> {emp.currentDepartmentName || 'No Dept'}
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
+                                <Briefcase className="w-3 h-3" /> {emp.positionName || 'No Pos'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200'}`}>
+                          {selectedEmployeeIds.includes(emp.id) && <CheckCircle2 className="w-4 h-4 text-white" />}
                         </div>
                       </div>
-                    </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200'}`}>
-                      {selectedEmployeeIds.includes(emp.id) && <CheckCircle2 className="w-4 h-4 text-white" />}
-                    </div>
-                  </div>
-                ))}
+                    ))}
 
-                {filteredEmployees.length === 0 && !empsLoading && (
-                  <div className="p-20 text-center text-slate-300">
-                    <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                    <p className="text-sm font-medium">No employees found matching your filters.</p>
-                  </div>
+                    {filteredEmployees.length === 0 && !empsLoading && (
+                      <div className="p-20 text-center text-slate-300">
+                        <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                        <p className="text-sm font-medium">No employees found matching your filters.</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

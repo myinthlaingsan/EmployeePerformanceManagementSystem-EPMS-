@@ -109,8 +109,8 @@ public class AppraisalController {
         return ResponseEntity.ok(ApiResponse.success(appraisalService.getById(id)));
     }
 
-    @PostMapping("/{id}/calculate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    @GetMapping("/{id}/calculate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<ScoreBreakdownResponse>> calculate(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 appraisalService.calculate(id)

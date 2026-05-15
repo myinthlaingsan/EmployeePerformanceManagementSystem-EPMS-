@@ -19,5 +19,6 @@ public class FullFormResponse {
     private Long cycleId;
     private String cycleName;
     private List<CategoryDTO> categories;
+    private Boolean isAssigned;
 }
 

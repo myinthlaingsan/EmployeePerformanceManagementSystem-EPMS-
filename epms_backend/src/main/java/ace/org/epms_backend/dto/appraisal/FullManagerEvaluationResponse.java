@@ -19,6 +19,7 @@ public class FullManagerEvaluationResponse {
     private Long appraisalId;
     private String formName;
     private FormType formType;
+    private String appraisalStatus;
 
     // Manager Info
     private Long managerId;

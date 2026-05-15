@@ -11,4 +11,6 @@ public interface AppraisalFormSetRepository extends JpaRepository<AppraisalFormS
     List<AppraisalFormSet> findByCycle_CycleId(Long cycleId);
     List<AppraisalFormSet> findByIsActiveTrue();
     boolean existsByCycle_CycleIdAndName(Long cycleId, String name);
+    boolean existsBySelfAssessmentForm_FormIdOrManagerEvaluationForm_FormId(Long selfId, Long managerId);
+    List<AppraisalFormSet> findBySelfAssessmentForm_FormIdOrManagerEvaluationForm_FormId(Long selfId, Long managerId);
 }
