@@ -50,7 +50,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         
         // Fallback: If status-specific search fails, return the first active cycle regardless of status
         if (cycles.isEmpty()) {
-            cycles = cycleRepository.findByIsActiveTrue();
+            cycles = cycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
         }   
 
         AppraisalCycle cycle = cycles.stream().findFirst()

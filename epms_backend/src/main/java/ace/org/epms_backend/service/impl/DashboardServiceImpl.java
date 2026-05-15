@@ -45,7 +45,7 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public HrDashboardResponse getHrDashboard() {
-        AppraisalCycle currentCycle = appraisalCycleRepository.findByIsActiveTrue().stream().findFirst().orElse(null);
+        AppraisalCycle currentCycle = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc().stream().findFirst().orElse(null);
         long cycleId = currentCycle != null ? currentCycle.getCycleId() : 0L;
 
         List<Appraisal> appraisals = appraisalRepository.findByCycle_CycleId(cycleId);
@@ -109,7 +109,7 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public AdminDashboardResponse getAdminDashboard() {
-        List<AppraisalCycle> cycles = appraisalCycleRepository.findByIsActiveTrue();
+        List<AppraisalCycle> cycles = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
         
         return AdminDashboardResponse.builder()
                 .totalEmployees(employeeRepository.count())
@@ -134,7 +134,7 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public EmployeeDashboardResponse getEmployeeDashboard(Long employeeId) {
-        AppraisalCycle cycle = appraisalCycleRepository.findByIsActiveTrue().stream().findFirst().orElse(null);
+        AppraisalCycle cycle = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc().stream().findFirst().orElse(null);
         Long cycleId = cycle != null ? cycle.getCycleId() : 0L;
 
         AppraisalSummary summary = appraisalSummaryRepository.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId).orElse(null);
@@ -184,7 +184,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .map(ReportingLine::getEmployee)
                 .collect(Collectors.toList());
 
-        AppraisalCycle cycle = appraisalCycleRepository.findByIsActiveTrue().stream().findFirst().orElse(null);
+        AppraisalCycle cycle = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc().stream().findFirst().orElse(null);
         Long cycleId = cycle != null ? cycle.getCycleId() : 0L;
 
         List<Appraisal> teamAppraisals = appraisalRepository.findByManager_IdAndStatusIn(managerId, List.of(AppraisalStatus.values()));
