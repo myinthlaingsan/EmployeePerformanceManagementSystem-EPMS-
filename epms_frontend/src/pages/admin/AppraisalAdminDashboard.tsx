@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, Save, Plus, Info, Check, Lock, Box, MoreVertical, Calendar, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Save, Plus, Trash2 } from 'lucide-react';
 import { useGetCyclesQuery, useCreateCycleMutation } from '../../features/appraisal/appraisalApi';
 
 interface Field {
@@ -17,7 +16,6 @@ interface Section {
 }
 
 const AppraisalAdminDashboard = () => {
-  const navigate = useNavigate();
   const { data: cycles = [], isLoading, isError } = useGetCyclesQuery();
   const [createCycle, { isLoading: isCreating }] = useCreateCycleMutation();
 
@@ -69,10 +67,10 @@ const AppraisalAdminDashboard = () => {
     if (!cycleName || !startDate || !endDate) return alert('Please fill all cycle parameters.');
     try {
       await createCycle({
-        name: cycleName,
+        cycleName: cycleName,
         startDate,
         endDate,
-        frequency
+        evaluationPeriod: frequency
       }).unwrap();
       alert('Appraisal cycle launched successfully!');
       // Reset form
@@ -291,24 +289,24 @@ const AppraisalAdminDashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {cycles.map((cycle) => (
-                  <tr key={cycle.id} className="hover:bg-gray-50/50 transition">
+                {cycles.map((cycle: any) => (
+                  <tr key={cycle.cycleId} className="hover:bg-gray-50/50 transition">
                     <td className="px-6 py-5">
-                      <div className="font-bold text-sm text-gray-900 mb-0.5">{cycle.name}</div>
+                      <div className="font-bold text-sm text-gray-900 mb-0.5">{cycle.cycleName}</div>
                     </td>
                     <td className="px-6 py-5">
                       <span className="text-[13px] font-medium text-gray-800">{cycle.startDate} to {cycle.endDate}</span>
                     </td>
                     <td className="px-6 py-5 text-sm text-gray-600">
-                      {cycle.frequency}
+                      {cycle.evaluationPeriod || cycle.frequency}
                     </td>
                     <td className="px-6 py-5">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${
-                        cycle.status === 'Active' ? 'bg-blue-100 text-blue-700' :
-                        cycle.status === 'Closed' ? 'bg-gray-200 text-gray-700' :
+                        cycle.isActive ? 'bg-blue-100 text-blue-700' :
+                        cycle.status === 'ARCHIVED' ? 'bg-gray-200 text-gray-700' :
                         'bg-yellow-100 text-yellow-700'
                       }`}>
-                        {cycle.status || 'Draft'}
+                        {cycle.status || (cycle.isActive ? 'IN_PROGRESS' : 'PLANNING')}
                       </span>
                     </td>
                   </tr>
