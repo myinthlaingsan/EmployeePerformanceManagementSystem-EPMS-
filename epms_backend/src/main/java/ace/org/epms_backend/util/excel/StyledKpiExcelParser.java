@@ -2,6 +2,7 @@ package ace.org.epms_backend.util.excel;
 
 import ace.org.epms_backend.dto.kpi.KpiLibraryDetailRequest;
 import ace.org.epms_backend.dto.kpi.KpiLibraryRequest;
+import ace.org.epms_backend.dto.kpi.KpiParseResult;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.model.kpi.KpiCategory;
 import ace.org.epms_backend.repository.KpiCategoryRepository;
@@ -29,8 +30,8 @@ public class StyledKpiExcelParser {
     private static final String HEADER_UNIT = "UNIT";
     private static final String HEADER_WEIGHT = "WEIGHT";
 
-    public List<KpiLibraryRequest> parse(MultipartFile file) throws IOException {
-        List<KpiLibraryRequest> requests = new ArrayList<>();
+    public KpiParseResult parse(MultipartFile file) throws IOException {
+        KpiParseResult result = new KpiParseResult();
         Set<String> processedKeys = new HashSet<>(); // Title + PositionId to detect duplicates in file
         Map<String, Integer> columnMap = new HashMap<>(); // Dynamic Column Map
 
@@ -53,12 +54,18 @@ public class StyledKpiExcelParser {
 
                 if (libraryTitle != null) {
                     if (currentLibrary != null && currentDetails != null && !currentDetails.isEmpty()) {
-                        addRequestIfValid(requests, currentLibrary, processedKeys);
+                        addRequestIfValid(result, currentLibrary, processedKeys);
                     }
                     columnMap.clear(); // Reset mapping for new section
                     currentLibrary = new KpiLibraryRequest();
                     currentLibrary.setTitle(libraryTitle);
-                    currentLibrary.setPositionId(resolvePositionId(libraryTitle));
+                    try {
+                        currentLibrary.setPositionId(resolvePositionId(libraryTitle));
+                    } catch (Exception e) {
+                        result.addError("Section '" + libraryTitle + "': " + e.getMessage());
+                        currentLibrary = null; // Skip this section if position is unknown
+                        continue;
+                    }
                     currentDetails = new ArrayList<>();
                     currentLibrary.setDetails(currentDetails);
                     continue;
@@ -72,7 +79,7 @@ public class StyledKpiExcelParser {
                 // 3. Detect Total Score Row (Finalize Section)
                 if (isTotalScoreRow(row, formatter, evaluator)) {
                     if (currentLibrary != null && currentDetails != null && !currentDetails.isEmpty()) {
-                        addRequestIfValid(requests, currentLibrary, processedKeys);
+                        addRequestIfValid(result, currentLibrary, processedKeys);
                     }
                     currentLibrary = null;
                     currentDetails = null;
@@ -81,30 +88,34 @@ public class StyledKpiExcelParser {
 
                 // 4. Parse KPI Detail Row
                 if (currentLibrary != null && currentDetails != null && !columnMap.isEmpty()) {
-                    KpiLibraryDetailRequest detail = parseDetailRow(row, formatter, evaluator, columnMap);
-                    if (detail != null) {
-                        currentDetails.add(detail);
+                    try {
+                        KpiLibraryDetailRequest detail = parseDetailRow(row, formatter, evaluator, columnMap);
+                        if (detail != null) {
+                            currentDetails.add(detail);
+                        }
+                    } catch (Exception e) {
+                        result.addError("Row " + (row.getRowNum() + 1) + " (Section: " + currentLibrary.getTitle() + "): " + e.getMessage());
                     }
                 }
             }
 
-            // Final fallback: Capture the last library if file ended without a "Total
-            // Score" row
+            // Final fallback: Capture the last library if file ended without a "Total Score" row
             if (currentLibrary != null && currentDetails != null && !currentDetails.isEmpty()) {
-                addRequestIfValid(requests, currentLibrary, processedKeys);
+                addRequestIfValid(result, currentLibrary, processedKeys);
             }
         }
 
-        return requests;
+        return result;
     }
 
-    private void addRequestIfValid(List<KpiLibraryRequest> requests, KpiLibraryRequest request,
+    private void addRequestIfValid(KpiParseResult result, KpiLibraryRequest request,
             Set<String> processedKeys) {
         String key = request.getTitle() + "|" + request.getPositionId();
         if (processedKeys.contains(key)) {
+            result.addError("Duplicate section found in file for title: " + request.getTitle());
             return;
         }
-        requests.add(request);
+        result.addRequest(request);
         processedKeys.add(key);
     }
 
@@ -202,7 +213,7 @@ public class StyledKpiExcelParser {
         int rowNum = row.getRowNum() + 1;
 
         if (categoryName.isBlank()) {
-            throw new IllegalArgumentException("Row " + rowNum + ": Category is required for KPI: " + goalTitle);
+            throw new IllegalArgumentException("Category is missing for KPI: " + goalTitle);
         }
 
         KpiLibraryDetailRequest detail = new KpiLibraryDetailRequest();
@@ -219,9 +230,16 @@ public class StyledKpiExcelParser {
                 });
         detail.setCategoryId(categoryId);
 
-        // Improved numeric parsing with explicit error handling
         detail.setTargetValue(parseBigDecimal(targetStr, "Target Value", goalTitle, rowNum));
         detail.setWeightPercent(parseBigDecimal(weightStr, "Weight (%)", goalTitle, rowNum));
+
+        // Detect Compliance Type
+        if (goalTitle.toUpperCase().contains("COMPLIANCE") || categoryName.toUpperCase().contains("COMPLIANCE")) {
+            detail.setIsCompliance(true);
+            if (detail.getTargetValue() == null || detail.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
+                detail.setTargetValue(BigDecimal.ONE);
+            }
+        }
 
         return detail;
     }
@@ -239,22 +257,17 @@ public class StyledKpiExcelParser {
         if (value == null || value.isEmpty()) {
             if (fieldName.equals("Target Value"))
                 return null;
-            throw new IllegalArgumentException(
-                    "Row " + rowNum + ": " + fieldName + " is required for KPI: " + kpiTitle);
+            throw new IllegalArgumentException(fieldName + " is missing for KPI: " + kpiTitle);
         }
         try {
-            // Safe version: Only remove % and comma. Do not blindly strip all non-numeric
-            // chars
-            // to avoid creating invalid values like "12.5.6" from "12.5-6"
             String cleanValue = value.replace("%", "").replace(",", "").trim();
             if (cleanValue.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "Row " + rowNum + ": Invalid " + fieldName + ": '" + value + "' for KPI: " + kpiTitle);
+                throw new IllegalArgumentException("Invalid " + fieldName + ": '" + value + "' for KPI: " + kpiTitle);
             }
             return new BigDecimal(cleanValue);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Row " + rowNum + ": Failed to parse " + fieldName + " from value: '"
-                    + value + "' for KPI: " + kpiTitle + ". Please ensure it is a valid numeric value.");
+            throw new IllegalArgumentException("Failed to parse " + fieldName + " from value: '"
+                    + value + "' for KPI: " + kpiTitle + ". Ensure it is numeric.");
         }
     }
 
