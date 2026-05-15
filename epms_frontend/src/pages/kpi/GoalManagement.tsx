@@ -201,36 +201,51 @@ const GoalManagement: React.FC = () => {
                   onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
-              <select
-                className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer"
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-              >
-                <option value="All">Department: All</option>
-                {departments.map((dept, idx) => (
-                  <option key={`${dept.id}-${idx}`} value={dept.departmentName}>{dept.departmentName}</option>
-                ))}
-              </select>
-              <select
-                className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer"
-                value={selectedPosition}
-                onChange={(e) => setSelectedPosition(e.target.value)}
-              >
-                <option value="All">Position: All</option>
-                {positions.map((pos, idx) => (
-                  <option key={`${pos.positionId}-${idx}`} value={pos.positionName}>{pos.positionName}</option>
-                ))}
-              </select>
-              <select
-                className="py-2 pl-4 pr-8 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer"
-                value={selectedCycle}
-                onChange={(e) => setSelectedCycle(e.target.value)}
-              >
-                <option value="All">Cycle: All</option>
-                {cycles.map((cycle, idx) => (
-                  <option key={`${cycle.id}-${idx}`} value={cycle.id}>{cycle.name}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  className="py-2 pl-4 pr-10 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer w-full"
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                >
+                  <option value="All">Department: All</option>
+                  {departments.map((dept, idx) => (
+                    <option key={`${dept.id}-${idx}`} value={dept.departmentName}>{dept.departmentName}</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <SlidersHorizontal className="w-3 h-3 rotate-90" />
+                </div>
+              </div>
+              <div className="relative">
+                <select
+                  className="py-2 pl-4 pr-10 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer w-full"
+                  value={selectedPosition}
+                  onChange={(e) => setSelectedPosition(e.target.value)}
+                >
+                  <option value="All">Position: All</option>
+                  {positions.map((pos, idx) => (
+                    <option key={`${pos.positionId}-${idx}`} value={pos.positionName}>{pos.positionName}</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <SlidersHorizontal className="w-3 h-3 rotate-90" />
+                </div>
+              </div>
+              <div className="relative">
+                <select
+                  className="py-2 pl-4 pr-10 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer w-full"
+                  value={selectedCycle}
+                  onChange={(e) => setSelectedCycle(e.target.value)}
+                >
+                  <option value="All">Cycle: All</option>
+                  {cycles.map((cycle: any, idx: number) => (
+                    <option key={`${cycle.cycleId}-${idx}`} value={cycle.cycleId}>{cycle.cycleName}</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <SlidersHorizontal className="w-3 h-3 rotate-90" />
+                </div>
+              </div>
 
               <button className="p-2.5 bg-slate-50 rounded-xl text-slate-500 hover:text-[#0052CC] hover:bg-blue-50 transition-colors">
                 <SlidersHorizontal className="w-4 h-4" />
@@ -271,9 +286,9 @@ const GoalManagement: React.FC = () => {
                         onClick={() => {
                           const status = goalStatusMap.get(emp.id);
                           if (status === 'APPROVED' || status === 'LOCKED') {
-                            navigate(`/kpi/goals/${emp.id}`);
+                            navigate(`/kpi/goals/${emp.id}?cycleId=${effectiveCycleId}`);
                           } else {
-                            navigate(`/kpi/assign/${emp.id}`);
+                            navigate(`/kpi/assign/${emp.id}?cycleId=${effectiveCycleId}`);
                           }
                         }}
                         className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${selectedIds.includes(emp.id) ? 'bg-blue-50/30' : ''}`}
