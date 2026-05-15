@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import {
   useGetPerformanceCategoriesQuery,
   useCreatePerformanceCategoryMutation,
@@ -65,7 +66,7 @@ const PerformanceCategoryManagement: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!formData.name || formData.minScore === undefined || formData.maxScore === undefined) {
-      alert('Please fill required fields');
+      toast.warning('Please fill required fields');
       return;
     }
 
@@ -77,7 +78,7 @@ const PerformanceCategoryManagement: React.FC = () => {
       }
       setShowModal(false);
     } catch (err) {
-      alert('Failed to save performance category');
+      toast.error('Failed to save performance category');
     }
   };
 

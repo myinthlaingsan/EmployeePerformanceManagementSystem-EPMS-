@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import {
   useGetFinancialYearsQuery,
   useCreateFinancialYearMutation,
@@ -57,7 +58,7 @@ const FinancialYearManagement = () => {
 
   const handleAdd = async () => {
     if (!newYear.title || !newYear.startDate || !newYear.endDate) {
-      alert('Please fill all required fields');
+      toast.warning('Please fill all required fields');
       return;
     }
 
@@ -74,7 +75,7 @@ const FinancialYearManagement = () => {
       setShowAddModal(false);
       setNewYear({ title: '', startDate: '', endDate: '', isCurrent: false });
     } catch (err) {
-      alert('Failed to create financial year');
+      toast.error('Failed to create financial year');
     }
   };
 
@@ -95,7 +96,7 @@ const FinancialYearManagement = () => {
       try {
         await rollover().unwrap();
       } catch (err: any) {
-        alert(err?.data?.message || err?.error || 'Failed to rollover. Please ensure no active appraisal cycles are blocking the rollover.');
+        toast.error(err?.data?.message || err?.error || 'Failed to rollover. Please ensure no active appraisal cycles are blocking the rollover.');
       }
     }
   };

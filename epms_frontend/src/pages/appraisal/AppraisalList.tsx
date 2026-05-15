@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetAppraisalsQuery,
   useGetCyclesQuery,
@@ -19,19 +20,15 @@ import {
   Calendar,
   FileText,
   ChevronRight,
-  Settings,
   Clock,
   Target,
   Users,
   CheckCircle2,
-  CheckCircle,
   Circle,
-  AlertCircle,
   Search,
   Filter,
   Mail,
   Share2,
-  ArrowUpRight,
   Trophy
 } from 'lucide-react';
 
@@ -76,7 +73,7 @@ const AppraisalList: React.FC = () => {
   if (errorAppraisals) {
     return (
       <div className="p-8 text-center text-red-500 font-bold bg-red-50 rounded-2xl border border-red-100 max-w-2xl mx-auto mt-20">
-        Operation failed. Please try again.
+        {/* Operation failed. Please try again. */}No Assessment are assigned.
       </div>
     );
   }
@@ -175,7 +172,7 @@ const AppraisalList: React.FC = () => {
       {teamEvaluations.length > 0 ? teamEvaluations.map((appraisal: any) => (
         <div
           key={appraisal.appraisalId}
-          className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
+          className="group bg-white rounded-4xl border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
           onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}
         >
           {/* Background Accent */}
@@ -328,7 +325,7 @@ const AppraisalList: React.FC = () => {
                 const totalRate = total > 0 ? Math.round((selfRate + managerRate + finalRate) / 3) : 0;
 
                 return (
-                  <div className="bg-white rounded-[1rem] border border-slate-100 p-8 shadow-sm relative overflow-hidden group w-full flex flex-col justify-between min-h-[320px]">
+                  <div className="bg-white rounded-2xl border border-slate-100 p-8 shadow-sm relative overflow-hidden group w-full flex flex-col justify-between min-h-80">
                     <div className="flex justify-between items-start relative z-10 mb-20">
                       <div>
                         <h3 className="text-[11px] font-black text-[#5E718D] uppercase tracking-[0.15em] mb-1">Global Completion Rates</h3>
@@ -350,7 +347,7 @@ const AppraisalList: React.FC = () => {
                             <span className="text-[14px] font-bold text-slate-700">{stat.label}</span>
                             <span className="text-[14px] font-black text-slate-900">{stat.rate}%</span>
                           </div>
-                          <div className="h-[8px] bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                             <div className={`h-full ${stat.color} transition-all duration-1000 rounded-full`} style={{ width: `${stat.rate}%` }}></div>
                           </div>
                           <p className="text-[11px] font-medium text-slate-400">{stat.sub}</p>
@@ -791,7 +788,7 @@ const AppraisalList: React.FC = () => {
                         setExpandedSet(newSetName);
                         setShowNewSetModal(false);
                       } catch (err) {
-                        alert('Failed to create form set');
+                        toast.error('Failed to create form set');
                       }
                     }
                   }}

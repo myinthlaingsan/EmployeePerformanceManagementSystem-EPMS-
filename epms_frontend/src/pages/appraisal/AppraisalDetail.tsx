@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetEmployeeAssessmentQuery,
   useCalculateScoreMutation,
@@ -66,27 +67,27 @@ const AppraisalDetail: React.FC = () => {
   const handleCalculate = async () => {
     try {
       await calculateScore(id!).unwrap();
-      alert('Scores calculated successfully!');
+      toast.success('Scores calculated successfully!');
     } catch (err: any) {
-      alert(err?.data?.message || 'Calculation failed');
+      toast.error(err?.data?.message || 'Calculation failed');
     }
   };
 
   const handleApprove = async () => {
     try {
       await approveAppraisal({ id: id!, comment: approvalComment }).unwrap();
-      alert('Appraisal approved by HR!');
+      toast.success('Appraisal approved by HR!');
     } catch (err: any) {
-      alert(err?.data?.message || 'Approval failed');
+      toast.error(err?.data?.message || 'Approval failed');
     }
   };
 
   const handleFinalize = async () => {
     try {
       await finalizeAppraisal(id!).unwrap();
-      alert('Appraisal finalized and locked!');
+      toast.success('Appraisal finalized and locked!');
     } catch (err: any) {
-      alert(err?.data?.message || 'Finalization failed');
+      toast.error(err?.data?.message || 'Finalization failed');
     }
   };
 

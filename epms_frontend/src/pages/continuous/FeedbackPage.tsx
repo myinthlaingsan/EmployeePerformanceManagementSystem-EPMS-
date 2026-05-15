@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from 'react-toastify';
 
 import { useAuth } from "../../hooks/useAuth";
 import {
@@ -337,7 +338,7 @@ const FeedbackPage = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newFeedback.employeeId || !newFeedback.tagId) {
-      alert("Please select an employee and a category.");
+      toast.warning("Please select an employee and a category.");
       return;
     }
 
@@ -361,7 +362,7 @@ const FeedbackPage = () => {
       setEditingId(null);
       setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "", isPrivate: false });
     } catch (err: any) {
-      alert(err.data?.message || "Failed to save feedback");
+      toast.error(err.data?.message || "Failed to save feedback");
     }
   };
 
@@ -378,7 +379,7 @@ const FeedbackPage = () => {
       setEditingTagId(null);
       setNewTagName("");
     } catch (err: any) {
-      alert(err.data?.message || "Failed to save tag");
+      toast.error(err.data?.message || "Failed to save tag");
     }
   };
 
@@ -391,7 +392,7 @@ const FeedbackPage = () => {
       }
       setTagToDelete(null);
     } catch (err: any) {
-      alert(err.data?.message || "Failed to delete tag");
+      toast.error(err.data?.message || "Failed to delete tag");
     }
   };
 
@@ -401,7 +402,7 @@ const FeedbackPage = () => {
       await deleteFeedback(feedbackToDelete).unwrap();
       setFeedbackToDelete(null);
     } catch (err: any) {
-      alert(err.data?.message || "Failed to delete feedback");
+      toast.error(err.data?.message || "Failed to delete feedback");
     }
   };
 
@@ -956,7 +957,7 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
       setReplyingToId(null);
       setReplyTarget(null);
     } catch (err: any) {
-      alert(err.data?.message || "Failed to post reply.");
+      toast.error(err.data?.message || "Failed to post reply.");
     }
   };
 

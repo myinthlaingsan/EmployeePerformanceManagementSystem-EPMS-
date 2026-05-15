@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useAssignBulkMutation,
   useGetActiveCycleQuery,
@@ -87,20 +88,20 @@ const AppraisalAssignment: React.FC = () => {
 
   const handleAssign = async () => {
     if (!selectedCycleId) {
-      alert('Please select an appraisal cycle.');
+      toast.warning('Please select an appraisal cycle.');
       return;
     }
     if (selectedEmployeeIds.length === 0) {
-      alert('Please select at least one employee.');
+      toast.warning('Please select at least one employee.');
       return;
     }
 
     if (!selectedFormSetId || selectedFormSetId === '0') {
-      alert('Please select a valid Form Set.');
+      toast.warning('Please select a valid Form Set.');
       return;
     }
     if (selectedEmployeeIds.length === 0) {
-      alert('Please select at least one employee.');
+      toast.warning('Please select at least one employee.');
       return;
     }
 
@@ -111,12 +112,12 @@ const AppraisalAssignment: React.FC = () => {
         employeeIds: selectedEmployeeIds
       }).unwrap();
 
-      alert(`Successfully assigned appraisals to ${selectedEmployeeIds.length} employees!`);
+      toast.success(`Successfully assigned appraisals to ${selectedEmployeeIds.length} employees!`);
       navigate('/appraisal');
     } catch (err: any) {
       console.error(err);
       const message = err?.data?.message || 'Failed to assign appraisals. Ensure HR permissions are active.';
-      alert(message);
+      toast.error(message);
     }
   };
 
@@ -179,7 +180,7 @@ const AppraisalAssignment: React.FC = () => {
                 </div>
                 {formSets.length === 0 && !formsLoading && (
                   <button
-                    onClick={() => syncFormSets().unwrap().then((res) => alert(res || 'Successfully synced form sets!'))}
+                    onClick={() => syncFormSets().unwrap().then((res) => toast.success(res || 'Successfully synced form sets!'))}
                     disabled={isSyncing}
                     className="mt-2 text-[10px] text-indigo-600 font-bold flex items-center gap-1 hover:text-indigo-800"
                   >
