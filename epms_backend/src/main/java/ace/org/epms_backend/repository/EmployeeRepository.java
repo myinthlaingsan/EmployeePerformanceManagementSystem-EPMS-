@@ -1,5 +1,6 @@
 package ace.org.epms_backend.repository;
 
+import ace.org.epms_backend.enums.RoleType;
 import ace.org.epms_backend.model.employee.Employee;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -72,4 +73,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     long countByIsActiveTrue();
 
     long countByAccountLockedTrue();
+    
+    @Query("SELECT er.employee FROM EmployeeRole er WHERE er.role.roleName = :roleName")
+    List<Employee> findByRoleName(@Param("roleName") RoleType roleName);
 }

@@ -28,7 +28,9 @@ public class NotificationListener {
                 .actionUrl(event.getActionUrl())
                 .build();
 
-        if (event.isBroadcast()) {
+        if (event.getTargetRole() != null) {
+            notificationService.sendToRole(event.getTargetRole(), request);
+        } else if (event.isBroadcast()) {
             notificationService.notifyAllEmployees(request);
         } else {
             notificationService.send(request);

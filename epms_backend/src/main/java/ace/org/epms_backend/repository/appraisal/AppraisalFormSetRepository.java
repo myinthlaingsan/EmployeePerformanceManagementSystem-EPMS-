@@ -10,4 +10,5 @@ import java.util.List;
 public interface AppraisalFormSetRepository extends JpaRepository<AppraisalFormSet, Long> {
     List<AppraisalFormSet> findByCycle_CycleId(Long cycleId);
     List<AppraisalFormSet> findByIsActiveTrue();
+    boolean existsByCycle_CycleIdAndName(Long cycleId, String name);
 }
