@@ -52,6 +52,12 @@ const AppraisalList: React.FC = () => {
   const [showNewSetModal, setShowNewSetModal] = React.useState(false);
   const [newSetName, setNewSetName] = React.useState('');
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [confirmModal, setConfirmModal] = React.useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const { data: appraisals = [], isLoading: loadingAppraisals, error: errorAppraisals } = useGetAppraisalsQuery();
   const { data: teamEvaluations = [], isLoading: loadingTeam } = useGetTeamEvaluationsQuery(undefined, { skip: !isManager });
@@ -293,10 +299,15 @@ const AppraisalList: React.FC = () => {
               {cycle?.isActive ? (
                 <button
                   onClick={() => {
-                    if (window.confirm(`Close "${cycle.cycleName}"? This will deactivate it and lock all appraisals.`)) {
-                      closeCycle(Number(selectedCycleId));
-                      setSelectedCycleId(null);
-                    }
+                    setConfirmModal({
+                      isOpen: true,
+                      title: 'Close Appraisal Cycle',
+                      message: `Are you sure you want to close "${cycle.cycleName}"? This will deactivate it and lock all related appraisals from further editing.`,
+                      onConfirm: () => {
+                        closeCycle(Number(selectedCycleId));
+                        setSelectedCycleId(null);
+                      }
+                    });
                   }}
                   disabled={isClosing}
                   className="px-6 py-3 bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all flex items-center gap-2 disabled:opacity-50"
@@ -732,15 +743,20 @@ const AppraisalList: React.FC = () => {
                             Edit Structure <Plus className="w-4 h-4 rotate-45" />
                           </button>
                           <button
-                            onClick={async () => {
-                              if (window.confirm('Are you sure you want to delete this template? This cannot be undone.')) {
-                                try {
-                                  await deleteForm(form.formId).unwrap();
-                                  toast.success('Template deleted successfully');
-                                } catch (err: any) {
-                                  toast.error(err?.data?.message || 'Failed to delete template');
+                            onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Delete Template',
+                                message: 'Are you sure you want to delete this template? This action cannot be undone.',
+                                onConfirm: async () => {
+                                  try {
+                                    await deleteForm(form.formId).unwrap();
+                                    toast.success('Template deleted successfully');
+                                  } catch (err: any) {
+                                    toast.error(err?.data?.message || 'Failed to delete template');
+                                  }
                                 }
-                              }
+                              });
                             }}
                             className="p-4 bg-white text-rose-500 border border-rose-100 rounded-2xl hover:bg-rose-50 transition-all shadow-sm"
                             title="Delete Template"
@@ -872,12 +888,19 @@ const AppraisalList: React.FC = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm(`Delete form set "${setName}"?`)) {
-                            deleteFormSet(set.id)
-                              .unwrap()
-                              .then(() => toast.success('Form set deleted'))
-                              .catch(err => toast.error(err?.data?.message || 'Delete failed'));
-                          }
+                          setConfirmModal({
+                            isOpen: true,
+                            title: 'Delete Form Set',
+                            message: `Are you sure you want to delete the form set "${setName}"?`,
+                            onConfirm: async () => {
+                              try {
+                                await deleteFormSet(set.id).unwrap();
+                                toast.success('Form set deleted');
+                              } catch (err: any) {
+                                toast.error(err?.data?.message || 'Delete failed');
+                              }
+                            }
+                          });
                         }}
                         className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
                         title="Delete Form Set"
@@ -1017,8 +1040,41 @@ const AppraisalList: React.FC = () => {
           {activeTab === 'cycles' && renderCycles()}
           {activeTab === 'forms' && renderForms()}
         </div>
-
       </div>
+
+      {/* Centered Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center text-rose-500 mb-8">
+                <Trash2 className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-4">{confirmModal.title}</h3>
+              <p className="text-slate-500 font-medium leading-relaxed mb-10">
+                {confirmModal.message}
+              </p>
+              <div className="flex items-center gap-4 w-full">
+                <button
+                  onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                  className="flex-1 py-4 bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    confirmModal.onConfirm();
+                    setConfirmModal({ ...confirmModal, isOpen: false });
+                  }}
+                  className="flex-1 py-4 bg-rose-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-rose-700 transition-all shadow-lg shadow-rose-100"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
