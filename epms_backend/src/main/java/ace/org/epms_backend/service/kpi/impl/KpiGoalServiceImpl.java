@@ -141,6 +141,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         .scorePercent(BigDecimal.ZERO)
                         .weightedScore(BigDecimal.ZERO)
                         .status(KpiItemStatus.NOT_STARTED)
+                        .isCompliance(libDetail.getIsCompliance())
                         .isActive(true)
                         .build();
             }).collect(Collectors.toList());
@@ -278,6 +279,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                             .scorePercent(BigDecimal.ZERO)
                             .weightedScore(BigDecimal.ZERO)
                             .status(KpiItemStatus.NOT_STARTED)
+                            .isCompliance(libDetail.getIsCompliance())
                             .isActive(true)
                             .build();
                 }).collect(Collectors.toList());
@@ -344,6 +346,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .scorePercent(BigDecimal.ZERO)
                 .weightedScore(BigDecimal.ZERO)
                 .status(KpiItemStatus.NOT_STARTED)
+                .isCompliance(request.getIsCompliance())
                 .isActive(true)
                 .build();
 
@@ -373,6 +376,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         item.setWeightPercent(request.getWeightPercent());
         item.setCategory(categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new NotFoundException("Category not found")));
+        item.setIsCompliance(request.getIsCompliance());
 
         goalItemRepository.save(item);
         return kpiMapper.toGoalSetResponse(goalSet);

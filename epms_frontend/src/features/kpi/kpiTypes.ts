@@ -19,6 +19,7 @@ export interface KpiLibraryDetailRequest {
   targetValue: number;
   weightPercent: number;
   categoryId: number;
+  isCompliance?: boolean;
 }
 
 export interface KpiLibraryRequest {
@@ -38,6 +39,7 @@ export interface KpiLibraryDetailResponse {
   isActive: boolean;
   categoryId?: number;
   categoryName?: string;
+  isCompliance?: boolean;
 }
 
 export interface KpiLibraryResponse {
@@ -96,6 +98,7 @@ export interface KpiGoalItemRequest {
   targetValue: number;
   weightPercent: number;
   categoryId: number;
+  isCompliance?: boolean;
 }
 
 export interface GoalItemResponse {
@@ -111,6 +114,7 @@ export interface GoalItemResponse {
   categoryName?: string;
   scorePercent?: number;
   weightedScore?: number;
+  isCompliance?: boolean;
 }
 
 

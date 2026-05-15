@@ -189,12 +189,20 @@ const GoalDetail: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
-                      {isOwner && goalSet.status === 'APPROVED' && (
+                      {isOwner && goalSet.status === 'APPROVED' && !item.isCompliance && (
                         <button
                           onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
                           className="text-[10px] bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition border border-blue-100"
                         >
                           UPDATE
+                        </button>
+                      )}
+                      {isManager && item.isCompliance && (
+                        <button
+                          onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
+                          className="text-[10px] bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg font-bold hover:bg-emerald-100 transition border border-emerald-100"
+                        >
+                          VERIFY
                         </button>
                       )}
                       {isManager && (
