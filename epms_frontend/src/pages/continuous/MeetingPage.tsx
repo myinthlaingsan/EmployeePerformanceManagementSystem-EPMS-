@@ -9,9 +9,14 @@ import {
   useGetMeetingCommentsQuery,
   useAddMeetingCommentMutation,
   useDeleteCommentMutation,
-  useUpdateCommentMutation
+  useUpdateCommentMutation,
+  usePublishMeetingMutation,
+  useGetMeetingStatsForManagerQuery,
+  useUpdateActionItemStatusMutation,
+  useReopenActionItemMutation
 } from "../../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
+import { ContinuousStatus, ActionItemStatus } from "../../features/continuous/continuousTypes";
 import { format } from "date-fns";
 import { formatRelativeTime } from "../../utils/timeUtils";
 
@@ -53,15 +58,15 @@ const CommentItem = ({
       className={`space-y-2`}
       onContextMenu={(e) => onContextMenu(e, comment)}
     >
-      <div className={`flex gap-3 group transition-all duration-500 rounded-2xl relative ${
+      <div className={`flex gap-3 px-3 py-2 rounded-2xl transition-all duration-500 group relative ${
         highlightedCommentId === comment.id 
-          ? 'bg-blue-50 ring-4 ring-blue-300 scale-[1.02] shadow-lg p-3 -m-3' 
-          : isOwnComment ? 'flex-row-reverse' : ''
+          ? 'bg-blue-100 ring-4 ring-blue-300 scale-[1.02] shadow-lg' 
+          : isOwnComment ? 'flex-row-reverse bg-blue-50/30 border-l-4 border-blue-500' : 'bg-gray-50/30'
       }`}>
         <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-sm transition-colors duration-500 ${
           highlightedCommentId === comment.id
             ? 'bg-blue-600 text-white'
-            : isOwnComment ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 border border-gray-100'
+            : isOwnComment ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-100'
         }`}>
           {(comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)?.charAt(0)}
         </div>
@@ -160,9 +165,10 @@ const MeetingPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [goToPage, setGoToPage] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
 
   const { data: meetingResponse, isLoading } = useGetAllMeetingsQuery(
-    { page: currentPage - 1, size: itemsPerPage },
+    { page: currentPage - 1, size: itemsPerPage, status: filterStatus },
     { skip: !user }
   );
   const meetings = meetingResponse?.content || [];
@@ -179,13 +185,30 @@ const MeetingPage = () => {
   const [scheduleMeeting, { isLoading: isScheduling }] = useScheduleMeetingMutation();
   const [updateMeeting, { isLoading: isUpdating }] = useUpdateMeetingMutation();
   const [deleteMeeting] = useDeleteMeetingMutation();
+  const [publishMeeting, { isLoading: isPublishing }] = usePublishMeetingMutation();
+  const [updateActionItemStatus] = useUpdateActionItemStatusMutation();
+  const [reopenActionItem] = useReopenActionItemMutation();
+  const { data: meetingStats } = useGetMeetingStatsForManagerQuery(user?.id || 0, { skip: !user?.id });
 
   const [expandedMeetingId, setExpandedMeetingId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [meetingToDelete, setMeetingToDelete] = useState<number | null>(null);
+  const [reopenConfig, setReopenConfig] = useState<{ meetingId: number, item: any } | null>(null);
+  const [reopenReason, setReopenReason] = useState("");
 
-  const [newMeeting, setNewMeeting] = useState({
+  interface MeetingState {
+    employeeId: number;
+    meetingDate: string;
+    meetingTime: string;
+    discussionPoints: string;
+    keyIssues: string;
+    actionItems: string | any[];
+    followUpDate: string;
+
+  }
+
+  const [newMeeting, setNewMeeting] = useState<MeetingState>({
     employeeId: 0,
     meetingDate: "",
     meetingTime: "",
@@ -193,13 +216,18 @@ const MeetingPage = () => {
     keyIssues: "",
     actionItems: "",
     followUpDate: "",
-    isPrivateNote: false
+
   });
 
 
-  const handleSchedule = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || !newMeeting.actionItems || !user) {
+  const handleSchedule = async (e: React.FormEvent, status: ContinuousStatus = ContinuousStatus.PUBLISHED) => {
+    if (e) e.preventDefault();
+
+    const actionItemsValid = Array.isArray(newMeeting.actionItems)
+      ? newMeeting.actionItems.length > 0
+      : newMeeting.actionItems.trim() !== '';
+
+    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || !actionItemsValid || !user) {
       alert("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
       return;
     }
@@ -210,7 +238,16 @@ const MeetingPage = () => {
     }
 
     try {
-      const body = { ...newMeeting, managerId: user.id };
+      const body = {
+        ...newMeeting,
+        managerId: user.id,
+        status: editingId ? undefined : status,
+        actionItems: Array.isArray(newMeeting.actionItems)
+          ? (newMeeting.actionItems as any[])
+              .map((item: any) => (typeof item === 'string' ? item : item?.content ?? '').trim())
+              .filter((c: string) => c !== '')
+          : (newMeeting.actionItems as string).split('\n').map(s => s.trim()).filter((item: string) => item !== '')
+      };
       if (editingId) {
         await updateMeeting({ id: editingId, body }).unwrap();
       } else {
@@ -226,7 +263,6 @@ const MeetingPage = () => {
         keyIssues: "",
         actionItems: "",
         followUpDate: "",
-        isPrivateNote: false
       });
     } catch (err: any) {
       alert(err.data?.message || "Failed to save meeting");
@@ -238,14 +274,21 @@ const MeetingPage = () => {
     setNewMeeting({
       employeeId: m.employeeId,
       meetingDate: m.meetingDate,
-      meetingTime: m.meetingTime,
+      meetingTime: m.meetingTime.substring(0, 5),
       discussionPoints: m.discussionPoints,
       keyIssues: m.keyIssues,
       actionItems: m.actionItems,
       followUpDate: m.followUpDate || "",
-      isPrivateNote: m.isPrivateNote
     });
     setShowModal(true);
+  };
+
+  const handlePublish = async (id: number) => {
+    try {
+      await publishMeeting(id).unwrap();
+    } catch (err: any) {
+      alert(err.data?.message || "Failed to publish meeting");
+    }
   };
 
   const handleDelete = async () => {
@@ -307,26 +350,64 @@ const MeetingPage = () => {
         )}
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {isManager && (
+        <div className="flex items-center gap-3 mb-2 overflow-x-auto pb-2 scrollbar-hide">
+          <button
+            onClick={() => { setFilterStatus(undefined); setCurrentPage(1); }}
+            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!filterStatus ? 'bg-gray-900 text-white shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+          >
+            All Meetings
+          </button>
+          <button
+            onClick={() => { setFilterStatus(ContinuousStatus.PUBLISHED); setCurrentPage(1); }}
+            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.PUBLISHED ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+          >
+            Published
+          </button>
+          <button
+            onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
+            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.DRAFT ? 'bg-amber-500 text-white shadow-lg shadow-amber-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+          >
+            Drafts
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition">
           <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Scheduled Meetings</p>
-            <h3 className="text-2xl font-bold text-gray-900">{totalItems}</h3>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Published</p>
+            <h3 className="text-2xl font-bold text-gray-900">{meetingStats?.totalPublished || 0}</h3>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition">
-          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group">
+          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
           </div>
           <div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Follow up Tasks</p>
-            <h3 className="text-2xl font-bold text-gray-900">{meetings?.filter(m => m.followUpDate).length || 0}</h3>
+            <h3 className="text-2xl font-bold text-gray-900">{meetings?.filter(m => m.status === ContinuousStatus.PUBLISHED && m.followUpDate).length || 0}</h3>
           </div>
         </div>
+
+        {isManager && (
+          <button 
+            onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
+            className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group text-left"
+          >
+            <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Drafts</p>
+              <h3 className="text-2xl font-bold text-rose-600">{meetingStats?.totalDraft || 0}</h3>
+            </div>
+          </button>
+        )}
       </div>
 
       <div className="grid gap-6 pb-24 relative min-h-[600px]">
@@ -369,8 +450,11 @@ const MeetingPage = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {m.isPrivateNote && (
-                  <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-full uppercase tracking-widest border border-amber-100">Private</span>
+                {m.status === ContinuousStatus.DRAFT && (
+                  <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[8px] font-black rounded uppercase tracking-widest border border-gray-200 flex items-center gap-1">
+                    <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                    Draft
+                  </span>
                 )}
                 {canSchedule && (
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -396,7 +480,96 @@ const MeetingPage = () => {
               </div>
               <div className="space-y-2">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</span>
-                <p className="text-gray-700 text-sm leading-relaxed">{m.actionItems}</p>
+                <div className="space-y-2 mt-2">
+                  {m.actionItems.map((item: any) => {
+                    const isDone = item.status === ActionItemStatus.DONE;
+                    const isEmployee = user?.id === m.employeeId;
+                    return (
+                      <div key={item.id} className="flex items-start gap-3 group/item">
+                        <div className="pt-0.5 relative group/tooltip">
+                          <input
+                            type="checkbox"
+                            checked={isDone}
+                            onChange={async () => {
+                              if (!isEmployee) return;
+                              try {
+                                await updateActionItemStatus({
+                                  meetingId: m.meetingId,
+                                  itemId: item.id,
+                                  status: isDone ? ActionItemStatus.PENDING : ActionItemStatus.DONE
+                                }).unwrap();
+                              } catch (err) {
+                                console.error("Failed to update status", err);
+                              }
+                            }}
+                            disabled={!isEmployee}
+                            className={`w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 transition-all ${!isEmployee ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:scale-110'}`}
+                          />
+                          {!isEmployee && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
+                              This status is managed by the employee
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {/* Item content with status-based styling */}
+                          <div className="flex items-start gap-2 flex-wrap">
+                            <p className={`text-sm leading-relaxed transition-all duration-300 ${isDone ? 'text-green-600 line-through' : 'text-gray-700'}`}>
+                              {item.content}
+                            </p>
+
+                            {/* Re-opened badge: shown when PENDING but has a reopenReason */}
+                            {!isDone && item.reopenReason && (
+                              <div className="relative group/reopen flex-shrink-0">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-black uppercase tracking-widest rounded-full cursor-default">
+                                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                  Re-opened
+                                </span>
+                                {/* Tooltip showing the reopen reason */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-gray-900 text-white rounded-xl shadow-2xl opacity-0 group-hover/reopen:opacity-100 transition-all duration-200 pointer-events-none z-20 p-3">
+                                  <p className="text-[9px] font-black uppercase tracking-widest text-amber-400 mb-1">Re-open Reason</p>
+                                  <p className="text-xs leading-relaxed text-gray-200 font-normal">"{item.reopenReason}"</p>
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Completed status row */}
+                          {isDone && (
+                            <div className="mt-1 flex items-center justify-between">
+                              <div className="flex items-center">
+                                <span className="inline-flex items-center text-[8px] font-black uppercase tracking-widest text-green-500">
+                                  <svg className="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                  Completed
+                                </span>
+                                {item.completedAt && (
+                                  <span className="text-xs text-gray-400 ml-2 font-light">
+                                    {format(new Date(item.completedAt), "MMM d, h:mm a")}
+                                  </span>
+                                )}
+                              </div>
+                              {canSchedule && (
+                                <button
+                                  onClick={() => setReopenConfig({ meetingId: m.meetingId, item })}
+                                  className="text-[8px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 transition opacity-0 group-hover/item:opacity-100 bg-indigo-50 px-2 py-1 rounded"
+                                >
+                                  Re-open
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {m.actionItems.length === 0 && (
+                    <p className="text-gray-400 text-xs italic">No action items defined.</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -405,13 +578,25 @@ const MeetingPage = () => {
                 onClick={() => setExpandedMeetingId(expandedMeetingId === m.meetingId ? null : m.meetingId)}
                 className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-indigo-600 transition group"
               >
-                <div className="w-6 h-6 rounded-lg bg-gray-50 flex items-center justify-center group-hover:bg-indigo-50 transition">
-                  <svg className={`w-3.5 h-3.5 transition-transform ${expandedMeetingId === m.meetingId ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                <div className="w-8 h-8 rounded-lg bg-gray-50 group-hover:bg-indigo-50 flex items-center justify-center transition">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-                <span>Meeting Discussion</span>
+                <span>Replies {(m.commentCount || 0) > 0 && `(${(m.commentCount || 0)})`}</span>
               </button>
+              {m.status === ContinuousStatus.DRAFT && m.managerId === user?.id && (
+                <button 
+                  onClick={() => handlePublish(m.meetingId)}
+                  disabled={isPublishing}
+                  className="px-4 py-1.5 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-black transition shadow-sm disabled:opacity-50 flex items-center gap-2"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Publish Meeting
+                </button>
+              )}
             </div>
 
             {expandedMeetingId === m.meetingId && (
@@ -561,12 +746,60 @@ const MeetingPage = () => {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</label>
-                    <textarea 
-                      required
-                      className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-12 resize-none text-sm"
-                      value={newMeeting.actionItems}
-                      onChange={e => setNewMeeting({ ...newMeeting, actionItems: e.target.value })}
-                    />
+                    {editingId ? (
+                      <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                        {Array.isArray(newMeeting.actionItems) && newMeeting.actionItems.map((item: any, index: number) => {
+                          const isDone = item.status === ActionItemStatus.DONE;
+                          return (
+                            <div key={index} className="flex items-center gap-2">
+                              <div className="flex-1 relative group/item">
+                                <input
+                                  type="text"
+                                  disabled={isDone}
+                                  className={`w-full px-4 py-2 rounded-xl text-sm transition border-none ${
+                                    isDone 
+                                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed italic' 
+                                      : 'bg-gray-50 focus:ring-2 focus:ring-indigo-500 text-gray-700'
+                                  }`}
+                                  value={item.content}
+                                  onChange={(e) => {
+                                    const updated = [...newMeeting.actionItems];
+                                    updated[index] = { ...item, content: e.target.value };
+                                    setNewMeeting({ ...newMeeting, actionItems: updated });
+                                  }}
+                                />
+                                {isDone && (
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase tracking-widest text-green-500 bg-green-50 px-2 py-0.5 rounded-full">
+                                    Locked
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewMeeting({
+                              ...newMeeting,
+                              actionItems: [...(newMeeting.actionItems as any[]), { content: "", status: ActionItemStatus.PENDING }]
+                            });
+                          }}
+                          className="w-full py-2 border-2 border-dashed border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:border-indigo-200 hover:text-indigo-600 transition flex items-center justify-center gap-2 mt-2"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                          Add New Task
+                        </button>
+                      </div>
+                    ) : (
+                      <textarea 
+                        required
+                        className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-12 resize-none text-sm"
+                        placeholder="Enter tasks, one per line..."
+                        value={newMeeting.actionItems}
+                        onChange={e => setNewMeeting({ ...newMeeting, actionItems: e.target.value })}
+                      />
+                    )}
                   </div>
                 </div>
                 
@@ -579,17 +812,6 @@ const MeetingPage = () => {
                     value={newMeeting.followUpDate}
                     onChange={e => setNewMeeting({ ...newMeeting, followUpDate: e.target.value })}
                   />
-                </div>
-
-                <div className="flex items-center gap-2 px-1">
-                  <input
-                    type="checkbox"
-                    id="isPrivateNote"
-                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                    checked={newMeeting.isPrivateNote}
-                    onChange={e => setNewMeeting({ ...newMeeting, isPrivateNote: e.target.checked })}
-                  />
-                  <label htmlFor="isPrivateNote" className="text-sm font-medium text-gray-600">Mark as Private Note (Visible only to Manager)</label>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">
@@ -605,21 +827,45 @@ const MeetingPage = () => {
                         discussionPoints: "",
                         keyIssues: "",
                         actionItems: "",
-                        followUpDate: "",
-                        isPrivateNote: false
+                        followUpDate: ""
                       });
                     }}
                     className="px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
                   >
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    disabled={isScheduling || isUpdating}
-                    className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 disabled:opacity-50"
-                  >
-                    {isScheduling || isUpdating ? "Saving..." : editingId ? "Update Meeting" : "Schedule Now"}
-                  </button>
+                  {editingId ? (
+                    <button
+                      type="button"
+                      onClick={(e) => handleSchedule(e as any)}
+                      disabled={isUpdating}
+                      className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 disabled:opacity-50"
+                    >
+                      {isUpdating ? "Updating..." : "Update Meeting"}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => handleSchedule(e as any, ContinuousStatus.DRAFT)}
+                        disabled={isScheduling}
+                        className="px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
+                      >
+                        Save as Draft
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleSchedule(e as any, ContinuousStatus.PUBLISHED)}
+                        disabled={isScheduling}
+                        className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Publish Meeting
+                      </button>
+                    </>
+                  )}
                 </div>
               </form>
             </div>
@@ -652,6 +898,67 @@ const MeetingPage = () => {
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reopenConfig && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden border border-gray-100">
+            <div className="bg-indigo-600 p-6 text-white text-center">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-tight">Re-open Action Item</h3>
+              <p className="text-indigo-100 text-xs font-medium mt-1">Please provide a reason for re-opening this task.</p>
+            </div>
+            <div className="p-6">
+              <div className="bg-gray-50 p-4 rounded-2xl mb-4 border border-gray-100">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Task Content</span>
+                <p className="text-sm text-gray-700 font-medium italic">"{reopenConfig.item.content}"</p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Reason for Re-opening</label>
+                <textarea 
+                  autoFocus
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-24 resize-none text-sm"
+                  placeholder="Explain why this task needs further attention..."
+                  value={reopenReason}
+                  onChange={e => setReopenReason(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setReopenConfig(null);
+                    setReopenReason("");
+                  }}
+                  className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!reopenReason.trim()}
+                  onClick={async () => {
+                    try {
+                      await reopenActionItem({
+                        meetingId: reopenConfig.meetingId,
+                        itemId: reopenConfig.item.id,
+                        reason: reopenReason
+                      }).unwrap();
+                      setReopenConfig(null);
+                      setReopenReason("");
+                    } catch (err) {
+                      console.error("Failed to re-open item", err);
+                    }
+                  }}
+                  className="flex-1 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
+                >
+                  Re-open Task
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -876,15 +1183,15 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
           <div className="flex-1 flex gap-2">
             <input
               ref={mainInputRef}
-              className="flex-1 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition shadow-sm"
-              placeholder={replyTarget ? `Replying to ${replyTarget.name}...` : "Write a comment..."}
+              className="flex-1 px-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
+              placeholder={replyTarget ? `Replying to ${replyTarget.name}...` : "Add to the conversation..."}
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
             />
             <button 
               type="submit"
               disabled={isCommenting || !newComment.trim()}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
+              className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
             </button>

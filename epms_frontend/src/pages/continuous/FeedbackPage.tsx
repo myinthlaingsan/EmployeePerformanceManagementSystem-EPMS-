@@ -14,9 +14,11 @@ import {
   useReplyToFeedbackMutation,
   useDeleteReplyMutation,
   useUpdateReplyMutation,
+  usePublishFeedbackMutation,
+  useGetFeedbackStatsForManagerQuery,
 } from "../../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
-import { FeedbackType } from "../../features/continuous/continuousTypes";
+import { FeedbackType, ContinuousStatus } from "../../features/continuous/continuousTypes";
 import { format } from "date-fns";
 import { formatRelativeTime } from "../../utils/timeUtils";
 
@@ -284,9 +286,10 @@ const FeedbackPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [goToPage, setGoToPage] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
 
   const { data: feedbackResponse, isLoading } = useGetAllFeedbacksQuery(
-    { page: currentPage - 1, size: itemsPerPage },
+    { page: currentPage - 1, size: itemsPerPage, status: filterStatus },
     { skip: !user }
   );
   const feedbacks = feedbackResponse?.content || [];
@@ -296,6 +299,8 @@ const FeedbackPage = () => {
   const [createFeedback, { isLoading: isCreating }] = useCreateFeedbackMutation();
   const [updateFeedback, { isLoading: isUpdating }] = useUpdateFeedbackMutation();
   const [deleteFeedback] = useDeleteFeedbackMutation();
+  const [publishFeedback, { isLoading: isPublishing }] = usePublishFeedbackMutation();
+  const { data: feedbackStats } = useGetFeedbackStatsForManagerQuery(user?.id || 0, { skip: !user?.id });
   const [createFeedbackTag, { isLoading: isCreatingTag }] = useCreateFeedbackTagMutation();
   const [updateFeedbackTag, { isLoading: isUpdatingTag }] = useUpdateFeedbackTagMutation();
   const [deleteFeedbackTag] = useDeleteFeedbackTagMutation();
@@ -323,19 +328,19 @@ const FeedbackPage = () => {
     tagId: number | "";
     feedbackType: FeedbackType;
     description: string;
-    isPrivate: boolean;
+
   }>({
     employeeId: 0,
     tagId: "",
     feedbackType: FeedbackType.PRAISE,
     description: "",
-    isPrivate: false
+
   });
 
   const selectedEmp = employees?.find(e => e.id === newFeedback.employeeId);
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = async (e: React.FormEvent, status: ContinuousStatus = ContinuousStatus.PUBLISHED) => {
+    if (e) e.preventDefault();
     if (!user || !newFeedback.employeeId || !newFeedback.tagId) {
       alert("Please select an employee and a category.");
       return;
@@ -347,8 +352,9 @@ const FeedbackPage = () => {
         tagId: newFeedback.tagId as number,
         feedbackType: newFeedback.feedbackType,
         description: newFeedback.description,
-        isPrivate: newFeedback.isPrivate,
+
         managerId: user.id,
+        status: editingId ? undefined : status,
       };
 
       if (editingId) {
@@ -359,7 +365,7 @@ const FeedbackPage = () => {
 
       setShowModal(false);
       setEditingId(null);
-      setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "", isPrivate: false });
+      setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "" });
     } catch (err: any) {
       alert(err.data?.message || "Failed to save feedback");
     }
@@ -412,9 +418,17 @@ const FeedbackPage = () => {
       tagId: fb.tag?.tagId || 0,
       feedbackType: fb.feedbackType,
       description: fb.description,
-      isPrivate: fb.isPrivate,
+
     });
     setShowModal(true);
+  };
+
+  const handlePublish = async (id: number) => {
+    try {
+      await publishFeedback(id).unwrap();
+    } catch (err: any) {
+      alert(err.data?.message || "Failed to publish feedback");
+    }
   };
 
   const handlePageChange = (page: number) => {
@@ -446,11 +460,12 @@ const FeedbackPage = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + feedbacks.length;
 
-  const stats = feedbacks ? {
-    praise: Math.round((feedbacks.filter(f => f.feedbackType === FeedbackType.PRAISE).length / (feedbacks.length || 1)) * 100),
-    improvement: Math.round((feedbacks.filter(f => f.feedbackType === FeedbackType.IMPROVEMENT).length / (feedbacks.length || 1)) * 100),
-    correction: Math.round((feedbacks.filter(f => f.feedbackType === FeedbackType.WARNING).length / (feedbacks.length || 1)) * 100),
-  } : { praise: 0, improvement: 0, correction: 0 };
+  const publishedFeedbacks = feedbacks?.filter(f => f.status === ContinuousStatus.PUBLISHED) || [];
+  const stats = {
+    praise: Math.round((publishedFeedbacks.filter(f => f.feedbackType === FeedbackType.PRAISE).length / (publishedFeedbacks.length || 1)) * 100),
+    improvement: Math.round((publishedFeedbacks.filter(f => f.feedbackType === FeedbackType.IMPROVEMENT).length / (publishedFeedbacks.length || 1)) * 100),
+    correction: Math.round((publishedFeedbacks.filter(f => f.feedbackType === FeedbackType.WARNING).length / (publishedFeedbacks.length || 1)) * 100),
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
@@ -473,6 +488,29 @@ const FeedbackPage = () => {
           </button>
         )}
       </header>
+
+      {isManager && (
+        <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+          <button
+            onClick={() => { setFilterStatus(undefined); setCurrentPage(1); }}
+            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!filterStatus ? 'bg-gray-900 text-white shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+          >
+            All Feedbacks
+          </button>
+          <button
+            onClick={() => { setFilterStatus(ContinuousStatus.PUBLISHED); setCurrentPage(1); }}
+            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.PUBLISHED ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+          >
+            Published
+          </button>
+          <button
+            onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
+            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.DRAFT ? 'bg-amber-500 text-white shadow-lg shadow-amber-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+          >
+            Drafts
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Main Feed */}
@@ -509,7 +547,13 @@ const FeedbackPage = () => {
                     <p className="text-xs text-gray-400">{format(new Date(fb.createdAt), 'PPP p')}</p>
                   </div>
                 </div>
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                    {fb.status === ContinuousStatus.DRAFT && (
+                      <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[8px] font-black rounded uppercase tracking-widest border border-gray-200 flex items-center gap-1">
+                        <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                        Draft
+                      </span>
+                    )}
                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${fb.feedbackType === FeedbackType.PRAISE ? 'bg-emerald-50 text-emerald-600' :
                       fb.feedbackType === FeedbackType.IMPROVEMENT ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
                       }`}>
@@ -543,11 +587,8 @@ const FeedbackPage = () => {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   {fb.tag && <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-md text-[10px] font-bold">#{fb.tag.tagName}</span>}
-                  {fb.isPrivate && (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                      Private
-                    </span>
+                  {fb.status === ContinuousStatus.DRAFT && (
+                    <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-[10px] font-black uppercase tracking-tighter animate-pulse">Draft</span>
                   )}
                 </div>
                 <p className="text-gray-700 leading-relaxed">{fb.description}</p>
@@ -562,8 +603,20 @@ const FeedbackPage = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                   </div>
-                  <span>Replies</span>
+                  <span>Replies {fb.replyCount > 0 && `(${fb.replyCount})`}</span>
                 </button>
+                {fb.status === ContinuousStatus.DRAFT && fb.managerId === user?.id && (
+                  <button 
+                    onClick={() => handlePublish(fb.feedbackId)}
+                    disabled={isPublishing}
+                    className="px-4 py-1.5 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-black transition shadow-sm disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Publish Feedback
+                  </button>
+                )}
               </div>
 
               {/* Replies Section */}
@@ -648,15 +701,30 @@ const FeedbackPage = () => {
 
         {/* Sidebar Widgets */}
         <div className="lg:col-span-1 space-y-6 order-1 lg:order-2 lg:sticky lg:top-6">
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition">
-            <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group">
+            <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
             </div>
             <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Feedback</p>
-              <h3 className="text-2xl font-bold text-gray-900">{totalItems}</h3>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Published</p>
+              <h3 className="text-2xl font-bold text-gray-900">{feedbackStats?.totalPublished || 0}</h3>
             </div>
           </div>
+
+          {isManager && (
+            <button 
+              onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
+              className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group text-left w-full"
+            >
+              <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Drafts</p>
+                <h3 className="text-2xl font-bold text-amber-600">{feedbackStats?.totalDraft || 0}</h3>
+              </div>
+            </button>
+          )}
           <FeedbackSnapshot stats={stats} />
         </div>
       </div>
@@ -803,16 +871,6 @@ const FeedbackPage = () => {
                   />
                 </div>
 
-                <div className="flex items-center gap-2 px-1">
-                  <input
-                    type="checkbox"
-                    id="isPrivate"
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    checked={newFeedback.isPrivate}
-                    onChange={e => setNewFeedback({ ...newFeedback, isPrivate: e.target.checked })}
-                  />
-                  <label htmlFor="isPrivate" className="text-sm font-medium text-gray-600">Mark as Private (Visible only to Employee and Manager)</label>
-                </div>
 
                 <div className="flex justify-end gap-3 pt-4">
                   <button
@@ -820,19 +878,44 @@ const FeedbackPage = () => {
                     onClick={() => {
                       setShowModal(false);
                       setEditingId(null);
-                      setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "", isPrivate: false });
+                      setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "" });
                     }}
                     className="px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
                   >
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    disabled={isCreating || isUpdating}
-                    className="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-xl shadow-gray-200 disabled:opacity-50"
-                  >
-                    {isCreating || isUpdating ? "Saving..." : editingId ? "Update Feedback" : "Submit Feedback"}
-                  </button>
+                  {editingId ? (
+                    <button
+                      type="button"
+                      onClick={(e) => handleCreate(e as any)}
+                      disabled={isUpdating}
+                      className="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-xl shadow-gray-200 disabled:opacity-50"
+                    >
+                      {isUpdating ? "Updating..." : "Update Feedback"}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => handleCreate(e as any, ContinuousStatus.DRAFT)}
+                        disabled={isCreating}
+                        className="px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
+                      >
+                        Save as Draft
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleCreate(e as any, ContinuousStatus.PUBLISHED)}
+                        disabled={isCreating}
+                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-xl shadow-blue-200 disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Publish Feedback
+                      </button>
+                    </>
+                  )}
                 </div>
               </form>
             </div>

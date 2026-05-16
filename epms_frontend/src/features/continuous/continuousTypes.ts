@@ -13,6 +13,20 @@ export const CommentType = {
 
 export type CommentType = typeof CommentType[keyof typeof CommentType];
 
+export const ContinuousStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+} as const;
+
+export type ContinuousStatus = typeof ContinuousStatus[keyof typeof ContinuousStatus];
+
+export const ActionItemStatus = {
+  PENDING: 'PENDING',
+  DONE: 'DONE',
+} as const;
+
+export type ActionItemStatus = typeof ActionItemStatus[keyof typeof ActionItemStatus];
+
 export interface FeedbackTagResponse {
   tagId: number;
   tagName: string;
@@ -31,8 +45,10 @@ export interface ContinuousFeedbackResponse {
   feedbackType: FeedbackType;
   tag: FeedbackTagResponse;
   description: string;
-  isPrivate: boolean;
+
+  status: ContinuousStatus;
   createdBy: number;
+  replyCount?: number;
   createdAt: string;
 }
 
@@ -42,7 +58,8 @@ export interface ContinuousFeedbackRequest {
   feedbackType: FeedbackType;
   tagId: number;
   description: string;
-  isPrivate: boolean;
+
+  status?: ContinuousStatus;
 }
 
 export interface FeedbackReplyResponse {
@@ -61,6 +78,14 @@ export interface FeedbackReplyRequest {
   parentId?: number;
 }
 
+export interface MeetingActionItemResponse {
+  id: number;
+  content: string;
+  status: ActionItemStatus;
+  completedAt?: string;
+  reopenReason?: string;
+}
+
 export interface OneOnOneMeetingResponse {
   meetingId: number;
   employeeId: number;
@@ -71,10 +96,12 @@ export interface OneOnOneMeetingResponse {
   meetingTime: string;
   discussionPoints: string;
   keyIssues: string;
-  actionItems: string;
+  actionItems: MeetingActionItemResponse[];
   followUpDate?: string;
-  isPrivateNote: boolean;
+
+  status: ContinuousStatus;
   createdBy: number;
+  commentCount?: number;
   createdAt: string;
 }
 
@@ -85,9 +112,10 @@ export interface OneOnOneMeetingRequest {
   meetingTime: string;
   discussionPoints: string;
   keyIssues: string;
-  actionItems: string;
+  actionItems: string[];
   followUpDate?: string;
-  isPrivateNote: boolean;
+
+  status?: ContinuousStatus;
 }
 
 export interface MeetingCommentResponse {
@@ -125,6 +153,11 @@ export interface PerformanceHistoryResponse {
   description: string;
   feedbackType?: FeedbackType;
   tagName?: string;
-  isPrivate: boolean;
+
   createdAt: string;
+}
+
+export interface ContinuousStatsResponse {
+  totalPublished: number;
+  totalDraft: number;
 }
