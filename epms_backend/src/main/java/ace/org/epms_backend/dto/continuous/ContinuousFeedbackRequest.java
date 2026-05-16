@@ -1,5 +1,6 @@
 package ace.org.epms_backend.dto.continuous;
 
+import ace.org.epms_backend.enums.ContinuousStatus;
 import ace.org.epms_backend.enums.FeedbackType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,5 +22,6 @@ public class ContinuousFeedbackRequest {
     @NotBlank(message = "Description cannot be blank")
     private String description;
 
-    private Boolean isPrivate = false;
+
+    private ContinuousStatus status;
 }

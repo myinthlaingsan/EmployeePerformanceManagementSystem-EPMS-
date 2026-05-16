@@ -3,6 +3,7 @@ package ace.org.epms_backend.controller;
 import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.PagedResponse;
 import ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse;
+import ace.org.epms_backend.dto.continuous.MeetingPulseResponse;
 import ace.org.epms_backend.enums.SourceType;
 import ace.org.epms_backend.service.PerformanceHistoryService;
 import lombok.RequiredArgsConstructor;
@@ -48,9 +49,10 @@ public class PerformanceHistoryController {
     @GetMapping("/all")
     public ResponseEntity<ApiResponse<PagedResponse<PerformanceHistoryResponse>>> getAllHistory(
             @RequestParam(required = false) SourceType sourceType,
+            @RequestParam(required = false) Long departmentId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PagedResponse<PerformanceHistoryResponse> responses = historyService.getAllHistory(sourceType, page, size);
+        PagedResponse<PerformanceHistoryResponse> responses = historyService.getAllHistory(sourceType, departmentId, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -62,8 +64,25 @@ public class PerformanceHistoryController {
     }
 
     @GetMapping("/all/raw")
-    public ResponseEntity<ApiResponse<List<PerformanceHistoryResponse>>> getAllHistoryRaw() {
-        List<PerformanceHistoryResponse> responses = historyService.getAllHistoryRaw();
+    public ResponseEntity<ApiResponse<List<PerformanceHistoryResponse>>> getAllHistoryRaw(
+            @RequestParam(required = false) Long departmentId) {
+        List<PerformanceHistoryResponse> responses = historyService.getAllHistoryRaw(departmentId);
         return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    @GetMapping("/pulse")
+    public ResponseEntity<ApiResponse<List<PerformanceHistoryResponse>>> getPerformancePulse(
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long employeeId) {
+        List<PerformanceHistoryResponse> responses = historyService.getPerformancePulse(departmentId, employeeId);
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    @GetMapping("/meeting-pulse")
+    public ResponseEntity<ApiResponse<MeetingPulseResponse>> getMeetingPulse(
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long employeeId) {
+        MeetingPulseResponse response = historyService.getMeetingPulse(departmentId, employeeId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

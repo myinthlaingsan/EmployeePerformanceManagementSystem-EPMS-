@@ -1,4 +1,5 @@
 package ace.org.epms_backend.service.impl;
+import ace.org.epms_backend.enums.ContinuousStatus;
 
 import ace.org.epms_backend.dto.continuous.ContinuousFeedbackRequest;
 import ace.org.epms_backend.dto.continuous.ContinuousFeedbackResponse;
@@ -73,24 +74,25 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
 
         feedback = feedbackRepository.save(feedback);
 
-        // Update PerformanceHistory
-        PerformanceHistory history = PerformanceHistory.builder()
-                .employee(employee)
-                .sourceType(SourceType.FEEDBACK)
-                .sourceId(feedback.getFeedbackId())
-                .title("New Continuous Feedback")
-                .description("Manager " + manager.getStaffName() + " created feedback: " + feedback.getDescription())
-                .feedbackType(feedback.getFeedbackType())
-                .tagName(tag != null ? tag.getTagName() : null)
-                .isPrivate(feedback.getIsPrivate())
-                .createdBy(manager.getId())
-                .manager(manager)
-                .performer(manager)
-                .build();
-        historyRepository.save(history);
+        // Update PerformanceHistory (only if PUBLISHED)
+        if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
+            PerformanceHistory history = PerformanceHistory.builder()
+                    .employee(employee)
+                    .sourceType(SourceType.FEEDBACK)
+                    .sourceId(feedback.getFeedbackId())
+                    .title("New Continuous Feedback")
+                    .description("Manager " + manager.getStaffName() + " created feedback: " + feedback.getDescription())
+                    .feedbackType(feedback.getFeedbackType())
+                    .tagName(tag != null ? tag.getTagName() : null)
+                    .createdBy(manager.getId())
+                    .manager(manager)
+                    .performer(manager)
+                    .build();
+            historyRepository.save(history);
+        }
 
-        // Notify Employee (if not private)
-        if (!Boolean.TRUE.equals(feedback.getIsPrivate())) {
+        // Notify Employee (if PUBLISHED)
+        if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
             eventPublisher.publishEvent(NotificationEvent.builder()
                     .recipientId(employee.getId())
                     .senderId(manager.getId())
@@ -139,12 +141,12 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     @Override
-    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, int page, int size) {
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, ace.org.epms_backend.enums.ContinuousStatus status, int page, int size) {
         checkNotPurePrivileged();
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
-        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findVisibleFeedbacksByManager(managerId, currentUser.getId(), pageable);
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findVisibleFeedbacksByManager(managerId, currentUser.getId(), status, pageable);
 
         List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
                 .map(feedbackMapper::toResponse)
@@ -209,21 +211,37 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         feedback = feedbackRepository.save(feedback);
 
         Employee currentUser = authService.getCurrentUser();
-        // Update PerformanceHistory
-        PerformanceHistory history = PerformanceHistory.builder()
-                .employee(feedback.getEmployee())
-                .sourceType(SourceType.FEEDBACK)
-                .sourceId(feedback.getFeedbackId())
-                .title("Updated Continuous Feedback")
-                .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Employee ") + currentUser.getStaffName() + " updated feedback. New details: " + feedback.getDescription())
-                .feedbackType(feedback.getFeedbackType())
-                .tagName(feedback.getTag() != null ? feedback.getTag().getTagName() : null)
-                .isPrivate(feedback.getIsPrivate())
-                .createdBy(currentUser.getId())
-                .manager(feedback.getManager())
-                .performer(currentUser)
-                .build();
-        historyRepository.save(history);
+        
+        // Update PerformanceHistory (only if PUBLISHED)
+        if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
+            PerformanceHistory history = PerformanceHistory.builder()
+                    .employee(feedback.getEmployee())
+                    .sourceType(SourceType.FEEDBACK)
+                    .sourceId(feedback.getFeedbackId())
+                    .title("Updated Continuous Feedback")
+                    .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Employee ") + currentUser.getStaffName() + " updated feedback. New details: " + feedback.getDescription())
+                    .feedbackType(feedback.getFeedbackType())
+                    .tagName(feedback.getTag() != null ? feedback.getTag().getTagName() : null)
+                    .createdBy(currentUser.getId())
+                    .manager(feedback.getManager())
+                    .performer(currentUser)
+                    .build();
+            historyRepository.save(history);
+        }
+
+        // Notify Employee (if PUBLISHED)
+        if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(feedback.getEmployee().getId())
+                    .senderId(feedback.getManager().getId())
+                    .type(NotificationType.COMMENT_ADDED)
+                    .title("Continuous Feedback Updated")
+                    .message("Manager " + feedback.getManager().getStaffName() + " updated your feedback: " + feedback.getDescription())
+                    .referenceType(ReferenceType.FEEDBACK)
+                    .referenceId(feedback.getFeedbackId())
+                    .actionUrl("/continuous-feedback")
+                    .build());
+        }
 
         return feedbackMapper.toResponse(feedback);
     }
@@ -244,21 +262,24 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         
         feedbackRepository.delete(feedback);
 
-        Employee currentUser = authService.getCurrentUser();
-        PerformanceHistory history = PerformanceHistory.builder()
-                .employee(feedback.getEmployee())
-                .sourceType(SourceType.FEEDBACK)
-                .sourceId(feedbackId)
-                .title("Feedback Deleted")
-                .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Admin ") + currentUser.getStaffName() + " deleted the feedback.")
-                .feedbackType(feedback.getFeedbackType())
-                .tagName(feedback.getTag() != null ? feedback.getTag().getTagName() : null)
-                .isPrivate(feedback.getIsPrivate())
-                .createdBy(currentUser.getId())
-                .manager(feedback.getManager())
-                .performer(currentUser)
-                .build();
-        historyRepository.save(history);
+        // Only log deletion to history if the feedback was PUBLISHED.
+        // Deleting a DRAFT record must not pollute the analytics tables.
+        if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
+            Employee currentUser = authService.getCurrentUser();
+            PerformanceHistory history = PerformanceHistory.builder()
+                    .employee(feedback.getEmployee())
+                    .sourceType(SourceType.FEEDBACK)
+                    .sourceId(feedbackId)
+                    .title("Feedback Deleted")
+                    .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Admin ") + currentUser.getStaffName() + " deleted the feedback.")
+                    .feedbackType(feedback.getFeedbackType())
+                    .tagName(feedback.getTag() != null ? feedback.getTag().getTagName() : null)
+                    .createdBy(currentUser.getId())
+                    .manager(feedback.getManager())
+                    .performer(currentUser)
+                    .build();
+            historyRepository.save(history);
+        }
     }
 
     @Override
@@ -282,21 +303,22 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         
         reply = replyRepository.save(reply);
 
-        // Update PerformanceHistory
-        PerformanceHistory history = PerformanceHistory.builder()
-                .employee(feedback.getEmployee())
-                .sourceType(SourceType.FEEDBACK)
-                .sourceId(feedback.getFeedbackId())
-                .title("New Reply to Feedback")
-                .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Employee ") + currentUser.getStaffName() + " replied: " + reply.getReplyText())
-                .feedbackType(feedback.getFeedbackType())
-                .tagName(feedback.getTag() != null ? feedback.getTag().getTagName() : null)
-                .isPrivate(feedback.getIsPrivate())
-                .createdBy(currentUser.getId())
-                .manager(feedback.getManager())
-                .performer(currentUser)
-                .build();
-        historyRepository.save(history);
+        // Update PerformanceHistory (only if PUBLISHED)
+        if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
+            PerformanceHistory history = PerformanceHistory.builder()
+                    .employee(feedback.getEmployee())
+                    .sourceType(SourceType.FEEDBACK)
+                    .sourceId(feedback.getFeedbackId())
+                    .title("New Reply to Feedback")
+                    .description((currentUser.getId().equals(feedback.getManager().getId()) ? "Manager " : "Employee ") + currentUser.getStaffName() + " replied: " + reply.getReplyText())
+                    .feedbackType(feedback.getFeedbackType())
+                    .tagName(feedback.getTag() != null ? feedback.getTag().getTagName() : null)
+                    .createdBy(currentUser.getId())
+                    .manager(feedback.getManager())
+                    .performer(currentUser)
+                    .build();
+            historyRepository.save(history);
+        }
 
         // Notify the other party
         Long recipientId = currentUser.getId().equals(feedback.getManager().getId()) 
@@ -332,15 +354,12 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     private void checkFeedbackAccess(ContinuousFeedback feedback) {
         Employee currentUser = authService.getCurrentUser();
 
-        // If private, only Manager can see
-        if (Boolean.TRUE.equals(feedback.getIsPrivate())) {
-            if (currentUser.getId().equals(feedback.getManager().getId())) {
-                return;
-            }
-        } else {
-            // If not private, both Manager and Employee can see
-            if (currentUser.getId().equals(feedback.getEmployee().getId()) ||
-                    currentUser.getId().equals(feedback.getManager().getId())) {
+        // Manager can see all, Employee can only see if PUBLISHED
+        if (currentUser.getId().equals(feedback.getManager().getId())) {
+            return;
+        }
+        if (currentUser.getId().equals(feedback.getEmployee().getId())) {
+            if (feedback.getStatus() == ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED) {
                 return;
             }
         }
@@ -357,11 +376,11 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     @Override
-    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getAllFeedbacks(int page, int size) {
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getAllFeedbacks(ace.org.epms_backend.enums.ContinuousStatus status, int page, int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
-        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findAllVisibleFeedbacks(currentUser.getId(), pageable);
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findAllVisibleFeedbacks(currentUser.getId(), status, pageable);
 
         List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
                 .map(feedbackMapper::toResponse)
@@ -391,20 +410,22 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         reply.setReplyText(request.getReplyText());
         FeedbackReply updatedReply = replyRepository.save(reply);
 
-        PerformanceHistory history = PerformanceHistory.builder()
-                .employee(reply.getFeedback().getEmployee())
-                .sourceType(SourceType.FEEDBACK)
-                .sourceId(reply.getFeedback().getFeedbackId())
-                .title("Feedback Reply Updated")
-                .description(currentUser.getStaffName() + " updated their reply: " + request.getReplyText())
-                .feedbackType(reply.getFeedback().getFeedbackType())
-                .tagName(reply.getFeedback().getTag() != null ? reply.getFeedback().getTag().getTagName() : null)
-                .isPrivate(reply.getFeedback().getIsPrivate())
-                .createdBy(currentUser.getId())
-                .manager(reply.getFeedback().getManager())
-                .performer(currentUser)
-                .build();
-        historyRepository.save(history);
+        // Update PerformanceHistory (only if PUBLISHED)
+        if (reply.getFeedback().getStatus() == ContinuousStatus.PUBLISHED) {
+            PerformanceHistory history = PerformanceHistory.builder()
+                    .employee(reply.getFeedback().getEmployee())
+                    .sourceType(SourceType.FEEDBACK)
+                    .sourceId(reply.getFeedback().getFeedbackId())
+                    .title("Feedback Reply Updated")
+                    .description(currentUser.getStaffName() + " updated their reply: " + request.getReplyText())
+                    .feedbackType(reply.getFeedback().getFeedbackType())
+                    .tagName(reply.getFeedback().getTag() != null ? reply.getFeedback().getTag().getTagName() : null)
+                    .createdBy(currentUser.getId())
+                    .manager(reply.getFeedback().getManager())
+                    .performer(currentUser)
+                    .build();
+            historyRepository.save(history);
+        }
 
         return replyMapper.toResponse(updatedReply);
     }
@@ -422,19 +443,89 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         
         replyRepository.delete(reply);
 
-        PerformanceHistory history = PerformanceHistory.builder()
-                .employee(reply.getFeedback().getEmployee())
-                .sourceType(SourceType.FEEDBACK)
-                .sourceId(reply.getFeedback().getFeedbackId())
-                .title("Feedback Reply Deleted")
-                .description(currentUser.getStaffName() + " deleted their reply.")
-                .feedbackType(reply.getFeedback().getFeedbackType())
-                .tagName(reply.getFeedback().getTag() != null ? reply.getFeedback().getTag().getTagName() : null)
-                .isPrivate(reply.getFeedback().getIsPrivate())
-                .createdBy(currentUser.getId())
-                .manager(reply.getFeedback().getManager())
-                .performer(currentUser)
+        // Update PerformanceHistory (only if PUBLISHED)
+        if (reply.getFeedback().getStatus() == ContinuousStatus.PUBLISHED) {
+            PerformanceHistory history = PerformanceHistory.builder()
+                    .employee(reply.getFeedback().getEmployee())
+                    .sourceType(SourceType.FEEDBACK)
+                    .sourceId(reply.getFeedback().getFeedbackId())
+                    .title("Feedback Reply Deleted")
+                    .description(currentUser.getStaffName() + " deleted their reply.")
+                    .feedbackType(reply.getFeedback().getFeedbackType())
+                    .tagName(reply.getFeedback().getTag() != null ? reply.getFeedback().getTag().getTagName() : null)
+                    .createdBy(currentUser.getId())
+                    .manager(reply.getFeedback().getManager())
+                    .performer(currentUser)
+                    .build();
+            historyRepository.save(history);
+        }
+    }
+
+    @Override
+    @Transactional
+    public ContinuousFeedbackResponse publishFeedback(Long feedbackId) {
+        ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new NotFoundException("Feedback not found"));
+        
+        checkFeedbackModificationAccess(feedback);
+        
+        if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
+            throw new IllegalStateException("Feedback is already published.");
+        }
+        
+        feedback.setStatus(ContinuousStatus.PUBLISHED);
+        feedback = feedbackRepository.save(feedback);
+        
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(feedback.getEmployee().getId())
+                .senderId(feedback.getManager().getId())
+                .type(NotificationType.COMMENT_ADDED)
+                .title("Feedback Published")
+                .message("Manager " + feedback.getManager().getStaffName() + " published a feedback comment: " + feedback.getDescription())
+                .referenceType(ReferenceType.FEEDBACK)
+                .referenceId(feedback.getFeedbackId())
+                .actionUrl("/continuous-feedback")
+                .build());
+
+        // Only log history if PUBLISHED
+        if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
+            PerformanceHistory history = PerformanceHistory.builder()
+                    .employee(feedback.getEmployee())
+                    .sourceType(SourceType.FEEDBACK)
+                    .sourceId(feedback.getFeedbackId())
+                    .title("Continuous Feedback Published")
+                    .description("Manager " + feedback.getManager().getStaffName() + " published the draft feedback.")
+                    .feedbackType(feedback.getFeedbackType())
+                    .tagName(feedback.getTag() != null ? feedback.getTag().getTagName() : null)
+                    .createdBy(feedback.getManager().getId())
+                    .manager(feedback.getManager())
+                    .performer(feedback.getManager())
+                    .build();
+            historyRepository.save(history);
+        }
+        
+        return feedbackMapper.toResponse(feedback);
+    }
+
+    @Override
+    public ace.org.epms_backend.dto.continuous.ContinuousStatsResponse getFeedbackStats(Long employeeId) {
+        long published = feedbackRepository.countByEmployee_IdAndStatus(employeeId, ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED);
+        long draft = feedbackRepository.countByEmployee_IdAndStatus(employeeId, ace.org.epms_backend.enums.ContinuousStatus.DRAFT);
+        
+        return ace.org.epms_backend.dto.continuous.ContinuousStatsResponse.builder()
+                .totalPublished(published)
+                .totalDraft(draft)
                 .build();
-        historyRepository.save(history);
+    }
+
+    @Override
+    public ace.org.epms_backend.dto.continuous.ContinuousStatsResponse getFeedbackStatsForManager(Long managerId) {
+        long published = feedbackRepository.countByManager_IdAndStatus(managerId, ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED);
+        long draft = feedbackRepository.countByManager_IdAndStatus(managerId, ace.org.epms_backend.enums.ContinuousStatus.DRAFT);
+        
+        return ace.org.epms_backend.dto.continuous.ContinuousStatsResponse.builder()
+                .totalPublished(published)
+                .totalDraft(draft)
+                .build();
     }
 }

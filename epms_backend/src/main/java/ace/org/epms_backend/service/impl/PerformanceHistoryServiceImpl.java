@@ -10,10 +10,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.enums.RoleType;
 import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.model.employee.Employee;
 import org.springframework.transaction.annotation.Transactional;
+import ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse;
+import ace.org.epms_backend.dto.continuous.MeetingActionItemResponse;
+import ace.org.epms_backend.model.continuous.MeetingActionItem;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,6 +31,9 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     private final PerformanceHistoryMapper historyMapper;
     private final AuthService authService;
     private final EmployeeRoleRepository employeeRoleRepository;
+    private final EmployeeDepartmentRepository employeeDepartmentRepository;
+    private final ace.org.epms_backend.repository.MeetingActionItemRepository actionItemRepository;
+    private final ace.org.epms_backend.mapper.continuous.MeetingActionItemMapper actionItemMapper;
 
     @Override
     public ace.org.epms_backend.dto.PagedResponse<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId, SourceType sourceType, int page, int size) {
@@ -42,7 +49,7 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
         List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> content = historyPage.getContent().stream()
                 .filter(h -> privileged || 
                              (currentUser.getId().equals(h.getCreatedBy())) || 
-                             (!Boolean.TRUE.equals(h.getIsPrivate()) && (currentUser.getId().equals(h.getEmployee().getId()) || (h.getManager() != null && currentUser.getId().equals(h.getManager().getId())))))
+                             (currentUser.getId().equals(h.getEmployee().getId()) || (h.getManager() != null && currentUser.getId().equals(h.getManager().getId()))))
                 .filter(h -> {
                     // Filter logic:
                     // 1. If Mar is the employee (subject), she sees it (unless private and she's not creator).
@@ -67,14 +74,26 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     }
 
     @Override
-    public ace.org.epms_backend.dto.PagedResponse<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getAllHistory(SourceType sourceType, int page, int size) {
+    public ace.org.epms_backend.dto.PagedResponse<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getAllHistory(SourceType sourceType, Long departmentId, int page, int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
-        if (!isPrivileged(currentUser)) {
-            throw new ace.org.epms_backend.exception.AccessDeniedException("Only Admin or HR can view global pulse.");
+        
+        // Allow Managers to view their department pulse, or Admin/HR for global pulse
+        if (!isAnyPrivileged(currentUser)) {
+             throw new ace.org.epms_backend.exception.AccessDeniedException("Only Admin, HR, or Manager can view pulse timeline.");
         }
 
-        org.springframework.data.domain.Page<PerformanceHistory> historyPage = historyRepository.findAllByOptionalSource(sourceType, pageable);
+        Long finalDeptId = departmentId;
+        boolean isPlainManager = isManager(currentUser) && !isPrivileged(currentUser);
+
+        if (isPlainManager) {
+            // Force manager to their own department
+            finalDeptId = getEmployeeCurrentDepartmentId(currentUser.getId());
+        } else if (finalDeptId == null && !isPrivileged(currentUser)) {
+            throw new ace.org.epms_backend.exception.AccessDeniedException("Please select a department to view organizational history.");
+        }
+
+        org.springframework.data.domain.Page<PerformanceHistory> historyPage = historyRepository.findAllByOptionalSourceAndDepartment(sourceType, finalDeptId, pageable);
 
         List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> content = historyPage.getContent().stream()
                 .map(this::mapToResponseWithFallback)
@@ -117,7 +136,7 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
 
         List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> content = historyPage.getContent().stream()
                 .filter(h -> privileged || (currentUser.getId().equals(h.getCreatedBy())) || 
-                             (!Boolean.TRUE.equals(h.getIsPrivate()) && currentUser.getId().equals(h.getEmployee().getId())))
+                             (currentUser.getId().equals(h.getEmployee().getId())))
                 .map(h -> historyMapper.toResponse(h))
                 .collect(Collectors.toList());
 
@@ -141,16 +160,9 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
             return historyMapper.toResponse(history);
         }
         
-        // If private, only Manager/Creator can see
-        if (Boolean.TRUE.equals(history.getIsPrivate())) {
-            if (!currentUser.getId().equals(history.getCreatedBy())) {
-                throw new NotFoundException("History not found");
-            }
-        } else {
-            // If not private, both Manager/Creator and Employee can see
-            if (!currentUser.getId().equals(history.getEmployee().getId()) && !currentUser.getId().equals(history.getCreatedBy())) {
-                throw new NotFoundException("History not found");
-            }
+        // Both Manager/Creator and Employee can see
+        if (!currentUser.getId().equals(history.getEmployee().getId()) && !currentUser.getId().equals(history.getCreatedBy())) {
+            throw new NotFoundException("History not found");
         }
         
         return historyMapper.toResponse(history);
@@ -172,25 +184,107 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
         return historyRepository.findLatestStateByEmployee(employeeId).stream()
                 .filter(h -> privileged ||
                              currentUser.getId().equals(h.getCreatedBy()) ||
-                             (!Boolean.TRUE.equals(h.getIsPrivate()) &&
-                              (currentUser.getId().equals(h.getEmployee().getId()) ||
-                               (h.getManager() != null && currentUser.getId().equals(h.getManager().getId())))))
+                             (currentUser.getId().equals(h.getEmployee().getId()) ||
+                               (h.getManager() != null && currentUser.getId().equals(h.getManager().getId()))))
                 .map(this::mapToResponseWithFallback)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getAllHistoryRaw() {
+    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getAllHistoryRaw(Long departmentId) {
         Employee currentUser = authService.getCurrentUser();
-        if (!isPrivileged(currentUser)) {
-            throw new ace.org.epms_backend.exception.AccessDeniedException("Only Admin or HR can view global pulse.");
+        
+        // Allow Managers to view their department pulse, or Admin/HR for global pulse
+        if (!isAnyPrivileged(currentUser)) {
+             throw new ace.org.epms_backend.exception.AccessDeniedException("Only Admin, HR, or Manager can view pulse analytics.");
         }
 
-        // findAllLatestStates returns one row per (sourceType, sourceId) –
-        // the most recent audit entry. feedbackType is always up-to-date.
-        return historyRepository.findAllLatestStates().stream()
+        Long finalDeptId = departmentId;
+        boolean isPlainManager = isManager(currentUser) && !isPrivileged(currentUser);
+
+        if (isPlainManager) {
+            // Force manager to their own department
+            finalDeptId = getEmployeeCurrentDepartmentId(currentUser.getId());
+        } else if (finalDeptId == null && !isPrivileged(currentUser)) {
+            // If no department specified, only Admin/HR can see global pulse
+            throw new ace.org.epms_backend.exception.AccessDeniedException("Please select a department to view analytics.");
+        }
+
+        List<PerformanceHistory> entities = (finalDeptId != null)
+                ? historyRepository.findLatestStatesByDepartment(finalDeptId)
+                : historyRepository.findAllLatestStates();
+
+        return entities.stream()
                 .map(this::mapToResponseWithFallback)
                 .collect(Collectors.toList());
+    }
+
+    private Long getEmployeeCurrentDepartmentId(Long employeeId) {
+        return employeeDepartmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(employeeId)
+                .map(ed -> ed.getCurrentDepartment().getId())
+                .orElseThrow(() -> new ace.org.epms_backend.exception.AccessDeniedException("Employee is not assigned to any department."));
+    }
+
+    @Override
+    public List<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getPerformancePulse(Long departmentId, Long employeeId) {
+        if (employeeId != null) {
+            // Security for employee-specific pulse is handled inside getHistoryByEmployeeRaw
+            return getHistoryByEmployeeRaw(employeeId);
+        }
+        // Security for department/global pulse is handled inside getAllHistoryRaw
+        return getAllHistoryRaw(departmentId);
+    }
+
+    @Override
+    public ace.org.epms_backend.dto.continuous.MeetingPulseResponse getMeetingPulse(Long departmentId, Long employeeId) {
+        Employee currentUser = authService.getCurrentUser();
+        if (!isAnyPrivileged(currentUser)) {
+            throw new ace.org.epms_backend.exception.AccessDeniedException("Only Admin, HR, or Manager can view pulse analytics.");
+        }
+
+        Long finalDeptId = departmentId;
+        boolean isPlainManager = isManager(currentUser) && !isPrivileged(currentUser);
+        if (isPlainManager) {
+            finalDeptId = getEmployeeCurrentDepartmentId(currentUser.getId());
+        }
+
+        // 1. Get History
+        // If employeeId is present, we are tracking specific manager/employee output -> Full Action History
+        // If only departmentId is present, we are tracking organizational health -> Latest States (Pulse)
+        List<PerformanceHistoryResponse> historyList;
+        if (employeeId != null) {
+            historyList = historyRepository.findActionHistoryByPerformer(employeeId).stream()
+                    .map(this::mapToResponseWithFallback)
+                    .collect(Collectors.toList());
+        } else {
+            historyList = getPerformancePulse(finalDeptId, null).stream()
+                    .collect(Collectors.toList());
+        }
+
+        // 2. Filter for Meetings
+        List<PerformanceHistoryResponse> meetingHistory = historyList.stream()
+                .filter(h -> h.getSourceType() == SourceType.MEETING)
+                .collect(Collectors.toList());
+
+        // 3. Get Action Items
+        List<MeetingActionItem> actionItems = actionItemRepository.findAllByDepartmentOrEmployee(finalDeptId, employeeId);
+        
+        long totalActionItems = actionItems.size();
+        long completedActionItems = actionItems.stream()
+                .filter(ai -> ai.getStatus() == ace.org.epms_backend.enums.ActionItemStatus.DONE)
+                .count();
+
+        List<MeetingActionItemResponse> actionItemResponses = actionItems.stream()
+                .map(actionItemMapper::toResponse)
+                .collect(Collectors.toList());
+
+        return ace.org.epms_backend.dto.continuous.MeetingPulseResponse.builder()
+                .totalActionItems(totalActionItems)
+                .completedActionItems(completedActionItems)
+                .meetingHistory(meetingHistory)
+                .actionHistory(historyList) // The full, non-deduplicated history list
+                .actionItems(actionItemResponses)
+                .build();
     }
 
     private boolean isPrivileged(Employee employee) {
@@ -205,5 +299,11 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
                 .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || 
                              r.getRoleName() == RoleType.HR || 
                              r.getRoleName() == RoleType.MANAGER);
+    }
+
+    private boolean isManager(Employee employee) {
+        List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
+        return roles.stream()
+                .anyMatch(r -> r.getRoleName() == RoleType.MANAGER);
     }
 }

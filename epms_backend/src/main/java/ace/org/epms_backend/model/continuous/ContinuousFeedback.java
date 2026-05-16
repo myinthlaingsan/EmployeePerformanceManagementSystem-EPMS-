@@ -1,5 +1,6 @@
 package ace.org.epms_backend.model.continuous;
 
+import ace.org.epms_backend.enums.ContinuousStatus;
 import ace.org.epms_backend.enums.FeedbackType;
 import ace.org.epms_backend.model.BaseEntity;
 import ace.org.epms_backend.model.employee.Employee;
@@ -44,7 +45,12 @@ public class ContinuousFeedback extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    private Boolean isPrivate = false;
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private ContinuousStatus status = ContinuousStatus.PUBLISHED;
+
+    @org.hibernate.annotations.Formula("(SELECT COUNT(*) FROM feedback_reply r WHERE r.feedback_id = feedback_id AND (r.is_deleted = false OR r.is_deleted IS NULL))")
+    private Integer replyCount;
 
     private Long createdBy;
 }

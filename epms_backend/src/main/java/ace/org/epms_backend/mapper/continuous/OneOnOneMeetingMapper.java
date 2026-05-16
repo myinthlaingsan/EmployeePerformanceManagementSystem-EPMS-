@@ -7,11 +7,12 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {MeetingActionItemMapper.class}, nullValuePropertyMappingStrategy = org.mapstruct.NullValuePropertyMappingStrategy.IGNORE)
 public interface OneOnOneMeetingMapper {
 
     @Mapping(target = "employee", ignore = true)
     @Mapping(target = "manager", ignore = true)
+    @Mapping(target = "actionItems", ignore = true)
     OneOnOneMeeting toEntity(OneOnOneMeetingRequest request);
 
     @Mapping(source = "employee.id", target = "employeeId")
@@ -22,5 +23,6 @@ public interface OneOnOneMeetingMapper {
 
     @Mapping(target = "employee", ignore = true)
     @Mapping(target = "manager", ignore = true)
+    @Mapping(target = "actionItems", ignore = true)
     void updateEntityFromRequest(OneOnOneMeetingRequest request, @MappingTarget OneOnOneMeeting meeting);
 }

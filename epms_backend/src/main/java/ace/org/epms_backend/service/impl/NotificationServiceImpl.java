@@ -130,7 +130,7 @@ public class NotificationServiceImpl implements NotificationService {
     public void markAllAsRead() {
         Long employeeId = authService.getCurrentUser().getId();
         List<Notification> unread = notificationRepository
-                .findByRecipientIdAndReadAtIsNullAndIsDeletedFalse(employeeId);
+                .findByRecipientIdAndReadAtIsNullAndIsDeletedFalseOrderByCreatedAtDesc(employeeId);
         
         unread.forEach(n -> n.setReadAt(Instant.now()));
         notificationRepository.saveAll(unread);

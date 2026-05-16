@@ -22,7 +22,7 @@ public class PerformanceHistoryResponse {
     private String managerName;
     private String title;
     private String description;
-    private Boolean isPrivate;
+
     private Long performerId;
     private String performerName;
     private ace.org.epms_backend.enums.FeedbackType feedbackType;

@@ -13,7 +13,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 //    List<Notification> findByRecipientIdAndIsDeletedFalseOrderByCreatedAtDesc(Long employeeId);
     List<Notification> findByRecipientAndIsDeletedFalseOrderByCreatedAtDesc(Employee recipient);
     long countByRecipientIdAndReadAtIsNullAndIsDeletedFalse(Long employeeId);
-    List<Notification> findByRecipientIdAndReadAtIsNullAndIsDeletedFalse(Long employeeId);
+    List<Notification> findByRecipientIdAndReadAtIsNullAndIsDeletedFalseOrderByCreatedAtDesc(Long employeeId);
     Optional<Notification> findByIdAndRecipientId(Long id, Long employeeId);
     List<Notification> findAllByCreatedAtBeforeAndIsDeletedFalse(Instant date);
 

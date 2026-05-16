@@ -1,5 +1,6 @@
 package ace.org.epms_backend.dto.continuous;
 
+import ace.org.epms_backend.enums.ContinuousStatus;
 import ace.org.epms_backend.enums.FeedbackType;
 import lombok.Data;
 import java.time.Instant;
@@ -14,7 +15,9 @@ public class ContinuousFeedbackResponse {
     private FeedbackType feedbackType;
     private FeedbackTagResponse tag;
     private String description;
-    private Boolean isPrivate;
+
+    private ContinuousStatus status;
     private Long createdBy;
+    private Integer replyCount;
     private Instant createdAt;
 }
