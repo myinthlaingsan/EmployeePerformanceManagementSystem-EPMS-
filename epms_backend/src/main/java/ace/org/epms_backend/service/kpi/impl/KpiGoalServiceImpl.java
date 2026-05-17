@@ -299,6 +299,25 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         .actionUrl("/kpi/my")
                         .build());
 
+                // Log KPI Journey
+                historyRepo.save(KpiHistoryLog.builder()
+                        .employeeId(savedGoalSet.getEmployee().getId())
+                        .goalSetId(savedGoalSet.getId())
+                        .action("KPI_ASSIGNED")
+                        .changeDetails(
+                                "Goal set bulk-assigned to " + employee.getStaffName() + " for cycle: " + cycle.getCycleName() + " from library: " + library.getTitle())
+                        .changedBy(currentManager.getId())
+                        .build());
+
+                // Log Audit
+                auditService.log(AuditRequest.builder()
+                        .tableName("kpi_goals")
+                        .recordId(savedGoalSet.getId())
+                        .action(AuditAction.INSERT)
+                        .newState(savedGoalSet)
+                        .status(AuditStatus.SUCCESS)
+                        .build());
+
                 response.setSuccessfulCount(response.getSuccessfulCount() + 1);
                 response.getResults().add(AssignmentResult.builder()
                         .employeeId(employeeId)
