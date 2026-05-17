@@ -51,6 +51,7 @@ export interface KpiLibraryResponse {
   targetLevelId?: number;
   levelName?: string;
   isActive: boolean;
+  updatedAt?: string;
   details: KpiLibraryDetailResponse[];
 }
 

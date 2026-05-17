@@ -10,7 +10,7 @@ import {
   Loader2,
   FileText
 } from 'lucide-react';
-import { useGetLibraryHistoryQuery } from '../../services/kpiApi';
+import { useGetLibraryHistoryQuery, useToggleHistoryStatusMutation } from '../../services/kpiApi';
 import LibraryKpiTable from './LibraryKpiTable';
 import { format } from 'date-fns';
 
@@ -30,7 +30,16 @@ const KpiLibraryHistoryModal: React.FC<KpiLibraryHistoryModalProps> = ({
   const { data: historyResponse, isLoading } = useGetLibraryHistoryQuery(positionId, {
     skip: !isOpen
   });
+  const [toggleHistoryStatus, { isLoading: isToggling }] = useToggleHistoryStatusMutation();
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const handleToggleStatus = async (id: number, currentActive: boolean) => {
+    try {
+      await toggleHistoryStatus({ id, active: !currentActive }).unwrap();
+    } catch (error) {
+      console.error('Failed to toggle library status:', error);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -120,6 +129,21 @@ const KpiLibraryHistoryModal: React.FC<KpiLibraryHistoryModalProps> = ({
                     </div>
 
                     <div className="flex items-center gap-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleStatus(lib.id || 0, lib.isActive || false);
+                        }}
+                        disabled={isToggling}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black tracking-wide uppercase transition-all shadow-sm active:scale-95 disabled:opacity-50 ${
+                          lib.isActive 
+                            ? 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100' 
+                            : 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
+                        }`}
+                      >
+                        {lib.isActive ? 'Deactivate' : 'Activate'}
+                      </button>
+
                       <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mr-2">
                         {expandedId === lib.id ? 'Hide Details' : 'View Details'}
                       </p>
@@ -135,9 +159,8 @@ const KpiLibraryHistoryModal: React.FC<KpiLibraryHistoryModalProps> = ({
                   {expandedId === lib.id && (
                     <div className="border-t border-gray-100 bg-gray-50/30 p-6 animate-in slide-in-from-top-2 duration-300">
                       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                        <LibraryKpiTable 
-                          details={lib.details || []} 
-                          onUpdate={() => {}} 
+                        <LibraryKpiTable
+                          details={lib.details || []}
                           isReadOnly={true}
                         />
                       </div>

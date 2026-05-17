@@ -63,6 +63,18 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(libraryService.toggleLibraryStatus(id, active)));
     }
 
+    @GetMapping("/library/all")
+    public ResponseEntity<ApiResponse<List<KpiLibraryResponse>>> getAllLibrariesWithInactive() {
+        return ResponseEntity.ok(ApiResponse.success(libraryService.getAllLibraries()));
+    }
+
+    @PatchMapping("/library/{id}/toggle-history-status")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<KpiLibraryResponse>> toggleHistoryStatus(@PathVariable Long id,
+            @RequestParam boolean active) {
+        return ResponseEntity.ok(ApiResponse.success(libraryService.toggleHistoryStatus(id, active)));
+    }
+
     // 2. KPI Assignment (Manager/HR/Admin)
     @PostMapping("/assign")
     @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")

@@ -139,7 +139,7 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                   {totalWeight}
                 </span>
               </td>
-              <td></td>
+              {!isReadOnly && <td></td>}
             </tr>
           </tfoot>
         </table>

@@ -18,4 +18,6 @@ public interface KpiLibraryService {
     PagedResponse<KpiLibraryResponse> searchLibraries(String keyword, int page, int size);
     KpiImportResult importLibraries(MultipartFile file) throws IOException;
     List<KpiLibraryResponse> getLibraryHistory(Long positionId);
+    List<KpiLibraryResponse> getAllLibraries();
+    KpiLibraryResponse toggleHistoryStatus(Long id, boolean active);
 }

@@ -210,6 +210,35 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<KpiLibraryResponse> getAllLibraries() {
+        return libraryRepository.findAll().stream()
+                .map(kpiMapper::toLibraryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public KpiLibraryResponse toggleHistoryStatus(Long id, boolean active) {
+        KpiLibrary library = libraryRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Library not found"));
+
+        if (active && library.getPosition() != null) {
+            // Deactivate all other libraries for the same position
+            List<KpiLibrary> positionLibraries = libraryRepository.findByPositionPositionIdOrderByUpdatedAtDesc(library.getPosition().getPositionId());
+            for (KpiLibrary lib : positionLibraries) {
+                if (!lib.getId().equals(id) && Boolean.TRUE.equals(lib.getIsActive())) {
+                    lib.setIsActive(false);
+                    libraryRepository.save(lib);
+                }
+            }
+        }
+
+        library.setIsActive(active);
+        KpiLibrary updatedLibrary = libraryRepository.save(library);
+        return kpiMapper.toLibraryResponse(updatedLibrary);
+    }
+
     private void validateLibraryWeights(KpiLibraryRequest request) {
         if (request.getDetails() == null || request.getDetails().isEmpty()) {
             throw new IllegalArgumentException("At least one KPI detail is required");
