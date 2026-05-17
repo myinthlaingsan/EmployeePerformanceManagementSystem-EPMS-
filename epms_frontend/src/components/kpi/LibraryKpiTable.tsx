@@ -138,7 +138,7 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                     className={`w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 ${isReadOnly ? "cursor-default" : ""}`}
                   />
                 </td>
-                <td className="border-r border-gray-200 p-0">
+                <td className="border-r border-gray-200 p-0 relative">
                   <input
                     type="number"
                     id={`weightPercent-${index}`}
@@ -146,8 +146,13 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                     value={detail.weightPercent}
                     disabled={isReadOnly}
                     onChange={(e) => onDetailChange(index, 'weightPercent', e.target.value)}
-                    className={`w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-bold ${isReadOnly ? 'cursor-default' : ''}`}
+                    className={`w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-right font-bold ${isReadOnly ? 'cursor-default' : ''} ${detail.weightPercent > 35 ? 'text-red-600 bg-red-50 focus:ring-red-500' : 'text-gray-900'}`}
                   />
+                  {detail.weightPercent > 35 && (
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-black pointer-events-none whitespace-nowrap">
+                      Max 35%
+                    </div>
+                  )}
                 </td>
                 <td className="border-r border-gray-200 p-0 text-center align-middle">
                    <div className="flex items-center justify-center h-full">
@@ -181,18 +186,35 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
           </tbody>
           <tfoot className="bg-gray-50 border-t-2 border-gray-800">
             <tr>
+              <td colSpan={7} className="p-0 border-b border-gray-200">
+                <div style={{ height: 4, width: '100%', background: '#F0F2F6', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.min(totalWeight, 100)}%`,
+                    background: totalWeight === 100 ? '#10B981' : totalWeight > 100 ? '#EF4444' : '#3B82F6',
+                    transition: 'width 0.3s ease, background-color 0.3s ease'
+                  }} />
+                </div>
+              </td>
+            </tr>
+            <tr>
               <td
                 colSpan={5}
                 className="px-3 py-2 text-right text-sm font-bold text-gray-900 border-r border-gray-200"
               >
-                Total Score
+                Total Weight
               </td>
-              <td className="px-3 py-2 text-right border-r border-gray-200">
+              <td className="px-3 py-2 text-right border-r border-gray-200 relative">
                 <span
-                  className={`text-sm font-bold ${totalWeight === 100 ? "text-gray-900" : "text-red-600"}`}
+                  className={`text-sm font-bold ${totalWeight === 100 ? "text-green-600" : totalWeight > 100 ? "text-red-600" : "text-blue-600"}`}
                 >
-                  {totalWeight}
+                  {totalWeight}%
                 </span>
+                {totalWeight !== 100 && !isReadOnly && (
+                   <div className="absolute left-2 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-black pointer-events-none whitespace-nowrap">
+                     Must be 100%
+                   </div>
+                )}
               </td>
               {!isReadOnly && <td></td>}
             </tr>
