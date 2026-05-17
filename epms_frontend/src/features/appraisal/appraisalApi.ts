@@ -66,6 +66,7 @@ export interface AppraisalCycle {
   feedbackWeight?: number;
   financialYearId?: number;
   financialYearTitle?: string;
+  isAssigned?: boolean;
 }
 
 export interface CycleRequest {
@@ -368,6 +369,14 @@ export const appraisalApi = api.injectEndpoints({
       invalidatesTags: ['Cycle'],
     }),
 
+    deleteCycle: builder.mutation<any, number>({
+      query: (id) => ({
+        url: `/appraisal-cycles/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Cycle'],
+    }),
+
     uploadEmployeeSignature: builder.mutation<void, { id: string, file: File }>({
       query: ({ id, file }) => {
         const formData = new FormData();
@@ -430,6 +439,7 @@ export const {
   useUpdateCycleMutation,
   useActivateCycleMutation,
   useCloseCycleMutation,
+  useDeleteCycleMutation,
   useGetAppraisalFormQuery,
   useLazyGetAppraisalFormQuery,
   useGetAppraisalFormsQuery,

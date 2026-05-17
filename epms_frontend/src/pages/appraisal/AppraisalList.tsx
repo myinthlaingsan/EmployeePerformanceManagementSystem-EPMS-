@@ -12,7 +12,8 @@ import {
   useCreateFormSetMutation,
   useGetAppraisalFormSetsQuery,
   useDeleteAppraisalFormMutation,
-  useDeleteFormSetMutation
+  useDeleteFormSetMutation,
+  useDeleteCycleMutation
 } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
 import {
@@ -69,6 +70,7 @@ const AppraisalList: React.FC = () => {
   const [createFormSet] = useCreateFormSetMutation();
   const [deleteFormSet] = useDeleteFormSetMutation();
   const [deleteForm] = useDeleteAppraisalFormMutation();
+  const [deleteCycle] = useDeleteCycleMutation();
   const { data: formSets = [] } = useGetAppraisalFormSetsQuery(undefined, { skip: !isPrivileged });
 
   const isLoading = loadingAppraisals || loadingTeam || (isPrivileged && (loadingCycles || loadingForms || (selectedCycleId && loadingCycleData)));
@@ -307,6 +309,30 @@ const AppraisalList: React.FC = () => {
               <button className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2">
                 <Mail className="w-4 h-4" /> Send Reminders
               </button>
+              {isPrivileged && !cycle?.isAssigned && (
+                <button
+                  onClick={() => {
+                    setConfirmModal({
+                      isOpen: true,
+                      title: 'Delete Appraisal Cycle',
+                      message: `Are you sure you want to permanently delete the cycle "${cycle.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
+                      onConfirm: async () => {
+                        try {
+                          await deleteCycle(Number(selectedCycleId)).unwrap();
+                          toast.success('Appraisal Cycle deleted successfully!');
+                          setSelectedCycleId(null);
+                        } catch (err: any) {
+                          const errorMsg = err?.data?.message || 'Failed to delete cycle';
+                          toast.error(`Error: ${errorMsg}`);
+                        }
+                      }
+                    });
+                  }}
+                  className="px-6 py-3 bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete Cycle
+                </button>
+              )}
               {!cycle?.isActive ? (
                 <button
                   onClick={() => activateCycle(Number(selectedCycleId))}
@@ -585,6 +611,31 @@ const AppraisalList: React.FC = () => {
                 {cycle.status?.replace('_', ' ') || (cycle.isActive ? 'ACTIVE' : 'INACTIVE')}
               </div>
               <div className="flex items-center gap-2">
+                {isPrivileged && !cycle.isAssigned && (
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setConfirmModal({
+                        isOpen: true,
+                        title: 'Delete Appraisal Cycle',
+                        message: `Are you sure you want to permanently delete the cycle "${cycle.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
+                        onConfirm: async () => {
+                          try {
+                            await deleteCycle(cycle.cycleId).unwrap();
+                            toast.success('Appraisal Cycle deleted successfully!');
+                          } catch (err: any) {
+                            const errorMsg = err?.data?.message || 'Failed to delete cycle';
+                            toast.error(`Error: ${errorMsg}`);
+                          }
+                        }
+                      });
+                    }}
+                    className="w-10 h-10 rounded-xl bg-slate-50 text-rose-500 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center transition-all duration-300 relative z-20"
+                    title="Delete Cycle"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                   <Calendar className="w-5 h-5" />
                 </div>
