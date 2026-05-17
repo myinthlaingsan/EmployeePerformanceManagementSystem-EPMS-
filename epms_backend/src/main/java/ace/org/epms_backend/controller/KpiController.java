@@ -123,9 +123,9 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(progressService.updateProgress(request)));
     }
 
-    // 5. KPI Revision (Manager)
+    // 5. KPI Revision (Manager/HR/Admin)
     @PutMapping("/revise/{itemId}")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<ApiResponse<GoalSetResponse>> reviseKpi(@PathVariable Long itemId,
             @Valid @RequestBody KpiRevisionRequest request) {
         return ResponseEntity.ok(ApiResponse.success(goalService.reviseKpi(itemId, request)));
