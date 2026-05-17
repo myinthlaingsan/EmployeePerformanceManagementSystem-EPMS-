@@ -9,58 +9,43 @@ import {
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  Users,
-  CheckCircle2,
-  Search,
-  Filter,
-  ChevronLeft,
-  UserPlus,
-  Building2,
-  Mail,
-  Briefcase,
-  Layers,
-  RefreshCw
+  Users, CheckCircle2, Search, Filter, ChevronLeft, UserPlus,
+  Building2, Mail, Briefcase, Layers, RefreshCw
 } from 'lucide-react';
+
+const selectStyle: React.CSSProperties = {
+  background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
+  padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%',
+  fontFamily: 'inherit',
+};
 
 const AppraisalAssignment: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    activeCycleId,
-    activeCycleName,
-    isLoadingCycle: cycleLoading
-  } = useAuth();
+  const { activeCycleId, activeCycleName, isLoadingCycle: cycleLoading } = useAuth();
 
   const { data: formSets = [], isLoading: formsLoading } = useGetAppraisalFormSetsQuery(activeCycleId, { skip: !activeCycleId });
   const [syncFormSets, { isLoading: isSyncing }] = useSyncFormSetsMutation();
   const { data: employeePaged, isLoading: empsLoading } = useGetEmployeesQuery({ page: 0, size: 100 });
   const [assignBulk, { isLoading: isAssigning }] = useAssignBulkMutation();
 
-  // State
   const [selectedCycleId, setSelectedCycleId] = useState<string>('');
   const [selectedFormSetId, setSelectedFormSetId] = useState<string>('');
-
-  // Auto-select active cycle
-  React.useEffect(() => {
-    if (activeCycleId != null) {
-      setSelectedCycleId(activeCycleId.toString());
-    }
-  }, [activeCycleId]);
-
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
   const [posFilter, setPosFilter] = useState('');
 
-  // Derived Data
+  React.useEffect(() => {
+    if (activeCycleId != null) setSelectedCycleId(activeCycleId.toString());
+  }, [activeCycleId]);
+
   const employees = employeePaged?.content || [];
 
   const filteredEmployees = useMemo(() => {
     if (!Array.isArray(employees)) return [];
     return employees.filter(emp => {
-      const name = String(emp?.staffName || '');
-      const email = String(emp?.email || '');
-      const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = String(emp?.staffName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(emp?.email || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesDept = deptFilter === '' || emp?.currentDepartmentName === deptFilter;
       const matchesPos = posFilter === '' || emp?.positionName === posFilter;
       return matchesSearch && matchesDept && matchesPos;
@@ -69,286 +54,193 @@ const AppraisalAssignment: React.FC = () => {
 
   const departments = useMemo(() => {
     if (!Array.isArray(employees)) return [];
-    const depts = new Set(employees.map(e => e?.currentDepartmentName).filter(name => !!name));
-    return Array.from(depts) as string[];
+    return Array.from(new Set(employees.map(e => e?.currentDepartmentName).filter(Boolean))) as string[];
   }, [employees]);
 
   const positions = useMemo(() => {
     if (!Array.isArray(employees)) return [];
-    const filteredEmps = deptFilter ? employees.filter(e => e?.currentDepartmentName === deptFilter) : employees;
-    const poses = new Set(filteredEmps.map(e => e?.positionName).filter(name => !!name));
-    return Array.from(poses) as string[];
+    const filtered = deptFilter ? employees.filter(e => e?.currentDepartmentName === deptFilter) : employees;
+    return Array.from(new Set(filtered.map(e => e?.positionName).filter(Boolean))) as string[];
   }, [employees, deptFilter]);
 
-  // Handlers
-  const toggleEmployee = (id: number) => {
-    setSelectedEmployeeIds(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
-
-  const selectAll = () => {
-    if (selectedEmployeeIds.length === filteredEmployees.length) {
-      setSelectedEmployeeIds([]);
-    } else {
-      setSelectedEmployeeIds(filteredEmployees.map(e => e.id));
-    }
-  };
+  const toggleEmployee = (id: number) => setSelectedEmployeeIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const selectAll = () => setSelectedEmployeeIds(selectedEmployeeIds.length === filteredEmployees.length ? [] : filteredEmployees.map(e => e.id));
 
   const handleAssign = async () => {
-    if (!selectedCycleId) {
-      toast.warning('Please select an appraisal cycle.');
-      return;
-    }
-    if (selectedEmployeeIds.length === 0) {
-      toast.warning('Please select at least one employee.');
-      return;
-    }
-
-    if (!selectedFormSetId || selectedFormSetId === '0') {
-      toast.warning('Please select a valid Form Set.');
-      return;
-    }
-    if (selectedEmployeeIds.length === 0) {
-      toast.warning('Please select at least one employee.');
-      return;
-    }
-
+    if (!selectedCycleId) { toast.warning('Please select an appraisal cycle.'); return; }
+    if (selectedEmployeeIds.length === 0) { toast.warning('Please select at least one employee.'); return; }
+    if (!selectedFormSetId || selectedFormSetId === '0') { toast.warning('Please select a valid Form Set.'); return; }
     try {
-      await assignBulk({
-        cycleId: Number(selectedCycleId),
-        formSetId: Number(selectedFormSetId),
-        employeeIds: selectedEmployeeIds
-      }).unwrap();
-
-      toast.success(`Successfully assigned appraisals to ${selectedEmployeeIds.length} employees!`);
+      await assignBulk({ cycleId: Number(selectedCycleId), formSetId: Number(selectedFormSetId), employeeIds: selectedEmployeeIds }).unwrap();
+      toast.success(`Assigned appraisals to ${selectedEmployeeIds.length} employees!`);
       navigate('/appraisal');
     } catch (err: any) {
-      console.error(err);
-      const message = err?.data?.message || 'Failed to assign appraisals. Ensure HR permissions are active.';
-      toast.error(message);
+      toast.error(err?.data?.message || 'Failed to assign appraisals.');
     }
   };
 
-  const inputClass = "px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-700 text-sm";
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20">
+    <div className="space-y-4 pb-8">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-8 py-4 sticky top-0 z-30 shadow-sm flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
-            <ChevronLeft className="w-6 h-6" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)}
+            style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.5px solid #E4E6EC', borderRadius: 8, background: '#FFFFFF', color: '#5A6070' }}
+            className="hover:bg-[#F5F6F8] transition-colors">
+            <ChevronLeft size={16} />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Appraisal Assignment</h1>
-            <p className="text-slate-400 text-xs">Link employees to a performance review cycle.</p>
+            <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Appraisal Assignment</h1>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>Link employees to a performance review cycle.</p>
           </div>
         </div>
-        <button
-          onClick={handleAssign}
-          disabled={isAssigning || selectedEmployeeIds.length === 0}
-          className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2 disabled:opacity-50"
-        >
-          {isAssigning ? 'Processing...' : <><UserPlus className="w-4 h-4" /> Confirm Assignment ({selectedEmployeeIds.length})</>}
+        <button onClick={handleAssign} disabled={isAssigning || selectedEmployeeIds.length === 0}
+          className="inline-flex items-center gap-2 transition-colors disabled:opacity-50 self-start sm:self-auto"
+          style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+          <UserPlus size={14} /> {isAssigning ? 'Processing…' : `Confirm Assignment (${selectedEmployeeIds.length})`}
         </button>
       </div>
 
-      <div className="max-w-6xl mx-auto mt-8 px-4 grid grid-cols-1 lg:grid-cols-4 gap-8">
-
-        {/* Sidebar Controls */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-            <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Assignment Setup</h2>
-
-            <div className="space-y-5">
-              {/* Step 1: Active Cycle (Locked) */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* Sidebar */}
+        <div className="lg:col-span-1 space-y-4">
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>Assignment Setup</p>
+            <div className="space-y-4">
+              {/* Active cycle */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">1. Active Cycle</label>
-                <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm font-bold flex items-center gap-3">
-                  <CheckCircle2 className={`w-4 h-4 ${cycleLoading ? 'animate-spin text-slate-300' : 'text-emerald-500'}`} />
-                  {cycleLoading ? 'Finding active cycle...' : activeCycleName}
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 }}>1. Active Cycle</label>
+                <div style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <CheckCircle2 size={13} style={{ color: cycleLoading ? '#9EA3B0' : '#27500A', flexShrink: 0 }} />
+                  {cycleLoading ? 'Finding active cycle…' : activeCycleName}
                 </div>
               </div>
 
-              {/* Step 2: Form Set */}
+              {/* Form set */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">2. Choose Form Set</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 }}>2. Form Set</label>
                 <div className="relative">
-                  <Layers className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
-                    <select
-                      className={inputClass + " w-full pl-10"}
-                      value={selectedFormSetId}
-                      onChange={e => setSelectedFormSetId(e.target.value)}
-                    >
-                      <option value="">Select Form Set...</option>
-                      {Array.isArray(formSets) && formSets.map(fs => (
-                        <option key={fs.id} value={fs.id}>{fs.name}</option>
-                      ))}
-                    </select>
+                  <Layers size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+                  <select style={{ ...selectStyle, paddingLeft: 30 }} value={selectedFormSetId} onChange={e => setSelectedFormSetId(e.target.value)}>
+                    <option value="">Select Form Set…</option>
+                    {Array.isArray(formSets) && formSets.map((fs: any) => <option key={fs.id} value={fs.id}>{fs.name}</option>)}
+                  </select>
                 </div>
                 {formSets.length === 0 && !formsLoading && (
-                  <button
-                    onClick={() => syncFormSets().unwrap().then((res) => toast.success(res || 'Successfully synced form sets!'))}
-                    disabled={isSyncing}
-                    className="mt-2 text-[10px] text-indigo-600 font-bold flex items-center gap-1 hover:text-indigo-800"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                    Sync Form Sets from Templates
+                  <button onClick={() => syncFormSets().unwrap().then((res: any) => toast.success(res || 'Synced!'))} disabled={isSyncing}
+                    className="mt-2 flex items-center gap-1 transition-colors disabled:opacity-50"
+                    style={{ fontSize: 12, color: '#1A56DB' }}>
+                    <RefreshCw size={11} className={isSyncing ? 'animate-spin' : ''} /> Sync from Templates
                   </button>
-                )}
-                {selectedFormSetId && selectedFormSetId !== '0' && (
-                  <p className="text-[10px] text-slate-400 mt-1.5 px-1 italic">
-                    Includes Self-Assessment & Manager Evaluation templates.
-                  </p>
                 )}
               </div>
 
-              {/* Step 3: Department */}
+              {/* Department */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">3. Choose Department</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 }}>3. Department</label>
                 <div className="relative">
-                  <Building2 className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
-                  <select
-                    className={inputClass + " w-full pl-10"}
-                    value={deptFilter}
-                    onChange={e => {
-                      setDeptFilter(e.target.value);
-                      setPosFilter(''); // Reset position when dept changes
-                    }}
-                  >
+                  <Building2 size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+                  <select style={{ ...selectStyle, paddingLeft: 30 }} value={deptFilter} onChange={e => { setDeptFilter(e.target.value); setPosFilter(''); }}>
                     <option value="">All Departments</option>
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
+                    {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
                   </select>
                 </div>
               </div>
 
-              {/* Step 4: Position */}
+              {/* Position */}
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">4. Choose Position</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 }}>4. Position</label>
                 <div className="relative">
-                  <Briefcase className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
-                  <select
-                    className={inputClass + " w-full pl-10"}
-                    value={posFilter}
-                    onChange={e => setPosFilter(e.target.value)}
-                    disabled={!deptFilter && employees.length > 0}
-                  >
+                  <Briefcase size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+                  <select style={{ ...selectStyle, paddingLeft: 30 }} value={posFilter} onChange={e => setPosFilter(e.target.value)} disabled={!deptFilter}>
                     <option value="">All Positions</option>
-                    {positions.map(pos => (
-                      <option key={pos} value={pos}>{pos}</option>
-                    ))}
+                    {positions.map(pos => <option key={pos} value={pos}>{pos}</option>)}
                   </select>
                 </div>
               </div>
 
               {/* Search */}
-              <div className="pt-4 border-t border-slate-100">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Search Employee</label>
+              <div style={{ paddingTop: 12, borderTop: '0.5px solid #F0F2F6' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 }}>Search</label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-300" />
-                  <input
-                    type="text"
-                    placeholder="Name or email..."
-                    className={inputClass + " w-full pl-10"}
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                  />
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+                  <input type="text" placeholder="Name or email…" style={{ ...selectStyle, paddingLeft: 30 }}
+                    value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-indigo-600 rounded-3xl p-6 text-white shadow-xl shadow-indigo-100">
-            <h3 className="font-bold mb-2 flex items-center gap-2">
-              <Users className="w-5 h-5" /> Quick Summary
-            </h3>
-            <p className="text-indigo-100 text-xs leading-relaxed opacity-80">
-              You are about to assign an appraisal to {selectedEmployeeIds.length} employees. This will notify them and their managers to begin the process.
+          {/* Summary */}
+          <div style={{ background: '#111827', border: 'none', borderRadius: 12, padding: '14px 16px' }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+              <Users size={14} style={{ color: '#9EA3B0' }} />
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#FFFFFF' }}>Quick Summary</p>
+            </div>
+            <p style={{ fontSize: 12, color: '#9EA3B0', lineHeight: 1.6 }}>
+              Assigning appraisals to <strong style={{ color: '#FFFFFF' }}>{selectedEmployeeIds.length}</strong> employees. They and their managers will be notified to begin.
             </p>
           </div>
         </div>
 
-        {/* Employee List Section */}
+        {/* Employee list */}
         <div className="lg:col-span-3">
           {!cycleLoading && !activeCycleId ? (
-            <div className="bg-white rounded-[3rem] border-2 border-dashed border-slate-200 p-20 text-center flex flex-col items-center justify-center space-y-6">
-              <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center text-amber-500">
-                <Filter className="w-10 h-10" />
+            <div style={{ background: '#FFFFFF', border: '0.5px dashed #E0E2E8', borderRadius: 12, padding: '40px 24px', textAlign: 'center' }}>
+              <div style={{ width: 48, height: 48, borderRadius: 8, background: '#FAEEDA', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Filter size={20} style={{ color: '#633806' }} />
               </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-900 mb-2">No Active Appraisal Cycle</h3>
-                <p className="text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
-                  You cannot assign appraisals because there is no active cycle. Please create or activate a cycle in the management dashboard first.
-                </p>
-              </div>
-              <button
-                onClick={() => navigate('/appraisal-cycles')}
-                className="px-8 py-3 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
-              >
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 6 }}>No Active Appraisal Cycle</p>
+              <p style={{ fontSize: 13, color: '#9EA3B0', marginBottom: 20 }}>Please create or activate a cycle before assigning appraisals.</p>
+              <button onClick={() => navigate('/appraisal-cycles')}
+                style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, border: 'none' }}>
                 Go to Cycle Management
               </button>
             </div>
           ) : (
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-8 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                  {filteredEmployees.length} Employees found
-                </span>
-                <button
-                  onClick={selectAll}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
-                >
+            <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+              <div className="flex items-center justify-between" style={{ padding: '10px 18px', borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
+                <span style={{ fontSize: 12, color: '#9EA3B0' }}>{filteredEmployees.length} employees found</span>
+                <button onClick={selectAll} style={{ fontSize: 12, color: '#1A56DB' }}>
                   {selectedEmployeeIds.length === filteredEmployees.length ? 'Deselect All' : 'Select All'}
                 </button>
               </div>
-
-              <div className="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
+              <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                 {empsLoading ? (
-                  <div className="p-20 text-center text-slate-400">Loading directory...</div>
-                ) : (
-                  <>
-                    {Array.isArray(filteredEmployees) && filteredEmployees.map(emp => (
-                      <div
-                        key={emp.id}
-                        onClick={() => toggleEmployee(emp.id)}
-                        className={`px-8 py-4 flex items-center justify-between cursor-pointer transition-all hover:bg-slate-50 ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-50/30' : ''}`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                            {(emp.staffName || 'E').charAt(0)}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-slate-800 text-sm">{emp.staffName || 'Unknown Employee'}</h4>
-                            <div className="flex items-center gap-3 mt-0.5">
-                              <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
-                                <Mail className="w-3 h-3" /> {emp.email || 'No Email'}
-                              </span>
-                              <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
-                                <Building2 className="w-3 h-3" /> {emp.currentDepartmentName || 'No Dept'}
-                              </span>
-                              <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 border-l border-slate-200 pl-3">
-                                <Briefcase className="w-3 h-3" /> {emp.positionName || 'No Pos'}
-                              </span>
-                            </div>
+                  <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading directory…</div>
+                ) : filteredEmployees.length === 0 ? (
+                  <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No employees found.</div>
+                ) : filteredEmployees.map((emp, idx) => {
+                  const selected = selectedEmployeeIds.includes(emp.id);
+                  return (
+                    <div key={emp.id} onClick={() => toggleEmployee(emp.id)}
+                      style={{ padding: '10px 18px', borderBottom: idx < filteredEmployees.length - 1 ? '0.5px solid #F0F2F6' : 'none', cursor: 'pointer', background: selected ? '#EEF3FD' : '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+                      className="hover:bg-[#FAFBFF] transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: selected ? '#1A56DB' : '#F5F6F8', color: selected ? '#FFFFFF' : '#5A6070', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {(emp.staffName || 'E').charAt(0)}
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{emp.staffName || 'Unknown'}</p>
+                          <div className="flex flex-wrap gap-3" style={{ marginTop: 2 }}>
+                            <span style={{ fontSize: 11, color: '#9EA3B0', display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <Mail size={10} /> {emp.email || '—'}
+                            </span>
+                            <span style={{ fontSize: 11, color: '#9EA3B0', display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <Building2 size={10} /> {emp.currentDepartmentName || '—'}
+                            </span>
+                            <span style={{ fontSize: 11, color: '#9EA3B0', display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <Briefcase size={10} /> {emp.positionName || '—'}
+                            </span>
                           </div>
                         </div>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedEmployeeIds.includes(emp.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200'}`}>
-                          {selectedEmployeeIds.includes(emp.id) && <CheckCircle2 className="w-4 h-4 text-white" />}
-                        </div>
                       </div>
-                    ))}
-
-                    {filteredEmployees.length === 0 && !empsLoading && (
-                      <div className="p-20 text-center text-slate-300">
-                        <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        <p className="text-sm font-medium">No employees found matching your filters.</p>
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', border: `0.5px solid ${selected ? '#1A56DB' : '#E0E2E8'}`, background: selected ? '#1A56DB' : '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {selected && <CheckCircle2 size={12} style={{ color: '#FFFFFF' }} />}
                       </div>
-                    )}
-                  </>
-                )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

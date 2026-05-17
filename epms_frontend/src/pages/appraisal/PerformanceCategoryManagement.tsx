@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'react-toastify';
 import {
   useGetPerformanceCategoriesQuery,
@@ -7,292 +7,234 @@ import {
   useDeletePerformanceCategoryMutation
 } from '../../features/appraisal/performanceCategoryApi';
 import type { PerformanceCategory, PerformanceGrade } from '../../types/appraisal';
-import {
-  Plus,
-  Trash2,
-  Edit2,
-  Layers,
-  Target,
-  BarChart3,
-  X,
-  Check
-} from 'lucide-react';
+import { Plus, Trash2, Edit2, Layers, Target, BarChart3, X, Check } from 'lucide-react';
 
 const GRADES: PerformanceGrade[] = [
-  'OUTSTANDING',
-  'EXCEEDS_EXPECTATIONS',
-  'MEETS_EXPECTATIONS',
-  'NEEDS_IMPROVEMENT',
-  'UNSATISFACTORY'
+  'OUTSTANDING', 'EXCEEDS_EXPECTATIONS', 'MEETS_EXPECTATIONS', 'NEEDS_IMPROVEMENT', 'UNSATISFACTORY'
 ];
+
+const inputStyle: React.CSSProperties = {
+  background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
+  padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box',
+  fontFamily: 'inherit',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0',
+  textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5,
+};
 
 const PerformanceCategoryManagement: React.FC = () => {
   const { data: response, isLoading } = useGetPerformanceCategoriesQuery();
   const categories = response?.data || [];
-
   const [createCategory] = useCreatePerformanceCategoryMutation();
   const [updateCategory] = useUpdatePerformanceCategoryMutation();
   const [deleteCategory] = useDeletePerformanceCategoryMutation();
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<PerformanceCategory>({
-    name: '',
-    minScore: 0,
-    maxScore: 100,
-    ratingValue: 3,
-    grade: 'MEETS_EXPECTATIONS',
-    description: ''
-  });
+  const [formData, setFormData] = useState<any>({ name: '', minScore: 0, maxScore: 100, ratingValue: 3, grade: 'MEETS_EXPECTATIONS', description: '' });
 
-  const handleOpenAdd = () => {
-    setEditingId(null);
-    setFormData({
-      name: '',
-      minScore: 0,
-      maxScore: 100,
-      ratingValue: 3,
-      grade: 'MEETS_EXPECTATIONS',
-      description: ''
-    });
-    setShowModal(true);
-  };
-
-  const handleOpenEdit = (category: PerformanceCategory) => {
-    setEditingId(category.id!);
-    setFormData({ ...category });
-    setShowModal(true);
-  };
+  const handleOpenAdd = () => { setEditingId(null); setFormData({ name: '', minScore: 0, maxScore: 100, ratingValue: 3, grade: 'MEETS_EXPECTATIONS', description: '' }); setShowModal(true); };
+  const handleOpenEdit = (category: PerformanceCategory) => { setEditingId(category.id!); setFormData({ ...category }); setShowModal(true); };
 
   const handleSubmit = async () => {
-    if (!formData.name || formData.minScore === undefined || formData.maxScore === undefined) {
-      toast.warning('Please fill required fields');
-      return;
-    }
-
+    if (!formData.name || formData.minScore === undefined || formData.maxScore === undefined) { toast.warning('Please fill required fields'); return; }
     try {
-      if (editingId) {
-        await updateCategory({ id: editingId, category: formData }).unwrap();
-      } else {
-        await createCategory(formData).unwrap();
-      }
+      const cleanedCategory = {
+        ...formData,
+        minScore: formData.minScore === '' ? 0 : Number(formData.minScore),
+        maxScore: formData.maxScore === '' ? 0 : Number(formData.maxScore),
+        ratingValue: formData.ratingValue === '' ? 1 : Number(formData.ratingValue)
+      };
+      if (editingId) await updateCategory({ id: editingId, category: cleanedCategory }).unwrap();
+      else await createCategory(cleanedCategory).unwrap();
       setShowModal(false);
-    } catch (err) {
-      toast.error('Failed to save performance category');
-    }
+    } catch { toast.error('Failed to save performance category'); }
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this category? This may affect final appraisal calculations.')) {
-      await deleteCategory(id);
-    }
+    if (window.confirm('Delete this category? This may affect final appraisal calculations.')) await deleteCategory(id);
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Page Header */}
-      <div className="flex justify-between items-end">
+    <div className="space-y-4 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Performance Categories</h2>
-          <p className="text-slate-500 font-medium">Define grading bands and score ranges for final appraisals.</p>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Performance Categories</h1>
+          <p style={{ fontSize: 13, color: '#9EA3B0', marginTop: 2 }}>Define grading bands and score ranges for final appraisals.</p>
         </div>
-        <button
-          onClick={handleOpenAdd}
-          className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" /> Add New Category
+        <button onClick={handleOpenAdd} className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+          style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+          <Plus size={14} /> Add Category
         </button>
       </div>
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-            <Layers className="w-6 h-6" />
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { label: 'Total Categories', value: categories.length, icon: Layers, bg: '#EEF3FD', color: '#1A56DB' },
+          { label: 'Score System', value: '0 – 100 Scale', icon: Target, bg: '#EAF3DE', color: '#27500A' },
+          { label: 'Rating Range', value: '1 – 5 Values', icon: BarChart3, bg: '#FAEEDA', color: '#633806' },
+        ].map(({ label, value, icon: Icon, bg, color }) => (
+          <div key={label} style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon size={16} style={{ color }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</p>
+              <p style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>{value}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Categories</p>
-            <p className="text-xl font-black text-slate-900">{categories.length}</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-            <Target className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Score System</p>
-            <p className="text-xl font-black text-slate-900">0 - 100 Scale</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
-            <BarChart3 className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rating Range</p>
-            <p className="text-xl font-black text-slate-900">1 - 5 Values</p>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Category List */}
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50/50">
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Grade Name</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Score Range</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Rating Value</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">System Enum</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {isLoading ? (
-              <tr><td colSpan={5} className="px-8 py-12 text-center text-slate-400 font-medium">Loading categories...</td></tr>
-            ) : categories.length === 0 ? (
-              <tr><td colSpan={5} className="px-8 py-12 text-center text-slate-400 font-medium">No performance categories defined.</td></tr>
-            ) : categories.map((cat) => (
-              <tr key={cat.id} className="hover:bg-slate-50/50 transition-colors group">
-                <td className="px-8 py-6">
-                  <div>
-                    <p className="font-bold text-slate-900">{cat.name}</p>
-                    <p className="text-[10px] text-slate-400 font-medium line-clamp-1 max-w-[200px]">{cat.description}</p>
-                  </div>
-                </td>
-                <td className="px-8 py-6">
-                  <span className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg border border-slate-200">
-                    {cat.minScore} - {cat.maxScore}
-                  </span>
-                </td>
-                <td className="px-8 py-6">
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className={`w-1.5 h-4 rounded-full ${i < cat.ratingValue ? 'bg-indigo-500' : 'bg-slate-200'}`}></div>
-                    ))}
-                    <span className="ml-2 font-bold text-slate-700">{cat.ratingValue}</span>
-                  </div>
-                </td>
-                <td className="px-8 py-6">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                    {cat.grade}
-                  </span>
-                </td>
-                <td className="px-8 py-6 text-right">
-                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handleOpenEdit(cat)}
-                      className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                      title="Edit"
-                    >
-                      <Edit2 className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(cat.id!)}
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </td>
+      {/* Table */}
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left" style={{ minWidth: 560 }}>
+            <thead>
+              <tr style={{ borderBottom: '0.5px solid #E4E6EC' }}>
+                {['Grade Name', 'Score Range', 'Rating', 'System Enum', ''].map((h, i) => (
+                  <th key={h + i} style={{ padding: '10px 18px', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 4 ? 'right' : 'left' }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={5} style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading…</td></tr>
+              ) : categories.length === 0 ? (
+                <tr><td colSpan={5} style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No performance categories defined.</td></tr>
+              ) : categories.map((cat, idx) => (
+                <tr key={cat.id} style={{ borderBottom: idx < categories.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
+                  className="hover:bg-[#FAFBFF] transition-colors">
+                  <td style={{ padding: '11px 18px' }}>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{cat.name}</p>
+                    <p style={{ fontSize: 11, color: '#9EA3B0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{cat.description}</p>
+                  </td>
+                  <td style={{ padding: '11px 18px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 6, padding: '2px 8px' }}>
+                      {cat.minScore} – {cat.maxScore}
+                    </span>
+                  </td>
+                  <td style={{ padding: '11px 18px' }}>
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} style={{ width: 5, height: 14, borderRadius: 3, background: i < cat.ratingValue ? '#1A56DB' : '#E4E6EC' }} />
+                      ))}
+                      <span style={{ marginLeft: 6, fontSize: 12, fontWeight: 500, color: '#111827' }}>{cat.ratingValue}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '11px 18px' }}>
+                    <span style={{ fontSize: 10, fontWeight: 500, color: '#444441', background: '#F1EFE8', border: '0.5px solid #DDDBD2', borderRadius: 6, padding: '2px 8px' }}>
+                      {cat.grade}
+                    </span>
+                  </td>
+                  <td style={{ padding: '11px 18px', textAlign: 'right' }}>
+                    <div className="flex justify-end items-center gap-1">
+                      <button onClick={() => handleOpenEdit(cat)} title="Edit"
+                        style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
+                        className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
+                        <Edit2 size={13} />
+                      </button>
+                      <button onClick={() => handleDelete(cat.id!)} title="Delete"
+                        style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
+                        className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)}></div>
-          <div className="relative bg-white rounded-[2.5rem] w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-10 border-b border-slate-50 flex justify-between items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
+          <div onClick={() => setShowModal(false)} className="absolute inset-0" />
+          <div style={{ position: 'relative', background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div className="flex items-center justify-between" style={{ padding: '14px 18px', borderBottom: '0.5px solid #E4E6EC' }}>
               <div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">{editingId ? 'Edit Category' : 'New Category'}</h3>
-                <p className="text-slate-400 font-medium text-sm">Configure how scores translate to performance grades.</p>
+                <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{editingId ? 'Edit Category' : 'New Category'}</p>
+                <p style={{ fontSize: 12, color: '#9EA3B0' }}>Configure how scores translate to performance grades.</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
-                <X className="w-6 h-6" />
+              <button onClick={() => setShowModal(false)} style={{ color: '#9EA3B0' }} className="hover:text-[#111827] transition-colors">
+                <X size={16} />
               </button>
             </div>
-            <div className="p-10 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Display Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Outstanding Performance"
-                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700"
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  />
+            <div style={{ padding: '16px 18px', overflowY: 'auto' }} className="space-y-4">
+              <div>
+                <label style={labelStyle}>Display Name</label>
+                <input type="text" style={inputStyle} placeholder="e.g. Outstanding Performance"
+                  value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label style={labelStyle}>Min Score (0-100)</label>
+                  <input type="number" min="0" style={{ ...inputStyle, textAlign: 'right' }} value={formData.minScore === '' ? '' : formData.minScore}
+                    onKeyDown={e => {
+                      if (e.key === '-') {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormData({ ...formData, minScore: val === '' ? '' : Math.max(0, Number(val)) });
+                    }} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Min Score (0-100)</label>
-                  <input
-                    type="number"
-                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700"
-                    value={formData.minScore}
-                    onChange={e => setFormData({ ...formData, minScore: Number(e.target.value) })}
-                  />
+                  <label style={labelStyle}>Max Score (0-100)</label>
+                  <input type="number" min="0" style={{ ...inputStyle, textAlign: 'right' }} value={formData.maxScore === '' ? '' : formData.maxScore}
+                    onKeyDown={e => {
+                      if (e.key === '-') {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormData({ ...formData, maxScore: val === '' ? '' : Math.max(0, Number(val)) });
+                    }} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Max Score (0-100)</label>
-                  <input
-                    type="number"
-                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700"
-                    value={formData.maxScore}
-                    onChange={e => setFormData({ ...formData, maxScore: Number(e.target.value) })}
-                  />
+                  <label style={labelStyle}>Rating Value (1-5)</label>
+                  <input type="number" min="1" max="5" style={{ ...inputStyle, textAlign: 'right' }} value={formData.ratingValue === '' ? '' : formData.ratingValue}
+                    onKeyDown={e => {
+                      if (e.key === '-') {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormData({ ...formData, ratingValue: val === '' ? '' : Math.max(0, Number(val)) });
+                    }} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Rating Value (1-5)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="5"
-                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700"
-                    value={formData.ratingValue}
-                    onChange={e => setFormData({ ...formData, ratingValue: Number(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">System Grade (Enum)</label>
-                  <select
-                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700 appearance-none"
-                    value={formData.grade}
-                    onChange={e => setFormData({ ...formData, grade: e.target.value as PerformanceGrade })}
-                  >
-                    {GRADES.map(pg => (
-                      <option key={pg} value={pg}>{pg}</option>
-                    ))}
+                  <label style={labelStyle}>System Grade</label>
+                  <select style={inputStyle} value={formData.grade}
+                    onChange={e => setFormData({ ...formData, grade: e.target.value as PerformanceGrade })}>
+                    {GRADES.map(pg => <option key={pg} value={pg}>{pg}</option>)}
                   </select>
                 </div>
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Description</label>
-                  <textarea
-                    rows={3}
-                    placeholder="Describe the characteristics of this performance level..."
-                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700 resize-none"
-                    value={formData.description}
-                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  />
-                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Description</label>
+                <textarea rows={3} style={{ ...inputStyle, resize: 'none', height: 72 }}
+                  placeholder="Describe the characteristics of this performance level…"
+                  value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
               </div>
             </div>
-            <div className="p-10 bg-slate-50 flex gap-4">
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors"
-              >
+            <div className="flex gap-2" style={{ padding: '14px 18px', borderTop: '0.5px solid #E4E6EC' }}>
+              <button onClick={() => setShowModal(false)} className="flex-1 transition-colors"
+                style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
                 Cancel
               </button>
-              <button
-                onClick={handleSubmit}
-                className="flex-[2] py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2"
-              >
-                <Check className="w-5 h-5" /> {editingId ? 'Update Category' : 'Create Category'}
+              <button onClick={handleSubmit} className="flex-[2] inline-flex items-center justify-center gap-2 transition-colors"
+                style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
+                <Check size={13} /> {editingId ? 'Update Category' : 'Create Category'}
               </button>
             </div>
           </div>

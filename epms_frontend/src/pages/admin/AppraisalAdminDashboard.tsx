@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, Save, Plus, Info, Check, Lock, Box, MoreVertical, Calendar, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Save, Plus, Trash2 } from 'lucide-react';
 import { useGetCyclesQuery, useCreateCycleMutation } from '../../features/appraisal/appraisalApi';
 
 interface Field {
@@ -16,8 +15,16 @@ interface Section {
   fields: Field[];
 }
 
+const inputStyle: React.CSSProperties = { background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' };
+const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 };
+
+const CYCLE_STATUS_STYLE: Record<string, { background: string; color: string; border: string }> = {
+  Active:  { background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4' },
+  Closed:  { background: '#F1EFE8', color: '#444441', border: '0.5px solid #DDDBD2' },
+  Draft:   { background: '#FAEEDA', color: '#633806', border: '0.5px solid #F0D4A4' },
+};
+
 const AppraisalAdminDashboard = () => {
-  const navigate = useNavigate();
   const { data: cycles = [], isLoading, isError } = useGetCyclesQuery();
   const [createCycle, { isLoading: isCreating }] = useCreateCycleMutation();
 
@@ -30,9 +37,7 @@ const AppraisalAdminDashboard = () => {
     {
       id: 's1',
       title: 'Employee Self-Reflection',
-      fields: [
-        { id: 'f1', type: 'RATING', required: true, label: 'Quantitative Performance' }
-      ]
+      fields: [{ id: 'f1', type: 'RATING', required: true, label: 'Quantitative Performance' }]
     }
   ]);
 
@@ -41,24 +46,17 @@ const AppraisalAdminDashboard = () => {
   };
 
   const handleAddField = (sectionId: string) => {
-    setSections(sections.map(s => {
-      if (s.id === sectionId) {
-        return {
-          ...s,
-          fields: [...s.fields, { id: Date.now().toString(), type: 'TEXTAREA', required: false, label: 'New Field' }]
-        };
-      }
-      return s;
-    }));
+    setSections(sections.map(s => s.id === sectionId
+      ? { ...s, fields: [...s.fields, { id: Date.now().toString(), type: 'TEXTAREA', required: false, label: 'New Field' }] }
+      : s
+    ));
   };
 
   const handleRemoveField = (sectionId: string, fieldId: string) => {
-    setSections(sections.map(s => {
-      if (s.id === sectionId) {
-        return { ...s, fields: s.fields.filter(f => f.id !== fieldId) };
-      }
-      return s;
-    }));
+    setSections(sections.map(s => s.id === sectionId
+      ? { ...s, fields: s.fields.filter(f => f.id !== fieldId) }
+      : s
+    ));
   };
 
   const handleRemoveSection = (sectionId: string) => {
@@ -68,92 +66,59 @@ const AppraisalAdminDashboard = () => {
   const handleLaunchCycle = async () => {
     if (!cycleName || !startDate || !endDate) return alert('Please fill all cycle parameters.');
     try {
-      await createCycle({
-        name: cycleName,
-        startDate,
-        endDate,
-        frequency
-      }).unwrap();
+      await createCycle({ name: cycleName, startDate, endDate, frequency }).unwrap();
       alert('Appraisal cycle launched successfully!');
-      // Reset form
-      setCycleName('');
-      setStartDate('');
-      setEndDate('');
+      setCycleName(''); setStartDate(''); setEndDate('');
     } catch (err: any) {
-      const errMsg = err?.data?.message || 'Operation failed. Please try again.';
-      alert(errMsg);
+      alert(err?.data?.message || 'Operation failed. Please try again.');
     }
   };
 
   return (
-    <div className="p-8 max-w-350 mx-auto bg-[#fafafa] min-h-screen">
+    <div className="space-y-4 pb-8">
       {/* Header */}
-      <div className="flex justify-between items-start mb-8">
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <div>
-          <p className="text-[10px] font-bold text-brand-primary uppercase tracking-[0.2em] mb-2">Strategy & Governance</p>
-          <h1 className="text-4xl font-black text-brand-primary tracking-tight">Appraisal Management</h1>
-          <p className="text-text-muted mt-2 font-medium">Orchestrate performance cycles and design strategic review frameworks.</p>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Appraisal Management</h1>
+          <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Orchestrate performance cycles and design strategic review frameworks.</p>
         </div>
-        <div className="flex gap-3">
-          <button className="px-5 py-2.5 bg-gray-200/60 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors shadow-sm text-sm">
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={{ padding: '7px 14px', fontSize: 13, fontWeight: 500, color: '#5A6070', background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 8, cursor: 'pointer' }}
+            className="hover:border-[#9EA3B0] transition-colors">
             Archive Selected
           </button>
-          <button 
-            onClick={handleLaunchCycle}
-            disabled={isCreating}
-            className="px-6 py-3 bg-brand-primary hover:bg-brand-secondary text-white font-black rounded-xl transition-all shadow-lg shadow-brand-primary/20 text-xs uppercase tracking-widest disabled:opacity-50"
-          >
+          <button onClick={handleLaunchCycle} disabled={isCreating}
+            style={{ padding: '7px 16px', fontSize: 13, fontWeight: 500, background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, cursor: 'pointer', opacity: isCreating ? 0.6 : 1 }}
+            className="hover:opacity-90 transition-opacity disabled:opacity-50">
             {isCreating ? 'Launching...' : 'Launch Cycle'}
           </button>
         </div>
       </div>
 
       {/* Top Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Cycle Parameters */}
-        <div className="lg:col-span-4 bg-white rounded-xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] p-6 border border-gray-100">
-          <h2 className="text-[13px] font-bold text-gray-500 tracking-wider mb-6">CYCLE PARAMETERS</h2>
-          
-          <div className="space-y-5">
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }} className="lg:col-span-4">
+          <h2 style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>Cycle Parameters</h2>
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cycle Title</label>
-              <input 
-                type="text" 
-                value={cycleName}
-                onChange={(e) => setCycleName(e.target.value)}
-                placeholder="e.g., Annual Performance Review 2"
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm text-gray-800"
-              />
+              <label style={labelStyle}>Cycle Title</label>
+              <input type="text" value={cycleName} onChange={e => setCycleName(e.target.value)}
+                placeholder="e.g., Annual Performance Review 2" style={inputStyle} />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Start Date</label>
-                <input 
-                  type="date" 
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm text-gray-800"
-                />
+                <label style={labelStyle}>Start Date</label>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">End Date</label>
-                <input 
-                  type="date" 
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm text-gray-800"
-                />
+                <label style={labelStyle}>End Date</label>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={inputStyle} />
               </div>
             </div>
-
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Frequency</label>
-              <select 
-                value={frequency}
-                onChange={(e) => setFrequency(e.target.value)}
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm text-gray-800"
-              >
+              <label style={labelStyle}>Frequency</label>
+              <select value={frequency} onChange={e => setFrequency(e.target.value)} style={inputStyle}>
                 <option value="Annual">Annual</option>
                 <option value="Semi-Annual">Semi-Annual</option>
                 <option value="Quarterly">Quarterly</option>
@@ -162,161 +127,123 @@ const AppraisalAdminDashboard = () => {
           </div>
         </div>
 
-        {/* Custom Form Builder */}
-        <div className="lg:col-span-8 bg-white rounded-xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] p-6 border border-gray-100">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-[13px] font-bold text-gray-500 tracking-wider">DYNAMIC FORM BUILDER</h2>
-            <div className="flex gap-4 text-gray-700">
-              <button className="hover:text-black transition-colors" title="Save Draft"><Save className="w-5 h-5" /></button>
-            </div>
+        {/* Dynamic Form Builder */}
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }} className="lg:col-span-8">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h2 style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dynamic Form Builder</h2>
+            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9EA3B0', display: 'flex' }}
+              className="hover:text-[#111827] transition-colors" title="Save Draft">
+              <Save size={16} />
+            </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {sections.map((section, sIndex) => (
-              <div key={section.id} className="border-l-4 border-brand-primary bg-surface-base rounded-r-2xl p-6 shadow-sm border-y border-r border-surface-border relative">
-                <button 
-                  onClick={() => handleRemoveSection(section.id)}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"
-                >
-                  <Trash2 className="w-4 h-4" />
+              <div key={section.id} style={{ borderLeft: '2px solid #1A56DB', background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '12px 14px', position: 'relative' }}>
+                <button onClick={() => handleRemoveSection(section.id)}
+                  style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: '#9EA3B0', display: 'flex' }}
+                  className="hover:text-[#791F1F] transition-colors">
+                  <Trash2 size={14} />
                 </button>
-                <div className="mb-4">
-                  <input 
-                    type="text" 
-                    value={section.title}
-                    onChange={(e) => {
-                      const newSections = [...sections];
-                      newSections[sIndex].title = e.target.value;
-                      setSections(newSections);
-                    }}
-                    className="text-[17px] font-bold text-gray-900 bg-transparent border-b border-dashed border-gray-300 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                
-                <div className="space-y-4">
+                <input type="text" value={section.title}
+                  onChange={e => { const ns = [...sections]; ns[sIndex].title = e.target.value; setSections(ns); }}
+                  style={{ fontSize: 13, fontWeight: 500, color: '#111827', background: 'transparent', border: 'none', borderBottom: '1px dashed #E4E6EC', outline: 'none', marginBottom: 10, fontFamily: 'inherit', width: 'calc(100% - 28px)' }} />
+
+                <div className="space-y-2">
                   {section.fields.map((field, fIndex) => (
-                    <div key={field.id} className="grid grid-cols-12 gap-4 items-center bg-white p-3 rounded-lg border border-gray-200">
-                      <div className="col-span-5">
-                        <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Field Label</label>
-                        <input 
-                          type="text"
-                          value={field.label}
-                          onChange={(e) => {
-                            const newSections = [...sections];
-                            newSections[sIndex].fields[fIndex].label = e.target.value;
-                            setSections(newSections);
-                          }}
-                          className="w-full text-sm border-b border-gray-200 focus:outline-none focus:border-blue-500 py-1"
-                        />
+                    <div key={field.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 8, alignItems: 'center', background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 6, padding: '8px 10px' }}>
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>Field Label</div>
+                        <input type="text" value={field.label}
+                          onChange={e => { const ns = [...sections]; ns[sIndex].fields[fIndex].label = e.target.value; setSections(ns); }}
+                          style={{ fontSize: 13, color: '#111827', border: 'none', borderBottom: '0.5px solid #E0E2E8', outline: 'none', background: 'transparent', fontFamily: 'inherit', width: '100%' }} />
                       </div>
-                      <div className="col-span-4">
-                        <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Type</label>
-                        <select 
-                          value={field.type}
-                          onChange={(e) => {
-                            const newSections = [...sections];
-                            newSections[sIndex].fields[fIndex].type = e.target.value as 'RATING' | 'TEXTAREA';
-                            setSections(newSections);
-                          }}
-                          className="w-full text-sm bg-gray-50 border border-gray-200 rounded p-1"
-                        >
-                          <option value="RATING">Rating (1-5)</option>
-                          <option value="TEXTAREA">Textarea</option>
-                        </select>
-                      </div>
-                      <div className="col-span-2 flex flex-col items-center">
-                        <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Required</label>
-                        <input 
-                          type="checkbox"
-                          checked={field.required}
-                          onChange={(e) => {
-                            const newSections = [...sections];
-                            newSections[sIndex].fields[fIndex].required = e.target.checked;
-                            setSections(newSections);
-                          }}
-                          className="w-4 h-4 text-blue-600 rounded"
-                        />
-                      </div>
-                      <div className="col-span-1 flex justify-end">
-                        <button onClick={() => handleRemoveField(section.id, field.id)} className="text-gray-400 hover:text-red-500">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <select value={field.type}
+                        onChange={e => { const ns = [...sections]; ns[sIndex].fields[fIndex].type = e.target.value as 'RATING' | 'TEXTAREA'; setSections(ns); }}
+                        style={{ fontSize: 12, color: '#5A6070', background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 6px', outline: 'none', fontFamily: 'inherit' }}>
+                        <option value="RATING">Rating (1-5)</option>
+                        <option value="TEXTAREA">Textarea</option>
+                      </select>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9EA3B0', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <input type="checkbox" checked={field.required}
+                          onChange={e => { const ns = [...sections]; ns[sIndex].fields[fIndex].required = e.target.checked; setSections(ns); }}
+                          style={{ accentColor: '#1A56DB' }} />
+                        Req.
+                      </label>
+                      <button onClick={() => handleRemoveField(section.id, field.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9EA3B0', display: 'flex' }}
+                        className="hover:text-[#791F1F] transition-colors">
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   ))}
-                  <button 
-                    onClick={() => handleAddField(section.id)}
-                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-2"
-                  >
-                    <Plus className="w-3 h-3" /> Add Field
+                  <button onClick={() => handleAddField(section.id)}
+                    style={{ fontSize: 12, fontWeight: 500, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontFamily: 'inherit' }}
+                    className="hover:underline">
+                    <Plus size={12} /> Add Field
                   </button>
                 </div>
               </div>
             ))}
 
-            <button 
-              onClick={handleAddSection}
-              className="w-full py-4 border-2 border-dashed border-gray-200 hover:border-blue-300 rounded-xl flex flex-col items-center justify-center gap-2 bg-gray-50/50 hover:bg-blue-50/30 transition-all group mt-2"
-            >
-              <div className="w-7 h-7 bg-gray-400 group-hover:bg-blue-600 transition-colors rounded-full flex items-center justify-center text-white">
-                <Plus className="w-4 h-4" />
+            <button onClick={handleAddSection}
+              style={{ width: '100%', padding: '10px', border: '2px dashed #E4E6EC', borderRadius: 8, background: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer', fontFamily: 'inherit' }}
+              className="hover:border-[#B5D4F4] hover:bg-[#EEF3FD] transition-colors group">
+              <div style={{ width: 24, height: 24, background: '#E4E6EC', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                className="group-hover:bg-[#1A56DB] transition-colors">
+                <Plus size={13} color="#9EA3B0" className="group-hover:text-white" />
               </div>
-              <span className="text-xs font-bold text-gray-500 group-hover:text-blue-600 tracking-widest uppercase transition-colors">Add Section</span>
+              <span style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+                className="group-hover:text-[#1A56DB] transition-colors">Add Section</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Active Lifecycle Registry */}
-      <div className="bg-white rounded-xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden">
-        <div className="flex justify-between items-center px-6 py-5 border-b border-gray-100">
-          <h2 className="text-[13px] font-bold text-gray-500 tracking-wider">EXISTING CYCLES</h2>
+      {/* Existing Cycles */}
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px', borderBottom: '0.5px solid #E4E6EC' }}>
+          <h2 style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Existing Cycles</h2>
         </div>
 
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="p-8 text-center text-gray-500">Loading cycles...</div>
-          ) : isError ? (
-            <div className="p-8 text-center text-red-500">Failed to load cycles.</div>
-          ) : cycles.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No cycles created yet.</div>
-          ) : (
-            <table className="w-full text-left border-collapse">
+        {isLoading ? (
+          <div style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading cycles...</div>
+        ) : isError ? (
+          <div style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#791F1F' }}>Failed to load cycles.</div>
+        ) : cycles.length === 0 ? (
+          <div style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No cycles created yet.</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
               <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Cycle Name</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Period</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Frequency</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                <tr style={{ borderBottom: '0.5px solid #E4E6EC', background: '#F5F6F8' }}>
+                  {['Cycle Name', 'Period', 'Frequency', 'Status'].map(h => (
+                    <th key={h} style={{ padding: '9px 14px', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left' }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {cycles.map((cycle) => (
-                  <tr key={cycle.id} className="hover:bg-gray-50/50 transition">
-                    <td className="px-6 py-5">
-                      <div className="font-bold text-sm text-gray-900 mb-0.5">{cycle.name}</div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="text-[13px] font-medium text-gray-800">{cycle.startDate} to {cycle.endDate}</span>
-                    </td>
-                    <td className="px-6 py-5 text-sm text-gray-600">
-                      {cycle.frequency}
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${
-                        cycle.status === 'Active' ? 'bg-blue-100 text-blue-700' :
-                        cycle.status === 'Closed' ? 'bg-gray-200 text-gray-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {cycle.status || 'Draft'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+              <tbody>
+                {cycles.map((cycle, idx) => {
+                  const statusKey = cycle.status || 'Draft';
+                  const statusStyle = CYCLE_STATUS_STYLE[statusKey] || CYCLE_STATUS_STYLE['Draft'];
+                  return (
+                    <tr key={cycle.id} style={{ borderBottom: idx < cycles.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
+                      className="hover:bg-[#FAFBFF] transition-colors">
+                      <td style={{ padding: '11px 14px', fontSize: 13, fontWeight: 500, color: '#111827' }}>{cycle.name}</td>
+                      <td style={{ padding: '11px 14px', fontSize: 12, color: '#5A6070' }}>{cycle.startDate} – {cycle.endDate}</td>
+                      <td style={{ padding: '11px 14px', fontSize: 12, color: '#5A6070' }}>{cycle.frequency}</td>
+                      <td style={{ padding: '11px 14px' }}>
+                        <span style={{ ...statusStyle, display: 'inline-block', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500 }}>
+                          {statusKey}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

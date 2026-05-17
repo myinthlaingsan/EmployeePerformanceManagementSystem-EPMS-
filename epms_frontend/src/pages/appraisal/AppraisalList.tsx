@@ -28,14 +28,24 @@ import {
   CheckCircle2,
   Circle,
   Search,
-  Filter,
-  Mail,
-  Share2,
-  Trophy,
   Trash2
 } from 'lucide-react';
-
 import { useAuth } from '../../hooks/useAuth';
+
+const panelStyle: React.CSSProperties = {
+  background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12,
+};
+
+const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  FINALIZED:    { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
+  PENDING:      { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
+  SELF_ASSESSED:{ bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
+  EVALUATED:    { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
+  HR_APPROVED:  { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
+};
+
+const getStatusStyle = (status: string) =>
+  STATUS_STYLE[status] ?? { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' };
 
 const AppraisalList: React.FC = () => {
   const navigate = useNavigate();
@@ -53,10 +63,7 @@ const AppraisalList: React.FC = () => {
   const [newSetName, setNewSetName] = React.useState('');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [confirmModal, setConfirmModal] = React.useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
+    isOpen: boolean; title: string; message: string; onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const { data: appraisals = [], isLoading: loadingAppraisals, error: errorAppraisals } = useGetAppraisalsQuery();
@@ -71,176 +78,78 @@ const AppraisalList: React.FC = () => {
   const [deleteForm] = useDeleteAppraisalFormMutation();
   const { data: formSets = [] } = useGetAppraisalFormSetsQuery(undefined, { skip: !isPrivileged });
 
-  const isLoading = loadingAppraisals || loadingTeam || (isPrivileged && (loadingCycles || loadingForms || (selectedCycleId && loadingCycleData)));
+  const isLoading = loadingAppraisals || loadingTeam || (isPrivileged && (loadingCycles || loadingForms || (!!selectedCycleId && loadingCycleData)));
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="py-16 text-center" style={{ color: '#9EA3B0', fontSize: 13 }}>Loading…</div>;
 
-  if (errorAppraisals) {
-    return (
-      <div className="p-8 text-center text-red-500 font-bold bg-red-50 rounded-2xl border border-red-100 max-w-2xl mx-auto mt-20">
-        {/* Operation failed. Please try again. */}No Assessment are assigned.
-      </div>
-    );
-  }
+  if (errorAppraisals) return (
+    <div className="py-8 text-center" style={{ color: '#791F1F', fontSize: 13, background: '#FCEBEB', border: '0.5px solid #F5C2C2', borderRadius: 12, padding: '16px 18px' }}>
+      No assessments are assigned.
+    </div>
+  );
 
   const safeFormatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
-    try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
-    } catch (e) {
-      return 'N/A';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'FINALIZED': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'PENDING': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'SELF_ASSESSED': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'EVALUATED': return 'bg-indigo-100 text-indigo-700 border-indigo-200';
-      case 'HR_APPROVED': return 'bg-purple-100 text-purple-700 border-purple-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
+    try { return format(new Date(dateString), 'dd/MM/yyyy'); } catch { return 'N/A'; }
   };
 
   const renderAppraisals = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {appraisals.length > 0 ? appraisals.map((appraisal: any) => (
-        <div
-          key={appraisal.appraisalId}
-          className="group bg-white rounded-4xl border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
-          onClick={() => {
-            navigate(`/appraisal/${appraisal.appraisalId}`);
-          }}
-        >
-          {/* Background Accent */}
-          <div className="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full bg-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity blur-3xl"></div>
-
-          <div className="flex justify-between items-start mb-8 relative z-10">
-            <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(appraisal.status)}`}>
-              {appraisal.status.replace('_', ' ')}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {appraisals.length > 0 ? appraisals.map((appraisal: any) => {
+        const s = getStatusStyle(appraisal.status);
+        return (
+          <div key={appraisal.appraisalId} style={{ ...panelStyle, padding: '16px 18px', cursor: 'pointer' }}
+            className="hover:border-[#1A56DB] transition-colors"
+            onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}>
+            <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+              <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{appraisal.cycleName}</span>
+              <span style={{ fontSize: 11, fontWeight: 500, background: s.bg, color: s.text, border: `0.5px solid ${s.border}`, borderRadius: 20, padding: '2px 8px' }}>
+                {appraisal.status.replace('_', ' ')}
+              </span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
-              <ClipboardList className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="relative z-10 flex-1">
-            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2">{appraisal.cycleName}</p>
-            <h3 className="text-2xl font-black text-slate-900 leading-tight mb-2 group-hover:text-indigo-600 transition-colors">
-              {appraisal.employeeName}
-            </h3>
-            <p className="text-slate-400 text-sm font-medium leading-relaxed mb-8">Performance Assessment</p>
-          </div>
-
-          <div className="space-y-4 pt-6 border-t border-slate-50 relative z-10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                  <Target className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-bold text-slate-500">Progress</span>
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{appraisal.employeeName}</p>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 12 }}>Performance Assessment</p>
+            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
+              <div style={{ flex: 1, height: 4, background: '#F0F2F6', borderRadius: 4, marginRight: 10 }}>
+                <div style={{ height: '100%', borderRadius: 4, background: '#1A56DB', width: appraisal.status === 'FINALIZED' ? '100%' : appraisal.status === 'PENDING' ? '15%' : '60%' }} />
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full bg-indigo-500 ${appraisal.status === 'FINALIZED' ? 'w-full' : appraisal.status === 'PENDING' ? 'w-1/4' : 'w-2/3'}`}></div>
-                </div>
-                <span className="text-[10px] font-black text-slate-900">{appraisal.status === 'FINALIZED' ? '100%' : '65%'}</span>
-              </div>
+              <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
             </div>
           </div>
-
-          <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-50 relative z-10">
-            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              <Clock className="w-3.5 h-3.5" />
-              Updated {appraisal.updatedAt ? format(new Date(appraisal.updatedAt), 'MMM dd') : 'Recently'}
-            </div>
-            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          </div>
-        </div>
-      )) : (
-        <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200 shadow-sm">
-          <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-200 mx-auto mb-6">
-            <ClipboardList className="w-10 h-10" />
-          </div>
-          <h3 className="text-2xl font-black text-slate-900 mb-2">No Assessments Found</h3>
-          <p className="text-slate-400 font-medium mb-8">You don't have any performance assessments assigned at this time.</p>
-        </div>
+        );
+      }) : (
+        <div className="col-span-full py-16 text-center" style={{ color: '#9EA3B0', fontSize: 13 }}>No assessments assigned.</div>
       )}
     </div>
   );
 
   const renderTeamEvaluations = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {teamEvaluations.length > 0 ? teamEvaluations.map((appraisal: any) => (
-        <div
-          key={appraisal.appraisalId}
-          className="group bg-white rounded-4xl border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
-          onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}
-        >
-          {/* Background Accent */}
-          <div className="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full bg-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity blur-3xl"></div>
-
-          <div className="flex justify-between items-start mb-8 relative z-10">
-            <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(appraisal.status)}`}>
-              {appraisal.status.replace('_', ' ')}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {teamEvaluations.length > 0 ? teamEvaluations.map((appraisal: any) => {
+        const s = getStatusStyle(appraisal.status);
+        return (
+          <div key={appraisal.appraisalId} style={{ ...panelStyle, padding: '16px 18px', cursor: 'pointer' }}
+            className="hover:border-[#1A56DB] transition-colors"
+            onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}>
+            <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+              <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{appraisal.cycleName}</span>
+              <span style={{ fontSize: 11, fontWeight: 500, background: s.bg, color: s.text, border: `0.5px solid ${s.border}`, borderRadius: 20, padding: '2px 8px' }}>
+                {appraisal.status.replace('_', ' ')}
+              </span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
-              <Users className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="relative z-10 flex-1">
-            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2">{appraisal.cycleName}</p>
-            <h3 className="text-2xl font-black text-slate-900 leading-tight mb-2 group-hover:text-indigo-600 transition-colors">
-              {appraisal.employeeName}
-            </h3>
-            <p className="text-slate-400 text-sm font-medium leading-relaxed mb-8">Team Performance Evaluation</p>
-          </div>
-
-          <div className="space-y-4 pt-6 border-t border-slate-50 relative z-10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                  <Target className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-bold text-slate-500">Progress</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full bg-indigo-500 ${appraisal.status === 'FINALIZED' ? 'w-full' : appraisal.status === 'PENDING' ? 'w-1/4' : 'w-2/3'}`}></div>
-                </div>
-                <span className="text-[10px] font-black text-slate-900">{appraisal.status === 'FINALIZED' ? '100%' : '65%'}</span>
-              </div>
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{appraisal.employeeName}</p>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 12 }}>Team Performance Evaluation</p>
+            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
+              <span style={{ fontSize: 11, color: '#9EA3B0' }}>
+                <Clock size={11} style={{ display: 'inline', marginRight: 4 }} />
+                {appraisal.updatedAt ? safeFormatDate(appraisal.updatedAt) : 'Recently'}
+              </span>
+              <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
             </div>
           </div>
-
-          <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-50 relative z-10">
-            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              <Clock className="w-3.5 h-3.5" />
-              Updated {appraisal.updatedAt ? safeFormatDate(appraisal.updatedAt) : 'Recently'}
-            </div>
-            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          </div>
-        </div>
-      )) : (
-        <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200 shadow-sm">
-          <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-200 mx-auto mb-6">
-            <Users className="w-10 h-10" />
-          </div>
-          <h3 className="text-2xl font-black text-slate-900 mb-2">No Team Appraisals</h3>
-          <p className="text-slate-400 font-medium mb-8">There are no team members assigned for your evaluation at this time.</p>
-        </div>
+        );
+      }) : (
+        <div className="col-span-full py-16 text-center" style={{ color: '#9EA3B0', fontSize: 13 }}>No team evaluations.</div>
       )}
     </div>
   );
@@ -248,393 +157,180 @@ const AppraisalList: React.FC = () => {
   const renderCycles = () => {
     const getDaysRemaining = (endDate: string) => {
       const diff = new Date(endDate).getTime() - new Date().getTime();
-      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-      return days > 0 ? days : 0;
+      return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
     };
+
     if (selectedCycleId) {
       const cycle = cycles.find((c: any) => Number(c.cycleId) === Number(selectedCycleId));
-      const cycleForms = forms.filter((f: any) => {
-        const idMatch = f.cycleId && Number(f.cycleId) === Number(selectedCycleId);
-        const nameMatch = f.cycleName && cycle?.cycleName && f.cycleName === cycle.cycleName;
-        return idMatch || nameMatch;
-      });
-
       const daysLeft = getDaysRemaining(cycle?.endDate ?? '');
+      const total = appraisalsByCycle.length;
+      const selfCount = appraisalsByCycle.filter((a: any) => a.status !== 'PENDING').length;
+      const managerCount = appraisalsByCycle.filter((a: any) => ['EVALUATED', 'HR_APPROVED', 'FINALIZED'].includes(a.status)).length;
+      const finalCount = appraisalsByCycle.filter((a: any) => a.status === 'FINALIZED').length;
+      const selfRate = total > 0 ? Math.round((selfCount / total) * 100) : 0;
+      const managerRate = total > 0 ? Math.round((managerCount / total) * 100) : 0;
+      const finalRate = total > 0 ? Math.round((finalCount / total) * 100) : 0;
 
       return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {/* Breadcrumbs & Actions */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-1">
-              <button
-                onClick={() => setSelectedCycleId(null)}
-                className="group flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-indigo-600 transition-all w-fit mb-4"
-              >
-                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                  <ChevronRight className="w-3.5 h-3.5 rotate-180" />
-                </div>
-                Back to Cycles
+        <div className="space-y-4">
+          {/* Breadcrumb & actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <button onClick={() => setSelectedCycleId(null)} className="flex items-center gap-1 transition-colors"
+                style={{ fontSize: 12, color: '#1A56DB', marginBottom: 6 }}>
+                <ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} /> Back to Cycles
               </button>
-
-              <div className="flex items-center gap-6">
-                <h2 className="text-5xl font-black text-slate-900 tracking-tighter uppercase italic">{cycle?.cycleName}</h2>
-                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-2 ${cycle?.isActive ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${cycle?.isActive ? 'bg-indigo-600 animate-pulse' : 'bg-slate-400'}`}></div>
-                  {cycle?.status || (cycle?.isActive ? 'IN PROGRESS' : 'INACTIVE')}
-                </div>
+              <div className="flex items-center gap-3">
+                <h2 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{cycle?.cycleName}</h2>
+                <span style={{ fontSize: 11, fontWeight: 500, background: cycle?.isActive ? '#EAF3DE' : '#F1EFE8', color: cycle?.isActive ? '#27500A' : '#444441', border: `0.5px solid ${cycle?.isActive ? '#B8DCA0' : '#DDDBD2'}`, borderRadius: 20, padding: '2px 8px' }}>
+                  {cycle?.isActive ? 'Active' : 'Inactive'}
+                </span>
               </div>
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                <Clock className="w-4 h-4" />
+              <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>
                 {daysLeft > 0 ? `Ends in ${daysLeft} days` : 'Cycle concluded'}
-              </div>
+              </p>
             </div>
-
-            <div className="flex items-center gap-3">
-              <button className="px-6 py-3 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-slate-400" /> Export Status
-              </button>
-              <button className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2">
-                <Mail className="w-4 h-4" /> Send Reminders
-              </button>
+            <div className="flex flex-wrap gap-2">
               {cycle?.isActive ? (
-                <button
-                  onClick={() => {
-                    setConfirmModal({
-                      isOpen: true,
-                      title: 'Close Appraisal Cycle',
-                      message: `Are you sure you want to close "${cycle.cycleName}"? This will deactivate it and lock all related appraisals from further editing.`,
-                      onConfirm: () => {
-                        closeCycle(Number(selectedCycleId));
-                        setSelectedCycleId(null);
-                      }
-                    });
-                  }}
-                  disabled={isClosing}
-                  className="px-6 py-3 bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isClosing ? 'Closing...' : 'Close Cycle'}
+                <button onClick={() => setConfirmModal({ isOpen: true, title: 'Close Cycle', message: `Close "${cycle.cycleName}"? This locks all related appraisals.`, onConfirm: () => { closeCycle(Number(selectedCycleId)); setSelectedCycleId(null); } })}
+                  disabled={isClosing} className="transition-colors disabled:opacity-50"
+                  style={{ fontSize: 12, fontWeight: 500, background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5C2C2', borderRadius: 8, padding: '7px 14px' }}>
+                  {isClosing ? 'Closing…' : 'Close Cycle'}
                 </button>
               ) : (
-                <button
-                  onClick={() => activateCycle(Number(selectedCycleId))}
-                  disabled={isActivating}
-                  className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isActivating ? 'Activating...' : 'Activate Cycle'}
+                <button onClick={() => activateCycle(Number(selectedCycleId))} disabled={isActivating} className="transition-colors disabled:opacity-50"
+                  style={{ fontSize: 12, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 8, padding: '7px 14px' }}>
+                  {isActivating ? 'Activating…' : 'Activate Cycle'}
                 </button>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-stretch mb-8">
-            {/* Global Completion Rates (Top Left) */}
-            <div className="lg:col-span-3 flex">
-              {(() => {
-                const total = appraisalsByCycle.length;
-                const selfCount = appraisalsByCycle.filter((a: any) => !['PENDING'].includes(a.status)).length;
-                const managerCount = appraisalsByCycle.filter((a: any) => ['EVALUATED', 'HR_APPROVED', 'FINALIZED'].includes(a.status)).length;
-                const finalCount = appraisalsByCycle.filter((a: any) => a.status === 'FINALIZED').length;
-
-                const selfRate = total > 0 ? Math.round((selfCount / total) * 100) : 0;
-                const managerRate = total > 0 ? Math.round((managerCount / total) * 100) : 0;
-                const finalRate = total > 0 ? Math.round((finalCount / total) * 100) : 0;
-                const totalRate = total > 0 ? Math.round((selfRate + managerRate + finalRate) / 3) : 0;
-
-                return (
-                  <div className="bg-white rounded-2xl border border-slate-100 p-8 shadow-sm relative overflow-hidden group w-full flex flex-col justify-between min-h-80">
-                    <div className="flex justify-between items-start relative z-10 mb-20">
-                      <div>
-                        <h3 className="text-[11px] font-black text-[#5E718D] uppercase tracking-[0.15em] mb-1">Global Completion Rates</h3>
-                        <p className="text-[13px] font-medium text-slate-400">Status update across all participating departments</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[3rem] font-black text-[#0052CC] tracking-tight leading-none">{totalRate}% Total</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col md:flex-row gap-12 relative z-10 pb-8">
-                      {[
-                        { label: 'Self-Assessments', rate: selfRate, color: 'bg-[#0052CC]', sub: `${selfCount} of ${total} submitted` },
-                        { label: 'Manager Evaluations', rate: managerRate, color: 'bg-[#0052CC]', sub: `${managerCount} of ${total} reviews complete` },
-                        { label: 'Final Sign-offs', rate: finalRate, color: 'bg-[#94A3B8]', sub: `${finalCount} finalized sessions` },
-                      ].map((stat, i) => (
-                        <div key={i} className="flex-1 space-y-2">
-                          <div className="flex justify-between items-baseline mb-1">
-                            <span className="text-[14px] font-bold text-slate-700">{stat.label}</span>
-                            <span className="text-[14px] font-black text-slate-900">{stat.rate}%</span>
-                          </div>
-                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full ${stat.color} transition-all duration-1000 rounded-full`} style={{ width: `${stat.rate}%` }}></div>
-                          </div>
-                          <p className="text-[11px] font-medium text-slate-400">{stat.sub}</p>
-                        </div>
-                      ))}
-                    </div>
+          {/* Completion rates */}
+          <div style={{ ...panelStyle, padding: '16px 18px' }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>Completion Rates</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {[
+                { label: 'Self-Assessments', rate: selfRate, count: selfCount },
+                { label: 'Manager Evaluations', rate: managerRate, count: managerCount },
+                { label: 'Final Sign-offs', rate: finalRate, count: finalCount },
+              ].map((stat) => (
+                <div key={stat.label}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: '#5A6070' }}>{stat.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{stat.rate}%</span>
                   </div>
-                );
-              })()}
-            </div>
-
-            {/* Cycle Timeline (Top Right) */}
-            <div className="lg:col-span-1 flex">
-              <div className="bg-[#E9EEF2] rounded-[1rem] p-8 shadow-sm border border-slate-200/50 w-full flex flex-col min-h-[320px]">
-                <h3 className="text-[11px] font-black text-[#5E718D] uppercase tracking-[0.15em] mb-8">Cycle Timeline</h3>
-
-                <div className="space-y-6 relative flex-1">
-                  <div className="absolute left-[19px] top-2 bottom-2 w-[1px] bg-slate-300"></div>
-
-                  {[
-                    { label: 'Cycle Launched', date: cycle?.startDate, status: 'complete' },
-                    { label: 'Self-Assessment Deadline', date: cycle?.selfAssessmentDeadline, status: 'complete' },
-                    { label: 'Manager Reviews Close', date: cycle?.managerEvaluationDeadline, status: 'active', active: true },
-                    { label: 'Cycle Finalization', date: cycle?.finalizationDeadline, status: 'upcoming' },
-                  ].map((step, i) => (
-                    <div key={i} className="flex gap-6 relative z-10 items-start">
-                      <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition-all ${step.status === 'complete' ? 'bg-[#0052CC] text-white shadow-lg shadow-blue-200/50' :
-                        step.active ? 'bg-[#DDEBFF]' :
-                          'bg-[#DDE9F0]'
-                        }`}>
-                        {step.status === 'complete' ? <CheckCircle2 className="w-5 h-5" /> :
-                          step.active ? <div className="w-3.5 h-3.5 bg-[#0052CC] rounded-full" /> :
-                            null}
-                      </div>
-                      <div className="pt-1">
-                        <h4 className={`text-[13px] font-black leading-tight ${step.active ? 'text-[#0052CC]' : 'text-[#2C3E50]'}`}>
-                          {step.label}
-                        </h4>
-                        <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-                          {safeFormatDate(step.date)}
-                          {step.active && daysLeft > 0 && ` (In ${daysLeft}d)`}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                  <div style={{ height: 4, background: '#F0F2F6', borderRadius: 4, marginBottom: 4 }}>
+                    <div style={{ height: '100%', borderRadius: 4, background: '#1A56DB', width: `${stat.rate}%` }} />
+                  </div>
+                  <p style={{ fontSize: 11, color: '#9EA3B0' }}>{stat.count} of {total}</p>
                 </div>
-
-                <button className="w-full mt-8 py-3 bg-white border border-slate-200 text-[#2C3E50] font-black text-[11px] rounded-xl hover:bg-slate-50 transition-all shadow-sm">
-                  Extend All Deadlines
-                </button>
-              </div>
+              ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Participant List (Table) */}
-            <div className="lg:col-span-3 space-y-8">
-              <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <div className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search employees, departments, or managers..."
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border-none rounded-2xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 transition-all"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <button className="px-6 py-3 bg-slate-50 text-slate-600 font-bold text-sm rounded-2xl hover:bg-slate-100 transition-all flex items-center gap-2">
-                      <Filter className="w-4 h-4" /> Filters
-                    </button>
-                    <span className="text-xs font-bold text-slate-400">Showing {appraisalsByCycle.length} Participants</span>
+          {/* Timeline */}
+          <div style={{ ...panelStyle, padding: '16px 18px' }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>Cycle Timeline</p>
+            <div className="space-y-3">
+              {[
+                { label: 'Cycle Start', date: cycle?.startDate },
+                { label: 'Self-Assessment Deadline', date: cycle?.selfAssessmentDeadline },
+                { label: 'Manager Reviews Close', date: cycle?.managerEvaluationDeadline },
+                { label: 'Finalization', date: cycle?.finalizationDeadline },
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#1A56DB', flexShrink: 0 }} />
+                  <div className="flex items-center justify-between flex-1">
+                    <span style={{ fontSize: 12, color: '#5A6070' }}>{step.label}</span>
+                    <span style={{ fontSize: 12, color: '#111827', fontWeight: 500 }}>{safeFormatDate(step.date)}</span>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-slate-50/50">
-                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
-                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Department</th>
-                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Manager</th>
-                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Score</th>
-                        <th className="px-8 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {appraisalsByCycle.filter((a: any) =>
-                        a.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        a.managerName?.toLowerCase().includes(searchTerm.toLowerCase())
-                      ).map((appraisal: any) => (
-                        <tr key={appraisal.appraisalId} className="hover:bg-slate-50/50 transition-colors group">
-                          <td className="px-8 py-6">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-sm group-hover:scale-110 transition-transform">
-                                {appraisal.employeeName.charAt(0)}
-                              </div>
-                              <div>
-                                <p className="text-sm font-black text-slate-900">{appraisal.employeeName}</p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{appraisal.employeeCode || 'EMP-ID'}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-8 py-6 text-sm font-medium text-slate-600">
-                            {appraisal.departmentName || 'Corporate'}
-                          </td>
-                          <td className="px-8 py-6">
-                            <p className="text-sm font-bold text-slate-700">{appraisal.managerName || 'System'}</p>
-                          </td>
-                          <td className="px-8 py-6">
-                            <div className={`inline-flex px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${getStatusColor(appraisal.status)}`}>
-                              {appraisal.status.replace('_', ' ')}
-                            </div>
-                          </td>
-                          <td className="px-8 py-6">
-                            {appraisal.finalScore !== null && appraisal.finalScore !== undefined ? (
-                              <div className="flex flex-col">
-                                <span className="text-sm font-black text-slate-900">{Number(appraisal.finalScore).toFixed(2)}%</span>
-                                <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest">{appraisal.finalGrade?.replace('_', ' ')}</span>
-                              </div>
-                            ) : (
-                              <span className="text-xs font-bold text-slate-300 italic">Not Calculated</span>
-                            )}
-                          </td>
-                          <td className="px-8 py-6 text-right">
-                            <button
-                              onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}
-                              className="text-indigo-600 hover:text-indigo-800 font-black text-xs uppercase tracking-widest transition-colors"
-                            >
-                              View Details
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Simple Pagination Placeholder */}
-                <div className="p-8 border-t border-slate-50 flex items-center justify-between">
-                  <p className="text-xs font-bold text-slate-400">Showing 1 to {appraisalsByCycle.length} of {appraisalsByCycle.length} results</p>
-                  <div className="flex items-center gap-2">
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-all"><ChevronRight className="w-4 h-4 rotate-180" /></button>
-                    <button className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-lg shadow-indigo-100">1</button>
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 font-black text-xs hover:bg-slate-50 transition-all">2</button>
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-all"><ChevronRight className="w-4 h-4" /></button>
-                  </div>
-                </div>
+          {/* Participants table */}
+          <div style={{ ...panelStyle, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '0.5px solid #E4E6EC' }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>Participants ({appraisalsByCycle.length})</p>
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+                <input type="text" placeholder="Search…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '6px 10px 6px 30px', fontSize: 12, color: '#111827', outline: 'none', width: 180 }} />
               </div>
             </div>
-
-            {/* Sidebar: Scoring Weightage */}
-            <div className="space-y-8">
-              <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[2.5rem] p-10 text-white shadow-xl shadow-slate-200">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="p-2 bg-white/10 rounded-xl">
-                    <Target className="w-5 h-5 text-indigo-300" />
-                  </div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-300">Scoring Weightage</h3>
-                </div>
-
-                <div className="space-y-6">
-                  {[
-                    { label: 'KPI / Results', weight: cycle?.kpiWeight || 40, color: 'bg-indigo-400' },
-                    { label: 'Manager Eval', weight: cycle?.managerWeight || 40, color: 'bg-violet-400' },
-                    { label: 'Self Eval', weight: cycle?.selfWeight || 10, color: 'bg-blue-400' },
-                    { label: '360 Feedback', weight: cycle?.feedbackWeight || 10, color: 'bg-emerald-400' },
-                  ].map((w, i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="flex justify-between text-xs font-bold">
-                        <span className="text-slate-400">{w.label}</span>
-                        <span>{Number(w.weight).toFixed(0)}%</span>
-                      </div>
-                      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <div className={`h-full ${w.color}`} style={{ width: `${w.weight}%` }}></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-10 p-4 bg-white/5 rounded-2xl border border-white/10">
-                  <p className="text-[10px] text-slate-400 leading-relaxed">
-                    Total weight must equal <span className="text-white font-black">100%</span>. These weights determine the final calculated score for each participant.
-                  </p>
-                </div>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left" style={{ minWidth: 580 }}>
+                <thead>
+                  <tr style={{ borderBottom: '0.5px solid #E4E6EC' }}>
+                    {['Employee', 'Department', 'Manager', 'Status', 'Score', ''].map((h, i) => (
+                      <th key={h + i} style={{ padding: '10px 16px', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {appraisalsByCycle.filter((a: any) =>
+                    a.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    a.managerName?.toLowerCase().includes(searchTerm.toLowerCase())
+                  ).map((appraisal: any, idx: number, arr: any[]) => {
+                    const s = getStatusStyle(appraisal.status);
+                    return (
+                      <tr key={appraisal.appraisalId} style={{ borderBottom: idx < arr.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
+                        className="hover:bg-[#FAFBFF] transition-colors">
+                        <td style={{ padding: '10px 16px' }}>
+                          <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{appraisal.employeeName}</p>
+                          <p style={{ fontSize: 11, color: '#9EA3B0', fontFamily: 'monospace' }}>{appraisal.employeeCode}</p>
+                        </td>
+                        <td style={{ padding: '10px 16px', fontSize: 12, color: '#5A6070' }}>{appraisal.departmentName || '—'}</td>
+                        <td style={{ padding: '10px 16px', fontSize: 12, color: '#5A6070' }}>{appraisal.managerName || '—'}</td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <span style={{ fontSize: 11, fontWeight: 500, background: s.bg, color: s.text, border: `0.5px solid ${s.border}`, borderRadius: 20, padding: '2px 8px' }}>
+                            {appraisal.status.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 500, color: '#111827' }}>
+                          {appraisal.finalScore != null ? `${Number(appraisal.finalScore).toFixed(1)}%` : '—'}
+                        </td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <button onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}
+                            style={{ fontSize: 12, color: '#1A56DB' }}>View</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       );
     }
+
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cycles.length > 0 ? cycles.map((cycle: any) => (
-          <div
-            key={cycle.cycleId}
-            onClick={() => setSelectedCycleId(cycle.cycleId)}
-            className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
-          >
-            {/* Background Accent */}
-            <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-0 group-hover:opacity-10 transition-opacity blur-3xl ${cycle.isActive ? 'bg-indigo-600' : 'bg-slate-400'}`}></div>
-
-            <div className="flex justify-between items-start mb-8 relative z-10">
-              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${cycle.isActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+          <div key={cycle.cycleId} onClick={() => setSelectedCycleId(cycle.cycleId)}
+            style={{ ...panelStyle, padding: '16px 18px', cursor: 'pointer' }}
+            className="hover:border-[#1A56DB] transition-colors">
+            <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 500, background: cycle.isActive ? '#EAF3DE' : '#F1EFE8', color: cycle.isActive ? '#27500A' : '#444441', border: `0.5px solid ${cycle.isActive ? '#B8DCA0' : '#DDDBD2'}`, borderRadius: 20, padding: '2px 8px' }}>
                 {cycle.isActive ? 'Active' : 'Inactive'}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
-                  <Calendar className="w-5 h-5" />
-                </div>
-              </div>
+              </span>
+              <Calendar size={14} style={{ color: '#9EA3B0' }} />
             </div>
-
-            <div className="relative z-10 flex-1">
-              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2">{cycle.financialYearTitle || 'Annual Review'}</p>
-              <h3 className="text-2xl font-black text-slate-900 leading-tight mb-2 group-hover:text-indigo-600 transition-colors">{cycle.cycleName}</h3>
-              <p className="text-slate-400 text-sm font-medium leading-relaxed mb-8">{cycle.evaluationPeriod}</p>
-            </div>
-
-            <div className="space-y-4 pt-6 border-t border-slate-50 relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                    <Target className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-500">Weightage</span>
-                </div>
-                <span className="text-xs font-black text-slate-900">Balanced</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-500">Completion</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-500 w-3/4"></div>
-                  </div>
-                  <span className="text-[10px] font-black text-slate-900">74%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-50 relative z-10">
-              <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                <Clock className="w-3.5 h-3.5" />
-                Ends {safeFormatDate(cycle.endDate)}
-              </div>
-              <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
-                <ChevronRight className="w-4 h-4" />
-              </div>
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#1A56DB', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{cycle.financialYearTitle || 'Annual Review'}</p>
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{cycle.cycleName}</p>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 14 }}>{cycle.evaluationPeriod}</p>
+            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
+              <span style={{ fontSize: 11, color: '#9EA3B0' }}>Ends {safeFormatDate(cycle.endDate)}</span>
+              <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
             </div>
           </div>
         )) : (
-          <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200 shadow-sm">
-            <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-200 mx-auto mb-6">
-              <Calendar className="w-10 h-10" />
-            </div>
-            <h3 className="text-2xl font-black text-slate-900 mb-2">No Appraisal Cycles</h3>
-            <p className="text-slate-400 font-medium mb-8">Begin by creating a performance cycle for your organization.</p>
-            <button
-              onClick={() => navigate('/appraisal/create-cycle')}
-              className="px-8 py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all flex items-center gap-3 mx-auto"
-            >
-              <Plus className="w-5 h-5" /> Create First Cycle
-            </button>
+          <div className="col-span-full py-16 text-center" style={{ color: '#9EA3B0', fontSize: 13 }}>
+            No cycles yet.{' '}
+            <button onClick={() => navigate('/appraisal/create-cycle')} style={{ color: '#1A56DB', fontSize: 13 }}>Create one</button>
           </div>
         )}
       </div>
@@ -642,7 +338,6 @@ const AppraisalList: React.FC = () => {
   };
 
   const renderForms = () => {
-    // Group Form Sets by cycle
     const groupedSets: Record<string, any[]> = {};
     cycles.forEach((c: any) => { groupedSets[c.cycleName] = []; });
     formSets.forEach((set: any) => {
@@ -651,127 +346,85 @@ const AppraisalList: React.FC = () => {
       groupedSets[cycleName].push(set);
     });
 
-    // Helper: Map set to the UI structure
-    const getSetDetails = (set: any) => {
-      const self = forms.find(f => f.formId === set.selfAssessmentFormId);
-      const manager = forms.find(f => f.formId === set.managerEvaluationFormId);
-      return { self, manager, id: set.id, isAssigned: set.isAssigned };
-    };
+    const getSetDetails = (set: any) => ({
+      self: forms.find((f: any) => f.formId === set.selfAssessmentFormId),
+      manager: forms.find((f: any) => f.formId === set.managerEvaluationFormId),
+      id: set.id,
+      isAssigned: set.isAssigned,
+    });
 
     const buildSetMap = (cycleName: string) => {
-      const setsForCycle = groupedSets[cycleName] || [];
-      const setMap = new Map<string, { self: any, manager: any, id: number, isAssigned: boolean }>();
-      setsForCycle.forEach(set => {
-        setMap.set(set.name, getSetDetails(set));
-      });
+      const setMap = new Map<string, any>();
+      (groupedSets[cycleName] || []).forEach((set: any) => setMap.set(set.name, getSetDetails(set)));
       return setMap;
     };
 
     if (expandedCycle && expandedSet) {
       const cycleData = cycles.find((c: any) => c.cycleName === expandedCycle);
       const setMap = buildSetMap(expandedCycle);
-      const thisSet = setMap.get(expandedSet) || { self: null, manager: null, id: 0 };
+      const thisSet = setMap.get(expandedSet) ?? { self: null, manager: null, id: 0 };
 
       return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-1">
-              <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                <span className="cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => { setExpandedCycle(null); setExpandedSet(null); }}>Cycles</span>
-                <ChevronRight className="w-3 h-3" />
-                <span className="cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => setExpandedSet(null)}>{expandedCycle}</span>
-                <ChevronRight className="w-3 h-3" />
-                <span>{expandedSet}</span>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <nav className="flex items-center gap-1" style={{ fontSize: 11, color: '#9EA3B0', marginBottom: 6 }}>
+                <span className="cursor-pointer hover:text-[#1A56DB] transition-colors" onClick={() => { setExpandedCycle(null); setExpandedSet(null); }}>Cycles</span>
+                <ChevronRight size={11} />
+                <span className="cursor-pointer hover:text-[#1A56DB] transition-colors" onClick={() => setExpandedSet(null)}>{expandedCycle}</span>
+                <ChevronRight size={11} />
+                <span style={{ color: '#111827' }}>{expandedSet}</span>
               </nav>
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight">Design Form Set</h2>
-              <p className="text-slate-400 text-sm font-medium mt-1">Configure evaluation templates for the {expandedSet} group.</p>
+              <h2 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Design Form Set</h2>
             </div>
-
-            <button
-              onClick={() => setExpandedSet(null)}
-              className="px-6 py-3 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2 w-fit"
-            >
-              <ChevronRight className="w-4 h-4 rotate-180" /> Back to Sets
+            <button onClick={() => setExpandedSet(null)} className="flex items-center gap-1 transition-colors"
+              style={{ fontSize: 12, color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '7px 14px', background: '#FFFFFF' }}>
+              <ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} /> Back
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { type: 'SELF_ASSESSMENT', label: 'Self Assessment', icon: ClipboardList, color: 'blue', form: thisSet.self },
-              { type: 'MANAGER_EVALUATION', label: 'Manager Evaluation', icon: FileText, color: 'indigo', form: thisSet.manager },
-            ].map(({ type, label, icon: Icon, color, form }) => (
-              <div key={type} className="group bg-white rounded-[2.5rem] border border-slate-200 p-10 shadow-sm hover:shadow-2xl transition-all duration-500 flex flex-col h-full relative overflow-hidden">
-                <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-0 group-hover:opacity-10 transition-opacity blur-3xl ${color === 'blue' ? 'bg-blue-600' : 'bg-indigo-600'}`}></div>
-
-                <div className="flex justify-between items-start mb-10 relative z-10">
-                  <div className={`p-5 rounded-[1.25rem] ${color === 'blue' ? 'bg-blue-50 text-blue-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                    <Icon className="w-7 h-7" />
+              { type: 'SELF_ASSESSMENT', label: 'Self Assessment', icon: ClipboardList, form: thisSet.self },
+              { type: 'MANAGER_EVALUATION', label: 'Manager Evaluation', icon: FileText, form: thisSet.manager },
+            ].map(({ type, label, icon: Icon, form }) => (
+              <div key={type} style={{ ...panelStyle, padding: '16px 18px' }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+                  <div className="flex items-center gap-2">
+                    <Icon size={15} style={{ color: '#1A56DB' }} />
+                    <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{label}</p>
                   </div>
-                  {form && (
-                    <div className="px-4 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full text-[10px] font-black uppercase tracking-widest">
-                      Ready to use
-                    </div>
-                  )}
+                  {form && <span style={{ fontSize: 11, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 20, padding: '2px 8px' }}>Ready</span>}
                 </div>
-
-                <div className="flex-1 relative z-10">
-                  <h3 className="text-2xl font-black text-slate-900 mb-2">
-                    {form ? (form.formName.split(' | ')[1] || form.formName) : label}
-                  </h3>
-                  <p className="text-slate-400 text-sm font-medium leading-relaxed mb-10">
-                    {form
-                      ? `Full template configured with ${form.categories?.length || 0} sections and custom evaluation criteria.`
-                      : `No ${label.toLowerCase()} template has been designed for this specific position set.`}
-                  </p>
-                </div>
-
-                <div className="pt-8 border-t border-slate-50 relative z-10 flex flex-col gap-3">
+                <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 14 }}>
+                  {form ? `${form.categories?.length || 0} sections configured.` : `No ${label.toLowerCase()} template designed.`}
+                </p>
+                <div className="space-y-2">
                   {form ? (
                     <>
-                      <button
-                        onClick={() => navigate(`/appraisal/forms/${form.formId}`)}
-                        className="w-full py-4 bg-slate-50 text-slate-700 font-black rounded-2xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
-                      >
-                        View Full Template <ChevronRight className="w-4 h-4" />
+                      <button onClick={() => navigate(`/appraisal/forms/${form.formId}`)} className="w-full transition-colors"
+                        style={{ background: '#F5F6F8', color: '#111827', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
+                        View Template
                       </button>
                       {!form.isAssigned && (
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formId=${form.formId}&edit=true`)}
-                            className="flex-1 py-4 bg-white text-indigo-600 border border-indigo-200 font-black rounded-2xl hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-sm"
-                          >
-                            Edit Structure <Plus className="w-4 h-4 rotate-45" />
+                        <div className="flex gap-2">
+                          <button onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formId=${form.formId}&edit=true`)}
+                            className="flex-1 transition-colors"
+                            style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
+                            Edit
                           </button>
-                          <button
-                            onClick={() => {
-                              setConfirmModal({
-                                isOpen: true,
-                                title: 'Delete Template',
-                                message: 'Are you sure you want to delete this template? This action cannot be undone.',
-                                onConfirm: async () => {
-                                  try {
-                                    await deleteForm(form.formId).unwrap();
-                                    toast.success('Template deleted successfully');
-                                  } catch (err: any) {
-                                    toast.error(err?.data?.message || 'Failed to delete template');
-                                  }
-                                }
-                              });
-                            }}
-                            className="p-4 bg-white text-rose-500 border border-rose-100 rounded-2xl hover:bg-rose-50 transition-all shadow-sm"
-                            title="Delete Template"
-                          >
-                            <Trash2 className="w-5 h-5" />
+                          <button onClick={() => setConfirmModal({ isOpen: true, title: 'Delete Template', message: 'Delete this template? This cannot be undone.', onConfirm: async () => { try { await deleteForm(form.formId).unwrap(); toast.success('Deleted'); } catch { toast.error('Failed'); } } })}
+                            style={{ background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5C2C2', borderRadius: 8, padding: '8px 12px' }}>
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       )}
                     </>
                   ) : (
-                    <button
-                      onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}`)}
-                      className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100"
-                    >
-                      <Plus className="w-4 h-4" /> Design Template
+                    <button onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}`)}
+                      className="w-full transition-colors"
+                      style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
+                      <Plus size={13} style={{ display: 'inline', marginRight: 4 }} /> Design Template
                     </button>
                   )}
                 </div>
@@ -785,134 +438,79 @@ const AppraisalList: React.FC = () => {
     if (expandedCycle) {
       const setMap = buildSetMap(expandedCycle);
       const sets = Array.from(setMap.entries());
+      const cycleData = cycles.find((c: any) => c.cycleName === expandedCycle);
 
       return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-1">
-              <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                <span className="cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => setExpandedCycle(null)}>Cycles</span>
-                <ChevronRight className="w-3 h-3" />
-                <span>{expandedCycle}</span>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <nav className="flex items-center gap-1" style={{ fontSize: 11, color: '#9EA3B0', marginBottom: 6 }}>
+                <span className="cursor-pointer hover:text-[#1A56DB] transition-colors" onClick={() => setExpandedCycle(null)}>Cycles</span>
+                <ChevronRight size={11} />
+                <span style={{ color: '#111827' }}>{expandedCycle}</span>
               </nav>
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight">Position Form Sets</h2>
-              <p className="text-slate-400 text-sm font-medium mt-1">Manage grouped templates for different positions or teams.</p>
+              <h2 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Form Sets</h2>
             </div>
-
-            <button
-              onClick={() => { setShowNewSetModal(true); setNewSetName(''); }}
-              className="px-8 py-3 bg-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" /> Create Form Set
+            <button onClick={() => { setShowNewSetModal(true); setNewSetName(''); }}
+              className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+              style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+              <Plus size={14} /> Create Form Set
             </button>
           </div>
 
           {showNewSetModal && (
-            <div className="bg-white rounded-[2.5rem] border-2 border-indigo-200 p-10 shadow-2xl animate-in fade-in zoom-in duration-300">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
-                  <Plus className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black text-slate-900">Define New Form Set</h3>
-                  <p className="text-sm text-slate-400 font-medium">Create a template group for a specific department or seniority level.</p>
-                </div>
-              </div>
-              <div className="flex flex-col md:flex-row gap-4">
-                <input
-                  autoFocus
-                  type="text"
-                  value={newSetName}
-                  onChange={(e) => setNewSetName(e.target.value)}
+            <div style={{ ...panelStyle, padding: '16px 18px' }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 12 }}>New Form Set</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input autoFocus type="text" value={newSetName} onChange={(e) => setNewSetName(e.target.value)}
                   placeholder="e.g. Senior Software Engineer"
-                  className="flex-1 px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none font-bold text-slate-800 transition-all"
-                />
-                <button
-                  disabled={!newSetName.trim()}
-                  onClick={async () => {
-                    const cycleData = cycles.find((c: any) => c.cycleName === expandedCycle);
-                    if (cycleData) {
-                      try {
-                        const res = await createFormSet({ name: newSetName, cycleId: cycleData.cycleId }).unwrap();
-                        setExpandedSet(newSetName);
-                        setShowNewSetModal(false);
-                      } catch (err) {
-                        toast.error('Failed to create form set');
-                      }
-                    }
-                  }}
-                  className="px-8 py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-50"
-                >
-                  Create & Design
+                  style={{ flex: 1, background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none' }} />
+                <button disabled={!newSetName.trim()} onClick={async () => {
+                  if (cycleData) {
+                    try { await createFormSet({ name: newSetName, cycleId: cycleData.cycleId }).unwrap(); setExpandedSet(newSetName); setShowNewSetModal(false); }
+                    catch { toast.error('Failed to create form set'); }
+                  }
+                }} disabled={!newSetName.trim()} className="transition-colors disabled:opacity-50"
+                  style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500 }}>
+                  Create
                 </button>
-                <button
-                  onClick={() => setShowNewSetModal(false)}
-                  className="px-6 py-4 text-slate-500 font-bold hover:text-slate-800 transition-colors"
-                >
-                  Cancel
-                </button>
+                <button onClick={() => setShowNewSetModal(false)} style={{ fontSize: 13, color: '#5A6070' }}>Cancel</button>
               </div>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {sets.map(([setName, set]) => {
               const isComplete = set.self && set.manager;
               return (
-                <div
-                  key={setName}
-                  onClick={() => setExpandedSet(setName)}
-                  className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden"
-                >
-                  <div className="flex justify-between items-start mb-8">
-                    <div className={`p-4 rounded-xl ${isComplete ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                      <Layers className="w-6 h-6" />
-                    </div>
-                    <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${isComplete ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                <div key={setName} onClick={() => setExpandedSet(setName)}
+                  style={{ ...panelStyle, padding: '16px 18px', cursor: 'pointer' }}
+                  className="hover:border-[#1A56DB] transition-colors">
+                  <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+                    <Layers size={15} style={{ color: isComplete ? '#27500A' : '#1A56DB' }} />
+                    <span style={{ fontSize: 11, fontWeight: 500, background: isComplete ? '#EAF3DE' : '#FAEEDA', color: isComplete ? '#27500A' : '#633806', border: `0.5px solid ${isComplete ? '#B8DCA0' : '#F0D4A4'}`, borderRadius: 20, padding: '2px 8px' }}>
                       {isComplete ? 'Ready' : 'Incomplete'}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 12 }}>{setName}</p>
+                  <div className="space-y-2" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
+                    <div className="flex items-center justify-between" style={{ fontSize: 12, color: set.self ? '#27500A' : '#9EA3B0' }}>
+                      <span>Self Assessment</span>
+                      {set.self ? <CheckCircle2 size={13} /> : <Circle size={13} />}
+                    </div>
+                    <div className="flex items-center justify-between" style={{ fontSize: 12, color: set.manager ? '#27500A' : '#9EA3B0' }}>
+                      <span>Manager Evaluation</span>
+                      {set.manager ? <CheckCircle2 size={13} /> : <Circle size={13} />}
                     </div>
                   </div>
-                  <h3 className="text-xl font-black text-slate-900 mb-6 group-hover:text-indigo-600 transition-colors">{setName}</h3>
-                  <div className="space-y-3 pt-6 border-t border-slate-50">
-                    <div className={`flex items-center justify-between text-xs font-black ${set.self ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      <span className="flex items-center gap-2 uppercase tracking-wider">Self Assessment</span>
-                      {set.self ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4 opacity-20" />}
-                    </div>
-                    <div className={`flex items-center justify-between text-xs font-black ${set.manager ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      <span className="flex items-center gap-2 uppercase tracking-wider">Manager Evaluation</span>
-                      {set.manager ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4 opacity-20" />}
-                    </div>
-                  </div>
-                  <div className="mt-8 flex justify-between items-center">
+                  <div className="flex items-center justify-between" style={{ marginTop: 12 }}>
                     {!set.isAssigned ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmModal({
-                            isOpen: true,
-                            title: 'Delete Form Set',
-                            message: `Are you sure you want to delete the form set "${setName}"?`,
-                            onConfirm: async () => {
-                              try {
-                                await deleteFormSet(set.id).unwrap();
-                                toast.success('Form set deleted');
-                              } catch (err: any) {
-                                toast.error(err?.data?.message || 'Delete failed');
-                              }
-                            }
-                          });
-                        }}
-                        className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                        title="Delete Form Set"
-                      >
-                        <Trash2 className="w-4 h-4" />
+                      <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error(err?.data?.message || 'Delete failed'); } } }); }}
+                        style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-[#791F1F] transition-colors">
+                        <Trash2 size={13} />
                       </button>
-                    ) : (
-                      <div className="w-4" />
-                    )}
-                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
+                    ) : <div />}
+                    <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
                   </div>
                 </div>
               );
@@ -922,42 +520,25 @@ const AppraisalList: React.FC = () => {
       );
     }
 
-    // LEVEL 1: Cycle List
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cycles.map((cycle: any) => {
-          const setsCount = formSets.filter(s => s.cycleId === cycle.cycleId).length;
+          const setsCount = formSets.filter((s: any) => s.cycleId === cycle.cycleId).length;
           return (
-            <div
-              key={cycle.cycleId}
-              onClick={() => { setExpandedCycle(cycle.cycleName); setExpandedSet(null); }}
-              className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full bg-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity blur-3xl"></div>
-
-              <div className="flex justify-between items-start mb-8 relative z-10">
-                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${cycle.isActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+            <div key={cycle.cycleId} onClick={() => { setExpandedCycle(cycle.cycleName); setExpandedSet(null); }}
+              style={{ ...panelStyle, padding: '16px 18px', cursor: 'pointer' }}
+              className="hover:border-[#1A56DB] transition-colors">
+              <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 500, background: cycle.isActive ? '#EAF3DE' : '#F1EFE8', color: cycle.isActive ? '#27500A' : '#444441', border: `0.5px solid ${cycle.isActive ? '#B8DCA0' : '#DDDBD2'}`, borderRadius: 20, padding: '2px 8px' }}>
                   {cycle.isActive ? 'Active' : 'Inactive'}
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
-                  <Layers className="w-5 h-5" />
-                </div>
+                </span>
+                <Layers size={14} style={{ color: '#9EA3B0' }} />
               </div>
-
-              <div className="relative z-10 flex-1 text-center">
-                <h3 className="text-2xl font-black text-slate-900 leading-tight mb-2 group-hover:text-indigo-600 transition-colors">{cycle.cycleName}</h3>
-                <p className="text-slate-400 text-xs font-black uppercase tracking-[0.2em] mb-8">
-                  {setsCount} Form Set(s)
-                </p>
-              </div>
-
-              <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-50 relative z-10">
-                <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">
-                  Configure Templates
-                </div>
-                <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
-                  <ChevronRight className="w-4 h-4" />
-                </div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{cycle.cycleName}</p>
+              <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 14 }}>{setsCount} form set(s)</p>
+              <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
+                <span style={{ fontSize: 11, color: '#1A56DB' }}>Configure Templates</span>
+                <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
               </div>
             </div>
           );
@@ -967,110 +548,76 @@ const AppraisalList: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-24">
-      <div className="max-w-7xl mx-auto px-8 pt-12">
-
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-8">
-          <div className="space-y-1">
-            <div className="flex items-center gap-4">
-              <div className="p-3.5 bg-slate-900 rounded-2xl text-white shadow-xl shadow-slate-200">
-                <Trophy className="w-7 h-7" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Appraisal Hub</h1>
-                <p className="text-slate-400 font-medium tracking-tight">Organization performance & evaluation management system</p>
-              </div>
-            </div>
-          </div>
-
-          {isPrivileged && (
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/appraisal/create-cycle')}
-                className="px-8 py-4 bg-white text-slate-700 font-black text-sm rounded-2xl hover:bg-slate-50 border border-slate-200 shadow-sm transition-all flex items-center gap-3"
-              >
-                <Calendar className="w-5 h-5 text-indigo-600" /> New Cycle
-              </button>
-              <button
-                onClick={() => navigate('/appraisal/assign')}
-                className="px-8 py-4 bg-indigo-600 text-white font-black text-sm rounded-2xl hover:bg-indigo-700 shadow-2xl shadow-indigo-100 transition-all flex items-center gap-3"
-              >
-                <Plus className="w-5 h-5" /> Bulk Assign
-              </button>
-            </div>
-          )}
+    <div className="space-y-4 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Appraisal Hub</h1>
+          <p style={{ fontSize: 13, color: '#9EA3B0', marginTop: 2 }}>Organisation performance & evaluation management</p>
         </div>
-
-        {/* Tab Navigation */}
-        {(isPrivileged || isManager) && (
-          <div className="flex items-center gap-2 bg-slate-200/40 p-1.5 rounded-3xl mb-12 w-fit">
-            {[
-              { id: 'appraisals', label: 'My Assessments', icon: ClipboardList },
-              ...(isManager ? [{ id: 'team', label: 'Team Evaluations', icon: Users }] : []),
-              ...(isPrivileged ? [
-                { id: 'cycles', label: 'Dashboard', icon: Target },
-                { id: 'forms', label: 'Form Templates', icon: Layers }
-              ] : []),
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id as any);
-                  setSelectedCycleId(null);
-                  setExpandedCycle(null);
-                  setExpandedSet(null);
-                }}
-                className={`px-8 py-3.5 rounded-[1.25rem] font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                {(() => {
-                  const TabIcon = tab.icon;
-                  return <TabIcon className="w-4 h-4" />;
-                })()}
-                {tab.label}
-              </button>
-            ))}
+        {isPrivileged && (
+          <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+            <button onClick={() => navigate('/appraisal/create-cycle')} className="inline-flex items-center gap-2 transition-colors"
+              style={{ background: '#FFFFFF', color: '#111827', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500 }}>
+              <Calendar size={14} style={{ color: '#1A56DB' }} /> New Cycle
+            </button>
+            <button onClick={() => navigate('/appraisal/assign')} className="inline-flex items-center gap-2 transition-colors"
+              style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+              <Plus size={14} /> Bulk Assign
+            </button>
           </div>
         )}
-
-        {/* Main Content Area */}
-        <div className="mt-4">
-          {activeTab === 'appraisals' && renderAppraisals()}
-          {activeTab === 'team' && renderTeamEvaluations()}
-          {activeTab === 'cycles' && renderCycles()}
-          {activeTab === 'forms' && renderForms()}
-        </div>
       </div>
 
-      {/* Centered Confirmation Modal */}
+      {/* Tab navigation */}
+      {(isPrivileged || isManager) && (
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '4px', display: 'inline-flex', flexWrap: 'wrap', gap: 2 }}>
+          {[
+            { id: 'appraisals', label: 'My Assessments', icon: ClipboardList },
+            ...(isManager ? [{ id: 'team', label: 'Team', icon: Users }] : []),
+            ...(isPrivileged ? [
+              { id: 'cycles', label: 'Cycles', icon: Target },
+              { id: 'forms', label: 'Form Templates', icon: Layers },
+            ] : []),
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button key={tab.id} onClick={() => { setActiveTab(tab.id as any); setSelectedCycleId(null); setExpandedCycle(null); setExpandedSet(null); }}
+                className="flex items-center gap-2 transition-colors"
+                style={{ padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === tab.id ? '#EEF3FD' : 'transparent', color: activeTab === tab.id ? '#1A56DB' : '#5A6070' }}>
+                <Icon size={13} /> {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Content */}
+      {activeTab === 'appraisals' && renderAppraisals()}
+      {activeTab === 'team' && renderTeamEvaluations()}
+      {activeTab === 'cycles' && renderCycles()}
+      {activeTab === 'forms' && renderForms()}
+
+      {/* Confirm modal */}
       {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center text-rose-500 mb-8">
-                <Trash2 className="w-10 h-10" />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '24px', maxWidth: 400, width: '100%' }}>
+            <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={16} style={{ color: '#791F1F' }} />
               </div>
-              <h3 className="text-2xl font-black text-slate-900 mb-4">{confirmModal.title}</h3>
-              <p className="text-slate-500 font-medium leading-relaxed mb-10">
-                {confirmModal.message}
-              </p>
-              <div className="flex items-center gap-4 w-full">
-                <button
-                  onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                  className="flex-1 py-4 bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    confirmModal.onConfirm();
-                    setConfirmModal({ ...confirmModal, isOpen: false });
-                  }}
-                  className="flex-1 py-4 bg-rose-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-rose-700 transition-all shadow-lg shadow-rose-100"
-                >
-                  Delete
-                </button>
-              </div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{confirmModal.title}</p>
+            </div>
+            <p style={{ fontSize: 13, color: '#5A6070', marginBottom: 20 }}>{confirmModal.message}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="flex-1 transition-colors"
+                style={{ background: '#F5F6F8', color: '#111827', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
+                Cancel
+              </button>
+              <button onClick={() => { confirmModal.onConfirm(); setConfirmModal({ ...confirmModal, isOpen: false }); }} className="flex-1 transition-colors"
+                style={{ background: '#791F1F', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
+                Confirm
+              </button>
             </div>
           </div>
         </div>

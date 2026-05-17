@@ -1,19 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGetAllLibrariesQuery, useToggleLibraryStatusMutation } from '../../services/kpiApi';
+import { useGetAllLibrariesQuery } from '../../services/kpiApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
-import { 
-  Search, 
-  Plus, 
-  ChevronDown, 
-  LayoutGrid, 
-  List, 
-  ArrowRight,
-  Terminal,
-  Handshake,
-  Brain,
-  Filter,
-  MoreHorizontal
+import {
+  Search, Plus, ChevronDown, LayoutGrid, List, ArrowRight,
+  Terminal, Handshake, Brain, Filter
 } from 'lucide-react';
 
 const KpiLibraryDashboard: React.FC = () => {
@@ -24,7 +15,6 @@ const KpiLibraryDashboard: React.FC = () => {
 
   const { data: librariesResponse, isLoading } = useGetAllLibrariesQuery();
   const { data: positions = [] } = useGetPositionsQuery();
-  const [toggleStatus] = useToggleLibraryStatusMutation();
 
   const libraries = librariesResponse?.data || [];
 
@@ -37,165 +27,158 @@ const KpiLibraryDashboard: React.FC = () => {
 
   const getIcon = (title: string) => {
     const t = title.toLowerCase();
-    if (t.includes('engineer') || t.includes('technical') || t.includes('software')) 
-      return <Terminal className="w-5 h-5 text-blue-600" />;
-    if (t.includes('executive') || t.includes('sales') || t.includes('account')) 
-      return <Handshake className="w-5 h-5 text-blue-600" />;
-    return <Brain className="w-5 h-5 text-blue-600" />;
+    if (t.includes('engineer') || t.includes('technical') || t.includes('software'))
+      return <Terminal size={16} style={{ color: '#1A56DB' }} />;
+    if (t.includes('executive') || t.includes('sales') || t.includes('account'))
+      return <Handshake size={16} style={{ color: '#1A56DB' }} />;
+    return <Brain size={16} style={{ color: '#1A56DB' }} />;
+  };
+
+  const inputStyle: React.CSSProperties = {
+    background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
+    padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', fontFamily: 'inherit',
   };
 
   if (isLoading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-    </div>
+    <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading library…</div>
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-gray-100 pb-8">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">KPI Library</h1>
-          <p className="text-gray-400 text-sm font-medium max-w-xl leading-relaxed">
+    <div className="space-y-4 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ paddingBottom: 14, borderBottom: '0.5px solid #E4E6EC' }}>
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>KPI Library</h1>
+          <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>
             Manage and deploy standardized performance indicators across your organization.
           </p>
         </div>
-        <button
-          onClick={() => navigate('/kpi/library/new')}
-          className="bg-[#2563EB] text-white px-6 py-3 rounded-xl font-bold shadow-sm hover:bg-blue-700 transition-all flex items-center gap-2 active:scale-95"
-        >
-          <Plus className="w-5 h-5" strokeWidth={3} />
-          Create New KPI
+        <button onClick={() => navigate('/kpi/library/new')}
+          className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+          style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+          <Plus size={14} strokeWidth={3} /> Create New KPI
         </button>
       </div>
 
-      {/* Simplified Filter Toolbar */}
-      <div className="flex flex-col lg:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by title, position, or keyword..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white border border-gray-100 rounded-xl pl-10 pr-4 py-3 text-sm font-medium placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/20 transition-all shadow-sm"
-          />
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="relative flex-1 w-full sm:w-auto">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+          <input type="text" placeholder="Search by title, position, or keyword…"
+            style={{ ...inputStyle, width: '100%', paddingLeft: 30 }}
+            value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
         </div>
-        
-        <div className="flex items-center gap-2 w-full lg:w-auto">
+        <div className="flex items-center gap-2">
           <div className="relative">
-            <select
+            <Filter size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+            <select style={{ ...inputStyle, paddingLeft: 28, paddingRight: 28, appearance: 'none' as any }}
               value={positionFilter}
-              onChange={(e) => setPositionFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-              className="appearance-none bg-white px-5 py-3 pr-10 rounded-xl text-xs font-bold text-gray-600 shadow-sm border border-gray-100 hover:border-gray-200 transition-all cursor-pointer outline-none"
-            >
+              onChange={e => setPositionFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}>
               <option value="all">All Positions</option>
-              {positions.map(p => (
-                <option key={p.positionId} value={p.positionId}>{p.positionName}</option>
-              ))}
+              {positions.map(p => <option key={p.positionId} value={p.positionId}>{p.positionName}</option>)}
             </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
           </div>
-
-          <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100">
-            <button 
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <LayoutGrid className="w-4 h-4" />
+          {/* View toggle */}
+          <div className="flex" style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: 3 }}>
+            <button onClick={() => setViewMode('grid')}
+              style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, background: viewMode === 'grid' ? '#EEF3FD' : 'transparent', color: viewMode === 'grid' ? '#1A56DB' : '#9EA3B0' }}>
+              <LayoutGrid size={13} />
             </button>
-            <button 
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <List className="w-4 h-4" />
+            <button onClick={() => setViewMode('list')}
+              style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, background: viewMode === 'list' ? '#EEF3FD' : 'transparent', color: viewMode === 'list' ? '#1A56DB' : '#9EA3B0' }}>
+              <List size={13} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Library Content */}
-      <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-3"}>
-        {filteredLibraries.map((library) => (
-          viewMode === 'grid' ? (
-            <div
-              key={library.id}
-              className="group bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-full"
-            >
-              <div className="flex justify-between items-start mb-5">
-                <div className="bg-gray-50 p-2.5 rounded-lg group-hover:bg-blue-50 transition-colors">
+      {/* Library content */}
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredLibraries.map(library => (
+            <div key={library.id}
+              style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', height: '100%' }}
+              className="hover:border-[#1A56DB] transition-colors">
+              <div className="flex items-start justify-between" style={{ marginBottom: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EEF3FD', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {getIcon(library.title)}
                 </div>
-                <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${
-                  library.isActive ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
-                }`}>
+                <span style={{
+                  fontSize: 9, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px',
+                  background: library.isActive ? '#EAF3DE' : '#F1EFE8',
+                  color: library.isActive ? '#27500A' : '#444441',
+                  border: `0.5px solid ${library.isActive ? '#B8DCA0' : '#DDDBD2'}`,
+                  borderRadius: 20, padding: '2px 7px',
+                }}>
                   {library.isActive ? 'Active' : 'Draft'}
                 </span>
               </div>
-
-              <div className="flex-1 space-y-1">
-                <h3 className="text-lg font-bold text-gray-900 leading-tight">
-                  {library.title}
-                </h3>
-                <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wide">
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 2 }}>{library.title}</p>
+                <p style={{ fontSize: 10, fontWeight: 500, color: '#1A56DB', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
                   {library.positionName || 'General'}
                 </p>
-                <p className="text-gray-500 text-xs leading-relaxed line-clamp-2 mt-3 font-medium">
-                  {library.description || "Performance metrics and competency standards for this role."}
+                <p style={{ fontSize: 12, color: '#9EA3B0', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+                  {library.description || 'Performance metrics and competency standards for this role.'}
                 </p>
               </div>
-
-              <div className="mt-6 pt-5 border-t border-gray-50 flex items-center justify-end">
-                <button 
-                  onClick={() => navigate(`/kpi/library/edit/${library.id}`)}
-                  className="text-gray-900 text-xs font-black flex items-center gap-1.5 hover:text-blue-600 transition-all"
-                >
-                  View Details
-                  <ArrowRight className="w-3.5 h-3.5" />
+              <div className="flex justify-end" style={{ paddingTop: 12, marginTop: 12, borderTop: '0.5px solid #F0F2F6' }}>
+                <button onClick={() => navigate(`/kpi/library/edit/${library.id}`)}
+                  className="inline-flex items-center gap-1.5 transition-colors"
+                  style={{ fontSize: 12, fontWeight: 500, color: '#111827' }}>
+                  View Details <ArrowRight size={12} />
                 </button>
               </div>
             </div>
-          ) : (
-            <div 
-              key={library.id}
-              className="bg-white px-5 py-4 rounded-xl border border-gray-100 flex items-center justify-between hover:border-blue-100 transition-all group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="bg-gray-50 p-2 rounded-lg group-hover:bg-blue-50">
+          ))}
+          {filteredLibraries.length === 0 && (
+            <div className="col-span-full" style={{ padding: '48px 24px', textAlign: 'center', background: '#F5F6F8', border: '0.5px dashed #E0E2E8', borderRadius: 12 }}>
+              <Search size={24} style={{ color: '#E0E2E8', margin: '0 auto 10px' }} />
+              <p style={{ fontSize: 13, color: '#9EA3B0' }}>No results found</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+          {filteredLibraries.map((library, idx) => (
+            <div key={library.id}
+              style={{ padding: '12px 18px', borderBottom: idx < filteredLibraries.length - 1 ? '0.5px solid #F0F2F6' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+              className="hover:bg-[#FAFBFF] transition-colors">
+              <div className="flex items-center gap-3">
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#EEF3FD', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {getIcon(library.title)}
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">{library.title}</h3>
-                  <p className="text-[10px] font-bold text-blue-500 uppercase">{library.positionName || 'General'}</p>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{library.title}</p>
+                  <p style={{ fontSize: 10, color: '#1A56DB', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{library.positionName || 'General'}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-6">
-                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                  library.isActive ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
-                }`}>
+              <div className="flex items-center gap-4">
+                <span style={{
+                  fontSize: 9, fontWeight: 500, textTransform: 'uppercase',
+                  background: library.isActive ? '#EAF3DE' : '#F1EFE8',
+                  color: library.isActive ? '#27500A' : '#444441',
+                  border: `0.5px solid ${library.isActive ? '#B8DCA0' : '#DDDBD2'}`,
+                  borderRadius: 20, padding: '2px 7px',
+                }}>
                   {library.isActive ? 'Active' : 'Draft'}
                 </span>
-                <button 
-                  onClick={() => navigate(`/kpi/library/edit/${library.id}`)}
-                  className="p-1.5 text-gray-300 hover:text-blue-600 transition-all"
-                >
-                  <ArrowRight className="w-4 h-4" />
+                <button onClick={() => navigate(`/kpi/library/edit/${library.id}`)}
+                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
+                  className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
+                  <ArrowRight size={14} />
                 </button>
               </div>
             </div>
-          )
-        ))}
-
-        {filteredLibraries.length === 0 && (
-          <div className="col-span-full py-20 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-            <Search className="w-8 h-8 text-gray-200 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-gray-400">No results found</h3>
-          </div>
-        )}
-      </div>
+          ))}
+          {filteredLibraries.length === 0 && (
+            <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No results found.</div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
 export default KpiLibraryDashboard;
-

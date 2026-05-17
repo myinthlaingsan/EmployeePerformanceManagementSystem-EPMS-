@@ -1,162 +1,131 @@
 import React, { useState } from 'react';
 import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
-import { 
-  useGetPerformanceHistoryByEmployeeQuery, 
+import {
+  useGetPerformanceHistoryByEmployeeQuery,
   useGetAllPerformanceHistoryQuery,
   useGetPerformanceHistoryAnalyticsQuery,
-  useGetEmployeePerformanceHistoryAnalyticsQuery 
+  useGetEmployeePerformanceHistoryAnalyticsQuery
 } from '../../features/continuous/continuousApi';
 import { format } from 'date-fns';
 import { useAuth } from '../../hooks/useAuth';
 
 interface MonthData {
-  name: string;
-  month: number;
-  year: number;
-  praisePublic: number;
-  praisePrivate: number;
-  improvementPublic: number;
-  improvementPrivate: number;
-  warningPublic: number;
-  warningPrivate: number;
-  meetingsPublic: number;
-  meetingsPrivate: number;
+  name: string; month: number; year: number;
+  praisePublic: number; praisePrivate: number;
+  improvementPublic: number; improvementPrivate: number;
+  warningPublic: number; warningPrivate: number;
+  meetingsPublic: number; meetingsPrivate: number;
 }
 
-const SentimentChart = ({ history, employeeName, filterType }: { history: any[], employeeName?: string, filterType: string }) => {
+const panelStyle: React.CSSProperties = {
+  background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px',
+};
+
+const SOURCE_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  FEEDBACK: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
+  MEETING:  { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
+};
+
+const FEEDBACK_TYPE_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  PRAISE:      { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
+  IMPROVEMENT: { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
+  WARNING:     { bg: '#FCEBEB', text: '#791F1F', border: '#F5BFBF' },
+};
+
+const SentimentChart = ({ history, employeeName, filterType }: { history: any[]; employeeName?: string; filterType: string }) => {
   const [timeRange, setTimeRange] = useState<3 | 6 | 12>(6);
   const [showPraise, setShowPraise] = useState(true);
   const [showImprovement, setShowImprovement] = useState(true);
   const [showCorrection, setShowCorrection] = useState(true);
 
-  // Group data by month for the selected time range
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const chartData: MonthData[] = [];
   const now = new Date();
   for (let i = timeRange - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    chartData.push({
-      name: months[d.getMonth()],
-      month: d.getMonth(),
-      year: d.getFullYear(),
-      praisePublic: 0,
-      praisePrivate: 0,
-      improvementPublic: 0,
-      improvementPrivate: 0,
-      warningPublic: 0,
-      warningPrivate: 0,
-      meetingsPublic: 0,
-      meetingsPrivate: 0
-    });
+    chartData.push({ name: months[d.getMonth()], month: d.getMonth(), year: d.getFullYear(), praisePublic: 0, praisePrivate: 0, improvementPublic: 0, improvementPrivate: 0, warningPublic: 0, warningPrivate: 0, meetingsPublic: 0, meetingsPrivate: 0 });
   }
 
-  // The backend's raw analytics endpoint (findLatestStateByEmployee /
-  // findAllLatestStates) already returns exactly ONE row per entity – its
-  // most-recent non-deleted audit entry. feedbackType is therefore always
-  // the current value.  No client-side deduplication needed.
   history.forEach(h => {
     const date = new Date(h.createdAt);
     const monthData = chartData.find(m => m.month === date.getMonth() && m.year === date.getFullYear());
     if (monthData) {
       const isPrivate = h.isPrivate === true;
       if (h.sourceType === 'MEETING') {
-        if (isPrivate) monthData.meetingsPrivate++;
-        else monthData.meetingsPublic++;
+        if (isPrivate) monthData.meetingsPrivate++; else monthData.meetingsPublic++;
       } else if (h.sourceType === 'FEEDBACK') {
         const type: string = h.feedbackType || 'PRAISE';
-        if (type === 'PRAISE') {
-          if (isPrivate) monthData.praisePrivate++;
-          else monthData.praisePublic++;
-        } else if (type === 'IMPROVEMENT') {
-          if (isPrivate) monthData.improvementPrivate++;
-          else monthData.improvementPublic++;
-        } else if (type === 'WARNING') {
-          if (isPrivate) monthData.warningPrivate++;
-          else monthData.warningPublic++;
-        }
+        if (type === 'PRAISE') { if (isPrivate) monthData.praisePrivate++; else monthData.praisePublic++; }
+        else if (type === 'IMPROVEMENT') { if (isPrivate) monthData.improvementPrivate++; else monthData.improvementPublic++; }
+        else if (type === 'WARNING') { if (isPrivate) monthData.warningPrivate++; else monthData.warningPublic++; }
       }
     }
   });
 
   const isMeetingOnly = filterType === 'MEETING';
-  // maxValue must be the highest COUNT of any single metric in any month.
-  // Using the cumulative SUM (old code) made the Y-axis scale too large and
-  // caused stacked lines to visually misrepresent individual values.
   const maxValue = isMeetingOnly
     ? Math.max(...chartData.map(m => m.meetingsPublic + m.meetingsPrivate), 5)
-    : Math.max(
-        ...chartData.flatMap(m => [
-          showPraise ? m.praisePublic + m.praisePrivate : 0,
-          showImprovement ? m.improvementPublic + m.improvementPrivate : 0,
-          showCorrection ? m.warningPublic + m.warningPrivate : 0,
-        ]),
-        5
-      );
+    : Math.max(...chartData.flatMap(m => [
+        showPraise ? m.praisePublic + m.praisePrivate : 0,
+        showImprovement ? m.improvementPublic + m.improvementPrivate : 0,
+        showCorrection ? m.warningPublic + m.warningPrivate : 0,
+      ]), 5);
+
+  const selectStyle: React.CSSProperties = {
+    background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6,
+    padding: '5px 28px 5px 10px', fontSize: 11, fontWeight: 500, color: '#5A6070',
+    outline: 'none', cursor: 'pointer', appearance: 'none',
+  };
 
   return (
-    <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-6">
-      <div className="flex justify-between items-start">
-        <div className="space-y-1">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+    <div style={panelStyle} className="space-y-4">
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {isMeetingOnly ? 'Meeting Volume' : 'Sentiment Distribution'}
           </p>
-          <h3 className="text-xl font-black text-gray-900">
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginTop: 2 }}>
             {isMeetingOnly ? 'Meeting Frequency' : 'Historical Pulse'}{employeeName ? `: ${employeeName}` : ''}
           </h3>
         </div>
-        
-        <div className="flex flex-col items-end gap-3">
-          <select 
-            value={timeRange} 
-            onChange={(e) => setTimeRange(Number(e.target.value) as 3 | 6 | 12)}
-            className="px-4 py-2 bg-transparent hover:bg-gray-50 border border-gray-200 rounded-lg text-[11px] font-black text-gray-500 uppercase tracking-widest outline-none transition cursor-pointer appearance-none shadow-sm"
-            style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '12px', paddingRight: '32px' }}
-          >
-            <option value={3}>Last 3 Months</option>
-            <option value={6}>Last 6 Months</option>
-            <option value={12}>Last 12 Months</option>
-          </select>
-
-          <div className="flex flex-wrap justify-end gap-x-6 gap-y-2">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+          <div style={{ position: 'relative' }}>
+            <select value={timeRange} onChange={(e) => setTimeRange(Number(e.target.value) as 3 | 6 | 12)} style={selectStyle}>
+              <option value={3}>Last 3 Months</option>
+              <option value={6}>Last 6 Months</option>
+              <option value={12}>Last 12 Months</option>
+            </select>
+            <svg style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 10, height: 10, color: '#9EA3B0', pointerEvents: 'none' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 10 }}>
             {!isMeetingOnly ? (
               <>
-                <button 
-                  onClick={() => setShowPraise(!showPraise)}
-                  className={`flex items-center gap-1.5 transition-all duration-300 hover:opacity-80 ${showPraise ? 'opacity-100' : 'opacity-40 grayscale'}`}
-                >
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" />
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Praise</span>
-                </button>
-                <button 
-                  onClick={() => setShowImprovement(!showImprovement)}
-                  className={`flex items-center gap-1.5 transition-all duration-300 hover:opacity-80 ${showImprovement ? 'opacity-100' : 'opacity-40 grayscale'}`}
-                >
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-200" />
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Improvement</span>
-                </button>
-                <button 
-                  onClick={() => setShowCorrection(!showCorrection)}
-                  className={`flex items-center gap-1.5 transition-all duration-300 hover:opacity-80 ${showCorrection ? 'opacity-100' : 'opacity-40 grayscale'}`}
-                >
-                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-200" />
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Correction</span>
-                </button>
-                <div className="h-4 w-px bg-gray-100 mx-2 hidden sm:block" />
-                <div className="flex items-center gap-1.5 opacity-50">
-                  <div className="w-4 h-2 bg-gray-900/10 rounded-sm border border-gray-900/20" />
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Confidential</span>
+                {[
+                  { key: 'praise', show: showPraise, toggle: () => setShowPraise(!showPraise), color: '#27500A', label: 'Praise' },
+                  { key: 'improvement', show: showImprovement, toggle: () => setShowImprovement(!showImprovement), color: '#633806', label: 'Improvement' },
+                  { key: 'correction', show: showCorrection, toggle: () => setShowCorrection(!showCorrection), color: '#791F1F', label: 'Correction' },
+                ].map(item => (
+                  <button key={item.key} onClick={item.toggle}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', opacity: item.show ? 1 : 0.35, transition: 'opacity 0.2s' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} />
+                    <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{item.label}</span>
+                  </button>
+                ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, opacity: 0.4 }}>
+                  <div style={{ width: 14, height: 6, background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 2 }} />
+                  <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Confidential</span>
                 </div>
               </>
             ) : (
               <>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-200" />
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Public Meetings</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#1A56DB' }} />
+                  <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Public</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-200 shadow-sm" />
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Confidential Meetings</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#B5D4F4' }} />
+                  <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Confidential</span>
                 </div>
               </>
             )}
@@ -164,58 +133,45 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
         </div>
       </div>
 
-      <div className="relative h-64 w-full">
-        {/* Y-Axis Grid Lines */}
+      <div style={{ position: 'relative', height: 200, width: '100%' }}>
         {[0, 0.25, 0.5, 0.75, 1].map((p, i) => (
-          <div key={i} className="absolute w-full border-t border-gray-50 z-0" style={{ bottom: `${p * 100}%` }}>
-            <span className="absolute -left-8 -top-2 text-[8px] font-black text-gray-300">
-              {Math.round(p * maxValue)}
-            </span>
+          <div key={i} style={{ position: 'absolute', width: '100%', borderTop: '0.5px solid #F0F2F6', bottom: `${p * 100}%` }}>
+            <span style={{ position: 'absolute', left: -28, top: -8, fontSize: 8, fontWeight: 500, color: '#9EA3B0' }}>{Math.round(p * maxValue)}</span>
           </div>
         ))}
 
-        <svg className="w-full h-full overflow-visible z-10" preserveAspectRatio="none" viewBox="0 0 500 200">
+        <svg style={{ width: '100%', height: '100%', overflow: 'visible', position: 'relative', zIndex: 10 }} preserveAspectRatio="none" viewBox="0 0 500 200">
           <defs>
-            <linearGradient id="praiseGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+            <linearGradient id="phPraiseGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#27500A" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#27500A" stopOpacity="0" />
             </linearGradient>
-            <linearGradient id="improveGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
-            </linearGradient> linearGradient
-            <linearGradient id="warningGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+            <linearGradient id="phImproveGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#633806" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#633806" stopOpacity="0" />
             </linearGradient>
-            <linearGradient id="meetingGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2563eb" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+            <linearGradient id="phWarningGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#791F1F" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#791F1F" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="phMeetingGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#1A56DB" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#1A56DB" stopOpacity="0" />
             </linearGradient>
           </defs>
 
           {(() => {
-            const width = 500;
-            const height = 200;
+            const width = 500; const height = 200;
             const points = chartData.length;
             const dx = width / (points - 1);
 
-            // Build a smooth cubic-Bézier path for a single metric.
-            // Each point's Y = its own count only — NO stacking.
-            // Tracks prevY explicitly to avoid the broken path.split hack.
             const getPath = (getData: (m: MonthData) => number): string => {
-              let path = '';
-              let prevY = 0;
+              let path = ''; let prevY = 0;
               chartData.forEach((m, i) => {
                 const x = i * dx;
                 const y = height - (getData(m) / maxValue) * height;
-                if (i === 0) {
-                  path = `M ${x} ${y}`;
-                } else {
-                  const prevX = (i - 1) * dx;
-                  const cpX = prevX + (x - prevX) / 2;
-                  path += ` C ${cpX} ${prevY}, ${cpX} ${y}, ${x} ${y}`;
-                }
+                if (i === 0) { path = `M ${x} ${y}`; }
+                else { const prevX = (i - 1) * dx; const cpX = prevX + (x - prevX) / 2; path += ` C ${cpX} ${prevY}, ${cpX} ${y}, ${x} ${y}`; }
                 prevY = y;
               });
               return path;
@@ -225,75 +181,45 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
 
             if (isMeetingOnly) {
               const p = getPath(m => m.meetingsPublic + m.meetingsPrivate);
-              return (
-                <>
-                  <path d={fillPath(p)} fill="url(#meetingGrad)" />
-                  <path d={p} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" />
-                </>
-              );
+              return (<><path d={fillPath(p)} fill="url(#phMeetingGrad)" /><path d={p} fill="none" stroke="#1A56DB" strokeWidth="2" strokeLinecap="round" /></>);
             }
 
-            // Each metric is its own independent line — no stacking.
-            // Praise=1, Improvement=3 → Improvement line is HIGHER than Praise.
-            const praiseP     = getPath(m => m.praisePublic + m.praisePrivate);
+            const praiseP = getPath(m => m.praisePublic + m.praisePrivate);
             const improvementP = getPath(m => m.improvementPublic + m.improvementPrivate);
-            const correctionP  = getPath(m => m.warningPublic + m.warningPrivate);
+            const correctionP = getPath(m => m.warningPublic + m.warningPrivate);
 
             return (
               <>
-                {showPraise && <path d={fillPath(praiseP)}      fill="url(#praiseGrad)" className="transition-all duration-500" />}
-                {showImprovement && <path d={fillPath(improvementP)} fill="url(#improveGrad)" className="transition-all duration-500" />}
-                {showCorrection && <path d={fillPath(correctionP)}  fill="url(#warningGrad)" className="transition-all duration-500" />}
-
-                {showPraise && <path d={praiseP}      fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
-                {showImprovement && <path d={improvementP} fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
-                {showCorrection && <path d={correctionP}  fill="none" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
+                {showPraise && <path d={fillPath(praiseP)} fill="url(#phPraiseGrad)" className="transition-all duration-500" />}
+                {showImprovement && <path d={fillPath(improvementP)} fill="url(#phImproveGrad)" className="transition-all duration-500" />}
+                {showCorrection && <path d={fillPath(correctionP)} fill="url(#phWarningGrad)" className="transition-all duration-500" />}
+                {showPraise && <path d={praiseP} fill="none" stroke="#27500A" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
+                {showImprovement && <path d={improvementP} fill="none" stroke="#633806" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
+                {showCorrection && <path d={correctionP} fill="none" stroke="#791F1F" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
               </>
             );
           })()}
         </svg>
 
-        {/* Legend / X-Axis Labels */}
-        <div className="absolute inset-0 flex justify-between items-end pointer-events-none px-0">
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', pointerEvents: 'none', paddingBottom: 0 }}>
           {chartData.map((m, i) => (
-            <div key={i} className="flex flex-col items-center gap-2 group relative pointer-events-auto">
-              <div className="w-px h-64 bg-transparent group-hover:bg-indigo-50 transition-colors relative">
-                <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-4 py-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-2xl z-20 space-y-1.5 border border-white/10">
-                  <p className="text-gray-400 mb-1">{m.name} {m.year}</p>
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, position: 'relative', pointerEvents: 'auto' }} className="group">
+              <div style={{ width: 1, height: 200, background: 'transparent', position: 'relative' }} className="group-hover:bg-[#F0F2F6] transition-colors">
+                <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', background: '#111827', color: '#FFFFFF', fontSize: 10, fontWeight: 500, padding: '8px 12px', borderRadius: 6, opacity: 0, pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 20, marginBottom: 6 }} className="group-hover:opacity-100 transition-opacity">
+                  <p style={{ color: '#9EA3B0', marginBottom: 4 }}>{m.name} {m.year}</p>
                   {!isMeetingOnly ? (
                     <>
-                      {showPraise && (
-                        <div className="flex items-center gap-3 justify-between">
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Praise</div>
-                          <span className="font-black">{m.praisePublic + m.praisePrivate}</span>
-                        </div>
-                      )}
-                      {showImprovement && (
-                        <div className="flex items-center gap-3 justify-between">
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-400" /> Improvement</div>
-                          <span className="font-black">{m.improvementPublic + m.improvementPrivate}</span>
-                        </div>
-                      )}
-                      {showCorrection && (
-                        <div className="flex items-center gap-3 justify-between">
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500" /> Correction</div>
-                          <span className="font-black">{m.warningPublic + m.warningPrivate}</span>
-                        </div>
-                      )}
-                      {!showPraise && !showImprovement && !showCorrection && (
-                        <div className="text-gray-500 italic text-[10px] text-center">No metrics selected</div>
-                      )}
+                      {showPraise && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#27500A', display: 'inline-block' }} />Praise</span><strong>{m.praisePublic + m.praisePrivate}</strong></div>}
+                      {showImprovement && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#633806', display: 'inline-block' }} />Improvement</span><strong>{m.improvementPublic + m.improvementPrivate}</strong></div>}
+                      {showCorrection && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#791F1F', display: 'inline-block' }} />Correction</span><strong>{m.warningPublic + m.warningPrivate}</strong></div>}
                     </>
                   ) : (
-                    <div className="flex items-center gap-3 justify-between">
-                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" /> Meetings</div>
-                      <span className="font-black">{m.meetingsPublic + m.meetingsPrivate}</span>
-                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1A56DB', display: 'inline-block' }} />Meetings</span><strong>{m.meetingsPublic + m.meetingsPrivate}</strong></div>
                   )}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900" />
+                  <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', border: '6px solid transparent', borderTopColor: '#111827' }} />
                 </div>
               </div>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter bg-white px-2 mb-[-24px] z-20">
+              <span style={{ fontSize: 9, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px', background: '#FFFFFF', padding: '0 4px', marginBottom: -20 }}>
                 {m.name}
               </span>
             </div>
@@ -305,27 +231,26 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[],
 };
 
 const AdminStats = ({ history }: { history: any[] }) => {
-  // Backend returns one deduped row per entity with up-to-date feedbackType.
-  // Count FEEDBACK rows directly — no title heuristics needed.
   const feedbacks = history.filter(h => h.sourceType === 'FEEDBACK');
   const praiseCount = feedbacks.filter(h => h.feedbackType === 'PRAISE').length;
   const totalFeedback = feedbacks.length;
   const praisePercentage = totalFeedback > 0 ? Math.round((praiseCount / totalFeedback) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center justify-between">
-        <div className="space-y-2">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Company-Wide Sentiment</p>
-          <h3 className="text-3xl font-black text-gray-900">{praisePercentage}% Praise</h3>
-          <p className="text-xs text-gray-500 font-medium">Real-time organizational health metrics.</p>
+    <div style={panelStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Company-Wide Sentiment</p>
+          <h3 style={{ fontSize: 20, fontWeight: 700, color: '#111827' }}>{praisePercentage}% Praise</h3>
+          <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>Real-time organizational health.</p>
         </div>
-        <div className="relative w-24 h-24">
-          <svg className="w-full h-full transform -rotate-90">
-            <circle cx="48" cy="48" r="36" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-gray-100" />
-            <circle cx="48" cy="48" r="36" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={226} strokeDashoffset={226 - (226 * praisePercentage) / 100} className="text-indigo-600" />
+        <div style={{ position: 'relative', width: 72, height: 72 }}>
+          <svg style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+            <circle cx="36" cy="36" r="28" stroke="#E4E6EC" strokeWidth="10" fill="transparent" />
+            <circle cx="36" cy="36" r="28" stroke="#1A56DB" strokeWidth="10" fill="transparent"
+              strokeDasharray={176} strokeDashoffset={176 - (176 * praisePercentage) / 100} />
           </svg>
-          <div className="absolute inset-0 flex items-center justify-center text-xs font-black text-indigo-600 uppercase tracking-tighter">Pulse</div>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#1A56DB', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Pulse</div>
         </div>
       </div>
     </div>
@@ -342,14 +267,11 @@ export const PerformanceHistoryPage = () => {
   const [selectedDeptId, setSelectedDeptId] = useState<number | ''>('');
   const [selectedEmpId, setSelectedEmpId] = useState<number | ''>('');
   const [filterType, setFilterType] = useState<'ALL' | 'FEEDBACK' | 'MEETING'>('ALL');
-
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [goToPage, setGoToPage] = useState('');
   const isPlainManager = isManager && !isAdmin && !isHR;
 
-  // Auto-select department for managers
   React.useEffect(() => {
     if (isPlainManager && departments && departments.length === 1 && selectedDeptId === '') {
       setSelectedDeptId(departments[0].id);
@@ -357,155 +279,111 @@ export const PerformanceHistoryPage = () => {
   }, [isPlainManager, departments, selectedDeptId]);
 
   const { data: employeeHistoryResponse, isLoading: isEmpHistoryLoading } = useGetPerformanceHistoryByEmployeeQuery(
-    { 
-      employeeId: Number(selectedEmpId), 
-      sourceType: filterType,
-      page: currentPage - 1, 
-      size: itemsPerPage 
-    }, 
+    { employeeId: Number(selectedEmpId), sourceType: filterType, page: currentPage - 1, size: itemsPerPage },
     { skip: !selectedEmpId }
   );
-
   const { data: globalHistoryResponse, isLoading: isGlobalHistoryLoading } = useGetAllPerformanceHistoryQuery(
-    { 
-      sourceType: filterType,
-      page: currentPage - 1, 
-      size: itemsPerPage 
-    },
+    { sourceType: filterType, page: currentPage - 1, size: itemsPerPage },
     { skip: !isGovernanceMode || !!selectedEmpId }
   );
-
-  // Analytics queries for Chart and Stats (Full Data)
-  const { data: employeeAnalytics } = useGetEmployeePerformanceHistoryAnalyticsQuery(
-    Number(selectedEmpId),
-    { skip: !selectedEmpId }
-  );
-
-  const { data: globalAnalytics } = useGetPerformanceHistoryAnalyticsQuery(
-    undefined,
-    { skip: !isGovernanceMode || !!selectedEmpId }
-  );
+  const { data: employeeAnalytics } = useGetEmployeePerformanceHistoryAnalyticsQuery(Number(selectedEmpId), { skip: !selectedEmpId });
+  const { data: globalAnalytics } = useGetPerformanceHistoryAnalyticsQuery(undefined, { skip: !isGovernanceMode || !!selectedEmpId });
 
   const historyResponse = selectedEmpId ? employeeHistoryResponse : globalHistoryResponse;
   const isHistoryLoading = selectedEmpId ? isEmpHistoryLoading : isGlobalHistoryLoading;
   const history = historyResponse?.content || [];
-  
   const analyticsData = selectedEmpId ? employeeAnalytics : globalAnalytics;
 
   const selectedDeptName = departments?.find(d => d.id === selectedDeptId)?.departmentName;
-  const filteredEmployees = employees?.filter(emp => 
-    !selectedDeptName || emp.currentDepartmentName === selectedDeptName
-  ) || [];
+  const filteredEmployees = employees?.filter(emp => !selectedDeptName || emp.currentDepartmentName === selectedDeptName) || [];
 
-  const filteredHistory = history;
-
-  // Pagination Logic (Backend Driven)
   const totalItems = historyResponse?.totalElements || 0;
   const totalPages = historyResponse?.totalPages || 0;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + history.length;
   const paginatedHistory = history;
 
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
+  const handlePageChange = (page: number) => { if (page >= 1 && page <= totalPages) setCurrentPage(page); };
   const handleGoToPage = (e: React.FormEvent) => {
     e.preventDefault();
     const pageNum = parseInt(goToPage);
-    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
-      setCurrentPage(pageNum);
-      setGoToPage('');
-    }
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) { setCurrentPage(pageNum); setGoToPage(''); }
   };
 
   const selectedEmployeeName = employees?.find(e => e.id === selectedEmpId)?.staffName;
 
+  const inputStyle: React.CSSProperties = {
+    background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
+    padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none',
+    width: '100%', boxSizing: 'border-box', fontFamily: 'inherit',
+  };
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0',
+    textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5,
+  };
+  const btnPageStyle = (active: boolean): React.CSSProperties => ({
+    width: 30, height: 30, borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+    background: active ? '#1A56DB' : 'transparent', color: active ? '#FFFFFF' : '#9EA3B0',
+  });
+
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-4 pb-8">
+      {/* Governance banner */}
       {isGovernanceMode && (
-        <div className="bg-gray-900 text-white px-6 py-2 rounded-2xl flex items-center gap-3 shadow-lg shadow-gray-200">
-           <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-           <span className="text-[10px] font-black uppercase tracking-[0.2em]">Admin Mode: Content Privacy Enforced</span>
+        <div style={{ background: '#111827', borderRadius: 8, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg style={{ width: 14, height: 14, color: '#9EA3B0', flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+          <span style={{ fontSize: 10, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Admin Mode: Content Privacy Enforced</span>
         </div>
       )}
 
-      <header className="flex flex-col gap-2">
-        <h1 className="text-4xl font-black text-gray-900 tracking-tight">
-          {isGovernanceMode ? "The Global Pulse" : "Performance History Tracker"}
+      {/* Header */}
+      <div>
+        <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>
+          {isGovernanceMode ? 'The Global Pulse' : 'Performance History Tracker'}
         </h1>
-        <p className="text-gray-500 font-medium">
-          {isGovernanceMode ? "Real-time organizational performance & feedback health." : "View chronological performance activities, feedback, and 1-on-1 meeting records."}
+        <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>
+          {isGovernanceMode ? 'Real-time organizational performance & feedback health.' : 'View chronological performance activities, feedback, and 1-on-1 meeting records.'}
         </p>
-      </header>
+      </div>
 
+      {/* Admin Charts */}
       {isGovernanceMode && analyticsData && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-1">
             <AdminStats history={analyticsData} />
           </div>
           <div className="lg:col-span-2">
-            <SentimentChart 
-              history={analyticsData} 
-              employeeName={selectedEmployeeName} 
-              filterType={filterType}
-            />
+            <SentimentChart history={analyticsData} employeeName={selectedEmployeeName} filterType={filterType} />
           </div>
         </div>
       )}
 
-      {/* Filters Section */}
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 sticky top-0 z-20">
+      {/* Filters */}
+      <div style={{ ...panelStyle, display: 'flex', flexWrap: 'wrap', gap: 16 }}>
         {!isPlainManager && (
-          <div className="flex-1 space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Department</label>
-            <select
-              className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
-              value={selectedDeptId}
-              onChange={(e) => {
-                setSelectedDeptId(e.target.value === '' ? '' : Number(e.target.value));
-                setSelectedEmpId(''); // Reset employee selection when department changes
-                setCurrentPage(1);
-              }}
-              disabled={isDeptsLoading}
-            >
+          <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+            <label style={labelStyle}>Select Department</label>
+            <select style={inputStyle} value={selectedDeptId}
+              onChange={(e) => { setSelectedDeptId(e.target.value === '' ? '' : Number(e.target.value)); setSelectedEmpId(''); setCurrentPage(1); }}
+              disabled={isDeptsLoading}>
               <option value="">All Departments</option>
-              {departments?.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
-              ))}
+              {departments?.map(dept => <option key={dept.id} value={dept.id}>{dept.departmentName}</option>)}
             </select>
           </div>
         )}
-
-        <div className="flex-1 space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Employee</label>
-          <select
-            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
+        <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+          <label style={labelStyle}>Select Employee</label>
+          <select style={{ ...inputStyle, opacity: isEmpsLoading || employees.length === 0 ? 0.5 : 1 }}
             value={selectedEmpId}
-            onChange={(e) => {
-              setSelectedEmpId(e.target.value === '' ? '' : Number(e.target.value));
-              setCurrentPage(1);
-            }}
-            disabled={isEmpsLoading || employees.length === 0}
-          >
-            <option value="">{filteredEmployees.length > 0 ? "Choose an Employee..." : "No employees found"}</option>
-            {filteredEmployees.map(emp => (
-              <option key={emp.id} value={emp.id}>{emp.staffName} ({emp.positionName})</option>
-            ))}
+            onChange={(e) => { setSelectedEmpId(e.target.value === '' ? '' : Number(e.target.value)); setCurrentPage(1); }}
+            disabled={isEmpsLoading || employees.length === 0}>
+            <option value="">{filteredEmployees.length > 0 ? 'Choose an Employee…' : 'No employees found'}</option>
+            {filteredEmployees.map(emp => <option key={emp.id} value={emp.id}>{emp.staffName} ({emp.positionName})</option>)}
           </select>
         </div>
-        <div className="flex-1 space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Activity Type</label>
-          <select
-            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
-            value={filterType}
-            onChange={(e) => {
-              setFilterType(e.target.value as any);
-              setCurrentPage(1);
-            }}
-          >
+        <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+          <label style={labelStyle}>Activity Type</label>
+          <select style={inputStyle} value={filterType} onChange={(e) => { setFilterType(e.target.value as any); setCurrentPage(1); }}>
             <option value="ALL">All Activities</option>
             <option value="FEEDBACK">Feedback Only</option>
             <option value="MEETING">Meetings Only</option>
@@ -513,244 +391,172 @@ export const PerformanceHistoryPage = () => {
         </div>
       </div>
 
-      {/* History Timeline Section */}
+      {/* History Section */}
       {selectedEmpId || isGovernanceMode ? (
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">
-              {isGovernanceMode ? "Audit Log / Transparent History" : "Performance Timeline"}
+        <div style={panelStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
+              {isGovernanceMode ? 'Audit Log / Transparent History' : 'Performance Timeline'}
             </h2>
             {isGovernanceMode && (
-              <button className="px-6 py-2 bg-gray-50 text-gray-600 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-100 transition flex items-center gap-2 border border-gray-100">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: 'pointer' }}>
+                <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 Export CSV
               </button>
             )}
           </div>
-          
+
           {isHistoryLoading ? (
-            <div className="text-center py-20 text-gray-400 font-black uppercase tracking-widest animate-pulse">Analyzing Performance Data...</div>
-          ) : filteredHistory && filteredHistory.length > 0 ? (
-            <div className="flex flex-col h-full min-h-[500px]">
-              <div className="flex-grow overflow-auto">
-                {isGovernanceMode && !selectedEmpId ? (
-                  /* Admin Table View */
-                  <div className="overflow-x-auto pb-20">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="border-b border-gray-50 sticky top-0 bg-white z-10">
-                          <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Timestamp</th>
-                          <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Participants</th>
-                          <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Tag/Type</th>
-                          <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Content Metadata</th>
-                          <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {paginatedHistory.map((record) => (
-                          <tr key={record.historyId} className="group hover:bg-gray-50/50 transition">
-                            <td className="py-4 px-2">
-                               <p className="text-[10px] font-bold text-gray-900">{format(new Date(record.createdAt), 'MMM d, p')}</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0' }}>
+              <div style={{ width: 24, height: 24, border: '2px solid #E4E6EC', borderTopColor: '#1A56DB', borderRadius: '50%' }} className="animate-spin" />
+            </div>
+          ) : paginatedHistory && paginatedHistory.length > 0 ? (
+            <>
+              {isGovernanceMode && !selectedEmpId ? (
+                /* Admin Table View */
+                <div className="overflow-x-auto">
+                  <table style={{ width: '100%', textAlign: 'left', minWidth: 640 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '0.5px solid #E4E6EC' }}>
+                        {['Timestamp', 'Participants', 'Tag / Type', 'Content Metadata', 'Status'].map((h, i) => (
+                          <th key={h} style={{ paddingBottom: 10, paddingLeft: 8, paddingRight: 8, fontSize: 10, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 4 ? 'right' : 'left' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedHistory.map((record) => {
+                        const srcStyle = SOURCE_STYLE[record.sourceType] || SOURCE_STYLE.FEEDBACK;
+                        const ftStyle = record.feedbackType ? (FEEDBACK_TYPE_STYLE[record.feedbackType] || FEEDBACK_TYPE_STYLE.PRAISE) : null;
+                        return (
+                          <tr key={record.historyId} style={{ borderBottom: '0.5px solid #F0F2F6' }} className="hover:bg-[#FAFBFF] transition-colors">
+                            <td style={{ padding: '12px 8px' }}>
+                              <p style={{ fontSize: 11, fontWeight: 600, color: '#111827' }}>{format(new Date(record.createdAt), 'dd/MM/yyyy, p')}</p>
                             </td>
-                            <td className="py-4 px-2">
-                               <div className="flex flex-col">
-                                  <p className="text-xs font-black text-gray-900">{record.performerName}</p>
-                                  <p className="text-[10px] font-bold text-gray-400 tracking-tighter">to {record.employeeName}</p>
-                               </div>
+                            <td style={{ padding: '12px 8px' }}>
+                              <p style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{record.performerName}</p>
+                              <p style={{ fontSize: 10, color: '#9EA3B0', marginTop: 1 }}>to {record.employeeName}</p>
                             </td>
-                            <td className="py-4 px-2">
-                               <div className="flex flex-col gap-1">
-                                  <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest w-fit ${
-                                    record.sourceType === 'FEEDBACK' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-                                  }`}>
-                                    {record.sourceType === 'FEEDBACK' ? record.title.split(' ')[0] : 'Meeting'}
-                                  </span>
-                                  {record.feedbackType && (
-                                    <span className={`text-[7px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-md border w-fit ${
-                                      record.feedbackType === 'PRAISE' ? 'bg-green-50 text-green-600 border-green-100' :
-                                      record.feedbackType === 'IMPROVEMENT' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                      'bg-rose-50 text-rose-600 border-rose-100'
-                                    }`}>
-                                      {record.feedbackType}
-                                    </span>
-                                  )}
-                                  {record.tagName && (
-                                    <span className="text-[8px] font-bold text-gray-400 italic">#{record.tagName}</span>
-                                  )}
-                               </div>
+                            <td style={{ padding: '12px 8px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ background: srcStyle.bg, color: srcStyle.text, border: `0.5px solid ${srcStyle.border}`, borderRadius: 4, padding: '1px 6px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', width: 'fit-content' }}>
+                                  {record.sourceType === 'FEEDBACK' ? record.title?.split(' ')[0] : 'Meeting'}
+                                </span>
+                                {ftStyle && <span style={{ background: ftStyle.bg, color: ftStyle.text, border: `0.5px solid ${ftStyle.border}`, borderRadius: 4, padding: '1px 6px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', width: 'fit-content' }}>{record.feedbackType}</span>}
+                                {record.tagName && <span style={{ fontSize: 9, fontWeight: 500, color: '#9EA3B0', fontStyle: 'italic' }}>#{record.tagName}</span>}
+                              </div>
                             </td>
-                            <td className="py-4 px-2 max-w-xs">
-                               {record.isPrivate ? (
-                                 <div className="relative group/mask">
-                                   <p className="text-[10px] text-gray-300 blur-sm select-none truncate">{record.description}</p>
-                                   <div className="absolute inset-0 flex items-center justify-center gap-1.5">
-                                      <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Confidential: Content Encrypted</span>
-                                   </div>
-                                 </div>
-                               ) : (
-                                 <p className="text-[10px] text-gray-600 line-clamp-1 italic font-medium">"{record.description}"</p>
-                               )}
+                            <td style={{ padding: '12px 8px', maxWidth: 220 }}>
+                              {record.isPrivate ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                  <svg style={{ width: 11, height: 11, color: '#9EA3B0', flexShrink: 0 }} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                                  <span style={{ fontSize: 9, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Confidential</span>
+                                </div>
+                              ) : (
+                                <p style={{ fontSize: 11, color: '#5A6070', fontStyle: 'italic' }} className="line-clamp-1">"{record.description}"</p>
+                              )}
                             </td>
-                            <td className="py-4 px-2 text-right">
-                               <span className={`inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-widest ${record.isPrivate ? 'text-rose-500' : 'text-indigo-500'}`}>
-                                  <div className={`w-1 h-1 rounded-full ${record.isPrivate ? 'bg-rose-500' : 'bg-indigo-500'}`} />
-                                  {record.isPrivate ? 'Private' : 'Public'}
-                               </span>
+                            <td style={{ padding: '12px 8px', textAlign: 'right' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: record.isPrivate ? '#791F1F' : '#1A56DB' }}>
+                                <span style={{ width: 5, height: 5, borderRadius: '50%', background: record.isPrivate ? '#791F1F' : '#1A56DB', display: 'inline-block' }} />
+                                {record.isPrivate ? 'Private' : 'Public'}
+                              </span>
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  /* Personal Timeline View */
-                  <div className="relative border-l-2 border-indigo-100 ml-4 space-y-10 pb-24">
-                    {paginatedHistory.map((record) => (
-                      <div key={record.historyId} className="relative pl-10 group">
-                        <div className={`absolute -left-[11px] top-1.5 w-5 h-5 rounded-full border-4 border-white shadow-sm transition-transform duration-300 group-hover:scale-125 ${
-                          record.sourceType === 'FEEDBACK' ? 'bg-emerald-500' : 'bg-blue-600'
-                        }`} />
-                        
-                        <div className="bg-gray-50/50 rounded-[2rem] p-6 border border-gray-100 group-hover:bg-white group-hover:shadow-xl group-hover:shadow-indigo-50/50 transition-all duration-300">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                 <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${
-                                   record.sourceType === 'FEEDBACK' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                                 }`}>
-                                   {record.sourceType}
-                                 </span>
-                                 {record.feedbackType && (
-                                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${
-                                     record.feedbackType === 'PRAISE' ? 'bg-green-100 text-green-700' :
-                                     record.feedbackType === 'IMPROVEMENT' ? 'bg-amber-100 text-amber-700' :
-                                     'bg-rose-100 text-rose-700'
-                                   }`}>
-                                     {record.feedbackType}
-                                   </span>
-                                 )}
-                                 {record.tagName && (
-                                   <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-lg">#{record.tagName}</span>
-                                 )}
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                /* Personal Timeline View */
+                <div style={{ borderLeft: '0.5px solid #E4E6EC', marginLeft: 14, paddingLeft: 0 }} className="space-y-6">
+                  {paginatedHistory.map((record) => {
+                    const srcStyle = SOURCE_STYLE[record.sourceType] || SOURCE_STYLE.FEEDBACK;
+                    const ftStyle = record.feedbackType ? (FEEDBACK_TYPE_STYLE[record.feedbackType] || FEEDBACK_TYPE_STYLE.PRAISE) : null;
+                    return (
+                      <div key={record.historyId} style={{ position: 'relative', paddingLeft: 28 }}>
+                        <div style={{ position: 'absolute', left: -8, top: 6, width: 16, height: 16, borderRadius: '50%', background: srcStyle.bg, border: `0.5px solid ${srcStyle.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: srcStyle.text, display: 'inline-block' }} />
+                        </div>
+                        <div style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 10, padding: '12px 14px' }} className="hover:border-[#1A56DB] transition-colors">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+                            <div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                                <span style={{ background: srcStyle.bg, color: srcStyle.text, border: `0.5px solid ${srcStyle.border}`, borderRadius: 4, padding: '1px 6px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{record.sourceType}</span>
+                                {ftStyle && <span style={{ background: ftStyle.bg, color: ftStyle.text, border: `0.5px solid ${ftStyle.border}`, borderRadius: 4, padding: '1px 6px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{record.feedbackType}</span>}
+                                {record.tagName && <span style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 4, padding: '1px 6px', fontSize: 9, fontWeight: 500, color: '#5A6070' }}>#{record.tagName}</span>}
                                 {record.isPrivate && (
-                                  <span className="px-2 py-0.5 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest rounded-lg flex items-center gap-1">
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                                  <span style={{ background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5BFBF', borderRadius: 4, padding: '1px 6px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                    <svg style={{ width: 9, height: 9 }} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
                                     Private
                                   </span>
                                 )}
                               </div>
-                              <h3 className="font-black text-gray-900 text-xl tracking-tight leading-none">
-                                {record.title}
-                              </h3>
-                              <p className="text-xs font-bold text-gray-400">
-                                {record.performerId !== (selectedEmpId || user?.id) 
-                                  ? `Recorded by ${record.performerName}` 
-                                  : `Interaction with ${record.employeeId === (selectedEmpId || user?.id) ? record.managerName : record.employeeName}`
-                                }
+                              <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{record.title}</h3>
+                              <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>
+                                {record.performerId !== (selectedEmpId || user?.id)
+                                  ? `Recorded by ${record.performerName}`
+                                  : `Interaction with ${record.employeeId === (selectedEmpId || user?.id) ? record.managerName : record.employeeName}`}
                               </p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{format(new Date(record.createdAt), 'MMMM d')}</p>
-                              <p className="text-[10px] font-bold text-gray-300 uppercase tracking-tighter">{format(new Date(record.createdAt), 'p')}</p>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <p style={{ fontSize: 11, fontWeight: 600, color: '#5A6070' }}>{format(new Date(record.createdAt), 'dd/MM/yyyy')}</p>
+                              <p style={{ fontSize: 10, color: '#9EA3B0' }}>{format(new Date(record.createdAt), 'p')}</p>
                             </div>
                           </div>
-                          
-                          <div className="p-4 bg-white rounded-2xl border border-gray-100/50 shadow-inner-sm italic text-gray-600 leading-relaxed">
+                          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '8px 12px', fontStyle: 'italic', fontSize: 13, color: '#5A6070', lineHeight: 1.5 }}>
                             "{record.description}"
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Fixed Pagination Bar */}
-              <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-100 p-4 px-8 rounded-b-[2.5rem] flex items-center justify-between z-30">
-                <div className="flex items-center gap-4">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems}
-                  </span>
-                  
-                  <div className="flex items-center gap-1">
-                    <button 
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="p-2 text-gray-400 hover:text-indigo-600 disabled:opacity-30 transition"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
-                    </button>
-                    
-                    <div className="flex items-center gap-1 px-2">
-                      {[...Array(totalPages)].map((_, i) => {
-                        const pageNum = i + 1;
-                        if (totalPages > 5) {
-                          if (pageNum === 1 || pageNum === totalPages || (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)) {
-                            return (
-                              <button 
-                                key={pageNum}
-                                onClick={() => handlePageChange(pageNum)}
-                                className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${currentPage === pageNum ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'}`}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          } else if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
-                            return <span key={pageNum} className="text-gray-300 text-[10px] font-black">...</span>;
-                          }
-                          return null;
-                        }
-                        return (
-                          <button 
-                            key={pageNum}
-                            onClick={() => handlePageChange(pageNum)}
-                            className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${currentPage === pageNum ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'}`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <button 
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="p-2 text-gray-400 hover:text-indigo-600 disabled:opacity-30 transition"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-                    </button>
-                  </div>
+                    );
+                  })}
                 </div>
+              )}
 
-                <form onSubmit={handleGoToPage} className="flex items-center gap-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Go to</label>
-                  <input 
-                    type="text"
-                    value={goToPage}
-                    onChange={(e) => setGoToPage(e.target.value)}
-                    placeholder="Page..."
-                    className="w-16 px-2 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-[10px] font-black outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                  />
-                  <button type="submit" className="hidden" />
-                </form>
-              </div>
-            </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 0 0', marginTop: 12, borderTop: '0.5px solid #E4E6EC' }}>
+                  <span style={{ fontSize: 11, color: '#9EA3B0' }}>Showing {startIndex + 1}–{Math.min(endIndex, totalItems)} of {totalItems}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}
+                      style={{ ...btnPageStyle(false), opacity: currentPage === 1 ? 0.3 : 1 }}>
+                      <svg style={{ width: 12, height: 12, margin: 'auto' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    {[...Array(totalPages)].map((_, i) => {
+                      const p = i + 1;
+                      if (totalPages > 5 && p !== 1 && p !== totalPages && (p < currentPage - 1 || p > currentPage + 1)) {
+                        if (p === currentPage - 2 || p === currentPage + 2) return <span key={p} style={{ fontSize: 11, color: '#9EA3B0', padding: '0 2px' }}>…</span>;
+                        return null;
+                      }
+                      return <button key={p} onClick={() => handlePageChange(p)} style={btnPageStyle(currentPage === p)}>{p}</button>;
+                    })}
+                    <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}
+                      style={{ ...btnPageStyle(false), opacity: currentPage === totalPages ? 0.3 : 1 }}>
+                      <svg style={{ width: 12, height: 12, margin: 'auto' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
+                  <form onSubmit={handleGoToPage} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <label style={{ fontSize: 11, color: '#9EA3B0' }}>Go to</label>
+                    <input type="text" value={goToPage} onChange={(e) => setGoToPage(e.target.value)} placeholder="…"
+                      style={{ width: 48, background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 8px', fontSize: 11, color: '#111827', outline: 'none' }} />
+                  </form>
+                </div>
+              )}
+            </>
           ) : (
-            <div className="text-center py-20 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
-              <svg className="w-16 h-16 text-gray-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-gray-400 font-black uppercase tracking-widest">No activity found in the logs.</p>
+            <div style={{ padding: '48px 24px', textAlign: 'center', border: '2px dashed #E4E6EC', borderRadius: 8 }}>
+              <svg style={{ width: 36, height: 36, color: '#E4E6EC', margin: '0 auto 10px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <p style={{ fontSize: 12, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 500 }}>No activity found in the logs.</p>
             </div>
           )}
         </div>
       ) : (
-        <div className="text-center py-24 bg-indigo-50/50 rounded-[2.5rem] border-2 border-dashed border-indigo-100/50 space-y-4">
-          <div className="w-20 h-20 bg-indigo-100 rounded-[2rem] flex items-center justify-center mx-auto text-indigo-400 shadow-sm">
-             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        <div style={{ padding: '64px 24px', textAlign: 'center', border: '2px dashed #E4E6EC', borderRadius: 12, background: '#F5F6F8' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 10, background: '#EEF3FD', border: '0.5px solid #B5D4F4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <svg style={{ width: 24, height: 24, color: '#1A56DB' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           </div>
-          <p className="text-indigo-400 font-black uppercase tracking-widest text-sm">Targeted Insights: Select an employee to begin analysis</p>
+          <p style={{ fontSize: 12, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 500 }}>Select an employee to begin analysis</p>
         </div>
       )}
     </div>

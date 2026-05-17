@@ -68,9 +68,16 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="number"
-                    value={detail.targetValue}
+                    min="0"
+                    value={detail.targetValue === '' ? '' : detail.targetValue}
+                    onKeyDown={e => {
+                      if (e.key === '-') {
+                        e.preventDefault();
+                      }
+                    }}
                     onChange={(e) => onDetailChange(index, 'targetValue', e.target.value)}
                     className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-medium"
+                    style={{ textAlign: 'right' }}
                   />
                 </td>
                 <td className="border-r border-gray-200 p-0">
@@ -85,9 +92,16 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="number"
-                    value={detail.weightPercent}
+                    min="0"
+                    value={detail.weightPercent === '' ? '' : detail.weightPercent}
+                    onKeyDown={e => {
+                      if (e.key === '-') {
+                        e.preventDefault();
+                      }
+                    }}
                     onChange={(e) => onDetailChange(index, 'weightPercent', e.target.value)}
                     className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-bold"
+                    style={{ textAlign: 'right' }}
                   />
                 </td>
                 <td className="p-0 text-center">

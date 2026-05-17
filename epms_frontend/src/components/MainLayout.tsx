@@ -1,26 +1,41 @@
 import { Outlet } from "react-router-dom";
+import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useWebSocket } from "../hooks/useWebSocket";
-import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 
 const MainLayout = () => {
-  // Initialize WebSocket connection when the layout is mounted
   useWebSocket();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-surface-base">
-      {/* Sidebar - Fixed width */}
-      <Sidebar />
+    <div className="flex h-screen" style={{ background: "#F5F6F8" }}>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Main Content Area */}
+      {/* Sidebar — always visible on md+, drawer on mobile */}
+      <div
+        className={[
+          "fixed inset-y-0 left-0 z-50 md:static md:z-auto md:translate-x-0 transition-transform duration-200",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
+      >
+        <Sidebar onClose={() => setSidebarOpen(false)} />
+      </div>
+
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header - Fixed height */}
-        <Header />
-
-        {/* Scrollable Main Content */}
-        <main className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-7xl mx-auto">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <main
+          className="flex-1 overflow-y-auto"
+          style={{ padding: "16px 16px" }}
+        >
+          <div className="max-w-full md:px-2">
             <Outlet />
           </div>
         </main>

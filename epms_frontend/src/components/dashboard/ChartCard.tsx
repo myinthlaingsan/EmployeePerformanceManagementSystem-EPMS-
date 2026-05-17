@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface ChartCardProps {
   title: string;
@@ -7,11 +7,19 @@ interface ChartCardProps {
 
 const ChartCard: React.FC<ChartCardProps> = ({ title, children }) => {
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-full">
-      <h3 className="text-lg font-semibold text-gray-800 mb-6">{title}</h3>
-      <div className="h-[300px] w-full">
-        {children}
-      </div>
+    <div
+      style={{
+        background: "#FFFFFF",
+        border: "0.5px solid #E4E6EC",
+        borderRadius: 12,
+        padding: "16px 18px",
+        height: "100%",
+      }}
+    >
+      <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 16 }}>
+        {title}
+      </p>
+      <div style={{ height: 300, width: "100%" }}>{children}</div>
     </div>
   );
 };

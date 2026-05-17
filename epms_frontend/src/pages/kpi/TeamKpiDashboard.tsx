@@ -1,41 +1,38 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  TrendingUp, 
-  Users, 
-  AlertCircle, 
-  CheckCircle2, 
-  Search, 
-  Filter,
-  Download, 
-  ChevronRight,
-  LayoutTemplate
+import {
+  TrendingUp, Users, AlertCircle, CheckCircle2, Search, Filter,
+  Download, ChevronRight, LayoutTemplate
 } from 'lucide-react';
 import { useGetAllEmployeesQuery, useGetDirectReportsQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
+import React from 'react';
+
+const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
+  LOCKED:   { bg: '#111827', text: '#FFFFFF', border: '#111827' },
+  DRAFT:    { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
+};
 
 const TeamKpiDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, activeCycleId, activeCycleName } = useAuth();
   const isAdminOrHr = user?.roles?.some(r => r === 'ADMIN' || r === 'HR');
 
-  // Conditional data fetching: Admins see everyone, Managers see direct reports
   const { data: allEmployees = [], isLoading: loadingAll } = useGetAllEmployeesQuery(undefined, { skip: !isAdminOrHr });
   const { data: directReports = [], isLoading: loadingReports } = useGetDirectReportsQuery(Number(user?.id), { skip: isAdminOrHr || !user?.id });
-  
+
   const employees = isAdminOrHr ? allEmployees : directReports;
   const isLoading = isAdminOrHr ? loadingAll : loadingReports;
 
-  const { data: teamGoalsResponse } = useGetTeamGoalSetsQuery({
-    managerId: Number(user?.id),
-    cycleId: Number(activeCycleId)
-  }, { skip: !user?.id || !activeCycleId });
-
+  const { data: teamGoalsResponse } = useGetTeamGoalSetsQuery(
+    { managerId: Number(user?.id), cycleId: Number(activeCycleId) },
+    { skip: !user?.id || !activeCycleId }
+  );
   const teamGoals = teamGoalsResponse?.data || [];
 
-  // State
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,7 +40,6 @@ const TeamKpiDashboard: React.FC = () => {
 
   const teamMembers = useMemo(() => {
     if (!user || !employees) return [];
-    
     let members = employees.map(emp => {
       const goals = teamGoals.find(g => g.employeeId === emp.id);
       const items = goals?.items || [];
@@ -58,22 +54,14 @@ const TeamKpiDashboard: React.FC = () => {
           progress = Math.floor(weightedSum / totalWeight);
         }
       }
-      return {
-        ...emp,
-        goalSet: goals,
-        progress
-      };
+      return { ...emp, goalSet: goals, progress };
     });
-
-    // Filter
     if (searchTerm) {
-      members = members.filter(m => 
+      members = members.filter(m =>
         m.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
-    // Sort
     return [...members].sort((a, b) => {
       if (sortBy === 'name') return a.staffName.localeCompare(b.staffName);
       if (sortBy === 'progress-high') return b.progress - a.progress;
@@ -83,283 +71,205 @@ const TeamKpiDashboard: React.FC = () => {
   }, [employees, user, teamGoals, searchTerm, sortBy]);
 
   const stats = useMemo(() => {
-    const totalReports = teamMembers.length;
     const withGoals = teamMembers.filter(m => m.goalSet).length;
-    
     return {
-      overallCompletion: totalReports > 0 ? Math.round((withGoals / totalReports) * 100) : 0,
-      onTrack: withGoals,
-      atRisk: totalReports - withGoals,
-      targetDate: 'Active',
-      phase: 'Goal Setting'
+      coverage: teamMembers.length > 0 ? Math.round((withGoals / teamMembers.length) * 100) : 0,
+      assigned: withGoals,
+      pending: teamMembers.length - withGoals,
     };
   }, [teamMembers]);
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedIds(teamMembers.map(m => m.id));
-    } else {
-      setSelectedIds([]);
-    }
+    setSelectedIds(e.target.checked ? teamMembers.map(m => m.id) : []);
   };
 
-  const handleToggleSelect = (id: number) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
-
-  const handleBulkAssignAll = () => {
-    if (teamMembers.length === 0) return;
-    setSelectedIds(teamMembers.map(m => m.id));
-    setIsBulkModalOpen(true);
-  };
+  const getProgressColor = (p: number) => p >= 80 ? '#27500A' : p >= 40 ? '#1A56DB' : p > 0 ? '#633806' : '#9EA3B0';
+  const getProgressBg = (p: number) => p >= 80 ? '#EAF3DE' : p >= 40 ? '#EEF3FD' : p > 0 ? '#FAEEDA' : '#F5F6F8';
 
   if (isLoading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-    </div>
+    <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading team data…</div>
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <div className="p-8 max-w-400 mx-auto space-y-8">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-10">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight italic">Team Performance</h1>
-            <p className="text-sm text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Direct Reports & Goal Tracking • {activeCycleName}
-            </p>
+    <div className="space-y-4 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Team Performance</h1>
+          <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>
+            Direct Reports &amp; Goal Tracking &bull; {activeCycleName}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+            <input type="text" placeholder="Search reports…"
+              style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px 7px 30px', fontSize: 13, color: '#111827', outline: 'none', width: 200 }}
+              value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
-          <div className="flex items-center gap-3">
+          <button className="inline-flex items-center gap-2 transition-colors"
+            style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
+            <Download size={13} /> Report
+          </button>
+          <button onClick={() => { if (teamMembers.length > 0) { setSelectedIds(teamMembers.map(m => m.id)); setIsBulkModalOpen(true); } }}
+            className="inline-flex items-center gap-2 transition-colors"
+            style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+            <LayoutTemplate size={13} /> Bulk Assign Team
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Goal Assignment</p>
+            <div className="flex items-center gap-1" style={{ color: '#1A56DB' }}>
+              <TrendingUp size={12} />
+              <span style={{ fontSize: 10, fontWeight: 500 }}>Coverage</span>
+            </div>
+          </div>
+          <p style={{ fontSize: 28, fontWeight: 500, color: '#111827', marginBottom: 8 }}>{stats.coverage}%</p>
+          <div style={{ background: '#F0F2F6', borderRadius: 4, height: 4, overflow: 'hidden', marginBottom: 8 }}>
+            <div style={{ height: '100%', background: '#1A56DB', width: `${stats.coverage}%`, transition: 'width 0.5s' }} />
+          </div>
+          <div className="flex justify-between">
+            <span style={{ fontSize: 10, color: '#9EA3B0' }}>Phase: Goal Setting</span>
+            <span style={{ fontSize: 10, color: '#9EA3B0' }}>{stats.assigned} of {teamMembers.length}</span>
+          </div>
+        </div>
+
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+          <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#EAF3DE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircle2 size={15} style={{ color: '#27500A' }} />
+            </div>
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>Assigned</p>
+          </div>
+          <p style={{ fontSize: 28, fontWeight: 500, color: '#111827', marginBottom: 2 }}>{stats.assigned}</p>
+          <p style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Goal Sets</p>
+        </div>
+
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+          <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AlertCircle size={15} style={{ color: '#791F1F' }} />
+            </div>
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>Pending</p>
+          </div>
+          <p style={{ fontSize: 28, fontWeight: 500, color: '#791F1F', marginBottom: 2 }}>{stats.pending}</p>
+          <p style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Requires Assignment</p>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p style={{ fontSize: 11, fontWeight: 500, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Direct Reports Tracking</p>
+          <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="Search reports..."
-                className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all w-64 shadow-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+              <Filter size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+              <select
+                style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '6px 12px 6px 28px', fontSize: 11, color: '#5A6070', outline: 'none', appearance: 'none' }}
+                value={sortBy} onChange={e => setSortBy(e.target.value as any)}>
+                <option value="name">Sort: Name (A-Z)</option>
+                <option value="progress-high">Sort: High Progress</option>
+                <option value="progress-low">Sort: Low Progress</option>
+              </select>
             </div>
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 text-gray-900 text-xs font-black rounded-xl hover:bg-gray-50 transition-all shadow-sm uppercase tracking-widest">
-              <Download className="w-4 h-4" />
-              Report
-            </button>
-            <button 
-              onClick={handleBulkAssignAll}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-xs font-black rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-100 uppercase tracking-widest active:scale-95"
-            >
-              <LayoutTemplate className="w-4 h-4" />
-              Bulk Assign Team
-            </button>
+            {selectedIds.length > 0 && (
+              <button onClick={() => setIsBulkModalOpen(true)}
+                style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 500, border: 'none' }}>
+                Bulk Assign ({selectedIds.length})
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Top Summary Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-            <div className="flex justify-between items-start mb-4">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Goal Assignment</p>
-              <div className="flex items-center gap-1 text-blue-600 font-bold text-xs">
-                <TrendingUp className="w-3 h-3" />
-                Coverage
-              </div>
-            </div>
-            <div className="flex items-baseline gap-2 mb-4">
-              <h3 className="text-5xl font-black text-gray-900">{stats.overallCompletion}%</h3>
-            </div>
-            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden mb-4">
-              <div 
-                className="bg-blue-600 h-full rounded-full transition-all duration-1000 ease-out" 
-                style={{ width: `${stats.overallCompletion}%` }}
-              ></div>
-            </div>
-            <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase tracking-widest">
-              <span>Phase: {stats.phase}</span>
-              <span>{stats.onTrack} of {teamMembers.length} Employees</span>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <p className="text-sm font-bold text-gray-900 uppercase tracking-tight">Assigned</p>
-            </div>
-            <div className="mt-4">
-              <p className="text-4xl font-black text-gray-900">{stats.onTrack}</p>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Active Goal Sets</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-50 rounded-lg text-red-600">
-                <AlertCircle className="w-5 h-5" />
-              </div>
-              <p className="text-sm font-bold text-gray-900 uppercase tracking-tight">Pending</p>
-            </div>
-            <div className="mt-4">
-              <div className="flex items-baseline gap-2">
-                <p className="text-4xl font-black text-red-600">{stats.atRisk}</p>
-                <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Reports</p>
-              </div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Requires assignment</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Goals Table */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">Direct Reports Tracking</h3>
-            <div className="flex items-center gap-3">
-              <div className="relative group">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors pointer-events-none" />
-                <select 
-                  className="pl-9 pr-8 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black text-gray-600 outline-none appearance-none cursor-pointer hover:border-blue-200 transition-all shadow-sm uppercase tracking-widest"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                >
-                  <option value="name">Sort: Name (A-Z)</option>
-                  <option value="progress-high">Sort: High Progress</option>
-                  <option value="progress-low">Sort: Low Progress</option>
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <div className="border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-400"></div>
-                </div>
-              </div>
-              {selectedIds.length > 0 && (
-                <button 
-                  onClick={() => setIsBulkModalOpen(true)}
-                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 uppercase tracking-widest active:scale-95 animate-in slide-in-from-right-4"
-                >
-                  Bulk Assign ({selectedIds.length})
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4 w-10">
-                    <input 
-                      type="checkbox" 
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left" style={{ minWidth: 680 }}>
+              <thead>
+                <tr style={{ borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
+                  <th style={{ padding: '10px 16px', width: 40 }}>
+                    <input type="checkbox" style={{ accentColor: '#1A56DB' }}
                       checked={selectedIds.length === teamMembers.length && teamMembers.length > 0}
-                      onChange={handleSelectAll}
-                    />
+                      onChange={handleSelectAll} />
                   </th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Direct Report</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Goal Status</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">KPI Items</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cycle</th>
-                  <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Progress</th>
-                  <th className="px-4 py-4"></th>
+                  {['Direct Report','Goal Status','KPI Items','Cycle','Progress',''].map((h, i) => (
+                    <th key={h + i} style={{ padding: '10px 16px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {teamMembers.map((emp) => (
-                  <tr 
-                    key={emp.id} 
-                    className={`hover:bg-blue-50/10 transition-colors group cursor-pointer ${selectedIds.includes(emp.id) ? 'bg-blue-50/20' : ''}`} 
-                    onClick={() => {
-                      if (emp.goalSet?.status === 'APPROVED' || emp.goalSet?.status === 'LOCKED') {
-                        navigate(`/kpi/goals/${emp.id}`);
-                      } else {
-                        navigate(`/kpi/assign/${emp.id}`);
-                      }
-                    }}
-                  >
-                    <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
-                       <input 
-                        type="checkbox" 
-                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                        checked={selectedIds.includes(emp.id)}
-                        onChange={() => handleToggleSelect(emp.id)}
-                      />
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black text-sm">
-                          {emp.staffName.split(' ').map((n: string) => n[0]).join('')}
+              <tbody>
+                {teamMembers.map((emp, idx) => {
+                  const status = emp.goalSet?.status;
+                  const ss = STATUS_STYLE[status || ''] || { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8' };
+                  return (
+                    <tr key={emp.id}
+                      style={{ borderBottom: idx < teamMembers.length - 1 ? '0.5px solid #F0F2F6' : 'none', background: selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF', cursor: 'pointer' }}
+                      className="hover:bg-[#FAFBFF] transition-colors"
+                      onClick={() => {
+                        if (status === 'APPROVED' || status === 'LOCKED') navigate(`/kpi/goals/${emp.id}`);
+                        else navigate(`/kpi/assign/${emp.id}`);
+                      }}>
+                      <td style={{ padding: '10px 16px' }} onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" style={{ accentColor: '#1A56DB' }}
+                          checked={selectedIds.includes(emp.id)}
+                          onChange={() => setSelectedIds(prev => prev.includes(emp.id) ? prev.filter(i => i !== emp.id) : [...prev, emp.id])} />
+                      </td>
+                      <td style={{ padding: '10px 16px' }}>
+                        <div className="flex items-center gap-3">
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EEF3FD', color: '#1A56DB', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {emp.staffName.split(' ').map((n: string) => n[0]).join('')}
+                          </div>
+                          <div>
+                            <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{emp.staffName}</p>
+                            <p style={{ fontSize: 10, color: '#9EA3B0' }}>{emp.positionName || 'Associate'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-gray-900 text-sm tracking-tight">{emp.staffName}</p>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{emp.positionName || 'Associate'}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                        emp.goalSet?.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
-                        emp.goalSet?.status === 'LOCKED' ? 'bg-gray-900 text-white' :
-
-                        emp.goalSet?.status === 'DRAFT' ? 'bg-blue-50 text-blue-600' :
-                        'bg-gray-50 text-gray-400'
-                      }`}>
-                        {emp.goalSet?.status || 'Not Assigned'}
-                      </span>
-                    </td>
-                    <td className="px-8 py-5">
-                      <p className="text-xs font-bold text-gray-600">
+                      </td>
+                      <td style={{ padding: '10px 16px' }}>
+                        <span style={{ fontSize: 10, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '2px 8px' }}>
+                          {status || 'Not Assigned'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 16px', fontSize: 12, color: '#5A6070' }}>
                         {emp.goalSet?.items?.length || 0} Items
-                      </p>
-                    </td>
-                    <td className="px-8 py-5">
-                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                          {emp.goalSet?.appraisalCycleName || activeCycleName}
-                       </p>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-3">
-                         <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full rounded-full transition-all duration-700 ${
-                                emp.progress >= 80 ? 'bg-emerald-500' :
-                                emp.progress >= 40 ? 'bg-blue-600' :
-                                emp.progress > 0 ? 'bg-amber-500' : 'bg-gray-200'
-                              }`}
-                              style={{ width: `${emp.progress}%` }} 
-                            ></div>
-                         </div>
-                         <span className={`text-[10px] font-black ${
-                           emp.progress >= 80 ? 'text-emerald-600' :
-                           emp.progress >= 40 ? 'text-blue-600' :
-                           emp.progress > 0 ? 'text-amber-600' : 'text-gray-400'
-                         }`}>{emp.progress}%</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-5 text-right">
-                      <div className="flex items-center justify-end gap-2 text-blue-600 group-hover:translate-x-1 transition-all duration-300">
-                        <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">Manage</span>
-                        <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-600" />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td style={{ padding: '10px 16px', fontSize: 11, color: '#9EA3B0' }}>
+                        {emp.goalSet?.appraisalCycleName || activeCycleName}
+                      </td>
+                      <td style={{ padding: '10px 16px' }}>
+                        <div className="flex items-center gap-2">
+                          <div style={{ width: 64, height: 4, background: '#F0F2F6', borderRadius: 2, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', background: getProgressColor(emp.progress), width: `${emp.progress}%` }} />
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: getProgressColor(emp.progress), background: getProgressBg(emp.progress), borderRadius: 4, padding: '1px 5px' }}>
+                            {emp.progress}%
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                        <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
+                      </td>
+                    </tr>
+                  );
+                })}
+                {teamMembers.length === 0 && (
+                  <tr><td colSpan={7} style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No team members found.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
-
-        {isBulkModalOpen && (
-          <BulkAssignModal 
-            selectedEmployeeIds={selectedIds}
-            onClose={() => setIsBulkModalOpen(false)}
-            onSuccess={() => {
-              setIsBulkModalOpen(false);
-              setSelectedIds([]);
-            }}
-          />
-        )}
       </div>
+
+      {isBulkModalOpen && (
+        <BulkAssignModal selectedEmployeeIds={selectedIds}
+          onClose={() => setIsBulkModalOpen(false)}
+          onSuccess={() => { setIsBulkModalOpen(false); setSelectedIds([]); }} />
+      )}
     </div>
   );
 };

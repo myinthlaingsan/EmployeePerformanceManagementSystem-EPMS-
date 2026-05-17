@@ -1,14 +1,18 @@
 import { useGetPositionsQuery, useCreatePositionMutation, useDeletePositionMutation } from "../../features/org/positionApi";
 import { useGetJobLevelsQuery } from "../../features/org/jobLevelApi";
 import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+
+const inputStyle: React.CSSProperties = {
+  background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8,
+  padding: "7px 12px", fontSize: 13, color: "#111827", fontFamily: "inherit", outline: "none", width: "100%",
+};
 
 const PositionList = () => {
   const { data: positions, isLoading: positionsLoading, error: positionsError } = useGetPositionsQuery();
   const { data: levels, isLoading: levelsLoading } = useGetJobLevelsQuery();
-  
   const [createPosition] = useCreatePositionMutation();
   const [deletePosition] = useDeletePositionMutation();
-  
   const [newPositionName, setNewPositionName] = useState("");
   const [newPositionCode, setNewPositionCode] = useState("");
   const [selectedLevelId, setSelectedLevelId] = useState<number | "">("");
@@ -17,93 +21,84 @@ const PositionList = () => {
     e.preventDefault();
     if (!newPositionName.trim() || !newPositionCode.trim() || !selectedLevelId) return;
     try {
-      await createPosition({ 
-        positionName: newPositionName,
-        positionCode: newPositionCode,
-        levelId: Number(selectedLevelId)
-      }).unwrap();
-      setNewPositionName("");
-      setNewPositionCode("");
-      setSelectedLevelId("");
+      await createPosition({ positionName: newPositionName, positionCode: newPositionCode, levelId: Number(selectedLevelId) }).unwrap();
+      setNewPositionName(""); setNewPositionCode(""); setSelectedLevelId("");
     } catch (err) {
       console.error("Failed to create position", err);
     }
   };
 
-  if (positionsLoading || levelsLoading) return <div className="p-8 text-center">Loading data...</div>;
-  if (positionsError) return <div className="p-8 text-red-500">Error loading positions.</div>;
+  if (positionsLoading || levelsLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading…</div>;
+  if (positionsError) return <div className="py-16 text-center" style={{ color: "#791F1F", fontSize: 13 }}>Error loading positions.</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Positions</h1>
+    <div className="space-y-4">
+      <div>
+        <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Positions</h1>
+        <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Manage job positions and their associated levels.</p>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <input
-            type="text"
-            placeholder="Code (e.g. SE)"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            value={newPositionCode}
-            onChange={(e) => setNewPositionCode(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Position Name"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            value={newPositionName}
-            onChange={(e) => setNewPositionName(e.target.value)}
-          />
+      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Add position</p>
+        <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <input style={inputStyle} placeholder="Code (e.g. SE)" value={newPositionCode} onChange={(e) => setNewPositionCode(e.target.value)} />
+          <input style={inputStyle} placeholder="Position name" value={newPositionName} onChange={(e) => setNewPositionName(e.target.value)} />
           <select
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            style={{ ...inputStyle }}
             value={selectedLevelId}
             onChange={(e) => setSelectedLevelId(e.target.value ? Number(e.target.value) : "")}
           >
-            <option value="">Select Level</option>
+            <option value="">Select level</option>
             {levels?.map(level => (
-              <option key={level.levelId} value={level.levelId}>
-                {level.levelName} ({level.levelCode})
-              </option>
+              <option key={level.levelId} value={level.levelId}>{level.levelName} ({level.levelCode})</option>
             ))}
           </select>
           <button
             type="submit"
-            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+            className="flex items-center justify-center gap-2 transition-colors"
+            style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
           >
-            Add Position
+            <Plus size={14} aria-hidden="true" /> Add
           </button>
         </form>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider">Code</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider">Position Name</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider">Level</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {positions?.map((pos) => (
-              <tr key={pos.positionId} className="hover:bg-gray-50 transition">
-                <td className="px-6 py-4 text-sm font-mono text-blue-600">{pos.positionCode}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{pos.positionName}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{pos.levelName}</td>
-                <td className="px-6 py-4 text-sm text-right">
-                  <button
-                    onClick={() => deletePosition(pos.positionId)}
-                    className="text-red-600 hover:text-red-800 font-medium"
-                  >
-                    Delete
-                  </button>
-                </td>
+      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, overflow: "hidden" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left" style={{ minWidth: 440 }}>
+            <thead>
+              <tr style={{ borderBottom: "0.5px solid #E4E6EC" }}>
+                {["Code", "Position name", "Level", "Actions"].map((h, i) => (
+                  <th key={h} style={{ padding: "10px 18px", fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: i === 3 ? "right" : "left" }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {positions?.map((pos, idx) => (
+                <tr key={pos.positionId} style={{ borderBottom: idx < positions.length - 1 ? "0.5px solid #F0F2F6" : "none" }}
+                  className="hover:bg-[#FAFBFF] transition-colors">
+                  <td style={{ padding: "11px 18px", fontSize: 12, color: "#1A56DB", fontFamily: "monospace" }}>{pos.positionCode}</td>
+                  <td style={{ padding: "11px 18px", fontSize: 13, fontWeight: 500, color: "#111827" }}>{pos.positionName}</td>
+                  <td style={{ padding: "11px 18px", fontSize: 12, color: "#5A6070" }}>{pos.levelName}</td>
+                  <td style={{ padding: "11px 18px", textAlign: "right" }}>
+                    <button
+                      onClick={() => deletePosition(pos.positionId)}
+                      className="inline-flex items-center gap-1 transition-colors"
+                      style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
+                    >
+                      <Trash2 size={12} aria-hidden="true" /> Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {positions?.length === 0 && (
+                <tr><td colSpan={4} style={{ padding: "24px 18px", textAlign: "center", fontSize: 13, color: "#9EA3B0" }}>No positions yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

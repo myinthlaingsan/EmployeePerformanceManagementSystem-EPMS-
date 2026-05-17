@@ -4,20 +4,20 @@ import { Calendar } from 'lucide-react';
 
 const CreateAppraisalCycle: React.FC = () => {
   return (
-    <div className="min-h-screen bg-slate-50/50 py-12 px-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-10">
-          <div className="p-3 bg-blue-600 rounded-2xl text-white">
-            <Calendar className="w-6 h-6" />
+    <div className="space-y-4 pb-8">
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EEF3FD', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Calendar size={18} color="#1A56DB" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Appraisal Management</h1>
-            <p className="text-slate-500 font-medium">Configure new review cycles and timelines.</p>
+            <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Appraisal Management</h1>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Configure new review cycles and timelines.</p>
           </div>
         </div>
-
-        <CycleForm />
       </div>
+
+      <CycleForm />
     </div>
   );
 };
