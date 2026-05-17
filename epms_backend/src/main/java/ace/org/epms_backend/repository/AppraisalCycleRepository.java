@@ -15,8 +15,22 @@ public interface AppraisalCycleRepository extends JpaRepository<AppraisalCycle, 
     @Query("SELECT c FROM AppraisalCycle c WHERE c.isActive = true AND (c.status IN :statuses OR c.status IS NULL) ORDER BY c.cycleId DESC")
     List<AppraisalCycle> findActiveCyclesByStatus(@Param("statuses") List<CycleStatus> statuses);
 
-
     List<AppraisalCycle> findByEndDateAndIsActiveTrue(LocalDate endDate);
 
     List<AppraisalCycle> findAllByOrderByEndDateDesc();
+
+    // --- Scheduler queries ---
+    List<AppraisalCycle> findByIsActiveTrueAndStatus(CycleStatus status);
+
+    @Query("SELECT c FROM AppraisalCycle c WHERE c.isActive = true AND c.status = :status AND c.startDate <= :date")
+    List<AppraisalCycle> findCyclesReadyForInProgress(@Param("status") CycleStatus status, @Param("date") LocalDate date);
+
+    @Query("SELECT c FROM AppraisalCycle c WHERE c.isActive = true AND c.status = :status AND c.selfAssessmentDeadline <= :date")
+    List<AppraisalCycle> findCyclesReadyForEvaluation(@Param("status") CycleStatus status, @Param("date") LocalDate date);
+
+    @Query("SELECT c FROM AppraisalCycle c WHERE c.isActive = true AND c.endDate <= :date")
+    List<AppraisalCycle> findCyclesDueForClosure(@Param("date") LocalDate date);
+
+    @Query("SELECT c FROM AppraisalCycle c WHERE c.isActive = true AND c.endDate = :date")
+    List<AppraisalCycle> findCyclesClosingOn(@Param("date") LocalDate date);
 }

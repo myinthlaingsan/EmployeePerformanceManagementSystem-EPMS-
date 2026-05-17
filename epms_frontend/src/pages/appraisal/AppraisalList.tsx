@@ -12,7 +12,8 @@ import {
   useCreateFormSetMutation,
   useGetAppraisalFormSetsQuery,
   useDeleteAppraisalFormMutation,
-  useDeleteFormSetMutation
+  useDeleteFormSetMutation,
+  useDeleteCycleMutation
 } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
 import {
@@ -28,7 +29,9 @@ import {
   CheckCircle2,
   Circle,
   Search,
-  Trash2
+  Trash2,
+  Share2,
+  Mail
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -76,6 +79,7 @@ const AppraisalList: React.FC = () => {
   const [createFormSet] = useCreateFormSetMutation();
   const [deleteFormSet] = useDeleteFormSetMutation();
   const [deleteForm] = useDeleteAppraisalFormMutation();
+  const [deleteCycle] = useDeleteCycleMutation();
   const { data: formSets = [] } = useGetAppraisalFormSetsQuery(undefined, { skip: !isPrivileged });
 
   const isLoading = loadingAppraisals || loadingTeam || (isPrivileged && (loadingCycles || loadingForms || (!!selectedCycleId && loadingCycleData)));
@@ -91,6 +95,16 @@ const AppraisalList: React.FC = () => {
   const safeFormatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     try { return format(new Date(dateString), 'dd/MM/yyyy'); } catch { return 'N/A'; }
+  };
+
+  const getCycleStatusColor = (status: string) => {
+    switch (status) {
+      case 'PLANNING': return 'bg-slate-100 text-slate-600 border-slate-200';
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-600 border-blue-200';
+      case 'EVALUATION': return 'bg-amber-100 text-amber-600 border-amber-200';
+      case 'ARCHIVED': return 'bg-slate-500 text-white border-slate-600';
+      default: return 'bg-gray-100 text-gray-400 border-gray-200';
+    }
   };
 
   const renderAppraisals = () => (
@@ -180,27 +194,83 @@ const AppraisalList: React.FC = () => {
                 style={{ fontSize: 12, color: '#1A56DB', marginBottom: 6 }}>
                 <ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} /> Back to Cycles
               </button>
-              <div className="flex items-center gap-3">
-                <h2 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{cycle?.cycleName}</h2>
-                <span style={{ fontSize: 11, fontWeight: 500, background: cycle?.isActive ? '#EAF3DE' : '#F1EFE8', color: cycle?.isActive ? '#27500A' : '#444441', border: `0.5px solid ${cycle?.isActive ? '#B8DCA0' : '#DDDBD2'}`, borderRadius: 20, padding: '2px 8px' }}>
-                  {cycle?.isActive ? 'Active' : 'Inactive'}
-                </span>
+              <div className="flex items-center gap-6">
+                <h2 className="text-5xl font-black text-slate-900 tracking-tighter uppercase italic">{cycle?.cycleName}</h2>
+                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-2 ${getCycleStatusColor(cycle?.status || '')}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${cycle?.isActive ? 'bg-current animate-pulse' : 'bg-slate-400'}`}></div>
+                  {cycle?.status?.replace('_', ' ') || (cycle?.isActive ? 'ACTIVE' : 'INACTIVE')}
+                </div>
               </div>
               <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>
                 {daysLeft > 0 ? `Ends in ${daysLeft} days` : 'Cycle concluded'}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {cycle?.isActive ? (
-                <button onClick={() => setConfirmModal({ isOpen: true, title: 'Close Cycle', message: `Close "${cycle.cycleName}"? This locks all related appraisals.`, onConfirm: () => { closeCycle(Number(selectedCycleId)); setSelectedCycleId(null); } })}
-                  disabled={isClosing} className="transition-colors disabled:opacity-50"
-                  style={{ fontSize: 12, fontWeight: 500, background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5C2C2', borderRadius: 8, padding: '7px 14px' }}>
-                  {isClosing ? 'Closing…' : 'Close Cycle'}
+            <div className="flex items-center gap-3">
+              <button className="px-6 py-3 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-slate-400" /> Export Status
+              </button>
+              <button className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2">
+                <Mail className="w-4 h-4" /> Send Reminders
+              </button>
+              {isPrivileged && !cycle?.isAssigned && (
+                <button
+                  onClick={() => {
+                    setConfirmModal({
+                      isOpen: true,
+                      title: 'Delete Appraisal Cycle',
+                      message: `Are you sure you want to permanently delete the cycle "${cycle.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
+                      onConfirm: async () => {
+                        try {
+                          await deleteCycle(Number(selectedCycleId)).unwrap();
+                          toast.success('Appraisal Cycle deleted successfully!');
+                          setSelectedCycleId(null);
+                        } catch (err: any) {
+                          const errorMsg = err?.data?.message || 'Failed to delete cycle';
+                          toast.error(`Error: ${errorMsg}`);
+                        }
+                      }
+                    });
+                  }}
+                  className="px-6 py-3 bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete Cycle
+                </button>
+              )}
+              {!cycle?.isActive ? (
+                <button
+                  onClick={async () => {
+                    try {
+                      await activateCycle(Number(selectedCycleId)).unwrap();
+                      toast.success('Appraisal Cycle activated successfully!');
+                    } catch (err: any) {
+                      const errorMsg = err?.data?.message || 'Failed to activate cycle';
+                      toast.error(`Error: ${errorMsg}`);
+                    }
+                  }}
+                  disabled={isActivating}
+                  className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isActivating ? 'Activating...' : 'Activate Cycle'}
                 </button>
               ) : (
-                <button onClick={() => activateCycle(Number(selectedCycleId))} disabled={isActivating} className="transition-colors disabled:opacity-50"
-                  style={{ fontSize: 12, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 8, padding: '7px 14px' }}>
-                  {isActivating ? 'Activating…' : 'Activate Cycle'}
+                <button
+                  onClick={() => {
+                    setConfirmModal({
+                      isOpen: true,
+                      title: isAdmin ? 'Force Close Cycle (Emergency)' : 'Close Appraisal Cycle',
+                      message: isAdmin
+                        ? `Are you sure you want to FORCE CLOSE "${cycle.cycleName}"? System normally handles this on ${safeFormatDate(cycle.endDate)}. Only use this for emergencies.`
+                        : `Are you sure you want to close "${cycle.cycleName}"? This will deactivate it and lock all related appraisals from further editing.`,
+                      onConfirm: () => {
+                        closeCycle(Number(selectedCycleId));
+                        setSelectedCycleId(null);
+                      }
+                    });
+                  }}
+                  disabled={isClosing}
+                  className="px-6 py-3 bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isClosing ? 'Closing...' : (isAdmin ? 'Emergency Close' : 'Close Cycle')}
                 </button>
               )}
             </div>
@@ -310,14 +380,48 @@ const AppraisalList: React.FC = () => {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cycles.length > 0 ? cycles.map((cycle: any) => (
-          <div key={cycle.cycleId} onClick={() => setSelectedCycleId(cycle.cycleId)}
-            style={{ ...panelStyle, padding: '16px 18px', cursor: 'pointer' }}
-            className="hover:border-[#1A56DB] transition-colors">
-            <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 500, background: cycle.isActive ? '#EAF3DE' : '#F1EFE8', color: cycle.isActive ? '#27500A' : '#444441', border: `0.5px solid ${cycle.isActive ? '#B8DCA0' : '#DDDBD2'}`, borderRadius: 20, padding: '2px 8px' }}>
-                {cycle.isActive ? 'Active' : 'Inactive'}
-              </span>
-              <Calendar size={14} style={{ color: '#9EA3B0' }} />
+          <div
+            key={cycle.cycleId}
+            onClick={() => setSelectedCycleId(cycle.cycleId)}
+            className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
+          >
+            {/* Background Accent */}
+            <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-0 group-hover:opacity-10 transition-opacity blur-3xl ${cycle.isActive ? 'bg-indigo-600' : 'bg-slate-400'}`}></div>
+
+            <div className="flex justify-between items-start mb-8 relative z-10">
+              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getCycleStatusColor(cycle.status || '')}`}>
+                {cycle.status?.replace('_', ' ') || (cycle.isActive ? 'ACTIVE' : 'INACTIVE')}
+              </div>
+              <div className="flex items-center gap-2">
+                {isPrivileged && !cycle.isAssigned && (
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setConfirmModal({
+                        isOpen: true,
+                        title: 'Delete Appraisal Cycle',
+                        message: `Are you sure you want to permanently delete the cycle "${cycle.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
+                        onConfirm: async () => {
+                          try {
+                            await deleteCycle(cycle.cycleId).unwrap();
+                            toast.success('Appraisal Cycle deleted successfully!');
+                          } catch (err: any) {
+                            const errorMsg = err?.data?.message || 'Failed to delete cycle';
+                            toast.error(`Error: ${errorMsg}`);
+                          }
+                        }
+                      });
+                    }}
+                    className="w-10 h-10 rounded-xl bg-slate-50 text-rose-500 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center transition-all duration-300 relative z-20"
+                    title="Delete Cycle"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
+                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                  <Calendar className="w-5 h-5" />
+                </div>
+              </div>
             </div>
             <p style={{ fontSize: 10, fontWeight: 500, color: '#1A56DB', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{cycle.financialYearTitle || 'Annual Review'}</p>
             <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{cycle.cycleName}</p>

@@ -34,5 +34,11 @@ public interface AppraisalRepository extends JpaRepository<Appraisal, Long> {
     @Query("SELECT a FROM Appraisal a JOIN EmployeeDepartment ed ON a.employee.id = ed.employee.id " +
             "WHERE ed.currentDepartment.id = :departmentId AND ed.isCurrent = true")
     List<Appraisal> findByDepartmentId(Long departmentId);
+
+    // --- Cycle closure queries ---
+    List<Appraisal> findByCycle_CycleIdAndStatus(Long cycleId, AppraisalStatus status);
+
+    @Query("SELECT a FROM Appraisal a WHERE a.cycle.cycleId = :cycleId AND a.status NOT IN :statuses")
+    List<Appraisal> findByCycleIdAndStatusNotIn(@Param("cycleId") Long cycleId, @Param("statuses") List<AppraisalStatus> statuses);
 }
 
