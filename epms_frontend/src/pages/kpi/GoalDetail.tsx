@@ -9,8 +9,9 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
 import KpiRevisionModal from '../../components/kpi/KpiRevisionModal';
+import KpiAuditLogModal from '../../components/kpi/KpiAuditLogModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
-import { ChevronLeft, CheckCircle2, AlertCircle, Edit3, Lock, Award, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, AlertCircle, Edit3, Lock, Award, ShieldCheck, History } from 'lucide-react';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
@@ -42,6 +43,7 @@ const GoalDetail: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<GoalItemResponse | null>(null);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [showRevisionModal, setShowRevisionModal] = useState(false);
+  const [showAuditLog, setShowAuditLog] = useState(false);
 
   const isOwner = user?.id === parseInt(employeeId!);
   const isManager = user?.roles.includes('MANAGER') || user?.roles.includes('ADMIN') || user?.roles.includes('HR');
@@ -90,6 +92,13 @@ const GoalDetail: React.FC = () => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {isManager && (
+            <button onClick={() => setShowAuditLog(true)}
+              style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
+              className="hover:bg-gray-100 transition-colors">
+              <History size={14} /> Audit Log
+            </button>
+          )}
           {isManager && (goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
             <>
               <button onClick={() => navigate(`/kpi/assign/${employeeId}`)}
@@ -268,6 +277,9 @@ const GoalDetail: React.FC = () => {
       )}
       {showRevisionModal && selectedItem && (
         <KpiRevisionModal item={selectedItem} onClose={() => { setShowRevisionModal(false); setSelectedItem(null); }} />
+      )}
+      {showAuditLog && goalSet && (
+        <KpiAuditLogModal goalSetId={goalSet.id} onClose={() => setShowAuditLog(false)} />
       )}
 
       <div style={{ display: 'none' }}><CheckCircle2 /><AlertCircle /></div>
