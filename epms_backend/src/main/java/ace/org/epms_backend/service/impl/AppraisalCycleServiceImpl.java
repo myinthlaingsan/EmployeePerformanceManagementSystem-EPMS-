@@ -38,13 +38,16 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
     private final AppraisalRepository appraisalRepository;
+    private final ace.org.epms_backend.repository.appraisal.AppraisalFormSetRepository appraisalFormSetRepository;
+    private final ace.org.epms_backend.service.AppraisalFormService appraisalFormService;
 
     @Override
     @Transactional
     public AppraisalCycleResponse create(AppraisalCycleRequest request) {
         if (Boolean.TRUE.equals(request.getIsActive())) {
-            deactivateCurrentActiveCycles();
+            checkForActiveCycles(null);
         }
+        validateNoDateOverlap(request.getStartDate(), request.getEndDate(), null);
 
         AppraisalCycle cycle = appraisalCycleMapper.toEntity(request);
         
@@ -77,6 +80,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
 
         AppraisalCycleResponse response = appraisalCycleMapper.toResponse(cycle);
         mapWeightsToResponse(weights, response);
+        response.setIsAssigned(false);
         return response;
     }
 
@@ -87,6 +91,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
             AppraisalCycleResponse resp = appraisalCycleMapper.toResponse(cycle);
             scoringWeightRepository.findByCycle_CycleId(cycle.getCycleId())
                     .ifPresent(w -> mapWeightsToResponse(w, resp));
+            resp.setIsAssigned(!appraisalRepository.findByCycle_CycleId(cycle.getCycleId()).isEmpty());
             return resp;
         }).toList();
     }
@@ -97,6 +102,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         AppraisalCycleResponse resp = appraisalCycleMapper.toResponse(cycle);
         scoringWeightRepository.findByCycle_CycleId(cycle.getCycleId())
                 .ifPresent(w -> mapWeightsToResponse(w, resp));
+        resp.setIsAssigned(!appraisalRepository.findByCycle_CycleId(cycle.getCycleId()).isEmpty());
         return resp;
     }
 
@@ -106,8 +112,9 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         AppraisalCycle cycle = getCycleById(id);
 
         if (Boolean.TRUE.equals(request.getIsActive()) && !Boolean.TRUE.equals(cycle.getIsActive())) {
-            deactivateCurrentActiveCycles();
+            checkForActiveCycles(id);
         }
+        validateNoDateOverlap(request.getStartDate(), request.getEndDate(), id);
 
         appraisalCycleMapper.updateEntityFromRequest(request, cycle);
         
@@ -140,6 +147,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
 
         AppraisalCycleResponse response = appraisalCycleMapper.toResponse(cycle);
         mapWeightsToResponse(weights, response);
+        response.setIsAssigned(!appraisalRepository.findByCycle_CycleId(id).isEmpty());
         return response;
     }
 
@@ -154,9 +162,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!appraisalCycleRepository.existsById(id)) {
-            throw new ResourceNotFoundException("AppraisalCycle not found with id: " + id);
-        }
+        AppraisalCycle cycle = getCycleById(id);
 
         // Check if cycle has any appraisals assigned
         if (!appraisalRepository.findByCycle_CycleId(id).isEmpty()) {
@@ -164,7 +170,21 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                     "Cannot delete cycle. It has active appraisals assigned. Please close or archive it instead.");
         }
 
-        appraisalCycleRepository.deleteById(id);
+        // 0. Find and delete related ScoringWeight first to satisfy DB FK constraints
+        scoringWeightRepository.findByCycle_CycleId(id).ifPresent(scoringWeightRepository::delete);
+
+        // 1. Find and delete related Forms cleanly (clearing child categories, questions, and references first)
+        List<ace.org.epms_backend.model.appraisal.AppraisalForm> forms = new java.util.ArrayList<>(cycle.getForms());
+        for (ace.org.epms_backend.model.appraisal.AppraisalForm form : forms) {
+            appraisalFormService.deleteForm(form.getFormId());
+        }
+
+        // 2. Find and delete related FormSets after forms are gone to prevent transient references
+        List<ace.org.epms_backend.model.appraisal.AppraisalFormSet> formSets = appraisalFormSetRepository.findByCycle_CycleId(id);
+        appraisalFormSetRepository.deleteAll(formSets);
+
+        // 3. Delete the cycle itself
+        appraisalCycleRepository.delete(cycle);
     }
 
     @Override
@@ -172,7 +192,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     public AppraisalCycleResponse activate(Long id) {
         AppraisalCycle cycle = getCycleById(id);
 
-        deactivateCurrentActiveCycles();
+        checkForActiveCycles(id);
 
         cycle.setIsActive(true);
         cycle.setStatus(CycleStatus.IN_PROGRESS);
@@ -294,13 +314,38 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .orElseThrow(() -> new ResourceNotFoundException("AppraisalCycle not found with id: " + id));
     }
 
-    private void deactivateCurrentActiveCycles() {
+    private void checkForActiveCycles(Long excludeCycleId) {
         List<AppraisalCycle> activeCycles = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
         for (AppraisalCycle c : activeCycles) {
-            c.setIsActive(false);
+            if (excludeCycleId == null || !c.getCycleId().equals(excludeCycleId)) {
+                throw new RuntimeException(
+                        "Cannot activate this cycle. Another cycle '" + c.getCycleName()
+                                + "' is currently active. Please close or archive it first.");
+            }
         }
-        if (!activeCycles.isEmpty()) {
-            appraisalCycleRepository.saveAll(activeCycles);
+    }
+
+    private void validateNoDateOverlap(java.time.LocalDate startDate, java.time.LocalDate endDate, Long excludeCycleId) {
+        if (startDate == null || endDate == null) {
+            return;
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new RuntimeException("Start date cannot be after end date.");
+        }
+        List<AppraisalCycle> allCycles = appraisalCycleRepository.findAll();
+        for (AppraisalCycle c : allCycles) {
+            if (excludeCycleId != null && c.getCycleId().equals(excludeCycleId)) {
+                continue;
+            }
+            if (c.getStatus() == CycleStatus.ARCHIVED) {
+                continue;
+            }
+            if (startDate.compareTo(c.getEndDate()) <= 0 && endDate.compareTo(c.getStartDate()) >= 0) {
+                throw new RuntimeException(
+                        "The cycle date range (" + startDate + " to " + endDate
+                        + ") overlaps with an existing cycle '" + c.getCycleName()
+                        + "' (" + c.getStartDate() + " to " + c.getEndDate() + ").");
+            }
         }
     }
 
