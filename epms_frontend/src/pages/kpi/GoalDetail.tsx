@@ -186,26 +186,36 @@ const GoalDetail: React.FC = () => {
             <tbody>
               {items.map((item, idx) => {
                 const pct = Math.min(Math.round(((item.currentProgress || 0) / item.targetValue) * 100), 100);
+                const isComplianceRow = item.isCompliance;
+                const rowBg = isComplianceRow ? '#FEFCE8' : '#FAFBFF';
+                
                 return (
                   <tr key={item.id} style={{ borderBottom: idx < items.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
-                    className="hover:bg-[#FAFBFF] transition-colors">
-                    <td style={{ padding: '12px 18px' }}>
-                      <p style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginBottom: 2 }}>{item.title}</p>
+                    className={`transition-colors ${isComplianceRow ? 'hover:bg-[#FEF9C3]' : 'hover:bg-[#F3F4F6]'}`}>
+                    <td style={{ padding: '12px 18px', background: rowBg }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{item.title}</p>
+                        {isComplianceRow && (
+                          <span title="Compliance KPI" className="flex">
+                            <ShieldCheck size={14} className="text-amber-500" />
+                          </span>
+                        )}
+                      </div>
                       <p style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.categoryName}</p>
                     </td>
-                    <td style={{ padding: '12px 18px', fontSize: 13, fontWeight: 500, color: '#111827' }}>{item.weightPercent}%</td>
-                    <td style={{ padding: '12px 18px', fontSize: 12, color: '#5A6070' }}>
+                    <td style={{ padding: '12px 18px', fontSize: 13, fontWeight: 500, color: '#111827', background: rowBg }}>{item.weightPercent}%</td>
+                    <td style={{ padding: '12px 18px', fontSize: 12, color: '#5A6070', background: rowBg }}>
                       {item.targetValue} <span style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase' }}>{item.unit}</span>
                     </td>
-                    <td style={{ padding: '12px 18px' }}>
+                    <td style={{ padding: '12px 18px', background: rowBg }}>
                       <div className="flex items-center gap-3">
-                        <div style={{ flex: 1, maxWidth: 100, background: '#F0F2F6', borderRadius: 4, height: 4, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', background: '#1A56DB', width: `${pct}%`, transition: 'width 0.5s' }} />
+                        <div style={{ flex: 1, maxWidth: 100, background: isComplianceRow ? '#FDE68A' : '#F0F2F6', borderRadius: 4, height: 4, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', background: isComplianceRow ? '#D97706' : '#1A56DB', width: `${pct}%`, transition: 'width 0.5s' }} />
                         </div>
                         <span style={{ fontSize: 12, fontWeight: 500, color: '#111827' }}>{pct}%</span>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 18px', textAlign: 'right' }}>
+                    <td style={{ padding: '12px 18px', textAlign: 'right', background: rowBg }}>
                       <div className="flex justify-end gap-2">
                         {/* Employee update button - for regular goals */}
                         {isOwner && goalSet.status === 'APPROVED' && !item.isCompliance && (
@@ -216,13 +226,20 @@ const GoalDetail: React.FC = () => {
                             UPDATE
                           </button>
                         )}
+                        {/* Employee locked state - for compliance goals */}
+                        {isOwner && goalSet.status === 'APPROVED' && item.isCompliance && (
+                          <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg" title="Requires manager verification">
+                            <Lock size={12} />
+                            <span style={{ fontSize: 10, fontWeight: 600 }}>MANAGER ONLY</span>
+                          </div>
+                        )}
 
                         {/* Manager verify button - for compliance items */}
                         {isManager && item.isCompliance && (
                           <button
                             onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
-                            style={{ background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
-                            className="hover:bg-emerald-100 transition">
+                            style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                            className="hover:bg-amber-200 transition">
                             VERIFY
                           </button>
                         )}

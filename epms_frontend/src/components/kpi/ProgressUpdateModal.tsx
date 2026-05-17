@@ -41,37 +41,65 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
 
           <div className="p-6 space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Actual Value ({item.unit || 'units'})
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Actual Value {item.isCompliance ? '(Verification)' : `(${item.unit || 'units'})`}
               </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  required
-                  min={0}
-                  max={item.targetValue}
-                  value={actualValue === '' ? '' : actualValue}
-                  onKeyDown={e => {
-                    if (e.key === '-') {
-                      e.preventDefault();
-                    }
-                  }}
-                  onChange={(e) => {
-                    const valStr = e.target.value;
-                    if (valStr === '') {
-                      setActualValue('');
-                    } else {
-                      const val = parseFloat(valStr);
-                      if (!isNaN(val)) {
-                        setActualValue(Math.max(0, Math.min(val, item.targetValue)));
+              
+              {item.isCompliance ? (
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActualValue(item.targetValue)}
+                    className={`flex-1 py-3 px-4 rounded-lg border-2 font-bold transition-all ${
+                      actualValue === item.targetValue
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-emerald-200 hover:bg-emerald-50/50'
+                    }`}
+                  >
+                    ✓ PASS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActualValue(0)}
+                    className={`flex-1 py-3 px-4 rounded-lg border-2 font-bold transition-all ${
+                      actualValue === 0
+                        ? 'border-rose-500 bg-rose-50 text-rose-700'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-rose-200 hover:bg-rose-50/50'
+                    }`}
+                  >
+                    ✕ FAIL
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    max={item.targetValue}
+                    value={actualValue === '' ? '' : actualValue}
+                    onKeyDown={e => {
+                      if (e.key === '-') {
+                        e.preventDefault();
                       }
-                    }
-                  }}
-                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-right"
-                  style={{ textAlign: 'right' }}
-                />
-                <span className="text-sm font-bold text-gray-400">/ {item.targetValue}</span>
-              </div>
+                    }}
+                    onChange={(e) => {
+                      const valStr = e.target.value;
+                      if (valStr === '') {
+                        setActualValue('');
+                      } else {
+                        const val = parseFloat(valStr);
+                        if (!isNaN(val)) {
+                          setActualValue(Math.max(0, Math.min(val, item.targetValue)));
+                        }
+                      }
+                    }}
+                    className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-right"
+                    style={{ textAlign: 'right' }}
+                  />
+                  <span className="text-sm font-bold text-gray-400">/ {item.targetValue}</span>
+                </div>
+              )}
             </div>
 
             <div>
