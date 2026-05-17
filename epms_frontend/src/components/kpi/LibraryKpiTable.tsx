@@ -52,6 +52,8 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="text"
+                    id={`goalTitle-${index}`}
+                    name={`goalTitle-${index}`}
                     value={detail.goalTitle}
                     disabled={isReadOnly}
                     onChange={(e) => onDetailChange(index, 'goalTitle', e.target.value)}
@@ -61,6 +63,8 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 </td>
                 <td className="border-r border-gray-200 p-0">
                   <select
+                    id={`categoryId-${index}`}
+                    name={`categoryId-${index}`}
                     value={detail.categoryId}
                     disabled={isReadOnly}
                     onChange={(e) => onDetailChange(index, 'categoryId', e.target.value)}
@@ -76,6 +80,8 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="number"
+                    id={`targetValue-${index}`}
+                    name={`targetValue-${index}`}
                     value={detail.targetValue}
                     disabled={detail.isCompliance || isReadOnly}
                     onChange={(e) => onDetailChange(index, 'targetValue', e.target.value)}
@@ -85,6 +91,8 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="text"
+                    id={`unit-${index}`}
+                    name={`unit-${index}`}
                     value={detail.unit}
                     disabled={isReadOnly}
                     onChange={(e) => onDetailChange(index, 'unit', e.target.value)}
@@ -95,6 +103,8 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="number"
+                    id={`weightPercent-${index}`}
+                    name={`weightPercent-${index}`}
                     value={detail.weightPercent}
                     disabled={isReadOnly}
                     onChange={(e) => onDetailChange(index, 'weightPercent', e.target.value)}
@@ -105,6 +115,8 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                    <div className="flex items-center justify-center h-full">
                      <input
                        type="checkbox"
+                       id={`isCompliance-${index}`}
+                       name={`isCompliance-${index}`}
                        checked={detail.isCompliance || false}
                        disabled={isReadOnly}
                        onChange={(e) => onDetailChange(index, 'isCompliance', e.target.checked)}
