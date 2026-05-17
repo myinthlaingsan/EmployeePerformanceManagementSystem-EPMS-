@@ -758,6 +758,17 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional(readOnly = true)
     public List<GoalSetResponse> getTeamGoalSets(Long managerId, Long cycleId) {
+        Employee currentUser = getCurrentEmployee();
+        var authorities = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .collect(Collectors.toSet());
+
+        boolean isHrOrAdmin = authorities.contains("ROLE_HR") || authorities.contains("ROLE_ADMIN");
+
+        if (!isHrOrAdmin && !currentUser.getId().equals(managerId)) {
+            throw new SecurityException("You are not authorized to view this team's goals");
+        }
+
         return goalsRepository.findTeamGoals(managerId, cycleId).stream()
                 .map(kpiMapper::toGoalSetResponse)
                 .collect(Collectors.toList());
