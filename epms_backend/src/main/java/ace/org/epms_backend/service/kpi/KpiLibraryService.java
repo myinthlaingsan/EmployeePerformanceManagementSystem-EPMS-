@@ -20,4 +20,5 @@ public interface KpiLibraryService {
     List<KpiLibraryResponse> getLibraryHistory(Long positionId);
     List<KpiLibraryResponse> getAllLibraries();
     KpiLibraryResponse toggleHistoryStatus(Long id, boolean active);
+    void deleteLibrary(Long id);
 }

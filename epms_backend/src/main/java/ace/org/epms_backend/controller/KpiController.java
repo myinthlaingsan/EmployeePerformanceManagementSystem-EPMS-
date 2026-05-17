@@ -198,6 +198,13 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(libraryService.getLibraryHistory(positionId)));
     }
 
+    @DeleteMapping("/library/{id}")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteLibrary(@PathVariable Long id) {
+        libraryService.deleteLibrary(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     // The submit and reject endpoints have been removed for the top-down approval workflow.
 
     @GetMapping("/goal-set/employee/all/{employeeId}")

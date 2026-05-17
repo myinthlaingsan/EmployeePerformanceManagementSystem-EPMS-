@@ -8,9 +8,10 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
-import { useGetLibraryHistoryQuery, useToggleHistoryStatusMutation } from '../../services/kpiApi';
+import { useGetLibraryHistoryQuery, useToggleHistoryStatusMutation, useDeleteLibraryMutation } from '../../services/kpiApi';
 import LibraryKpiTable from './LibraryKpiTable';
 import { format } from 'date-fns';
 
@@ -31,6 +32,7 @@ const KpiLibraryHistoryModal: React.FC<KpiLibraryHistoryModalProps> = ({
     skip: !isOpen
   });
   const [toggleHistoryStatus, { isLoading: isToggling }] = useToggleHistoryStatusMutation();
+  const [deleteLibrary, { isLoading: isDeleting }] = useDeleteLibraryMutation();
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const handleToggleStatus = async (id: number, currentActive: boolean) => {
@@ -38,6 +40,21 @@ const KpiLibraryHistoryModal: React.FC<KpiLibraryHistoryModalProps> = ({
       await toggleHistoryStatus({ id, active: !currentActive }).unwrap();
     } catch (error) {
       console.error('Failed to toggle library status:', error);
+    }
+  };
+
+  const handleDeleteLibrary = async (id: number) => {
+    if (!window.confirm("Are you sure you want to permanently delete this KPI Library template version? This action cannot be undone.")) {
+      return;
+    }
+    try {
+      await deleteLibrary(id).unwrap();
+      if (expandedId === id) {
+        setExpandedId(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete library:', error);
+      alert('Failed to delete library. Please try again.');
     }
   };
 
@@ -142,6 +159,22 @@ const KpiLibraryHistoryModal: React.FC<KpiLibraryHistoryModalProps> = ({
                         }`}
                       >
                         {lib.isActive ? 'Deactivate' : 'Activate'}
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteLibrary(lib.id || 0);
+                        }}
+                        disabled={isDeleting}
+                        className="p-2 bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 flex items-center justify-center"
+                        title="Delete Template"
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </button>
 
                       <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mr-2">

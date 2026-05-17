@@ -69,7 +69,7 @@ export const kpiApi = api.injectEndpoints({
     }),
 
     getAllLibraries: builder.query<ApiResponse<KpiLibraryResponse[]>, void>({
-      query: () => '/kpi/library/all',
+      query: () => '/kpi/library',
       providesTags: ['Library'],
     }),
 
@@ -91,6 +91,14 @@ export const kpiApi = api.injectEndpoints({
       query: ({ id, active }) => ({
         url: `/kpi/library/${id}/toggle-history-status?active=${active}`,
         method: 'PATCH',
+      }),
+      invalidatesTags: ['Library'],
+    }),
+
+    deleteLibrary: builder.mutation<ApiResponse<void>, number>({
+      query: (id) => ({
+        url: `/kpi/library/${id}`,
+        method: 'DELETE',
       }),
       invalidatesTags: ['Library'],
     }),
@@ -281,6 +289,7 @@ export const {
   useGetAllLibrariesQuery,
   useToggleLibraryStatusMutation,
   useToggleHistoryStatusMutation,
+  useDeleteLibraryMutation,
   useAssignKpiToEmployeeMutation,
   useAddGoalItemMutation,
   useUpdateGoalItemMutation,

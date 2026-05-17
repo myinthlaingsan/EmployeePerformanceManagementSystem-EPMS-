@@ -239,6 +239,14 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
         return kpiMapper.toLibraryResponse(updatedLibrary);
     }
 
+    @Override
+    @Transactional
+    public void deleteLibrary(Long id) {
+        KpiLibrary library = libraryRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Library not found"));
+        libraryRepository.delete(library);
+    }
+
     private void validateLibraryWeights(KpiLibraryRequest request) {
         if (request.getDetails() == null || request.getDetails().isEmpty()) {
             throw new IllegalArgumentException("At least one KPI detail is required");
