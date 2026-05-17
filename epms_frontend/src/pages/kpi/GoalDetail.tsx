@@ -10,13 +10,19 @@ import { useAuth } from '../../hooks/useAuth';
 import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
 import KpiRevisionModal from '../../components/kpi/KpiRevisionModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
-import { ChevronLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, AlertCircle, Edit3, Lock, Award, ShieldCheck } from 'lucide-react';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
   LOCKED: { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
   DRAFT: { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
 };
+
+const STEPS = [
+  { id: 'DRAFT', label: 'Draft', icon: Edit3 },
+  { id: 'APPROVED', label: 'Approved', icon: CheckCircle2 },
+  { id: 'LOCKED', label: 'Locked', icon: Lock },
+];
 
 const GoalDetail: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -64,6 +70,8 @@ const GoalDetail: React.FC = () => {
   const totalWeight = items.reduce((sum, i) => sum + i.weightPercent, 0);
   const ss = STATUS_STYLE[goalSet.status] || { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8' };
 
+  const currentStepIndex = STEPS.findIndex(s => s.id === goalSet.status);
+
   return (
     <div className="space-y-4 pb-8">
       {/* Header */}
@@ -82,9 +90,6 @@ const GoalDetail: React.FC = () => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          <span style={{ fontSize: 11, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '3px 10px' }}>
-            {goalSet.status}
-          </span>
           {isManager && (goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
             <>
               <button onClick={() => navigate(`/kpi/assign/${employeeId}`)}
@@ -105,6 +110,47 @@ const GoalDetail: React.FC = () => {
               )}
             </>
           )}
+        </div>
+      </div>
+
+      {/* Visual Stepper */}
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div className="flex items-center w-full max-w-2xl mx-auto relative">
+          {STEPS.map((step, index) => {
+            const isCompleted = currentStepIndex > index;
+            const isCurrent = currentStepIndex === index;
+            const statusColor = isCompleted || isCurrent ? '#1A56DB' : '#E4E6EC';
+            const Icon = step.icon;
+
+            return (
+              <div key={step.id} className="flex-1 flex items-center relative">
+                <div className="flex flex-col items-center relative z-10 w-full">
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isCurrent ? '#EEF3FD' : isCompleted ? '#1A56DB' : '#F5F6F8',
+                    color: isCurrent ? '#1A56DB' : isCompleted ? '#FFFFFF' : '#9EA3B0',
+                    border: `1.5px solid ${statusColor}`,
+                    transition: 'all 0.3s'
+                  }}>
+                    <Icon size={14} strokeWidth={isCurrent || isCompleted ? 3 : 2} />
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 500, marginTop: 8,
+                    color: isCurrent ? '#111827' : '#9EA3B0'
+                  }}>
+                    {step.label}
+                  </span>
+                </div>
+                {index < STEPS.length - 1 && (
+                  <div style={{
+                    position: 'absolute', top: 16, left: '50%', right: '-50%', height: 2,
+                    background: currentStepIndex > index ? '#1A56DB' : '#E4E6EC',
+                    transform: 'translateY(-50%)', zIndex: 0
+                  }} />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
