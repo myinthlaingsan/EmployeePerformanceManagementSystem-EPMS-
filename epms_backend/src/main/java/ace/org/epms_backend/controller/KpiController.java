@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -41,11 +43,36 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(libraryService.getAllActiveLibraries()));
     }
 
+    @PostMapping("/library/import")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<KpiImportResult>> importLibraries(
+            @RequestParam("file") MultipartFile file) throws IOException {
+        
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.toLowerCase().endsWith(".xlsx")) {
+            throw new IllegalArgumentException("Invalid file format. Only .xlsx files are supported.");
+        }
+        
+        return ResponseEntity.ok(ApiResponse.success(libraryService.importLibraries(file)));
+    }
+
     @PatchMapping("/library/{id}/status")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
     public ResponseEntity<ApiResponse<KpiLibraryResponse>> toggleLibraryStatus(@PathVariable Long id,
             @RequestParam boolean active) {
         return ResponseEntity.ok(ApiResponse.success(libraryService.toggleLibraryStatus(id, active)));
+    }
+
+    @GetMapping("/library/all")
+    public ResponseEntity<ApiResponse<List<KpiLibraryResponse>>> getAllLibrariesWithInactive() {
+        return ResponseEntity.ok(ApiResponse.success(libraryService.getAllLibraries()));
+    }
+
+    @PatchMapping("/library/{id}/toggle-history-status")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<KpiLibraryResponse>> toggleHistoryStatus(@PathVariable Long id,
+            @RequestParam boolean active) {
+        return ResponseEntity.ok(ApiResponse.success(libraryService.toggleHistoryStatus(id, active)));
     }
 
     // 2. KPI Assignment (Manager/HR/Admin)
@@ -164,6 +191,18 @@ public class KpiController {
             @RequestParam String keyword, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(ApiResponse.success(libraryService.searchLibraries(keyword, page, size)));
+    }
+
+    @GetMapping("/library/history/{positionId}")
+    public ResponseEntity<ApiResponse<List<KpiLibraryResponse>>> getLibraryHistory(@PathVariable Long positionId) {
+        return ResponseEntity.ok(ApiResponse.success(libraryService.getLibraryHistory(positionId)));
+    }
+
+    @DeleteMapping("/library/{id}")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteLibrary(@PathVariable Long id) {
+        libraryService.deleteLibrary(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     // The submit and reject endpoints have been removed for the top-down approval workflow.

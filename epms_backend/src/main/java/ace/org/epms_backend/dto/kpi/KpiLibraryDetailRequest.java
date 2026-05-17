@@ -25,4 +25,6 @@ public class KpiLibraryDetailRequest {
 
     @NotNull(message = "Unit is required")
     private String unit;
+
+    private Boolean isCompliance = false;
 }

@@ -3,8 +3,11 @@ package ace.org.epms_backend.service.kpi.impl;
 import ace.org.epms_backend.dto.kpi.GoalSetResponse;
 import ace.org.epms_backend.dto.kpi.KpiProgressResponse;
 import ace.org.epms_backend.dto.kpi.ProgressRequest;
+import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.KpiGoalStatus;
 import ace.org.epms_backend.enums.KpiItemStatus;
+import ace.org.epms_backend.enums.NotificationType;
+import ace.org.epms_backend.enums.ReferenceType;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.employee.Employee;
@@ -17,6 +20,7 @@ import ace.org.epms_backend.repository.KpiHistoryLogRepository;
 import ace.org.epms_backend.repository.KpiProgressRepository;
 import ace.org.epms_backend.service.kpi.KpiProgressService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +38,7 @@ public class KpiProgressServiceImpl implements KpiProgressService {
     private final EmployeeRepository employeeRepository;
     private final KpiHistoryLogRepository historyRepo;
     private final KpiMapper kpiMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -47,7 +52,18 @@ public class KpiProgressServiceImpl implements KpiProgressService {
 
         Employee currentUser = getCurrentEmployee();
         if (!item.getGoalSet().getEmployee().getId().equals(currentUser.getId())) {
-            throw new SecurityException("Only the employee can update their own progress");
+            // Check if compliance row being verified by manager/HR/Admin
+            boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_HR") || a.getAuthority().equals("ROLE_ADMIN"));
+            
+            boolean isManager = item.getGoalSet().getManager() != null && 
+                               item.getGoalSet().getManager().getId().equals(currentUser.getId());
+
+            if (Boolean.TRUE.equals(item.getIsCompliance()) && (isHrOrAdmin || isManager)) {
+                // Allowed for manager verification
+            } else {
+                throw new SecurityException("Only the employee can update their own progress");
+            }
         }
 
         KpiProgress progress = kpiMapper.toProgressEntity(request);
@@ -69,10 +85,17 @@ public class KpiProgressServiceImpl implements KpiProgressService {
 
         // Calculate Score Percent and Weighted Score
         BigDecimal scorePercent = BigDecimal.ZERO;
-        if (item.getTargetValue() != null && item.getTargetValue().compareTo(BigDecimal.ZERO) != 0) {
-            scorePercent = request.getActualValue()
-                    .divide(item.getTargetValue(), 4, java.math.RoundingMode.HALF_UP)
-                    .multiply(new BigDecimal("100"));
+        if (item.getTargetValue() != null) {
+            if (item.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
+                // If target is 0, 100% achievement if actual is 0, else 0% (Zero Tolerance Item)
+                scorePercent = request.getActualValue().compareTo(BigDecimal.ZERO) == 0
+                        ? new BigDecimal("100")
+                        : BigDecimal.ZERO;
+            } else {
+                scorePercent = request.getActualValue()
+                        .divide(item.getTargetValue(), 4, java.math.RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"));
+            }
         }
         item.setScorePercent(scorePercent);
 
@@ -89,6 +112,20 @@ public class KpiProgressServiceImpl implements KpiProgressService {
             item.setStatus(KpiItemStatus.IN_PROGRESS);
         }
         goalItemRepository.save(item);
+
+        // Notify manager when a KPI item is completed
+        if (item.getStatus() == KpiItemStatus.COMPLETED && item.getGoalSet().getManager() != null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(item.getGoalSet().getManager().getId())
+                    .senderId(currentUser.getId())
+                    .type(NotificationType.KPI_PROGRESS_UPDATED)
+                    .title("KPI Goal Completed")
+                    .message(currentUser.getStaffName() + " has completed the KPI goal: '" + item.getTitle() + "'")
+                    .referenceType(ReferenceType.KPI)
+                    .referenceId(item.getGoalSet().getId())
+                    .actionUrl("/kpi/team")
+                    .build());
+        }
 
         // Add to history audit trail
         historyRepo.save(KpiHistoryLog.builder()

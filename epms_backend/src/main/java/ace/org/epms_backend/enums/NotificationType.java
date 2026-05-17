@@ -33,6 +33,9 @@ public enum NotificationType {
     KPI_SUBMITTED,
     KPI_APPROVED,
     KPI_REJECTED,
+    KPI_REVISED,
+    KPI_LOCKED,
+    KPI_PROGRESS_UPDATED,
 
     // Self Assessment (Deprecated or kept for compatibility)
     SELF_ASSESSMENT_OPENED,

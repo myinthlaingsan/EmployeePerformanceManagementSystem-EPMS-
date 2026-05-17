@@ -22,4 +22,6 @@ public class KpiGoalItemRequest {
 
     @NotNull(message = "Category ID is required")
     private Long categoryId;
+
+    private Boolean isCompliance = false;
 }

@@ -19,6 +19,7 @@ export interface KpiLibraryDetailRequest {
   targetValue: number;
   weightPercent: number;
   categoryId: number;
+  isCompliance?: boolean;
 }
 
 export interface KpiLibraryRequest {
@@ -38,6 +39,7 @@ export interface KpiLibraryDetailResponse {
   isActive: boolean;
   categoryId?: number;
   categoryName?: string;
+  isCompliance?: boolean;
 }
 
 export interface KpiLibraryResponse {
@@ -49,7 +51,15 @@ export interface KpiLibraryResponse {
   targetLevelId?: number;
   levelName?: string;
   isActive: boolean;
+  updatedAt?: string;
   details: KpiLibraryDetailResponse[];
+}
+
+export interface KpiImportResult {
+  totalSectionsFound: number;
+  successfulImports: number;
+  failedImports: number;
+  errors: string[];
 }
 
 // ==================== Goal Assignment ====================
@@ -89,6 +99,7 @@ export interface KpiGoalItemRequest {
   targetValue: number;
   weightPercent: number;
   categoryId: number;
+  isCompliance?: boolean;
 }
 
 export interface GoalItemResponse {
@@ -104,6 +115,7 @@ export interface GoalItemResponse {
   categoryName?: string;
   scorePercent?: number;
   weightedScore?: number;
+  isCompliance?: boolean;
 }
 
 

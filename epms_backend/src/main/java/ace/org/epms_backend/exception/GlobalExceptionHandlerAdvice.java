@@ -20,6 +20,12 @@ public class GlobalExceptionHandlerAdvice {
                 .body(new ApiResponse<>(500, ex.getMessage(), null, LocalDateTime.now()));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse<>(400, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
 //    @ExceptionHandler(MethodArgumentNotValidException.class)
 //    public ResponseEntity<Map<String,String>> handleValidationException(MethodArgumentNotValidException ex){
 //        Map<String,String> errors = new HashMap<>();
@@ -133,5 +139,14 @@ public class GlobalExceptionHandlerAdvice {
     public ResponseEntity<ApiResponse<?>> handleConflictExceptions(Exception ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(BulkImportValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleBulkImportValidationException(BulkImportValidationException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("code", 400);
+        body.put("message", ex.getMessage());
+        body.put("errors", ex.getErrors());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 }

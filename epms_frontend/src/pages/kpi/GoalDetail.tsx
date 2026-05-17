@@ -14,8 +14,8 @@ import { ChevronLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
-  LOCKED:   { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
-  DRAFT:    { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
+  LOCKED: { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
+  DRAFT: { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
 };
 
 const GoalDetail: React.FC = () => {
@@ -132,7 +132,7 @@ const GoalDetail: React.FC = () => {
           <table className="w-full text-left" style={{ minWidth: 600 }}>
             <thead>
               <tr style={{ borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
-                {['KPI Item','Weight','Target','Progress','Actions'].map((h, i) => (
+                {['KPI Item', 'Weight', 'Target', 'Progress', 'Actions'].map((h, i) => (
                   <th key={h} style={{ padding: '10px 18px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 4 ? 'right' : 'left' }}>{h}</th>
                 ))}
               </tr>
@@ -161,16 +161,33 @@ const GoalDetail: React.FC = () => {
                     </td>
                     <td style={{ padding: '12px 18px', textAlign: 'right' }}>
                       <div className="flex justify-end gap-2">
-                        {isOwner && goalSet.status === 'APPROVED' && (
-                          <button onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
-                            style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}>
-                            Update
+                        {/* Employee update button - for regular goals */}
+                        {isOwner && goalSet.status === 'APPROVED' && !item.isCompliance && (
+                          <button
+                            onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
+                            style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                            className="hover:bg-blue-100 transition">
+                            UPDATE
                           </button>
                         )}
+
+                        {/* Manager verify button - for compliance items */}
+                        {isManager && item.isCompliance && (
+                          <button
+                            onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
+                            style={{ background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                            className="hover:bg-emerald-100 transition">
+                            VERIFY
+                          </button>
+                        )}
+
+                        {/* Manager revise button - for all items */}
                         {isManager && (
-                          <button onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
-                            style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}>
-                            Revise
+                          <button
+                            onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
+                            style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                            className="hover:bg-gray-100 transition">
+                            REVISE
                           </button>
                         )}
                       </div>
@@ -178,9 +195,6 @@ const GoalDetail: React.FC = () => {
                   </tr>
                 );
               })}
-              {items.length === 0 && (
-                <tr><td colSpan={5} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No goals found.</td></tr>
-              )}
             </tbody>
           </table>
         </div>

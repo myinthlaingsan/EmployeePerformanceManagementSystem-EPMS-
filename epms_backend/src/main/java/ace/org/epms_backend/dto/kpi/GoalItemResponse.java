@@ -17,4 +17,5 @@ public class GoalItemResponse {
     private BigDecimal weightedScore;
     private String categoryName;
     private Long categoryId;
+    private Boolean isCompliance;
 }

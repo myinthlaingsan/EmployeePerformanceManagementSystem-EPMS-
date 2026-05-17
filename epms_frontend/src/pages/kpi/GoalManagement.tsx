@@ -40,7 +40,7 @@ const GoalManagement: React.FC = () => {
   const [selectedCycle, setSelectedCycle] = useState('All');
 
   const effectiveCycleId = selectedCycle === 'All' ? activeCycleId : Number(selectedCycle);
-
+  const activeCycleName = cycles.find((c: any) => c.id === activeCycleId)?.name || 'Active Cycle';
   const { data: deptGoalSetsResponse } = useGetDepartmentGoalSetsQuery(
     { cycleId: effectiveCycleId! }, { skip: !effectiveCycleId || !isAdminOrHr }
   );
@@ -67,32 +67,60 @@ const GoalManagement: React.FC = () => {
     setSelectedIds(e.target.checked ? filteredEmployees.map(m => m.id) : []);
   };
 
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
   const selectStyle: React.CSSProperties = {
     background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
     padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', appearance: 'none' as any,
   };
 
-  return (
-    <div className="space-y-4 pb-8">
+  const getStatusBadge = (status?: string) => {
+    if (!status) {
+      return (
+        <div className="flex items-center gap-1.5">
+          <XCircle size={13} style={{ color: '#9EA3B0' }} />
+          <span style={{ fontSize: 10, color: '#9EA3B0' }}>Not Assigned</span>
+        </div>
+      );
+    }
+    const ss = STATUS_STYLE[status];
+    return (
+      <span style={{ fontSize: 10, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '2px 8px' }}>
+        {ss.label}
+      </span>
+    );
+  };
+
+  return (<div className="space-y-4 pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Organization-wide Goal Assignment</h1>
           <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Manage and track performance cycle milestones across all departments.</p>
         </div>
-        <button
-          onClick={() => { if (selectedIds.length === 0) { toast.warning('Select at least one employee'); return; } setIsBulkModalOpen(true); }}
-          className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
-          style={{
-            background: selectedIds.length > 0 ? '#1A56DB' : '#F5F6F8',
-            color: selectedIds.length > 0 ? '#FFFFFF' : '#9EA3B0',
-            border: `0.5px solid ${selectedIds.length > 0 ? '#1A56DB' : '#E0E2E8'}`,
-            borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500,
-            cursor: selectedIds.length > 0 ? 'pointer' : 'default',
-          }}>
-          <ClipboardList size={14} />
-          Bulk Assign Templates {selectedIds.length > 0 && `(${selectedIds.length})`}
-        </button>
+        <div className="flex items-center gap-3">
+          {activeCycleId && (
+            <div className="px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-blue-100 flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></div>
+              {activeCycleName}
+            </div>
+          )}
+          <button
+            onClick={() => { if (selectedIds.length === 0) { toast.warning('Select at least one employee'); return; } setIsBulkModalOpen(true); }}
+            className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+            style={{
+              background: selectedIds.length > 0 ? '#1A56DB' : '#F5F6F8',
+              color: selectedIds.length > 0 ? '#FFFFFF' : '#9EA3B0',
+              border: `0.5px solid ${selectedIds.length > 0 ? '#1A56DB' : '#E0E2E8'}`,
+              borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500,
+              cursor: selectedIds.length > 0 ? 'pointer' : 'default',
+            }}>
+            <ClipboardList size={14} />
+            Bulk Assign Templates {selectedIds.length > 0 && `(${selectedIds.length})`}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -113,8 +141,8 @@ const GoalManagement: React.FC = () => {
           {positions.map((p, i) => <option key={`${p.positionId}-${i}`} value={p.positionName}>{p.positionName}</option>)}
         </select>
         <select style={selectStyle} value={selectedCycle} onChange={e => setSelectedCycle(e.target.value)}>
-          <option value="All">Cycle: All</option>
-          {cycles.map((c, i) => <option key={`${c.id}-${i}`} value={c.id}>{c.name}</option>)}
+          <option value="All">Cycle: {activeCycleId ? 'Current' : 'All'}</option>
+          {cycles.map((c: any, i) => <option key={`${c.cycleId || c.id}-${i}`} value={c.cycleId || c.id}>{c.cycleName || c.name}</option>)}
         </select>
       </div>
 

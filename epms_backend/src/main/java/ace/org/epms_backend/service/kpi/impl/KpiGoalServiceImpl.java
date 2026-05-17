@@ -141,6 +141,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         .scorePercent(BigDecimal.ZERO)
                         .weightedScore(BigDecimal.ZERO)
                         .status(KpiItemStatus.NOT_STARTED)
+                        .isCompliance(libDetail.getIsCompliance())
                         .isActive(true)
                         .build();
             }).collect(Collectors.toList());
@@ -157,7 +158,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .message("A new KPI set has been assigned to you for the current cycle.")
                 .referenceType(ReferenceType.KPI)
                 .referenceId(savedGoalSet.getId())
-                .actionUrl("/kpis/my-goals")
+                .actionUrl("/kpi/my")
                 .build());
 
         // Log KPI Journey
@@ -278,6 +279,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                             .scorePercent(BigDecimal.ZERO)
                             .weightedScore(BigDecimal.ZERO)
                             .status(KpiItemStatus.NOT_STARTED)
+                            .isCompliance(libDetail.getIsCompliance())
                             .isActive(true)
                             .build();
                 }).collect(Collectors.toList());
@@ -294,7 +296,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                                 + library.getTitle())
                         .referenceType(ReferenceType.KPI)
                         .referenceId(savedGoalSet.getId())
-                        .actionUrl("/kpis/my-goals")
+                        .actionUrl("/kpi/my")
                         .build());
 
                 response.setSuccessfulCount(response.getSuccessfulCount() + 1);
@@ -344,6 +346,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .scorePercent(BigDecimal.ZERO)
                 .weightedScore(BigDecimal.ZERO)
                 .status(KpiItemStatus.NOT_STARTED)
+                .isCompliance(request.getIsCompliance())
                 .isActive(true)
                 .build();
 
@@ -373,6 +376,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         item.setWeightPercent(request.getWeightPercent());
         item.setCategory(categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new NotFoundException("Category not found")));
+        item.setIsCompliance(request.getIsCompliance());
 
         goalItemRepository.save(item);
         return kpiMapper.toGoalSetResponse(goalSet);
@@ -490,7 +494,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     .message("Your Manager has approved your KPI goals.")
                     .referenceType(ReferenceType.KPI)
                     .referenceId(goalSet.getId())
-                    .actionUrl("/kpis/my-goals")
+                    .actionUrl("/kpi/my")
                     .build());
         }
 
@@ -531,6 +535,21 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         goalSet.setStatus(KpiGoalStatus.DRAFT);
         KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+        // Notify employee that their goals have been reverted to draft
+        if (goalSet.getEmployee() != null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(goalSet.getEmployee().getId())
+                    .senderId(getCurrentEmployee().getId())
+                    .type(NotificationType.KPI_REJECTED)
+                    .title("KPI Reverted to Draft")
+                    .message("Your KPI goals have been returned to draft by your manager. Please check with your manager for further instructions.")
+                    .referenceType(ReferenceType.KPI)
+                    .referenceId(goalSet.getId())
+                    .actionUrl("/kpi/my")
+                    .build());
+        }
+
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
@@ -549,6 +568,20 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         goalSet.setStatus(KpiGoalStatus.LOCKED);
         KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+        // Notify employee that their goals have been locked
+        if (goalSet.getEmployee() != null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(goalSet.getEmployee().getId())
+                    .senderId(getCurrentEmployee().getId())
+                    .type(NotificationType.KPI_LOCKED)
+                    .title("KPI Goals Locked")
+                    .message("Your KPI goals have been locked by your manager. No further progress updates can be made.")
+                    .referenceType(ReferenceType.KPI)
+                    .referenceId(goalSet.getId())
+                    .actionUrl("/kpi/my")
+                    .build());
+        }
 
         // Log KPI Journey
         historyRepo.save(KpiHistoryLog.builder()
@@ -648,6 +681,20 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         // Bump goal set version to track that a revision occurred
         goalSet.setVersion(goalSet.getVersion() + 1);
         goalsRepository.save(goalSet);
+
+        // Notify employee about the revision
+        if (goalSet.getEmployee() != null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(goalSet.getEmployee().getId())
+                    .senderId(currentUser.getId())
+                    .type(NotificationType.KPI_REVISED)
+                    .title("KPI Goal Revised")
+                    .message("Your KPI goal '" + item.getTitle() + "' has been revised by your manager. Reason: " + request.getChangeReason())
+                    .referenceType(ReferenceType.KPI)
+                    .referenceId(goalSet.getId())
+                    .actionUrl("/kpi/my")
+                    .build());
+        }
 
         // Detailed audit log
         historyRepo.save(

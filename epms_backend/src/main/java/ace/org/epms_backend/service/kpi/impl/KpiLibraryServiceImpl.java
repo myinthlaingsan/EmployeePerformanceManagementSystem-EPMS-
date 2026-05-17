@@ -1,9 +1,7 @@
 package ace.org.epms_backend.service.kpi.impl;
 
 import ace.org.epms_backend.dto.PagedResponse;
-import ace.org.epms_backend.dto.kpi.KpiLibraryDetailRequest;
-import ace.org.epms_backend.dto.kpi.KpiLibraryRequest;
-import ace.org.epms_backend.dto.kpi.KpiLibraryResponse;
+import ace.org.epms_backend.dto.kpi.*;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.kpi.KpiLibrary;
@@ -12,15 +10,22 @@ import ace.org.epms_backend.repository.KpiCategoryRepository;
 import ace.org.epms_backend.repository.KpiLibraryRepository;
 import ace.org.epms_backend.repository.PositionRepository;
 import ace.org.epms_backend.service.kpi.KpiLibraryService;
+import ace.org.epms_backend.util.excel.StyledKpiExcelParser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,26 +36,12 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
     private final PositionRepository positionRepository;
     private final KpiCategoryRepository categoryRepository;
     private final KpiMapper kpiMapper;
+    private final StyledKpiExcelParser excelParser;
 
     @Override
     @Transactional
     public KpiLibraryResponse createLibrary(KpiLibraryRequest request) {
-        // Check individual item cap (35%)
-        boolean anyItemExceedsCap = request.getDetails().stream()
-                .anyMatch(d -> d.getWeightPercent().compareTo(new BigDecimal("35")) > 0);
-
-        if (anyItemExceedsCap) {
-            throw new IllegalArgumentException("Individual KPI weight cannot exceed 35%");
-        }
-
-        BigDecimal totalWeight = request.getDetails().stream()
-                .map(KpiLibraryDetailRequest::getWeightPercent)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // Check total weight (100%)
-        if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
-            throw new IllegalArgumentException("Total weight must be exactly 100%");
-        }
+        validateLibraryWeights(request);
 
         KpiLibrary library = kpiMapper.toLibraryEntity(request);
         library.setPosition(positionRepository.findById(request.getPositionId())
@@ -71,7 +62,8 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
 
         savedLibrary.setDetails(details);
 
-        return kpiMapper.toLibraryResponse(savedLibrary);
+        // Explicitly save again to ensure details and relationships are persisted correctly (Enterprise safety)
+        return kpiMapper.toLibraryResponse(libraryRepository.save(savedLibrary));
     }
 
     @Override
@@ -105,6 +97,8 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
     @Override
     @Transactional
     public KpiLibraryResponse updateLibrary(Long id, KpiLibraryRequest request) {
+        validateLibraryWeights(request);
+
         KpiLibrary library = libraryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Library not found"));
 
@@ -156,7 +150,7 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
         }).collect(Collectors.toList());
 
         savedLibrary.setDetails(clonedDetails);
-        return kpiMapper.toLibraryResponse(savedLibrary);
+        return kpiMapper.toLibraryResponse(libraryRepository.save(savedLibrary));
     }
 
     @Override
@@ -171,5 +165,116 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
                 responsePage.getTotalElements(),
                 responsePage.getTotalPages(),
                 responsePage.isLast());
+    }
+
+    @Override
+    @Transactional
+    public KpiImportResult importLibraries(MultipartFile file) throws IOException {
+        KpiParseResult parseResult = excelParser.parse(file);
+
+        KpiImportResult result = KpiImportResult.builder()
+                .totalSectionsFound(parseResult.getRequests().size() + parseResult.getErrors().size())
+                .errors(new ArrayList<>(parseResult.getErrors())) // Start with parsing errors
+                .failedImports(parseResult.getErrors().size())
+                .build();
+
+        if (parseResult.getRequests().isEmpty() && parseResult.getErrors().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No valid KPI scorecards detected in the file. Please ensure you are using the official scorecard template.");
+        }
+
+        for (KpiLibraryRequest request : parseResult.getRequests()) {
+            try {
+                // Soft Replace: Deactivate existing library with same title and position
+                libraryRepository.findByTitleAndPositionPositionIdAndIsActiveTrue(
+                        request.getTitle(), request.getPositionId())
+                        .ifPresent(existing -> {
+                            existing.setIsActive(false);
+                            libraryRepository.save(existing);
+                        });
+
+                createLibrary(request);
+                result.incrementSuccess();
+            } catch (Exception e) {
+                result.addError("Library '" + request.getTitle() + "': " + e.getMessage());
+            }
+        }
+
+        return result;
+    }
+    
+    @Override
+    public List<KpiLibraryResponse> getLibraryHistory(Long positionId) {
+        return libraryRepository.findByPositionPositionIdOrderByUpdatedAtDesc(positionId).stream()
+                .map(kpiMapper::toLibraryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<KpiLibraryResponse> getAllLibraries() {
+        return libraryRepository.findAll().stream()
+                .map(kpiMapper::toLibraryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public KpiLibraryResponse toggleHistoryStatus(Long id, boolean active) {
+        KpiLibrary library = libraryRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Library not found"));
+
+        if (active && library.getPosition() != null) {
+            // Deactivate all other libraries for the same position
+            List<KpiLibrary> positionLibraries = libraryRepository.findByPositionPositionIdOrderByUpdatedAtDesc(library.getPosition().getPositionId());
+            for (KpiLibrary lib : positionLibraries) {
+                if (!lib.getId().equals(id) && Boolean.TRUE.equals(lib.getIsActive())) {
+                    lib.setIsActive(false);
+                    libraryRepository.save(lib);
+                }
+            }
+        }
+
+        library.setIsActive(active);
+        KpiLibrary updatedLibrary = libraryRepository.save(library);
+        return kpiMapper.toLibraryResponse(updatedLibrary);
+    }
+
+    @Override
+    @Transactional
+    public void deleteLibrary(Long id) {
+        KpiLibrary library = libraryRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Library not found"));
+        libraryRepository.delete(library);
+    }
+
+    private void validateLibraryWeights(KpiLibraryRequest request) {
+        if (request.getDetails() == null || request.getDetails().isEmpty()) {
+            throw new IllegalArgumentException("At least one KPI detail is required");
+        }
+
+        // Check for duplicate goal titles within the same library
+        Set<String> titles = new HashSet<>();
+        for (KpiLibraryDetailRequest detail : request.getDetails()) {
+            if (!titles.add(detail.getGoalTitle().trim().toLowerCase())) {
+                throw new IllegalArgumentException("Duplicate goal title found: " + detail.getGoalTitle());
+            }
+        }
+
+        // Check individual item cap (35%)
+        boolean anyItemExceedsCap = request.getDetails().stream()
+                .anyMatch(d -> d.getWeightPercent().compareTo(new BigDecimal("35")) > 0);
+
+        if (anyItemExceedsCap) {
+            throw new IllegalArgumentException("Individual KPI weight cannot exceed 35%");
+        }
+
+        BigDecimal totalWeight = request.getDetails().stream()
+                .map(KpiLibraryDetailRequest::getWeightPercent)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Check total weight (100%) with rounding to handle Excel precision issues
+        if (totalWeight.setScale(2, RoundingMode.HALF_UP).compareTo(new BigDecimal("100.00")) != 0) {
+            throw new IllegalArgumentException("Total weight must be exactly 100% (Current: " + totalWeight + "%)");
+        }
     }
 }
