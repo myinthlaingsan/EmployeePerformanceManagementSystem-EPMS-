@@ -72,6 +72,7 @@ const KpiLibraryEntry: React.FC = () => {
 
   const handleDetailChange = (index: number, field: keyof FormKpiDetail, value: any) => {
     const newDetails = [...details];
+  
     let updatedItem = {
       ...newDetails[index],
       [field]: field === 'categoryId' ? parseInt(value) || 0
@@ -171,7 +172,14 @@ const KpiLibraryEntry: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-4">
         <LibraryBasicInfo formData={formData} positions={positions} jobLevels={jobLevels} onChange={handleInputChange} />
-        <LibraryKpiTable details={details} categories={categories} onDetailChange={handleDetailChange} onAddRow={addRow} onRemoveRow={removeRow} totalWeight={totalWeight} />
+        <LibraryKpiTable
+          details={details}
+          categories={categories}
+          onDetailChange={handleDetailChange}
+          onAddRow={addRow}
+          onRemoveRow={removeRow}
+          totalWeight={totalWeight}
+        />
         <LibrarySyncInfo />
       </div>
     </div>
