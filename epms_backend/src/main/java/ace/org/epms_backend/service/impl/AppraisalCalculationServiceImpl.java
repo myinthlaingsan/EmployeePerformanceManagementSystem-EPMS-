@@ -48,6 +48,11 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
                 ScoreBreakdownResponse breakdown = buildBreakdown(appraisal);
+                
+                // Fetch Category to persist
+                PerformanceCategory category = determineCategory(breakdown.getFinalTotalScore());
+                appraisal.setPerformanceCategory(category);
+                appraisalRepo.save(appraisal);
 
                 // Save Summary
                 AppraisalSummary summary = summaryRepo
@@ -130,8 +135,9 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                 BigDecimal finalScore = selfWeighted.add(managerWeighted).add(feedbackWeighted).add(kpiWeighted)
                                 .setScale(2, RoundingMode.HALF_UP);
 
-                // 4. Determine Grade
-                PerformanceGrade grade = determineGrade(finalScore);
+                // 4. Determine Grade & Category
+                PerformanceCategory category = determineCategory(finalScore);
+                PerformanceGrade grade = category != null ? category.getGrade() : PerformanceGrade.MEETS_EXPECTATIONS;
 
                 return ScoreBreakdownResponse.builder()
                                 .appraisalId(appraisalId)
@@ -149,16 +155,18 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
                                 .kpiWeightedScore(kpiWeighted)
                                 .finalTotalScore(finalScore)
                                 .finalGrade(grade)
+                                .performanceCategoryId(category != null ? category.getId() : null)
+                                .performanceCategoryName(category != null ? category.getName() : "MEETS EXPECTATIONS")
                                 .build();
         }
 
-        private PerformanceGrade determineGrade(BigDecimal score) {
+        private PerformanceCategory determineCategory(BigDecimal score) {
                 List<PerformanceCategory> categories = performanceCategoryRepo.findAll();
                 for (PerformanceCategory cat : categories) {
                         if (score.compareTo(cat.getMinScore()) >= 0 && score.compareTo(cat.getMaxScore()) <= 0) {
-                                return cat.getGrade() != null ? cat.getGrade() : PerformanceGrade.MEETS_EXPECTATIONS;
+                                return cat;
                         }
                 }
-                return PerformanceGrade.MEETS_EXPECTATIONS;
+                return null;
         }
 }

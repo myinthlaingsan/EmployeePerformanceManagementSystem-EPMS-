@@ -3,11 +3,13 @@ package ace.org.epms_backend.controller;
 import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.PagedResponse;
 import ace.org.epms_backend.dto.employee.*;
+import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmployeeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -16,6 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EmployeeController {
     private final EmployeeService employeeService;
+    private final AuthService authService;
 
     @PostMapping("/set-password")
     public ResponseEntity<ApiResponse<?>> setPassword(
@@ -102,6 +105,15 @@ public class EmployeeController {
         return ResponseEntity.ok(
                 ApiResponse.success(employeeService.updateProfile(request))
         );
+    }
+
+    @PostMapping("/me/profile")
+    public ResponseEntity<ApiResponse<?>> uploadProfileImage(
+            @RequestParam("file") MultipartFile file
+    ) {
+        Long currentUserId = authService.getCurrentUser().getId();
+        employeeService.uploadProfileImage(currentUserId, file);
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     @PostMapping("/{id}/change-password")

@@ -11,10 +11,7 @@ import ace.org.epms_backend.model.employee.*;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.repository.appraisal.AppraisalFormSetRepository;
 import ace.org.epms_backend.repository.employee.ReportingLineRepository;
-import ace.org.epms_backend.service.AppraisalCalculationService;
-import ace.org.epms_backend.service.AppraisalService;
-import ace.org.epms_backend.service.AuditService;
-import ace.org.epms_backend.service.SelfAssessmentService;
+import ace.org.epms_backend.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,7 +40,7 @@ public class AppraisalServiceImpl implements AppraisalService {
         private final SelfAssessmentService selfService;
         private final AuditService auditService;
         private final ApplicationEventPublisher eventPublisher;
-
+        private final AuthService authService;
         private Long getCurrentUserId() {
                 String email = SecurityContextHolder.getContext().getAuthentication().getName();
                 return employeeRepo.findByEmail(email).map(Employee::getId)
@@ -271,7 +268,7 @@ public class AppraisalServiceImpl implements AppraisalService {
                 appraisal.setStatus(AppraisalStatus.HR_APPROVED);
                 appraisal.setHrApprovedAt(Instant.now());
                 appraisal.setApprovalComment(comment);
-
+                appraisal.setApprovedBy(authService.getCurrentUser());
                 Appraisal saved = appraisalRepo.save(appraisal);
 
                 // Notify Sign-off Pending

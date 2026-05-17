@@ -228,7 +228,6 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 .totalScore(fullSelf.getTotalScore())
                 .submittedAt(fullSelf.getSubmittedAt())
                 .categories(categoryViews)
-
                 .build();
     }
 

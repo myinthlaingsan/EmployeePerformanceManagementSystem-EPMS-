@@ -1,5 +1,6 @@
 package ace.org.epms_backend.dto.appraisal;
 
+import ace.org.epms_backend.enums.PerformanceGrade;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,6 +35,8 @@ public class ScoreBreakdownResponse {
     
     // Final Result
     private BigDecimal finalTotalScore;
-    private ace.org.epms_backend.enums.PerformanceGrade finalGrade;
+    private PerformanceGrade finalGrade;
+    private Long performanceCategoryId;
+    private String performanceCategoryName;
 }
 
