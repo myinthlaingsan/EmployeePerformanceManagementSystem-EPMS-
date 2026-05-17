@@ -425,6 +425,10 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 throw new IllegalArgumentException("Item does not belong to this goal set");
             }
 
+            if (update.getWeightPercent() != null && update.getWeightPercent().compareTo(new BigDecimal("35")) > 0) {
+                throw new IllegalArgumentException("Individual KPI weight cannot exceed 35%");
+            }
+
             item.setTitle(update.getTitle());
             item.setUnit(update.getUnit());
             item.setTargetValue(update.getTargetValue());
