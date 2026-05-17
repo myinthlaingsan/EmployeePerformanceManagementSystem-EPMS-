@@ -573,6 +573,24 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     .build());
         }
 
+        // Log KPI Journey
+        historyRepo.save(KpiHistoryLog.builder()
+                .employeeId(goalSet.getEmployee().getId())
+                .goalSetId(goalSet.getId())
+                .action("KPI_REVERTED")
+                .changeDetails("Goal set reverted to DRAFT by manager.")
+                .changedBy(getCurrentEmployee().getId())
+                .build());
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("kpi_goals")
+                .recordId(savedGoalSet.getId())
+                .action(AuditAction.UPDATE)
+                .newState(savedGoalSet)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
