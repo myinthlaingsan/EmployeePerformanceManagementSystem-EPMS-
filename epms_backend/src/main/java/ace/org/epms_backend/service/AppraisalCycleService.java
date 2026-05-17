@@ -12,7 +12,9 @@ public interface AppraisalCycleService {
     AppraisalCycleResponse update(Long id, AppraisalCycleRequest request);
     void delete(Long id);
     AppraisalCycleResponse activate(Long id);
-    AppraisalCycleResponse close(Long id);
+    AppraisalCycleResponse advanceToEvaluation(Long id); // manually move IN_PROGRESS → EVALUATION
+    AppraisalCycleResponse close(Long id);          // kept for ADMIN emergency override
     AppraisalCycleResponse getActiveCycle();
+    void schedulerDrivenClose(Long cycleId);        // called by the scheduler only
 }
 

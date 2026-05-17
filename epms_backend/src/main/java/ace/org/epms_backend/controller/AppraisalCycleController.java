@@ -49,11 +49,19 @@ public class AppraisalCycleController {
     }
 
     @PutMapping("/{id}/activate")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<AppraisalCycleResponse>> activate(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.activate(id)));
     }
 
+    @PutMapping("/{id}/advance-to-evaluation")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    public ResponseEntity<ApiResponse<AppraisalCycleResponse>> advanceToEvaluation(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.advanceToEvaluation(id)));
+    }
+
     @PutMapping("/{id}/close")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AppraisalCycleResponse>> close(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.close(id)));
     }

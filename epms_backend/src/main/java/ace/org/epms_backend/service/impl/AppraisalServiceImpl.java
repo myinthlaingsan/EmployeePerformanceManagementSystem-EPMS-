@@ -268,6 +268,13 @@ public class AppraisalServiceImpl implements AppraisalService {
                 Appraisal appraisal = appraisalRepo.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
+                // Guard: must be EVALUATED before HR can approve
+                if (appraisal.getStatus() != AppraisalStatus.EVALUATED) {
+                        throw new RuntimeException(
+                                "Cannot approve: appraisal must be EVALUATED first. Current status: "
+                                + appraisal.getStatus());
+                }
+
                 appraisal.setStatus(AppraisalStatus.HR_APPROVED);
                 appraisal.setHrApprovedAt(Instant.now());
                 appraisal.setApprovalComment(comment);
@@ -313,6 +320,13 @@ public class AppraisalServiceImpl implements AppraisalService {
                 Appraisal appraisal = appraisalRepo.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
+                // Guard: must be HR_APPROVED before finalization
+                if (appraisal.getStatus() != AppraisalStatus.HR_APPROVED) {
+                        throw new RuntimeException(
+                                "Cannot finalize: appraisal must be HR_APPROVED first. Current status: "
+                                + appraisal.getStatus());
+                }
+
                 appraisal.setStatus(AppraisalStatus.FINALIZED);
                 appraisal.setFinalizedAt(Instant.now());
                 Appraisal saved = appraisalRepo.save(appraisal);
@@ -344,10 +358,18 @@ public class AppraisalServiceImpl implements AppraisalService {
         public AppraisalResponse employeeSignOff(Long id, String comment) {
                 Appraisal appraisal = appraisalRepo.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
-        appraisal.setEmployeeSignedAt(Instant.now());
-        if (comment != null) {
-            appraisal.setEmployeeSignComment(comment);
-        }
+
+                // Guard: sign-off only allowed after HR approval
+                if (appraisal.getStatus() != AppraisalStatus.HR_APPROVED) {
+                        throw new RuntimeException(
+                                "Sign-off is only available after HR approval. Current status: "
+                                + appraisal.getStatus());
+                }
+
+                appraisal.setEmployeeSignedAt(Instant.now());
+                if (comment != null) {
+                        appraisal.setEmployeeSignComment(comment);
+                }
 
                 Appraisal saved = appraisalRepo.save(appraisal);
 
@@ -384,15 +406,18 @@ public class AppraisalServiceImpl implements AppraisalService {
 
                 Appraisal saved = appraisalRepo.save(appraisal);
 
-                eventPublisher.publishEvent(NotificationEvent.builder()
-                                .recipientId(appraisal.getManager().getId())
-                                .type(NotificationType.MANAGER_SIGNED_OFF)
-                                .title("Manager Sign-off Complete")
-                                .message("You have signed off on the appraisal for "
-                                                + appraisal.getEmployee().getStaffName())
-                                .referenceType(ReferenceType.APPRAISAL)
-                                .referenceId(saved.getAppraisalId())
-                                .build());
+                // NPE guard: only notify if a manager is actually assigned
+                if (appraisal.getManager() != null) {
+                        eventPublisher.publishEvent(NotificationEvent.builder()
+                                        .recipientId(appraisal.getManager().getId())
+                                        .type(NotificationType.MANAGER_SIGNED_OFF)
+                                        .title("Manager Sign-off Complete")
+                                        .message("You have signed off on the appraisal for "
+                                                        + appraisal.getEmployee().getStaffName())
+                                        .referenceType(ReferenceType.APPRAISAL)
+                                        .referenceId(saved.getAppraisalId())
+                                        .build());
+                }
 
                 auditService.log(AuditRequest.builder()
 

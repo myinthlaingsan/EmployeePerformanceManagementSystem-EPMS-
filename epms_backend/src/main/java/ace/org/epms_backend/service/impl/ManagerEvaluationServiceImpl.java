@@ -128,6 +128,16 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
             throw new RuntimeException("Cannot submit an evaluation that has been approved or finalized");
         }
 
+        // Guard: manager evaluation can only be submitted during IN_PROGRESS or EVALUATION phase.
+        // IN_PROGRESS = self-assessment phase (employees submit); managers may also evaluate
+        // as soon as an employee's self-assessment is done, without waiting for the scheduler
+        // to flip the cycle to EVALUATION.
+        CycleStatus cycleStatus = eval.getAppraisal().getCycle().getStatus();
+        if (cycleStatus != CycleStatus.EVALUATION && cycleStatus != CycleStatus.IN_PROGRESS) {
+            throw new RuntimeException(
+                "Manager evaluation submission is not open. Cycle phase: " + cycleStatus);
+        }
+
         // Calculate total score based on formula: (Total Point * 100) / (Number of Questions Answered * 5)
         List<ManagerEvaluationAnswer> answers = answerRepo.findByEvaluation_EvaluationId(evaluationId);
         BigDecimal sum = BigDecimal.ZERO;

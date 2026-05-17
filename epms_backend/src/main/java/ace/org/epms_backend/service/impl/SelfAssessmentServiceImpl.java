@@ -104,6 +104,13 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
             throw new RuntimeException("Self-assessment is already submitted");
         }
 
+        // Guard: self-assessment can only be submitted during IN_PROGRESS phase
+        CycleStatus cycleStatus = self.getAppraisal().getCycle().getStatus();
+        if (cycleStatus != CycleStatus.IN_PROGRESS) {
+            throw new RuntimeException(
+                "Self-assessment submission is not open. Cycle phase: " + cycleStatus);
+        }
+
         // Calculate total score based on formula: (Total Point * 100) / (Number of Questions Answered * 5)
         List<SelfAssessmentAnswer> answers = answerRepo.findBySelfAssessment_SelfAssessmentId(selfAssessmentId);
         BigDecimal sum = BigDecimal.ZERO;

@@ -2,9 +2,11 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.appraisal.AppraisalCycleRequest;
 import ace.org.epms_backend.dto.appraisal.AppraisalCycleResponse;
+import ace.org.epms_backend.enums.AppraisalStatus;
 import ace.org.epms_backend.enums.CycleStatus;
 import ace.org.epms_backend.exception.ResourceNotFoundException;
 import ace.org.epms_backend.mapper.AppraisalCycleMapper;
+import ace.org.epms_backend.model.appraisal.Appraisal;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.AppraisalRepository;
@@ -173,18 +175,16 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         deactivateCurrentActiveCycles();
 
         cycle.setIsActive(true);
-        if (cycle.getStatus() == null || cycle.getStatus() == CycleStatus.ARCHIVED) {
-            cycle.setStatus(CycleStatus.PLANNING);
-        }
+        cycle.setStatus(CycleStatus.IN_PROGRESS);
         cycle = appraisalCycleRepository.save(cycle);
 
         // Trigger Broadcast Notification
         eventPublisher.publishEvent(NotificationEvent.builder()
                 .broadcast(true)
                 .type(NotificationType.APPRAISAL_CYCLE_OPENED)
-                .title("Appraisal Cycle Opened")
+                .title("Appraisal Cycle Activated")
                 .message("The appraisal cycle '" + cycle.getCycleName()
-                        + "' is now open. You can start your self-assessments.")
+                        + "' has been activated. Self-assessments are now open.")
                 .referenceType(ReferenceType.APPRAISAL)
                 .referenceId(cycle.getCycleId())
                 .actionUrl("/appraisals/my-appraisals")
@@ -193,6 +193,41 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         cycle = appraisalCycleRepository.save(cycle);
 
         // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisal_cycle")
+                .recordId(cycle.getCycleId())
+                .action(AuditAction.UPDATE)
+                .newState(cycle)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        return appraisalCycleMapper.toResponse(cycle);
+    }
+
+    @Override
+    @Transactional
+    public AppraisalCycleResponse advanceToEvaluation(Long id) {
+        AppraisalCycle cycle = getCycleById(id);
+
+        if (cycle.getStatus() != CycleStatus.IN_PROGRESS) {
+            throw new RuntimeException(
+                "Can only advance to EVALUATION from IN_PROGRESS. Current status: " + cycle.getStatus());
+        }
+
+        cycle.setStatus(CycleStatus.EVALUATION);
+        cycle = appraisalCycleRepository.save(cycle);
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .broadcast(true)
+                .type(NotificationType.CYCLE_PHASE_STARTED)
+                .title("Manager Evaluation Phase Open")
+                .message("The manager evaluation phase for appraisal cycle '"
+                        + cycle.getCycleName() + "' is now open.")
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(cycle.getCycleId())
+                .actionUrl("/appraisals")
+                .build());
+
         auditService.log(AuditRequest.builder()
                 .tableName("appraisal_cycle")
                 .recordId(cycle.getCycleId())
@@ -267,5 +302,71 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         if (!activeCycles.isEmpty()) {
             appraisalCycleRepository.saveAll(activeCycles);
         }
+    }
+
+    /**
+     * Called only by the scheduler when endDate is reached.
+     * Bulk-archives FINALIZED appraisals and notifies HR of any incomplete ones.
+     */
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void schedulerDrivenClose(Long cycleId) {
+        AppraisalCycle cycle = getCycleById(cycleId);
+
+        // 1. Bulk-archive all FINALIZED appraisals in this cycle
+        List<Appraisal> finalized = appraisalRepository
+                .findByCycle_CycleIdAndStatus(cycleId, AppraisalStatus.FINALIZED);
+        for (Appraisal a : finalized) {
+            a.setStatus(AppraisalStatus.ARCHIVED);
+        }
+        if (!finalized.isEmpty()) {
+            appraisalRepository.saveAll(finalized);
+        }
+
+        // 2. Find any appraisals that are NOT finalized/archived (incomplete)
+        List<Appraisal> incomplete = appraisalRepository.findByCycleIdAndStatusNotIn(
+                cycleId,
+                java.util.List.of(AppraisalStatus.FINALIZED, AppraisalStatus.ARCHIVED));
+
+        // 3. Close the cycle
+        cycle.setIsActive(false);
+        cycle.setStatus(CycleStatus.ARCHIVED);
+        appraisalCycleRepository.save(cycle);
+
+        // 4. Notify all users the cycle is closed
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .broadcast(true)
+                .type(NotificationType.APPRAISAL_CYCLE_CLOSED)
+                .title("Appraisal Cycle Closed")
+                .message("The appraisal cycle '" + cycle.getCycleName() + "' has been automatically closed.")
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(cycleId)
+                .actionUrl("/appraisals/history")
+                .build());
+
+        // 5. Notify HR about incomplete appraisals
+        if (!incomplete.isEmpty()) {
+            StringBuilder names = new StringBuilder();
+            incomplete.forEach(a -> names.append(a.getEmployee().getStaffName())
+                    .append(" (").append(a.getStatus()).append("), "));
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .targetRole("HR")
+                    .type(NotificationType.CYCLE_INCOMPLETE_APPRAISALS)
+                    .title("Incomplete Appraisals at Cycle Close")
+                    .message(incomplete.size() + " appraisal(s) were not completed when cycle '"
+                            + cycle.getCycleName() + "' closed: " + names.toString().replaceAll(", $", ""))
+                    .referenceType(ReferenceType.APPRAISAL)
+                    .referenceId(cycleId)
+                    .build());
+        }
+
+        // 6. Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisal_cycle")
+                .recordId(cycleId)
+                .action(AuditAction.UPDATE)
+                .newState(cycle)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 }
