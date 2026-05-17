@@ -29,9 +29,10 @@ import {
   CheckCircle2,
   Circle,
   Search,
-  Trash2,
+  Mail,
   Share2,
-  Mail
+  Trophy,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -194,17 +195,17 @@ const AppraisalList: React.FC = () => {
                 style={{ fontSize: 12, color: '#1A56DB', marginBottom: 6 }}>
                 <ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} /> Back to Cycles
               </button>
-              <div className="flex items-center gap-6">
-                <h2 className="text-5xl font-black text-slate-900 tracking-tighter uppercase italic">{cycle?.cycleName}</h2>
-                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-2 ${getCycleStatusColor(cycle?.status || '')}`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${cycle?.isActive ? 'bg-current animate-pulse' : 'bg-slate-400'}`}></div>
-                  {cycle?.status?.replace('_', ' ') || (cycle?.isActive ? 'ACTIVE' : 'INACTIVE')}
-                </div>
+              <div className="flex items-center gap-3">
+                <h2 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{cycle?.cycleName}</h2>
+                <span style={{ fontSize: 11, fontWeight: 500, background: cycle?.isActive ? '#EAF3DE' : '#F1EFE8', color: cycle?.isActive ? '#27500A' : '#444441', border: `0.5px solid ${cycle?.isActive ? '#B8DCA0' : '#DDDBD2'}`, borderRadius: 20, padding: '2px 8px' }}>
+                  {cycle?.isActive ? 'Active' : 'Inactive'}
+                </span>
               </div>
               <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>
                 {daysLeft > 0 ? `Ends in ${daysLeft} days` : 'Cycle concluded'}
               </p>
             </div>
+
             <div className="flex items-center gap-3">
               <button className="px-6 py-3 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all flex items-center gap-2">
                 <Share2 className="w-4 h-4 text-slate-400" /> Export Status
@@ -252,15 +253,13 @@ const AppraisalList: React.FC = () => {
                 >
                   {isActivating ? 'Activating...' : 'Activate Cycle'}
                 </button>
-              ) : (
+              ) : isAdmin && (
                 <button
                   onClick={() => {
                     setConfirmModal({
                       isOpen: true,
-                      title: isAdmin ? 'Force Close Cycle (Emergency)' : 'Close Appraisal Cycle',
-                      message: isAdmin
-                        ? `Are you sure you want to FORCE CLOSE "${cycle.cycleName}"? System normally handles this on ${safeFormatDate(cycle.endDate)}. Only use this for emergencies.`
-                        : `Are you sure you want to close "${cycle.cycleName}"? This will deactivate it and lock all related appraisals from further editing.`,
+                      title: 'Force Close Cycle (Emergency)',
+                      message: `Are you sure you want to FORCE CLOSE "${cycle.cycleName}"? System normally handles this on ${safeFormatDate(cycle.endDate)}. Only use this for emergencies.`,
                       onConfirm: () => {
                         closeCycle(Number(selectedCycleId));
                         setSelectedCycleId(null);
@@ -270,7 +269,7 @@ const AppraisalList: React.FC = () => {
                   disabled={isClosing}
                   className="px-6 py-3 bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
-                  {isClosing ? 'Closing...' : (isAdmin ? 'Emergency Close' : 'Close Cycle')}
+                  {isClosing ? 'Closing...' : 'Emergency Close'}
                 </button>
               )}
             </div>
