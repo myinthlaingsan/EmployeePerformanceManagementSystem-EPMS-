@@ -19,9 +19,9 @@ const inputStyle: React.CSSProperties = { background: '#F5F6F8', border: '0.5px 
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 };
 
 const CYCLE_STATUS_STYLE: Record<string, { background: string; color: string; border: string }> = {
-  Active:  { background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4' },
-  Closed:  { background: '#F1EFE8', color: '#444441', border: '0.5px solid #DDDBD2' },
-  Draft:   { background: '#FAEEDA', color: '#633806', border: '0.5px solid #F0D4A4' },
+  Active: { background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4' },
+  Closed: { background: '#F1EFE8', color: '#444441', border: '0.5px solid #DDDBD2' },
+  Draft: { background: '#FAEEDA', color: '#633806', border: '0.5px solid #F0D4A4' },
 };
 
 const AppraisalAdminDashboard = () => {
@@ -66,7 +66,7 @@ const AppraisalAdminDashboard = () => {
   const handleLaunchCycle = async () => {
     if (!cycleName || !startDate || !endDate) return alert('Please fill all cycle parameters.');
     try {
-      await createCycle({ name: cycleName, startDate, endDate, frequency }).unwrap();
+      await createCycle({ cycleName, startDate, endDate, evaluationPeriod: frequency }).unwrap();
       alert('Appraisal cycle launched successfully!');
       setCycleName(''); setStartDate(''); setEndDate('');
     } catch (err: any) {
@@ -227,11 +227,11 @@ const AppraisalAdminDashboard = () => {
                   const statusKey = cycle.status || 'Draft';
                   const statusStyle = CYCLE_STATUS_STYLE[statusKey] || CYCLE_STATUS_STYLE['Draft'];
                   return (
-                    <tr key={cycle.id} style={{ borderBottom: idx < cycles.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
+                    <tr key={cycle.cycleId} style={{ borderBottom: idx < cycles.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
                       className="hover:bg-[#FAFBFF] transition-colors">
-                      <td style={{ padding: '11px 14px', fontSize: 13, fontWeight: 500, color: '#111827' }}>{cycle.name}</td>
+                      <td style={{ padding: '11px 14px', fontSize: 13, fontWeight: 500, color: '#111827' }}>{cycle.cycleName}</td>
                       <td style={{ padding: '11px 14px', fontSize: 12, color: '#5A6070' }}>{cycle.startDate} – {cycle.endDate}</td>
-                      <td style={{ padding: '11px 14px', fontSize: 12, color: '#5A6070' }}>{cycle.frequency}</td>
+                      <td style={{ padding: '11px 14px', fontSize: 12, color: '#5A6070' }}>{cycle.evaluationPeriod}</td>
                       <td style={{ padding: '11px 14px' }}>
                         <span style={{ ...statusStyle, display: 'inline-block', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500 }}>
                           {statusKey}

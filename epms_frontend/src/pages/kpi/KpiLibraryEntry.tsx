@@ -42,9 +42,23 @@ const KpiLibraryEntry: React.FC = () => {
   useEffect(() => {
     if (isEdit && libraryData?.data) {
       const lib = libraryData.data;
-      setFormData({ title: lib.title || '', description: lib.description || '', positionId: Number(lib.positionId) || 0, targetLevelId: Number(lib.targetLevelId) || 0 });
+
+      setFormData({
+        title: lib.title || '',
+        description: lib.description || '',
+        positionId: Number(lib.positionId) || 0,
+        targetLevelId: Number(lib.targetLevelId) || 0,
+      });
+
       if (lib.details && lib.details.length > 0) {
-        setDetails(lib.details.map(d => ({ goalTitle: d.goalTitle || '', unit: d.unit || '', targetValue: Number(d.targetValue) || 0, weightPercent: Number(d.weightPercent) || 0, categoryId: Number(d.categoryId) || 0 })));
+        setDetails(lib.details.map(d => ({
+          goalTitle: d.goalTitle || '',
+          unit: d.unit || '',
+          targetValue: Number(d.targetValue) || 0,
+          weightPercent: Number(d.weightPercent) || 0,
+          categoryId: Number(d.categoryId) || 0,
+          isCompliance: d.isCompliance || false
+        })));
       }
     }
   }, [isEdit, libraryData, positions.length]);
@@ -58,22 +72,44 @@ const KpiLibraryEntry: React.FC = () => {
 
   const handleDetailChange = (index: number, field: keyof FormKpiDetail, value: any) => {
     const newDetails = [...details];
-    let parsedValue = value;
-    if (field === 'categoryId') {
-      parsedValue = parseInt(value) || 0;
-    } else if (['targetValue', 'weightPercent'].includes(field as string)) {
-      parsedValue = value === '' ? '' : Math.max(0, parseFloat(value) || 0);
+  
+    let updatedItem = {
+      ...newDetails[index],
+      [field]: field === 'categoryId' ? parseInt(value) || 0
+        : field === 'isCompliance' ? !!value
+          : ['targetValue', 'weightPercent'].includes(field as string) ? parseFloat(value) || 0
+            : value
+    };
+
+    // Auto-setup for Compliance items: Target must be 1 for Pass/Fail logic
+    if (field === 'isCompliance' && value === true) {
+      updatedItem.targetValue = 1;
+      if (!updatedItem.unit) updatedItem.unit = 'Score';
     }
-    newDetails[index] = { ...newDetails[index], [field]: parsedValue };
+
+    newDetails[index] = updatedItem;
     setDetails(newDetails);
   };
 
-  const addRow = () => setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, categoryId: 0 }]);
-  const removeRow = (index: number) => { if (details.length > 1) setDetails(details.filter((_, i) => i !== index)); };
+  const addRow = () => {
+    setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, categoryId: 0, isCompliance: false }]);
+  };
+
+  const removeRow = (index: number) => {
+    if (details.length > 1) {
+      setDetails(details.filter((_, i) => i !== index));
+    }
+  };
 
   const handleSave = async () => {
-    if (!formData.title.trim()) { toast.warning('Please enter a Template Title.'); return; }
-    if (formData.positionId === 0) { toast.warning('Please select a Target Position.'); return; }
+    if (!formData.title.trim()) {
+      toast.warning("Please enter a Template Title.");
+      return;
+    }
+    if (formData.positionId === 0) {
+      toast.warning("Please select a Target Position.");
+      return;
+    }
     for (let i = 0; i < details.length; i++) {
       const d = details[i];
       if (!d.goalTitle.trim()) { toast.warning(`KPI row ${i + 1}: Please enter a KPI description.`); return; }
@@ -136,7 +172,14 @@ const KpiLibraryEntry: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-4">
         <LibraryBasicInfo formData={formData} positions={positions} jobLevels={jobLevels} onChange={handleInputChange} />
-        <LibraryKpiTable details={details} categories={categories} onDetailChange={handleDetailChange} onAddRow={addRow} onRemoveRow={removeRow} totalWeight={totalWeight} />
+        <LibraryKpiTable
+          details={details}
+          categories={categories}
+          onDetailChange={handleDetailChange}
+          onAddRow={addRow}
+          onRemoveRow={removeRow}
+          totalWeight={totalWeight}
+        />
         <LibrarySyncInfo />
       </div>
     </div>
