@@ -335,7 +335,15 @@ const AppraisalList: React.FC = () => {
               )}
               {!cycle?.isActive ? (
                 <button
-                  onClick={() => activateCycle(Number(selectedCycleId))}
+                  onClick={async () => {
+                    try {
+                      await activateCycle(Number(selectedCycleId)).unwrap();
+                      toast.success('Appraisal Cycle activated successfully!');
+                    } catch (err: any) {
+                      const errorMsg = err?.data?.message || 'Failed to activate cycle';
+                      toast.error(`Error: ${errorMsg}`);
+                    }
+                  }}
                   disabled={isActivating}
                   className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
