@@ -43,6 +43,10 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
     public KpiLibraryResponse createLibrary(KpiLibraryRequest request) {
         validateLibraryWeights(request);
 
+        if (request.getPositionId() == null) {
+            throw new IllegalArgumentException("Position ID is required");
+        }
+
         KpiLibrary library = kpiMapper.toLibraryEntity(request);
         library.setPosition(positionRepository.findById(request.getPositionId())
                 .orElseThrow(() -> new NotFoundException("Position not found")));
@@ -99,15 +103,17 @@ public class KpiLibraryServiceImpl implements KpiLibraryService {
     public KpiLibraryResponse updateLibrary(Long id, KpiLibraryRequest request) {
         validateLibraryWeights(request);
 
+        if (request.getPositionId() == null) {
+            throw new IllegalArgumentException("Position ID is required");
+        }
+
         KpiLibrary library = libraryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Library not found"));
 
         library.setTitle(request.getTitle());
         library.setDescription(request.getDescription());
-        if (request.getPositionId() != null) {
-            library.setPosition(positionRepository.findById(request.getPositionId())
-                    .orElseThrow(() -> new NotFoundException("Position not found")));
-        }
+        library.setPosition(positionRepository.findById(request.getPositionId())
+                .orElseThrow(() -> new NotFoundException("Position not found")));
 
         // Sync details (clear and add new)
         library.getDetails().clear();

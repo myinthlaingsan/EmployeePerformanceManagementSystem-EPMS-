@@ -299,6 +299,25 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         .actionUrl("/kpi/my")
                         .build());
 
+                // Log KPI Journey
+                historyRepo.save(KpiHistoryLog.builder()
+                        .employeeId(savedGoalSet.getEmployee().getId())
+                        .goalSetId(savedGoalSet.getId())
+                        .action("KPI_ASSIGNED")
+                        .changeDetails(
+                                "Goal set bulk-assigned to " + employee.getStaffName() + " for cycle: " + cycle.getCycleName() + " from library: " + library.getTitle())
+                        .changedBy(currentManager.getId())
+                        .build());
+
+                // Log Audit
+                auditService.log(AuditRequest.builder()
+                        .tableName("kpi_goals")
+                        .recordId(savedGoalSet.getId())
+                        .action(AuditAction.INSERT)
+                        .newState(savedGoalSet)
+                        .status(AuditStatus.SUCCESS)
+                        .build());
+
                 response.setSuccessfulCount(response.getSuccessfulCount() + 1);
                 response.getResults().add(AssignmentResult.builder()
                         .employeeId(employeeId)
@@ -425,6 +444,10 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 throw new IllegalArgumentException("Item does not belong to this goal set");
             }
 
+            if (update.getWeightPercent() != null && update.getWeightPercent().compareTo(new BigDecimal("35")) > 0) {
+                throw new IllegalArgumentException("Individual KPI weight cannot exceed 35%");
+            }
+
             item.setTitle(update.getTitle());
             item.setUnit(update.getUnit());
             item.setTargetValue(update.getTargetValue());
@@ -549,6 +572,24 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     .actionUrl("/kpi/my")
                     .build());
         }
+
+        // Log KPI Journey
+        historyRepo.save(KpiHistoryLog.builder()
+                .employeeId(goalSet.getEmployee().getId())
+                .goalSetId(goalSet.getId())
+                .action("KPI_REVERTED")
+                .changeDetails("Goal set reverted to DRAFT by manager.")
+                .changedBy(getCurrentEmployee().getId())
+                .build());
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("kpi_goals")
+                .recordId(savedGoalSet.getId())
+                .action(AuditAction.UPDATE)
+                .newState(savedGoalSet)
+                .status(AuditStatus.SUCCESS)
+                .build());
 
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
@@ -754,6 +795,17 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional(readOnly = true)
     public List<GoalSetResponse> getTeamGoalSets(Long managerId, Long cycleId) {
+        Employee currentUser = getCurrentEmployee();
+        var authorities = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .collect(Collectors.toSet());
+
+        boolean isHrOrAdmin = authorities.contains("ROLE_HR") || authorities.contains("ROLE_ADMIN");
+
+        if (!isHrOrAdmin && !currentUser.getId().equals(managerId)) {
+            throw new SecurityException("You are not authorized to view this team's goals");
+        }
+
         return goalsRepository.findTeamGoals(managerId, cycleId).stream()
                 .map(kpiMapper::toGoalSetResponse)
                 .collect(Collectors.toList());

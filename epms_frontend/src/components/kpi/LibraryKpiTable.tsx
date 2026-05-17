@@ -67,6 +67,8 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="text"
+                    id={`goalTitle-${index}`}
+                    name={`goalTitle-${index}`}
                     value={detail.goalTitle}
                     disabled={isReadOnly}
                     onChange={(e) =>
@@ -78,6 +80,8 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 </td>
                 <td className="border-r border-gray-200 p-0">
                   <select
+                    id={`categoryId-${index}`}
+                    name={`categoryId-${index}`}
                     value={detail.categoryId}
                     disabled={isReadOnly}
                     onChange={(e) =>
@@ -104,7 +108,10 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                   <input
                     type="number"
                     min="0"
-                    value={detail.targetValue === "" ? "" : detail.targetValue}
+                    // value={detail.targetValue === "" ? "" : detail.targetValue}
+                    id={`targetValue-${index}`}
+                    name={`targetValue-${index}`}
+                    value={detail.targetValue}
                     disabled={detail.isCompliance || isReadOnly}
                     onKeyDown={(e) => {
                       if (e.key === "-") {
@@ -120,6 +127,8 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="text"
+                    id={`unit-${index}`}
+                    name={`unit-${index}`}
                     value={detail.unit}
                     disabled={isReadOnly}
                     onChange={(e) =>
@@ -132,47 +141,41 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="number"
-                    min="0"
-                    value={detail.targetValue === "" ? "" : detail.targetValue}
-                    disabled={detail.isCompliance || isReadOnly}
-                    onKeyDown={(e) => {
-                      if (e.key === "-") {
-                        e.preventDefault();
-                      }
-                    }}
-                    onChange={(e) =>
-                      onDetailChange(index, "targetValue", e.target.value)
-                    }
-                    className={`w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-right font-medium ${detail.isCompliance || isReadOnly ? "text-gray-400 bg-gray-50/50" : "text-gray-900"}`}
+                    id={`weightPercent-${index}`}
+                    name={`weightPercent-${index}`}
+                    value={detail.weightPercent}
+                    disabled={isReadOnly}
+                    onChange={(e) => onDetailChange(index, 'weightPercent', e.target.value)}
+                    className={`w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-bold ${isReadOnly ? 'cursor-default' : ''}`}
                   />
                 </td>
                 <td className="border-r border-gray-200 p-0 text-center align-middle">
-                  <div className="flex items-center justify-center h-full">
-                    <input
-                      type="checkbox"
-                      checked={detail.isCompliance || false}
-                      disabled={isReadOnly}
-                      onChange={(e) =>
-                        onDetailChange(index, "isCompliance", e.target.checked)
-                      }
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer disabled:cursor-default"
-                      title="Flag as Pass/Fail Compliance KPI"
-                    />
-                  </div>
-                </td>
-                {!isReadOnly && (
-                  <td className="p-0 text-center">
-                    {details.length > 1 && (
-                      <button
-                        onClick={() => onRemoveRow(index)}
-                        className="w-full h-full min-h-10 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
-                        title="Remove Row"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </td>
-                )}
+                   <div className="flex items-center justify-center h-full">
+                     <input
+                       type="checkbox"
+                       id={`isCompliance-${index}`}
+                       name={`isCompliance-${index}`}
+                       checked={detail.isCompliance || false}
+                       disabled={isReadOnly}
+                       onChange={(e) => onDetailChange(index, 'isCompliance', e.target.checked)}
+                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer disabled:cursor-default"
+                       title="Flag as Pass/Fail Compliance KPI"
+                     />
+                    </div>
+                 </td>
+                 {!isReadOnly && (
+                   <td className="p-0 text-center">
+                     {details.length > 1 && (
+                       <button 
+                         onClick={() => onRemoveRow(index)} 
+                         className="w-full h-full min-h-10 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
+                         title="Remove Row"
+                       >
+                         ✕
+                       </button>
+                     )}
+                   </td>
+                 )}
               </tr>
             ))}
           </tbody>

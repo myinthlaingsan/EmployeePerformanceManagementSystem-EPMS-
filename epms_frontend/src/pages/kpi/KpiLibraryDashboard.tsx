@@ -78,9 +78,10 @@ const KpiLibraryDashboard: React.FC = () => {
             <Plus size={14} strokeWidth={3} /> Create New KPI
           </button>
         </div>
+      </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <div className="relative flex-1 w-full sm:w-auto">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
             <input type="text" placeholder="Search by title, position, or keyword…"
@@ -233,7 +234,6 @@ const KpiLibraryDashboard: React.FC = () => {
           positionId={historyModalState.positionId}
           positionName={historyModalState.positionName}
         />
-      </div>
     </div>
   );
 };
