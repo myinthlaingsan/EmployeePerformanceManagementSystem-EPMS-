@@ -1,17 +1,22 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGetEmployeeKpiHistoryQuery, useGetGoalSetAuditTrailQuery } from '../../services/kpiApi';
 import {
-  ChevronLeft,
-  Calendar,
-  Target,
-  TrendingUp,
-  Clock,
-  AlertCircle,
-  MessageSquare
+  ChevronLeft, Calendar, Target, TrendingUp, Clock, AlertCircle, MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { calculateGoalSetMetrics } from '../../utils/kpiTransformationService';
+
+const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
+  LOCKED:   { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
+  DRAFT:    { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
+};
+
+const AUDIT_ACTION_STYLE: Record<string, { bg: string; text: string }> = {
+  PROGRESS_UPDATE: { bg: '#EAF3DE', text: '#27500A' },
+  ITEM:            { bg: '#EEF3FD', text: '#0C447C' },
+};
 
 const EmployeeKpiHistory: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -19,200 +24,175 @@ const EmployeeKpiHistory: React.FC = () => {
   const [selectedGoalSetId, setSelectedGoalSetId] = useState<number | null>(null);
 
   const { data: historyResponse, isLoading: historyLoading } = useGetEmployeeKpiHistoryQuery(Number(employeeId));
-  const { data: auditResponse, isLoading: auditLoading } = useGetGoalSetAuditTrailQuery(selectedGoalSetId || 0, {
-    skip: !selectedGoalSetId
-  });
+  const { data: auditResponse, isLoading: auditLoading } = useGetGoalSetAuditTrailQuery(selectedGoalSetId || 0, { skip: !selectedGoalSetId });
 
   const goalSets = historyResponse?.data || [];
   const auditLogs = auditResponse?.data || [];
-
   const selectedGoalSet = goalSets.find(gs => gs.id === selectedGoalSetId);
   const metrics = selectedGoalSet ? calculateGoalSetMetrics(selectedGoalSet) : null;
 
-  if (historyLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  if (historyLoading) return (
+    <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading KPI history…</div>
+  );
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-4 pb-8">
       {/* Header */}
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <ChevronLeft className="w-6 h-6 text-gray-600" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight">KPI Performance History</h1>
-            <p className="text-gray-500 font-medium">Review past performance cycles and goal audit logs.</p>
-          </div>
-        </div>
-      </header>
-
-      {/* Cycle Selector (Modern Dropdown) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigate(-1)}
+          style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.5px solid #E4E6EC', borderRadius: 8, background: '#FFFFFF', color: '#5A6070', flexShrink: 0 }}
+          className="hover:bg-[#F5F6F8] transition-colors">
+          <ChevronLeft size={16} />
+        </button>
         <div>
-          <h2 className="text-xl font-black text-gray-900 tracking-tight">Performance Timeline</h2>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Select an appraisal cycle to view details</p>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>KPI Performance History</h1>
+          <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>Review past performance cycles and goal audit logs.</p>
         </div>
-        
-        <div className="relative min-w-[300px]">
-          <select
-            value={selectedGoalSetId || ''}
-            onChange={(e) => setSelectedGoalSetId(Number(e.target.value))}
-            className="w-full appearance-none bg-gray-50 border border-gray-100 text-gray-900 font-bold py-4 px-6 pr-14 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
-          >
-            <option value="" disabled>Choose a performance cycle...</option>
-            {goalSets.map((gs) => (
+      </div>
+
+      {/* Cycle Selector */}
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px' }}
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>Performance Timeline</p>
+          <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>Select an appraisal cycle to view details</p>
+        </div>
+        <div className="relative" style={{ minWidth: 260 }}>
+          <Calendar size={13} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+          <select value={selectedGoalSetId || ''}
+            onChange={e => setSelectedGoalSetId(Number(e.target.value))}
+            style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 36px 8px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', appearance: 'none' as any }}>
+            <option value="" disabled>Choose a performance cycle…</option>
+            {goalSets.map(gs => (
               <option key={gs.id} value={gs.id}>
                 {gs.appraisalCycleName || 'Annual Cycle'} ({gs.status}) — {calculateGoalSetMetrics(gs).finalScore.toFixed(0)}%
               </option>
             ))}
           </select>
-          <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
-            <Calendar className="w-5 h-5 text-gray-400" />
-          </div>
         </div>
       </div>
 
+      {/* Empty state */}
       {goalSets.length === 0 && (
-        <div className="bg-white p-12 rounded-[3rem] border border-dashed border-gray-200 flex flex-col items-center text-center space-y-4">
-          <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400">
-            <AlertCircle className="w-8 h-8" />
+        <div style={{ background: '#FFFFFF', border: '0.5px dashed #E0E2E8', borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 10, background: '#F5F6F8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <AlertCircle size={22} style={{ color: '#9EA3B0' }} />
           </div>
-          <div className="space-y-1">
-            <h3 className="text-lg font-black text-gray-900">No History Found</h3>
-            <p className="text-sm text-gray-500 max-w-xs">This employee doesn't have any past performance cycles recorded in the system yet.</p>
-          </div>
+          <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>No History Found</p>
+          <p style={{ fontSize: 12, color: '#9EA3B0', maxWidth: 320, margin: '0 auto' }}>This employee doesn't have any past performance cycles recorded in the system yet.</p>
         </div>
       )}
 
-      {selectedGoalSet ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-4 duration-500">
-          {/* Detailed Statistics */}
-          <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                <TrendingUp className="w-24 h-24 text-blue-600" />
-              </div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Cycle Performance Score</p>
+      {/* Selected cycle details */}
+      {selectedGoalSet && metrics ? (
+        <div className="space-y-4">
+          {/* Metric cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: '#1A56DB' }} />
+              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Cycle Performance Score</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-black text-gray-900 tracking-tighter">{metrics?.finalScore.toFixed(1)}%</span>
-                <div className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg uppercase tracking-widest">Target Met</div>
+                <span style={{ fontSize: 28, fontWeight: 500, color: '#111827' }}>{metrics.finalScore.toFixed(1)}%</span>
+                <span style={{ fontSize: 10, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 4, padding: '2px 6px' }}>Target Met</span>
               </div>
+              <TrendingUp size={48} style={{ position: 'absolute', right: 12, bottom: 10, color: '#E4E6EC', opacity: 0.5 }} />
             </div>
 
-            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                <Target className="w-24 h-24 text-indigo-600" />
-              </div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Goal Completion Rate</p>
+            <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
+              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Goal Completion Rate</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-black text-gray-900 tracking-tighter">{metrics?.completionRate.toFixed(1)}%</span>
-                <span className="text-gray-400 font-bold text-sm">/ 100%</span>
+                <span style={{ fontSize: 28, fontWeight: 500, color: '#111827' }}>{metrics.completionRate.toFixed(1)}%</span>
+                <span style={{ fontSize: 12, color: '#9EA3B0' }}>/ 100%</span>
               </div>
+              <Target size={48} style={{ position: 'absolute', right: 12, bottom: 10, color: '#E4E6EC', opacity: 0.5 }} />
             </div>
 
-            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                <Clock className="w-24 h-24 text-purple-600" />
-              </div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Cycle Status</p>
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
-                <span className="text-4xl font-black text-gray-900 uppercase tracking-tight">{selectedGoalSet.status}</span>
-              </div>
+            <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
+              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Cycle Status</p>
+              {(() => {
+                const ss = STATUS_STYLE[selectedGoalSet.status] || { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8' };
+                return (
+                  <span style={{ fontSize: 14, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '4px 12px', display: 'inline-block' }}>
+                    {selectedGoalSet.status}
+                  </span>
+                );
+              })()}
+              <Clock size={48} style={{ position: 'absolute', right: 12, bottom: 10, color: '#E4E6EC', opacity: 0.5 }} />
             </div>
           </div>
 
-          {/* Content Grid: Objectives & Audit Trail */}
-          <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Objectives Column */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-1">Assigned Objectives</h3>
-              <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-                <div className="divide-y divide-gray-50">
-                  {selectedGoalSet?.items?.map((item) => (
-                    <div key={item.id} className="px-8 py-6 hover:bg-gray-50/50 transition-colors">
-                      <div className="flex justify-between items-start mb-3">
+          {/* Objectives + Audit */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Objectives */}
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Assigned Objectives</p>
+              <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+                {selectedGoalSet.items?.map((item, idx) => {
+                  const pct = Math.min(((item.currentProgress || 0) / (item.targetValue || 1)) * 100, 100);
+                  return (
+                    <div key={item.id} style={{ padding: '14px 16px', borderBottom: idx < (selectedGoalSet.items?.length || 0) - 1 ? '0.5px solid #F0F2F6' : 'none' }}
+                      className="hover:bg-[#FAFBFF] transition-colors">
+                      <div className="flex justify-between items-start" style={{ marginBottom: 8 }}>
                         <div>
-                          <h4 className="font-bold text-gray-900 leading-tight">{item.title}</h4>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Weight: {item.weightPercent}%</p>
+                          <p style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginBottom: 2 }}>{item.title}</p>
+                          <p style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase' }}>Weight: {item.weightPercent}%</p>
                         </div>
-                        <div className="text-right">
-                          <span className="text-sm font-black text-gray-900">{item.currentProgress} <span className="text-[10px] text-gray-400 font-bold uppercase">{item.unit}</span></span>
-                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: '#111827' }}>
+                          {item.currentProgress} <span style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase' }}>{item.unit}</span>
+                        </span>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-black uppercase tracking-tighter">
-                          <span className="text-gray-400">Progress</span>
-                          <span className="text-blue-600">{Math.min(((item.currentProgress || 0) / (item.targetValue || 1)) * 100, 100).toFixed(0)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                          <div
-                            className="bg-blue-600 h-full rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(37,99,235,0.3)]"
-                            style={{ width: `${Math.min(((item.currentProgress || 0) / (item.targetValue || 1)) * 100, 100)}%` }}
-                          />
-                        </div>
+                      <div className="flex justify-between" style={{ fontSize: 10, color: '#9EA3B0', marginBottom: 4 }}>
+                        <span>Progress</span>
+                        <span style={{ color: '#1A56DB', fontWeight: 500 }}>{pct.toFixed(0)}%</span>
+                      </div>
+                      <div style={{ background: '#F0F2F6', borderRadius: 3, height: 4, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: '#1A56DB', width: `${pct}%`, transition: 'width 0.5s' }} />
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Audit Trail Column */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest px-1">Goal Journey</h3>
-              <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm min-h-full">
-                <div className="relative border-l-2 border-blue-50 ml-2 space-y-8 pb-4">
+            {/* Audit Trail */}
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Goal Journey</p>
+              <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+                <div style={{ borderLeft: '0.5px solid #E4E6EC', marginLeft: 8, paddingBottom: 8 }} className="space-y-6">
                   {auditLoading ? (
-                    <div className="pl-8 py-4 space-y-4">
-                      {[1, 2, 3].map(i => <div key={i} className="h-20 bg-gray-50 rounded-2xl animate-pulse" />)}
+                    <div className="space-y-3 pl-6">
+                      {[1, 2, 3].map(i => <div key={i} style={{ height: 56, background: '#F5F6F8', borderRadius: 8 }} />)}
                     </div>
-                  ) : (
-                    auditLogs.map((log) => (
-                      <div key={log.id} className="relative pl-8 group">
-                        <div className="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full border-4 border-white bg-blue-500 shadow-lg group-hover:scale-125 transition-transform" />
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-3">
-                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
-                              log.action === 'PROGRESS_UPDATE' 
-                                ? 'bg-emerald-50 text-emerald-600' 
-                                : log.action.includes('ITEM') 
-                                  ? 'bg-indigo-50 text-indigo-600'
-                                  : 'bg-blue-50 text-blue-600'
-                            }`}>
-                              {log.action.replace('_', ' ')}
-                            </span>
-                            <span className="text-[10px] font-bold text-gray-400">
-                              {format(new Date(log.createdAt), 'MMM d, h:mm a')}
-                            </span>
-                          </div>
-                          {log.changeDetails && (
-                            <p className="text-sm font-bold text-gray-700 leading-snug">{log.changeDetails}</p>
-                          )}
-                          {log.changeReason && (
-                            <div className="flex gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                              <MessageSquare className="w-3 h-3 text-gray-400 mt-0.5" />
-                              <p className="text-xs text-gray-600 italic">"{log.changeReason}"</p>
-                            </div>
-                          )}
+                  ) : auditLogs.map(log => {
+                    const actionKey = log.action.includes('ITEM') ? 'ITEM' : log.action;
+                    const as = AUDIT_ACTION_STYLE[actionKey] || { bg: '#EEF3FD', text: '#0C447C' };
+                    return (
+                      <div key={log.id} className="relative" style={{ paddingLeft: 22 }}>
+                        <div style={{ position: 'absolute', left: -5, top: 4, width: 10, height: 10, borderRadius: '50%', background: '#1A56DB', border: '2px solid #FFFFFF' }} />
+                        <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 4 }}>
+                          <span style={{ fontSize: 9, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', background: as.bg, color: as.text, borderRadius: 4, padding: '2px 6px' }}>
+                            {log.action.replace('_', ' ')}
+                          </span>
+                          <span style={{ fontSize: 10, color: '#9EA3B0' }}>
+                            {format(new Date(log.createdAt), 'dd/MM/yyyy, h:mm a')}
+                          </span>
                         </div>
+                        {log.changeDetails && (
+                          <p style={{ fontSize: 12, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{log.changeDetails}</p>
+                        )}
+                        {log.changeReason && (
+                          <div style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 10px', display: 'flex', gap: 6 }}>
+                            <MessageSquare size={12} style={{ color: '#9EA3B0', marginTop: 1, flexShrink: 0 }} />
+                            <p style={{ fontSize: 12, color: '#5A6070', fontStyle: 'italic' }}>"{log.changeReason}"</p>
+                          </div>
+                        )}
                       </div>
-                    ))
-                  )}
-
+                    );
+                  })}
                   {auditLogs.length === 0 && !auditLoading && (
-                    <div className="pl-8 py-4 flex flex-col items-center justify-center text-center space-y-3">
-                      <Clock className="w-12 h-12 text-gray-100" />
-                      <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No history logs available</p>
+                    <div style={{ paddingLeft: 22, textAlign: 'center', paddingTop: 16 }}>
+                      <Clock size={32} style={{ color: '#E0E2E8', margin: '0 auto 8px' }} />
+                      <p style={{ fontSize: 11, color: '#9EA3B0' }}>No history logs available</p>
                     </div>
                   )}
                 </div>
@@ -220,17 +200,15 @@ const EmployeeKpiHistory: React.FC = () => {
             </div>
           </div>
         </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[3rem] border border-gray-100 shadow-sm space-y-6 animate-in zoom-in-95 duration-500">
-          <div className="w-24 h-24 bg-blue-50 rounded-[2.5rem] flex items-center justify-center text-blue-600">
-            <Target className="w-12 h-12" />
+      ) : goalSets.length > 0 ? (
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 12, background: '#EEF3FD', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+            <Target size={24} style={{ color: '#1A56DB' }} />
           </div>
-          <div className="text-center space-y-2">
-            <h3 className="text-2xl font-black text-gray-900 tracking-tight">Select a Cycle</h3>
-            <p className="text-gray-500 max-w-xs mx-auto">Pick a performance cycle from the timeline above to explore detailed scores and history.</p>
-          </div>
+          <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>Select a Cycle</p>
+          <p style={{ fontSize: 12, color: '#9EA3B0' }}>Pick a performance cycle from the timeline above to explore detailed scores and history.</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

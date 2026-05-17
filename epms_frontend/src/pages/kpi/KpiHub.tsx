@@ -1,10 +1,7 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import {
-  useGetAllLibrariesQuery,
-  useGetGoalSetByEmployeeQuery
-} from '../../services/kpiApi';
+import { useGetAllLibrariesQuery, useGetGoalSetByEmployeeQuery } from '../../services/kpiApi';
+import { Target, Layers, Activity, ChevronRight } from 'lucide-react';
 
 const KpiHub: React.FC = () => {
   const navigate = useNavigate();
@@ -13,158 +10,160 @@ const KpiHub: React.FC = () => {
   const { data: librariesResponse } = useGetAllLibrariesQuery();
   const libraries = librariesResponse?.data || [];
 
-  const { data: myGoalsResponse, isLoading: loadingGoals } = useGetGoalSetByEmployeeQuery({
-    employeeId: user?.id || 0,
-    cycleId: activeCycleId
-  }, { skip: !user });
+  const { data: myGoalsResponse, isLoading: loadingGoals } = useGetGoalSetByEmployeeQuery(
+    { employeeId: user?.id || 0, cycleId: activeCycleId },
+    { skip: !user }
+  );
 
   const myGoals = myGoalsResponse?.data;
   const isDraft = myGoals?.status === 'DRAFT';
   const items = isDraft ? [] : (myGoals?.items || []);
-
   const overallProgress = items.length > 0
     ? Math.floor(items.reduce((acc, item) => acc + ((item.currentProgress || 0) / item.targetValue * item.weightPercent), 0))
     : 0;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-10">
-      {/* Premium Header */}
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-gray-100 pb-8">
-        <div className="space-y-2">
-          <nav className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            <span>Enterprise</span>
-            <span>/</span>
-            <span className="text-blue-600">Performance Orchestrator</span>
-          </nav>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">System Intelligence Hub</h1>
+    <div className="space-y-4 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ paddingBottom: 14, borderBottom: '0.5px solid #E4E6EC' }}>
+        <div>
+          <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise / Performance</p>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>System Intelligence Hub</h1>
         </div>
-        <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
-          <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Cycle: {activeCycleName}</span>
+        <div style={{ background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '6px 12px' }}>
+          <span style={{ fontSize: 11, fontWeight: 500, color: '#0C447C' }}>Cycle: {activeCycleName}</span>
         </div>
       </div>
 
-      {/* Analytics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-blue-600"></div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">My Performance</p>
-          <p className="text-4xl font-black text-gray-900">{overallProgress}%</p>
-          <div className="mt-4 w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-blue-600 h-full rounded-full" style={{ width: `${overallProgress}%` }}></div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* My performance */}
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: '#1A56DB' }} />
+          <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>My Performance</p>
+          <p style={{ fontSize: 28, fontWeight: 500, color: '#111827', marginBottom: 10 }}>{overallProgress}%</p>
+          <div style={{ background: '#F0F2F6', borderRadius: 4, height: 4, overflow: 'hidden' }}>
+            <div style={{ height: '100%', background: '#1A56DB', width: `${overallProgress}%`, transition: 'width 0.5s' }} />
           </div>
         </div>
 
+        {/* KPI templates (admin) or assigned KPIs (employee) */}
         {(isAdmin || isHR) ? (
-          <div className="bg-blue-700 p-8 rounded-xl text-white shadow-lg shadow-blue-700/20">
-            <p className="text-blue-200 text-[10px] font-black uppercase tracking-widest mb-2">KPI Templates</p>
-            <p className="text-4xl font-black">{libraries.length}</p>
-            <button
-              onClick={() => navigate('/kpi/library')}
-              className="mt-6 text-[10px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 px-4 py-2 rounded-md transition"
-            >
-              Manage Library
-            </button>
+          <div style={{ background: '#1A56DB', border: 'none', borderRadius: 12, padding: '16px 18px', cursor: 'pointer' }}
+            className="hover:opacity-90 transition-opacity"
+            onClick={() => navigate('/kpi/library')}>
+            <p style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>KPI Templates</p>
+            <p style={{ fontSize: 28, fontWeight: 500, color: '#FFFFFF', marginBottom: 10 }}>{libraries.length}</p>
+            <span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.8)' }}>Manage Library →</span>
           </div>
         ) : (
-          <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Assigned KPIs</p>
-            <p className="text-4xl font-black text-gray-900">{items.length}</p>
-            <p className="mt-4 text-xs font-bold text-gray-400">Active goals in this cycle</p>
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Assigned KPIs</p>
+            <p style={{ fontSize: 28, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{items.length}</p>
+            <p style={{ fontSize: 11, color: '#9EA3B0' }}>Active goals this cycle</p>
           </div>
         )}
 
-        <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Goal Status</p>
-          <p className="text-2xl font-black text-gray-900 uppercase">{myGoals?.status || 'No Active Goals'}</p>
-          <p className="mt-2 text-xs font-bold text-gray-400">Next review scheduled in 12 days</p>
+        {/* Goal status */}
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+          <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Goal Status</p>
+          <p style={{ fontSize: 18, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{myGoals?.status || 'No Active Goals'}</p>
+          <p style={{ fontSize: 11, color: '#9EA3B0' }}>Next review in 12 days</p>
         </div>
       </div>
 
-      {/* Main Action Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {/* Personal Goals Section */}
-        <section className="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-1.5 h-6 bg-blue-700 rounded-full"></div>
-            <h2 className="text-xl font-bold text-gray-900">Active Goals</h2>
+      {/* Main grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Personal goals */}
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+          <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
+            <div style={{ width: 4, height: 18, background: '#1A56DB', borderRadius: 2 }} />
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>Active Goals</p>
           </div>
 
           {loadingGoals ? (
-            <div className="animate-pulse space-y-4">
-              <div className="h-20 bg-gray-50 rounded-lg"></div>
-              <div className="h-20 bg-gray-50 rounded-lg"></div>
+            <div className="space-y-3">
+              {[1,2].map(i => <div key={i} style={{ height: 60, background: '#F5F6F8', borderRadius: 8 }} />)}
             </div>
           ) : items.length > 0 ? (
-            <div className="space-y-6">
+            <div className="space-y-3">
               {items.slice(0, 3).map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center group cursor-pointer" onClick={() => navigate('/kpi/my')}>
-                  <div className="space-y-1">
-                    <p className="text-sm font-bold text-gray-800 group-hover:text-blue-700 transition">{item.title}</p>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">Weight: {item.weightPercent}%</p>
+                <div key={idx} className="flex items-center justify-between cursor-pointer"
+                  style={{ padding: '10px 12px', background: '#F5F6F8', borderRadius: 8 }}
+                  onClick={() => navigate('/kpi/my')}>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginBottom: 2 }}>{item.title}</p>
+                    <p style={{ fontSize: 10, color: '#9EA3B0' }}>Weight: {item.weightPercent}%</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-black text-gray-900">{Math.floor((item.currentProgress || 0) / item.targetValue * 100)}%</p>
-                    <div className="w-12 h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
-                      <div className="bg-blue-600 h-full" style={{ width: `${(item.currentProgress || 0) / item.targetValue * 100}%` }}></div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: '#1A56DB' }}>
+                      {Math.floor((item.currentProgress || 0) / item.targetValue * 100)}%
+                    </p>
+                    <div style={{ width: 48, height: 3, background: '#E0E2E8', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: '#1A56DB', width: `${(item.currentProgress || 0) / item.targetValue * 100}%` }} />
                     </div>
                   </div>
                 </div>
               ))}
-              <button
-                onClick={() => navigate('/kpi/my')}
-                className="w-full mt-4 py-3 bg-gray-50 text-gray-500 rounded-md text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition"
-              >
+              <button onClick={() => navigate('/kpi/my')}
+                className="w-full transition-colors"
+                style={{ padding: '8px', background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, fontSize: 12, color: '#5A6070', fontWeight: 500 }}>
                 View All Personal Goals
               </button>
             </div>
           ) : (
-            <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-              <p className="text-xs font-bold text-gray-400 uppercase">No goals initialized for this cycle</p>
+            <div style={{ padding: '24px', background: '#F5F6F8', border: '0.5px dashed #E0E2E8', borderRadius: 8, textAlign: 'center' }}>
+              <Target size={20} style={{ color: '#9EA3B0', margin: '0 auto 8px' }} />
+              <p style={{ fontSize: 12, color: '#9EA3B0' }}>No goals initialized for this cycle</p>
             </div>
           )}
-        </section>
+        </div>
 
-        {/* Strategic Control Section */}
-        <section className="space-y-8">
+        {/* Right side */}
+        <div className="space-y-4">
           {(isAdmin || isHR) && (
-            <div className="bg-gray-900 rounded-xl p-8 text-white shadow-xl">
-              <h3 className="text-lg font-black uppercase tracking-widest mb-6">Strategic Control</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  onClick={() => navigate('/kpi/manage')}
-                  className="flex flex-col gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition text-left"
-                >
-                  <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-black text-xs italic">A</div>
+            <div style={{ background: '#111827', borderRadius: 12, padding: '16px 18px' }}>
+              <p style={{ fontSize: 11, fontWeight: 500, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>Strategic Control</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => navigate('/kpi/manage')}
+                  className="flex flex-col gap-2 text-left transition-colors"
+                  style={{ padding: '12px', background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: 8 }}>
+                  <div style={{ width: 28, height: 28, background: '#1A56DB', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Target size={13} style={{ color: '#FFFFFF' }} />
+                  </div>
                   <div>
-                    <p className="text-xs font-bold">Assign Goals</p>
-                    <p className="text-[10px] text-white/40">Allocate library templates</p>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>Assign Goals</p>
+                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Allocate library templates</p>
                   </div>
                 </button>
-                <button
-                  onClick={() => navigate('/kpi/library/new')}
-                  className="flex flex-col gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition text-left"
-                >
-                  <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center text-white font-black text-xs italic">L</div>
+                <button onClick={() => navigate('/kpi/library/new')}
+                  className="flex flex-col gap-2 text-left transition-colors"
+                  style={{ padding: '12px', background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: 8 }}>
+                  <div style={{ width: 28, height: 28, background: '#27500A', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Layers size={13} style={{ color: '#FFFFFF' }} />
+                  </div>
                   <div>
-                    <p className="text-xs font-bold">Create Template</p>
-                    <p className="text-[10px] text-white/40">Define new KPI models</p>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>Create Template</p>
+                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Define new KPI models</p>
                   </div>
                 </button>
               </div>
             </div>
           )}
 
-          <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-1.5 h-6 bg-orange-500 rounded-full"></div>
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">System Sync</h3>
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+              <div style={{ width: 4, height: 18, background: '#633806', borderRadius: 2 }} />
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>System Sync</p>
             </div>
-            <p className="text-xs text-gray-500 leading-relaxed font-medium">
-              Your performance data is synchronized with the global reference framework.
-              Last sync: <span className="text-blue-600 font-bold">14 minutes ago</span>
+            <p style={{ fontSize: 12, color: '#9EA3B0', lineHeight: 1.6 }}>
+              Performance data is synchronized with the global reference framework.
+              Last sync: <span style={{ color: '#1A56DB', fontWeight: 500 }}>14 minutes ago</span>
             </p>
           </div>
-        </section>
+
+          <div style={{ display: 'none' }}><Activity /><ChevronRight /></div>
+        </div>
       </div>
     </div>
   );

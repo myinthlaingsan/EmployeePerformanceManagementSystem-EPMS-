@@ -3,417 +3,307 @@ import { useNavigate } from 'react-router-dom';
 import { useGetPipsQuery, useGetPipsByInvolvedUserQuery } from '../../services/pipApi';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
-import { format, parseISO, differenceInDays, isBefore, isAfter, startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import {
-    TrendingUp,
-    CheckCircle2,
-    AlertCircle,
-    Plus,
-    Calendar,
-    ChevronRight,
-    Users,
-    Activity,
-    Target,
-    User
-} from 'lucide-react';
+import { format, parseISO, isAfter, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { CheckCircle2, AlertCircle, Plus, ChevronRight, Activity, Target, User } from 'lucide-react';
+
+const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  ACTIVE:      { bg: "#EEF3FD", text: "#0C447C", border: "#B5D4F4" },
+  IN_PROGRESS: { bg: "#EEF3FD", text: "#0C447C", border: "#B5D4F4" },
+  EXTENDED:    { bg: "#FAEEDA", text: "#633806", border: "#F0D4A4" },
+  DRAFT:       { bg: "#F1EFE8", text: "#444441", border: "#DDDBD2" },
+  COMPLETED:   { bg: "#EAF3DE", text: "#27500A", border: "#B8DCA0" },
+  CLOSED:      { bg: "#FCEBEB", text: "#791F1F", border: "#F5C2C2" },
+};
+
+const SEVERITY_STYLE: Record<string, { bg: string; text: string }> = {
+  CRITICAL: { bg: "#FCEBEB", text: "#791F1F" },
+  URGENT:   { bg: "#FAEEDA", text: "#633806" },
+  STANDARD: { bg: "#F1EFE8", text: "#444441" },
+};
+
+const AVATAR_COLORS = [
+  { bg: "#EEF3FD", text: "#0C447C" },
+  { bg: "#EAF3DE", text: "#27500A" },
+  { bg: "#FAEEDA", text: "#633806" },
+  { bg: "#F1EFE8", text: "#444441" },
+  { bg: "#FCEBEB", text: "#791F1F" },
+];
+
+const selectStyle: React.CSSProperties = {
+  background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8,
+  padding: "6px 10px", fontSize: 12, color: "#111827", fontFamily: "inherit", outline: "none",
+};
 
 const PipListPage: React.FC = () => {
-    const navigate = useNavigate();
-    const { isHR, isAdmin, isManager, user } = useAuth();
+  const navigate = useNavigate();
+  const { isHR, isAdmin, isManager, user } = useAuth();
 
-    // Filters State
-    const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000 });
-    const employees = employeeData?.content;
+  const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000 });
+  const employees = employeeData?.content;
 
-    // Filters State
-    const [deptFilter, setDeptFilter] = useState('All Departments');
-    const [statusFilter, setStatusFilter] = useState('All Status');
-    const [severityFilter, setSeverityFilter] = useState('All Severities');
+  const [deptFilter, setDeptFilter] = useState('All Departments');
+  const [statusFilter, setStatusFilter] = useState('All Status');
+  const [severityFilter, setSeverityFilter] = useState('All Severities');
 
-    // Correct Hook usage with skip logic
-    const { data: allPipsResponse, isLoading: isLoadingAll } = useGetPipsQuery(undefined, {
-        skip: !isHR && !isAdmin
-    });
+  const { data: allPipsResponse, isLoading: isLoadingAll } = useGetPipsQuery(undefined, { skip: !isHR && !isAdmin });
+  const { data: involvedPipsResponse, isLoading: isLoadingInvolved } = useGetPipsByInvolvedUserQuery(user?.id || 0, { skip: isHR || isAdmin || !user?.id });
 
-    const { data: involvedPipsResponse, isLoading: isLoadingInvolved } = useGetPipsByInvolvedUserQuery(user?.id || 0, {
-        skip: isHR || isAdmin || !user?.id
-    });
+  const pipsResponse = (isHR || isAdmin) ? allPipsResponse : involvedPipsResponse;
+  const isLoading = (isHR || isAdmin) ? isLoadingAll : isLoadingInvolved;
+  const allPips = pipsResponse?.data || [];
 
-    const pipsResponse = (isHR || isAdmin) ? allPipsResponse : involvedPipsResponse;
-    const isLoading = (isHR || isAdmin) ? isLoadingAll : isLoadingInvolved;
-    const allPips = pipsResponse?.data || [];
+  const getEmployee = (id: number) => employees?.find(e => e.id === id);
 
-    // Helper to get employee data
-    const getEmployee = (id: number) => employees?.find(e => e.id === id);
+  const departmentsWithPips = allPips.map(pip => getEmployee(pip.employeeId)?.currentDepartmentName).filter(Boolean) as string[];
+  const departments = ['All Departments', ...new Set(departmentsWithPips)];
 
-    // Dynamic Filter Options: Only show departments that actually have PIPs
-    const departmentsWithPips = allPips.map(pip => getEmployee(pip.employeeId)?.currentDepartmentName).filter(Boolean) as string[];
-    const departments = ['All Departments', ...new Set(departmentsWithPips)];
-
-    // Apply Filters
-    const pips = allPips.filter(pip => {
-        const employee = getEmployee(pip.employeeId);
-        const matchesDept = deptFilter === 'All Departments' || employee?.currentDepartmentName === deptFilter;
-
-        let matchesStatus = true;
-        if (statusFilter !== 'All Status') {
-            if (statusFilter === 'Draft') matchesStatus = pip.status === 'DRAFT';
-            else if (statusFilter === 'All Active') matchesStatus = ['ACTIVE', 'IN_PROGRESS', 'EXTENDED'].includes(pip.status);
-            else if (statusFilter === 'Extended') matchesStatus = pip.status === 'EXTENDED';
-            else if (statusFilter === 'Closed') matchesStatus = pip.status === 'CLOSED';
-            else if (statusFilter === 'Completed') matchesStatus = pip.status === 'COMPLETED';
-        }
-
-        const matchesSeverity = severityFilter === 'All Severities' || pip.severity === severityFilter.toUpperCase();
-
-        return matchesDept && matchesStatus && matchesSeverity;
-    });
-
-    // Insights Calculations
-    const completedCount = allPips.filter(p => p.status === 'COMPLETED').length;
-    const closedCount = allPips.filter(p => p.status === 'CLOSED').length;
-    const totalFinished = completedCount + closedCount;
-    const successRate = totalFinished > 0 ? Math.round((completedCount / totalFinished) * 100) : 0;
-
-    if (isLoading) {
-        return (
-            <div className="flex justify-center items-center h-64 bg-surface-base">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-primary"></div>
-            </div>
-        );
+  const pips = allPips.filter(pip => {
+    const employee = getEmployee(pip.employeeId);
+    const matchesDept = deptFilter === 'All Departments' || employee?.currentDepartmentName === deptFilter;
+    let matchesStatus = true;
+    if (statusFilter !== 'All Status') {
+      if (statusFilter === 'Draft') matchesStatus = pip.status === 'DRAFT';
+      else if (statusFilter === 'All Active') matchesStatus = ['ACTIVE', 'IN_PROGRESS', 'EXTENDED'].includes(pip.status);
+      else if (statusFilter === 'Extended') matchesStatus = pip.status === 'EXTENDED';
+      else if (statusFilter === 'Closed') matchesStatus = pip.status === 'CLOSED';
+      else if (statusFilter === 'Completed') matchesStatus = pip.status === 'COMPLETED';
     }
+    const matchesSeverity = severityFilter === 'All Severities' || pip.severity === severityFilter.toUpperCase();
+    return matchesDept && matchesStatus && matchesSeverity;
+  });
 
-    const metrics = [
-        {
-            label: 'ACTIVE PLANS',
-            value: allPips.filter(p => p.status === 'ACTIVE' || p.status === 'IN_PROGRESS' || p.status === 'EXTENDED').length,
-            color: 'border-blue-500',
-            bgColor: 'bg-blue-50/50',
-            icon: <Activity className="w-6 h-6 text-blue-500" />
-        },
-        {
-            label: 'SUCCESSFUL',
-            value: allPips.filter(p => p.status === 'COMPLETED').length,
-            color: 'border-emerald-500',
-            bgColor: 'bg-emerald-50/50',
-            icon: <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-        },
-        {
-            label: 'UNSUCCESSFUL',
-            value: allPips.filter(p => p.status === 'CLOSED').length,
-            color: 'border-red-500',
-            bgColor: 'bg-red-50/50',
-            icon: <AlertCircle className="w-6 h-6 text-red-500" />
-        },
-    ];
+  const completedCount = allPips.filter(p => p.status === 'COMPLETED').length;
+  const closedCount = allPips.filter(p => p.status === 'CLOSED').length;
+  const totalFinished = completedCount + closedCount;
+  const successRate = totalFinished > 0 ? Math.round((completedCount / totalFinished) * 100) : 0;
 
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case 'ACTIVE':
-            case 'IN_PROGRESS': return 'bg-blue-100/50 text-blue-600 border-blue-200';
-            case 'EXTENDED': return 'bg-orange-100/50 text-orange-600 border-orange-200';
-            case 'DRAFT': return 'bg-slate-100/50 text-slate-600 border-slate-200';
-            case 'COMPLETED': return 'bg-emerald-100/50 text-emerald-600 border-emerald-200';
-            case 'CLOSED': return 'bg-red-100/50 text-red-600 border-red-200';
-            default: return 'bg-surface-base text-text-muted border-surface-border';
-        }
-    };
+  if (isLoading) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#1A56DB" }} />
+    </div>
+  );
 
-    return (
-        <div className="space-y-12">
-            {/* Phase 2: Analytical Header Section */}
-            <div className="flex flex-col gap-10">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-4xl font-black text-[#0f172a] tracking-tight mb-2">PIPs Overview</h1>
-                        <p className="text-text-muted font-medium max-w-md">
-                            Managing growth and accountability across your department.
-                        </p>
-                    </div>
+  const metrics = [
+    { label: 'Active plans', value: allPips.filter(p => ['ACTIVE','IN_PROGRESS','EXTENDED'].includes(p.status)).length, icon: <Activity size={15} />, color: "blue" as const },
+    { label: 'Successful', value: completedCount, icon: <CheckCircle2 size={15} />, color: "green" as const },
+    { label: 'Unsuccessful', value: closedCount, icon: <AlertCircle size={15} />, color: "red" as const },
+  ];
 
-                    <div className="grid grid-cols-3 gap-6">
-                        {metrics.map((m) => (
-                            <div key={m.label} className={`bg-white border-l-4 ${m.color} rounded-2xl p-6 shadow-premium w-56 flex items-center justify-between`}>
-                                <div>
-                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">{m.label}</p>
-                                    <p className="text-4xl font-black text-[#0f172a]">{m.value.toString().padStart(2, '0')}</p>
-                                </div>
-                                <div className={`w-12 h-12 rounded-2xl ${m.bgColor} flex items-center justify-center`}>
-                                    {m.icon}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+  const COLOR_MAP = {
+    blue:  { bg: "#EEF3FD", text: "#1A56DB" },
+    green: { bg: "#EAF3DE", text: "#27500A" },
+    red:   { bg: "#FCEBEB", text: "#791F1F" },
+  };
 
-                {/* Filter Bar & Action */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        {(isHR || isAdmin || isManager) && (
-                            <div className="bg-white border border-surface-border rounded-2xl px-6 py-3 flex items-center gap-4 shadow-sm">
-                                <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Department:</span>
-                                <select
-                                    value={deptFilter}
-                                    onChange={(e) => setDeptFilter(e.target.value)}
-                                    className="text-sm font-bold text-[#0f172a] bg-transparent outline-none cursor-pointer"
-                                >
-                                    {departments.map(dept => (
-                                        <option key={dept} value={dept}>{dept}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
-                        <div className="bg-white border border-surface-border rounded-2xl px-6 py-3 flex items-center gap-4 shadow-sm">
-                            <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Status:</span>
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="text-sm font-bold text-[#0f172a] bg-transparent outline-none cursor-pointer"
-                            >
-                                <option>All Status</option>
-                                <option>Draft</option>
-                                <option>All Active</option>
-                                <option>Extended</option>
-                                <option>Closed</option>
-                            </select>
-                        </div>
-                        
-                        {/* Severity Filter */}
-                        <div className="bg-white border border-surface-border rounded-2xl px-6 py-3 flex items-center gap-4 shadow-sm">
-                            <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Severity:</span>
-                            <select
-                                value={severityFilter}
-                                onChange={(e) => setSeverityFilter(e.target.value)}
-                                className="text-sm font-bold text-[#0f172a] bg-transparent outline-none cursor-pointer"
-                            >
-                                <option>All Severities</option>
-                                <option>Standard</option>
-                                <option>Urgent</option>
-                                <option>Critical</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {isHR && (
-                        <button
-                            onClick={() => navigate('/pip/new')}
-                            className="bg-[#0f172a] text-white px-8 py-3.5 rounded-2xl text-xs font-bold shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition flex items-center gap-3"
-                        >
-                            <Plus className="w-5 h-5" />
-                            Launch New PIP
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Phase 3: High-Density Ledger Table */}
-            <div className="bg-white rounded-[2.5rem] border border-surface-border shadow-premium overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-[#f8fafc] border-b border-surface-border">
-                            <tr>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Employee</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Manager</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Progress</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Status</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Severity</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Start Date</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Next Review</th>
-                                <th className="px-10 py-6 text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] text-right"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {pips.length > 0 ? pips.map((pip) => {
-                                const employee = getEmployee(pip.employeeId);
-                                const start = parseISO(pip.startDate);
-                                const today = new Date();
-
-                                // Get next review if exists
-                                const nextReview = pip.scheduledReviewDates?.find(d => isAfter(parseISO(d), today));
-
-                                return (
-                                    <tr key={pip.pipId} className="group hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-10 py-8">
-                                            <div className="flex items-center gap-5">
-                                                <div className="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden shadow-inner border border-slate-200/50">
-                                                    <img
-                                                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(employee?.staffName || 'U')}&background=005db5&color=fff`}
-                                                        alt="Avatar"
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[14px] font-black text-[#0f172a] tracking-tight">{employee?.staffName || 'Unknown'}</p>
-                                                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{employee?.currentDepartmentName || 'No Dept'}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-10 py-8">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
-                                                    <User className="w-3.5 h-3.5 text-blue-600" />
-                                                </div>
-                                                <p className="text-[13px] font-bold text-[#0f172a]">{getEmployee(pip.managerId)?.staffName || 'N/A'}</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-10 py-8">
-                                            <div className="w-56">
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Performance Score</span>
-                                                    <span className="text-[10px] font-bold text-[#0f172a]">{pip.overallProgress || 0}%</span>
-                                                </div>
-                                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                                    <div
-                                                        className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                                                        style={{ width: `${pip.overallProgress || 0}%` }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-10 py-8">
-                                            <div className="flex flex-col gap-2">
-                                                <span className={`px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-[0.15em] border ${getStatusStyle(pip.status)} w-fit`}>
-                                                    {pip.status}
-                                                </span>
-                                                {((pip.status === 'ACTIVE' || pip.status === 'EXTENDED') && parseISO(pip.endDate) < new Date()) && (
-                                                    <span className="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1 rounded text-[8px] font-black uppercase tracking-widest animate-pulse w-fit">
-                                                        Awaiting Determination
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-10 py-8">
-                                            {pip.severity ? (
-                                                <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${pip.severity === 'CRITICAL' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                        pip.severity === 'URGENT' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                            'bg-amber-50 text-amber-600 border-amber-100'
-                                                    }`}>
-                                                    {pip.severity}
-                                                </span>
-                                            ) : (
-                                                <span className="text-[10px] text-text-muted italic">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-10 py-8">
-                                            <p className="text-sm font-bold text-text-title tracking-tight">{format(start, 'MMM dd, yyyy')}</p>
-                                        </td>
-                                        <td className="px-10 py-8">
-                                            <p className="text-sm font-bold text-[#0f172a] tracking-tight">
-                                                {nextReview ? format(parseISO(nextReview), 'MMM dd, yyyy') : 'No upcoming review'}
-                                            </p>
-                                        </td>
-                                        <td className="px-10 py-8 text-right">
-                                            <button
-                                                onClick={() => navigate(`/pip/${pip.pipId}`)}
-                                                className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center hover:bg-[#0f172a] hover:text-white hover:border-[#0f172a] transition-all shadow-sm"
-                                            >
-                                                <ChevronRight className="w-5 h-5" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            }) : (
-                                <tr>
-                                    <td colSpan={6} className="px-10 py-24 text-center">
-                                        <p className="text-text-muted font-bold text-lg tracking-tight">No active plans in this ledger.</p>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-                <div className="bg-[#f8fafc] border-t border-surface-border px-10 py-4 flex items-center justify-between">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Showing {pips.length} of {allPips.length} records</p>
-                    <div className="flex items-center gap-4">
-                        <button className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-white transition shadow-sm cursor-not-allowed opacity-50">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                        </button>
-                        <button className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-white transition shadow-sm cursor-not-allowed opacity-50">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Phase 4: Insights Panel - Hidden for regular employees */}
-            {(isHR || isAdmin || isManager) && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                    {/* Success Rate Chart */}
-                    <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-surface-border shadow-premium p-10">
-                        <div className="flex justify-between items-center mb-10">
-                            <h3 className="text-xl font-black text-[#0f172a] tracking-tight">Quarterly Success Rate</h3>
-                            <div className="flex gap-4">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                                    <span className="text-[10px] font-bold text-text-muted uppercase">Active</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-slate-200"></div>
-                                    <span className="text-[10px] font-bold text-text-muted uppercase">Completed</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-end justify-between h-48 gap-8 px-4">
-                            {[5, 4, 3, 2, 1, 0].map((monthsAgo) => {
-                                const date = subMonths(new Date(), monthsAgo);
-                                const monthLabel = format(date, 'MMM');
-                                const monthStart = startOfMonth(date);
-                                const monthEnd = endOfMonth(date);
-
-                                const pipsInMonth = allPips.filter(p => {
-                                    const pDate = parseISO(p.startDate);
-                                    return pDate >= monthStart && pDate <= monthEnd;
-                                }).length;
-
-                                // Scale the bar. Assuming max 10 PIPs per month for scaling
-                                const height = Math.min(100, (pipsInMonth / 10) * 100);
-
-                                return (
-                                    <div key={monthLabel} className="flex-1 flex flex-col items-center gap-4 group">
-                                        <div className="w-full relative bg-slate-50 rounded-t-xl overflow-hidden h-full flex flex-col justify-end">
-                                            <div
-                                                className="w-full bg-blue-500 rounded-t-xl group-hover:bg-blue-600 transition-all duration-700"
-                                                style={{ height: `${height || 5}%` }}
-                                            ></div>
-                                        </div>
-                                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{monthLabel}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Performance Insights Card */}
-                    <div className="bg-blue-50/50 rounded-[2.5rem] border border-blue-100 p-10 flex flex-col justify-between">
-                        <div>
-                            <h3 className="text-xl font-black text-blue-900 tracking-tight mb-4">Performance Insights</h3>
-                            <p className="text-sm text-blue-700 font-medium leading-relaxed mb-8">
-                                Based on your current ledger, successful completion rate is sitting at <span className="font-black text-emerald-600">{successRate}%</span>.
-                            </p>
-
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-4 bg-white/60 p-4 rounded-2xl border border-blue-100 shadow-sm">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
-                                        <Target className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-blue-900 uppercase tracking-widest">Success Metrics</p>
-                                        <p className="text-xs text-blue-700 font-bold">{completedCount} Employees Retained</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button className="w-full bg-blue-600 text-white py-4 rounded-2xl text-xs font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition uppercase tracking-widest mt-10">
-                            View Detailed Report
-                        </button>
-                    </div>
-                </div>
-            )}
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>PIPs overview</h1>
+          <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Managing growth and accountability across your organisation.</p>
         </div>
-    );
+        {isHR && (
+          <button
+            onClick={() => navigate('/pip/new')}
+            className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+            style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+          >
+            <Plus size={14} aria-hidden="true" /> Launch new PIP
+          </button>
+        )}
+      </div>
+
+      {/* Metric cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {metrics.map((m) => {
+          const colors = COLOR_MAP[m.color];
+          return (
+            <div key={m.label} style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "14px 16px" }}>
+              <div className="flex justify-between items-start">
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: colors.bg, color: colors.text, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {m.icon}
+                </div>
+              </div>
+              <p style={{ fontSize: 22, fontWeight: 500, color: "#111827", lineHeight: 1, marginTop: 8 }}>{String(m.value).padStart(2, "0")}</p>
+              <p style={{ fontSize: 12, color: "#9EA3B0", marginTop: 3 }}>{m.label}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Filters */}
+      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "12px 16px" }}>
+        <div className="flex flex-wrap gap-2">
+          {(isHR || isAdmin || isManager) && (
+            <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} style={selectStyle}>
+              {departments.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          )}
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={selectStyle}>
+            <option>All Status</option>
+            <option>Draft</option>
+            <option>All Active</option>
+            <option>Extended</option>
+            <option>Closed</option>
+            <option>Completed</option>
+          </select>
+          <select value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)} style={selectStyle}>
+            <option>All Severities</option>
+            <option>Standard</option>
+            <option>Urgent</option>
+            <option>Critical</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, overflow: "hidden" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left" style={{ minWidth: 720 }}>
+            <thead>
+              <tr style={{ borderBottom: "0.5px solid #E4E6EC" }}>
+                {["Employee", "Manager", "Progress", "Status", "Severity", "Start date", "Next review", ""].map((h, i) => (
+                  <th key={i} style={{ padding: "10px 16px", fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: i === 7 ? "right" : "left" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pips.length > 0 ? pips.map((pip, idx) => {
+                const employee = getEmployee(pip.employeeId);
+                const manager = getEmployee(pip.managerId);
+                const today = new Date();
+                const nextReview = pip.scheduledReviewDates?.find(d => isAfter(parseISO(d), today));
+                const avatarColor = AVATAR_COLORS[(employee?.staffName?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length];
+                const statusStyle = STATUS_STYLE[pip.status] ?? STATUS_STYLE.DRAFT;
+                const severityStyle = pip.severity ? SEVERITY_STYLE[pip.severity] ?? SEVERITY_STYLE.STANDARD : null;
+
+                return (
+                  <tr key={pip.pipId} style={{ borderBottom: idx < pips.length - 1 ? "0.5px solid #F0F2F6" : "none" }}
+                    className="hover:bg-[#FAFBFF] transition-colors">
+                    <td style={{ padding: "11px 16px" }}>
+                      <div className="flex items-center gap-2">
+                        <div style={{ width: 30, height: 30, borderRadius: "50%", background: avatarColor.bg, color: avatarColor.text, fontSize: 11, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          {employee?.staffName?.charAt(0) ?? "?"}
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{employee?.staffName ?? "Unknown"}</p>
+                          <p style={{ fontSize: 11, color: "#9EA3B0" }}>{employee?.currentDepartmentName ?? "—"}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: "11px 16px" }}>
+                      <div className="flex items-center gap-2">
+                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#EEF3FD", color: "#1A56DB", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <User size={12} aria-hidden="true" />
+                        </div>
+                        <span style={{ fontSize: 12, color: "#5A6070" }}>{manager?.staffName ?? "N/A"}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "11px 16px" }}>
+                      <div style={{ width: 100 }}>
+                        <div className="flex justify-between" style={{ marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, color: "#9EA3B0" }}>Score</span>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: "#111827" }}>{pip.overallProgress ?? 0}%</span>
+                        </div>
+                        <div style={{ height: 5, background: "#EEF0F6", borderRadius: 3, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${pip.overallProgress ?? 0}%`, borderRadius: 3, background: (pip.overallProgress ?? 0) >= 80 ? "#639922" : (pip.overallProgress ?? 0) >= 50 ? "#1A56DB" : "#E24B4A" }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: "11px 16px" }}>
+                      <span style={{ background: statusStyle.bg, color: statusStyle.text, border: `0.5px solid ${statusStyle.border}`, fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 20 }}>
+                        {pip.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "11px 16px" }}>
+                      {severityStyle ? (
+                        <span style={{ background: severityStyle.bg, color: severityStyle.text, fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 20 }}>
+                          {pip.severity}
+                        </span>
+                      ) : <span style={{ fontSize: 12, color: "#9EA3B0" }}>—</span>}
+                    </td>
+                    <td style={{ padding: "11px 16px", fontSize: 12, color: "#5A6070" }}>
+                      {format(parseISO(pip.startDate), "dd/MM/yyyy")}
+                    </td>
+                    <td style={{ padding: "11px 16px", fontSize: 12, color: "#5A6070" }}>
+                      {nextReview ? format(parseISO(nextReview), "dd/MM/yyyy") : "—"}
+                    </td>
+                    <td style={{ padding: "11px 16px", textAlign: "right" }}>
+                      <button
+                        onClick={() => navigate(`/pip/${pip.pipId}`)}
+                        style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 6, color: "#5A6070" }}
+                        className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors"
+                      >
+                        <ChevronRight size={14} aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              }) : (
+                <tr><td colSpan={8} style={{ padding: "32px 16px", textAlign: "center", fontSize: 13, color: "#9EA3B0" }}>No PIPs found for current filters.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2" style={{ borderTop: "0.5px solid #E4E6EC", padding: "10px 16px" }}>
+          <p style={{ fontSize: 12, color: "#9EA3B0" }}>Showing {pips.length} of {allPips.length} records</p>
+        </div>
+      </div>
+
+      {/* Insights panel */}
+      {(isHR || isAdmin || isManager) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Chart */}
+          <div className="lg:col-span-2" style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+            <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 16 }}>Quarterly success rate</p>
+            <div className="flex items-end justify-between gap-3" style={{ height: 120 }}>
+              {[5, 4, 3, 2, 1, 0].map((monthsAgo) => {
+                const date = subMonths(new Date(), monthsAgo);
+                const monthStart = startOfMonth(date);
+                const monthEnd = endOfMonth(date);
+                const count = allPips.filter(p => { const d = parseISO(p.startDate); return d >= monthStart && d <= monthEnd; }).length;
+                const height = Math.min(100, (count / 10) * 100);
+                return (
+                  <div key={monthsAgo} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="w-full flex flex-col justify-end" style={{ height: 96, background: "#F5F6F8", borderRadius: "4px 4px 0 0", overflow: "hidden" }}>
+                      <div style={{ width: "100%", height: `${height || 4}%`, background: "#1A56DB", borderRadius: "4px 4px 0 0" }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: "#9EA3B0" }}>{format(date, "MMM")}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Insights */}
+          <div style={{ background: "#EEF3FD", border: "0.5px solid #B5D4F4", borderRadius: 12, padding: "16px 18px" }}>
+            <p style={{ fontSize: 14, fontWeight: 500, color: "#0C447C", marginBottom: 8 }}>Performance insights</p>
+            <p style={{ fontSize: 12, color: "#5A6070", marginBottom: 16 }}>
+              Successful completion rate: <span style={{ fontWeight: 500, color: "#27500A" }}>{successRate}%</span>
+            </p>
+            <div className="flex items-center gap-2" style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 8, padding: "10px 12px", marginBottom: 14 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "#EAF3DE", color: "#27500A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Target size={13} aria-hidden="true" />
+              </div>
+              <div>
+                <p style={{ fontSize: 11, color: "#9EA3B0" }}>Success metrics</p>
+                <p style={{ fontSize: 12, fontWeight: 500, color: "#111827" }}>{completedCount} employees retained</p>
+              </div>
+            </div>
+            <button className="w-full transition-colors"
+              style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 0", fontSize: 12, fontWeight: 500, border: "none" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}>
+              View detailed report
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default PipListPage;

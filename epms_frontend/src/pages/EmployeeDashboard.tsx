@@ -1,133 +1,99 @@
 import React from 'react';
-import { 
+import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { 
-  Trophy, Target, Clock, ClipboardList, MessageSquare
-} from 'lucide-react';
+import { Trophy, Target, Clock, ClipboardList, MessageSquare } from 'lucide-react';
 import { useGetEmployeeDashboardQuery } from '../features/dashboard/dashboardApi';
 import DashboardStatCard from '../components/dashboard/DashboardStatCard';
 import ChartCard from '../components/dashboard/ChartCard';
 import TaskPanel from '../components/dashboard/TaskPanel';
 
-const COLORS = ['#3b82f6', '#e5e7eb'];
+const COLORS = ['#1A56DB', '#E4E6EC'];
 
 const EmployeeDashboard: React.FC = () => {
   const { data, isLoading, error } = useGetEmployeeDashboardQuery();
 
-  if (isLoading) return <div className="p-8 text-center animate-pulse">Loading your performance metrics...</div>;
-  if (error) return <div className="p-8 text-center text-red-500">Error loading dashboard.</div>;
+  if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading your performance metrics…</div>;
+  if (error) return <div className="py-16 text-center" style={{ color: "#791F1F", fontSize: 13 }}>Error loading dashboard.</div>;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center mb-2">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome back!</h1>
-          <p className="text-gray-500">Here's your performance overview for the current cycle.</p>
-        </div>
+    <div className="space-y-4">
+      <div>
+        <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Welcome back!</h1>
+        <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Your performance overview for the current cycle.</p>
       </div>
 
-      {/* Row 1: Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <DashboardStatCard 
-          title="Performance Score" 
-          value={`${data?.currentScore?.toFixed(1) || 0}%`} 
-          icon={<Trophy size={24} />} 
-          color="blue"
-        />
-        <DashboardStatCard 
-          title="KPI Completion" 
-          value={`${data?.kpiCompletionPercentage || 0}%`} 
-          icon={<Target size={24} />} 
-          color="green"
-        />
-        <DashboardStatCard 
-          title="Pending Tasks" 
-          value={data?.pendingTasksCount || 0} 
-          icon={<ClipboardList size={24} />} 
-          color="orange"
-        />
-        <DashboardStatCard 
-          title="Feedback" 
-          value={data?.feedbackCount || 0} 
-          icon={<MessageSquare size={24} />} 
-          color="purple"
-        />
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <DashboardStatCard title="Performance score" value={`${data?.currentScore?.toFixed(1) ?? 0}%`} icon={<Trophy size={15} />} color="blue" />
+        <DashboardStatCard title="KPI completion" value={`${data?.kpiCompletionPercentage ?? 0}%`} icon={<Target size={15} />} color="green" />
+        <DashboardStatCard title="Pending tasks" value={data?.pendingTasksCount ?? 0} icon={<ClipboardList size={15} />} color="orange" />
+        <DashboardStatCard title="Feedback" value={data?.feedbackCount ?? 0} icon={<MessageSquare size={15} />} color="purple" />
       </div>
 
-      {/* Row 2: Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <ChartCard title="Performance Trend">
+          <ChartCard title="Performance trend">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data?.performanceTrend}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                <XAxis dataKey="period" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} domain={[0, 100]} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="score" 
-                  stroke="#3b82f6" 
-                  strokeWidth={3} 
-                  dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }}
-                />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F2F6" />
+                <XAxis dataKey="period" stroke="#9EA3B0" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#9EA3B0" fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
+                <Tooltip contentStyle={{ borderRadius: 8, border: "0.5px solid #E4E6EC", boxShadow: "none", fontSize: 12 }} />
+                <Line type="monotone" dataKey="score" stroke="#1A56DB" strokeWidth={2} dot={{ r: 3, fill: '#1A56DB', strokeWidth: 2, stroke: '#fff' }} />
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>
         </div>
         <div>
-          <ChartCard title="KPI Status">
+          <ChartCard title="KPI status">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie
-                  data={data?.kpiStatus}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {data?.kpiStatus?.map((entry, index) => (
+                <Pie data={data?.kpiStatus} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={4} dataKey="value">
+                  {data?.kpiStatus?.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={{ borderRadius: 8, border: "0.5px solid #E4E6EC", boxShadow: "none", fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
         </div>
       </div>
 
-      {/* Row 3: Tasks and Timeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TaskPanel 
+      {/* Tasks & Timeline */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TaskPanel
           tasks={data?.tasks.map(t => ({
             id: t.id,
             title: t.title,
             deadline: t.deadline,
-            priority: t.priority as any
-          })) || []} 
+            priority: t.priority as 'High' | 'Medium' | 'Low',
+          })) ?? []}
         />
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-full">
-          <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-            <Clock size={20} className="text-blue-500" />
-            Appraisal Timeline
-          </h3>
-          <div className="space-y-6">
+        <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+          <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
+            <Clock size={15} style={{ color: "#1A56DB" }} aria-hidden="true" />
+            <p style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Appraisal timeline</p>
+          </div>
+          <div className="space-y-4">
             {data?.appraisalTimeline.map((step, idx) => (
-              <div key={idx} className="flex gap-4">
+              <div key={idx} className="flex gap-3">
                 <div className="flex flex-col items-center">
-                  <div className={`w-3 h-3 rounded-full ${step.active ? 'bg-blue-500 ring-4 ring-blue-100' : 'bg-gray-300'}`}></div>
-                  {idx !== (data?.appraisalTimeline.length || 0) - 1 && <div className="w-0.5 h-full bg-gray-100 my-1"></div>}
+                  <div style={{
+                    width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
+                    background: step.active ? "#1A56DB" : "#E4E6EC",
+                    outline: step.active ? "3px solid #EEF3FD" : "none",
+                  }} />
+                  {idx !== (data?.appraisalTimeline.length ?? 0) - 1 && (
+                    <div style={{ width: 1, flex: 1, background: "#F0F2F6", margin: "3px 0" }} />
+                  )}
                 </div>
-                <div>
-                  <h4 className={`text-sm font-bold ${step.active ? 'text-blue-600' : 'text-gray-700'}`}>{step.phase}</h4>
-                  <p className="text-xs text-gray-500">{step.date} - {step.status}</p>
+                <div style={{ paddingBottom: 4 }}>
+                  <p style={{ fontSize: 13, fontWeight: step.active ? 500 : 400, color: step.active ? "#1A56DB" : "#111827" }}>{step.phase}</p>
+                  <p style={{ fontSize: 11, color: "#9EA3B0", marginTop: 1 }}>{step.date} — {step.status}</p>
                 </div>
               </div>
             ))}

@@ -1,6 +1,7 @@
-import React from 'react';
+import React from "react";
+import { Activity } from "lucide-react";
 
-interface Activity {
+interface ActivityItem {
   id: string | number;
   user: string;
   action: string;
@@ -9,37 +10,101 @@ interface Activity {
 }
 
 interface ActivityFeedProps {
-  activities: Activity[];
+  activities: ActivityItem[];
   title?: string;
 }
 
-const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, title = "Recent Activity" }) => {
+const ActivityFeed: React.FC<ActivityFeedProps> = ({
+  activities,
+  title = "Recent activity",
+}) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-full">
-      <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-        <h3 className="font-semibold text-gray-800">{title}</h3>
+    <div
+      style={{
+        background: "#FFFFFF",
+        border: "0.5px solid #E4E6EC",
+        borderRadius: 12,
+        overflow: "hidden",
+      }}
+    >
+      {/* Panel header */}
+      <div
+        style={{
+          padding: "16px 18px",
+          borderBottom: "0.5px solid #E4E6EC",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>
+          {title}
+        </span>
       </div>
-      <div className="p-4 space-y-6 max-h-[400px] overflow-y-auto">
+
+      {/* Activity list */}
+      <div style={{ padding: "0 18px", maxHeight: 400, overflowY: "auto" }}>
         {activities.length > 0 ? (
           activities.map((item, idx) => (
-            <div key={item.id} className="relative pl-6 pb-6 last:pb-0">
-              {idx !== activities.length - 1 && (
-                <div className="absolute left-[7px] top-4 bottom-0 w-0.5 bg-gray-100"></div>
-              )}
-              <div className="absolute left-0 top-1.5 w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></div>
-              <div className="flex flex-col">
-                <div className="flex justify-between items-start">
-                  <span className="text-sm font-medium text-gray-900">{item.user}</span>
-                  <span className="text-[10px] text-gray-400 font-mono uppercase">{item.timestamp}</span>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  {item.action} {item.module && <span className="text-blue-500 font-medium">[{item.module}]</span>}
+            <div
+              key={item.id}
+              style={{
+                display: "flex",
+                gap: 10,
+                padding: "12px 0",
+                borderBottom:
+                  idx < activities.length - 1
+                    ? "0.5px solid #F0F2F6"
+                    : "none",
+              }}
+            >
+              {/* Icon square */}
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  background: "#EEF3FD",
+                  color: "#1A56DB",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  marginTop: 1,
+                }}
+              >
+                <Activity size={13} aria-hidden="true" />
+              </div>
+
+              {/* Text block */}
+              <div>
+                <p style={{ fontSize: 12, color: "#111827", lineHeight: 1.5 }}>
+                  <span style={{ fontWeight: 500 }}>{item.user}</span>{" "}
+                  {item.action}
+                  {item.module && (
+                    <span style={{ color: "#1A56DB", fontWeight: 500 }}>
+                      {" "}
+                      [{item.module}]
+                    </span>
+                  )}
+                </p>
+                <p style={{ fontSize: 11, color: "#9EA3B0", marginTop: 2 }}>
+                  {item.timestamp}
                 </p>
               </div>
             </div>
           ))
         ) : (
-          <div className="p-4 text-center text-gray-500 italic">No recent activity</div>
+          <p
+            style={{
+              padding: "16px 0",
+              textAlign: "center",
+              color: "#9EA3B0",
+              fontSize: 13,
+            }}
+          >
+            No recent activity
+          </p>
         )}
       </div>
     </div>

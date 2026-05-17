@@ -1,11 +1,6 @@
 import React from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
-import {
-  Users, CheckSquare, ClipboardList, AlertTriangle, Star, Building2,
-  Bell, FileText, UserPlus, TrendingDown
-} from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Users, CheckSquare, ClipboardList, AlertTriangle, Star, Building2, Bell, FileText, UserPlus, TrendingDown } from 'lucide-react';
 import { useGetHrDashboardQuery } from '../features/dashboard/dashboardApi';
 import DashboardStatCard from '../components/dashboard/DashboardStatCard';
 import ChartCard from '../components/dashboard/ChartCard';
@@ -13,98 +8,78 @@ import TaskPanel from '../components/dashboard/TaskPanel';
 import ProgressBarCard from '../components/dashboard/ProgressBarCard';
 import QuickActionPanel, { type Action } from '../components/dashboard/QuickActionPanel';
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
-
 const HrDashboard: React.FC = () => {
   const { data, isLoading, error } = useGetHrDashboardQuery();
 
-  if (isLoading) return <div className="p-8 text-center">Loading HR Insights...</div>;
-  if (error) return <div className="p-8 text-center text-red-500">Error loading dashboard data.</div>;
+  if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading HR insights…</div>;
+  if (error) return <div className="py-16 text-center" style={{ color: "#791F1F", fontSize: 13 }}>Error loading dashboard data.</div>;
 
   const quickActions: Action[] = [
-    { id: '1', label: 'Launch Cycle', icon: <TrendingDown size={20} />, onClick: () => { }, color: 'bg-blue-100 text-blue-600' },
-    { id: '2', label: 'Add Employee', icon: <UserPlus size={20} />, onClick: () => { }, color: 'bg-green-100 text-green-600' },
-    { id: '3', label: 'Generate Report', icon: <FileText size={20} />, onClick: () => { }, color: 'bg-purple-100 text-purple-600' },
-    { id: '4', label: 'Review PIPs', icon: <AlertTriangle size={20} />, onClick: () => { }, color: 'bg-red-100 text-red-600' },
-    { id: '5', label: 'Send Reminder', icon: <Bell size={20} />, onClick: () => { }, color: 'bg-orange-100 text-orange-600' },
-    { id: '6', label: 'Manage Roles', icon: <Building2 size={20} />, onClick: () => { }, color: 'bg-indigo-100 text-indigo-600' },
+    { id: '1', label: 'Launch cycle', icon: <TrendingDown size={16} />, onClick: () => {}, color: 'bg-blue-100 text-blue-600' },
+    { id: '2', label: 'Add employee', icon: <UserPlus size={16} />, onClick: () => {}, color: 'bg-green-100 text-green-600' },
+    { id: '3', label: 'Generate report', icon: <FileText size={16} />, onClick: () => {}, color: 'bg-purple-100 text-purple-600' },
+    { id: '4', label: 'Review PIPs', icon: <AlertTriangle size={16} />, onClick: () => {}, color: 'bg-red-100 text-red-600' },
+    { id: '5', label: 'Send reminder', icon: <Bell size={16} />, onClick: () => {}, color: 'bg-orange-100 text-orange-600' },
+    { id: '6', label: 'Manage roles', icon: <Building2 size={16} />, onClick: () => {}, color: 'bg-indigo-100 text-indigo-600' },
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">HR Analytics Dashboard</h1>
-        <p className="text-gray-500">Monitoring organizational performance and review cycles.</p>
+        <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>HR analytics</h1>
+        <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Monitoring organizational performance and review cycles.</p>
       </div>
 
-      {/* Row 1: Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <DashboardStatCard
-          title="Employees Under Review"
-          value={data?.totalEmployeesUnderReview || 0}
-          icon={<Users size={24} />}
-          color="blue"
-        />
-        <DashboardStatCard
-          title="Pending Self-Assessments"
-          value={data?.pendingSelfAssessments || 0}
-          icon={<ClipboardList size={24} />}
-          color="orange"
-        />
-        <DashboardStatCard
-          title="Manager Reviews Pending"
-          value={data?.pendingManagerReviews || 0}
-          icon={<CheckSquare size={24} />}
-          color="purple"
-        />
-        <DashboardStatCard
-          title="Open PIPs"
-          value={data?.openPips || 0}
-          icon={<AlertTriangle size={24} />}
-          color="red"
-        />
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <DashboardStatCard title="Under review" value={data?.totalEmployeesUnderReview ?? 0} icon={<Users size={15} />} color="blue" />
+        <DashboardStatCard title="Pending self-assessments" value={data?.pendingSelfAssessments ?? 0} icon={<ClipboardList size={15} />} color="orange" />
+        <DashboardStatCard title="Manager reviews pending" value={data?.pendingManagerReviews ?? 0} icon={<CheckSquare size={15} />} color="purple" />
+        <DashboardStatCard title="Open PIPs" value={data?.openPips ?? 0} icon={<AlertTriangle size={15} />} color="red" />
       </div>
 
-      {/* Row 2: Charts & Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Charts & Progress */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <ChartCard title="Departmental Performance Score">
+          <ChartCard title="Departmental performance score">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data?.departmentPerformance}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                <XAxis dataKey="departmentName" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip cursor={{ fill: '#f9fafb' }} />
-                <Bar dataKey="averageScore" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F2F6" />
+                <XAxis dataKey="departmentName" stroke="#9EA3B0" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#9EA3B0" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip cursor={{ fill: "#F5F6F8" }} contentStyle={{ borderRadius: 8, border: "0.5px solid #E4E6EC", boxShadow: "none", fontSize: 12 }} />
+                <Bar dataKey="averageScore" fill="#1A56DB" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
         </div>
-        <div className="space-y-6">
+
+        <div className="space-y-4">
           <ProgressBarCard
-            title="Appraisal Completion Rate"
-            percentage={data?.appraisalCompletionRate || 0}
+            title="Appraisal completion rate"
+            percentage={data?.appraisalCompletionRate ?? 0}
             label="Total organization progress"
             color="green"
           />
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase mb-4 flex items-center gap-2">
-              <Star size={16} className="text-yellow-500" />
-              Top Performers
-            </h3>
-            <div className="space-y-4">
-              {data?.topPerformers.map((performer, idx) => (
+
+          <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 14 }}>
+              <Star size={14} style={{ color: "#BA7517" }} aria-hidden="true" />
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Top performers</p>
+            </div>
+            <div className="space-y-3">
+              {data?.topPerformers.map((p, idx) => (
                 <div key={idx} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs">
-                      {performer.employeeName.charAt(0)}
+                  <div className="flex items-center gap-2">
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#EEF3FD", color: "#1A56DB", fontSize: 11, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {p.employeeName.charAt(0)}
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-gray-900">{performer.employeeName}</p>
-                      <p className="text-[10px] text-gray-500">{performer.department}</p>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{p.employeeName}</p>
+                      <p style={{ fontSize: 11, color: "#9EA3B0" }}>{p.department}</p>
                     </div>
                   </div>
-                  <span className="text-sm font-bold text-green-600">{performer.score}</span>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: "#27500A", background: "#EAF3DE", padding: "2px 8px", borderRadius: 20 }}>{p.score}</span>
                 </div>
               ))}
             </div>
@@ -112,35 +87,40 @@ const HrDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Row 3: Quick Actions */}
+      {/* Quick actions */}
       <QuickActionPanel actions={quickActions} />
 
-      {/* Row 4: Task Panels & Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Tasks & Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TaskPanel
-          title="Urgent HR Tasks"
+          title="Urgent HR tasks"
           tasks={data?.alerts.map((alert, idx) => ({
             id: idx,
             title: alert.title,
             deadline: alert.timestamp,
-            priority: alert.type === 'danger' ? 'High' : alert.type === 'warning' ? 'Medium' : 'Low'
-          })) || []}
+            priority: (alert.type === 'danger' ? 'High' : alert.type === 'warning' ? 'Medium' : 'Low') as 'High' | 'Medium' | 'Low',
+          })) ?? []}
         />
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-hidden h-full">
-          <h3 className="font-semibold text-gray-800 mb-4">System Alerts</h3>
-          <div className="space-y-4">
-            {data?.alerts.map((alert, idx) => (
-              <div key={idx} className={`p-4 rounded-lg flex gap-4 ${alert.type === 'danger' ? 'bg-red-50 text-red-700' :
-                  alert.type === 'warning' ? 'bg-orange-50 text-orange-700' :
-                    'bg-blue-50 text-blue-700'
-                }`}>
-                <AlertTriangle size={20} className="shrink-0" />
-                <div>
-                  <p className="font-bold text-sm">{alert.title}</p>
-                  <p className="text-sm opacity-90">{alert.message}</p>
+
+        <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 14 }}>System alerts</p>
+          <div className="space-y-3">
+            {data?.alerts.map((alert, idx) => {
+              const style = alert.type === 'danger'
+                ? { bg: "#FCEBEB", text: "#791F1F", border: "#F5C2C2" }
+                : alert.type === 'warning'
+                ? { bg: "#FAEEDA", text: "#633806", border: "#F0D4A4" }
+                : { bg: "#EEF3FD", text: "#0C447C", border: "#B5D4F4" };
+              return (
+                <div key={idx} className="flex gap-3" style={{ background: style.bg, border: `0.5px solid ${style.border}`, borderRadius: 8, padding: "10px 12px" }}>
+                  <AlertTriangle size={14} style={{ color: style.text, flexShrink: 0, marginTop: 1 }} />
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: style.text }}>{alert.title}</p>
+                    <p style={{ fontSize: 12, color: style.text, opacity: 0.8, marginTop: 2 }}>{alert.message}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

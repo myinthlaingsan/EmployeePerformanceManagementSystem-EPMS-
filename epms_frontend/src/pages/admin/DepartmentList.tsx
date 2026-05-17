@@ -1,11 +1,16 @@
 import { useGetDepartmentsQuery, useCreateDepartmentMutation, useDeleteDepartmentMutation } from "../../features/org/departmentApi";
 import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+
+const inputStyle: React.CSSProperties = {
+  background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8,
+  padding: "7px 12px", fontSize: 13, color: "#111827", fontFamily: "inherit", outline: "none", width: "100%",
+};
 
 const DepartmentList = () => {
   const { data: departments, isLoading, error } = useGetDepartmentsQuery();
   const [createDepartment] = useCreateDepartmentMutation();
   const [deleteDepartment] = useDeleteDepartmentMutation();
-  
   const [newDeptName, setNewDeptName] = useState("");
   const [newDeptCode, setNewDeptCode] = useState("");
 
@@ -13,10 +18,7 @@ const DepartmentList = () => {
     e.preventDefault();
     if (!newDeptName.trim() || !newDeptCode.trim()) return;
     try {
-      await createDepartment({ 
-        departmentName: newDeptName,
-        departmentCode: newDeptCode
-      }).unwrap();
+      await createDepartment({ departmentName: newDeptName, departmentCode: newDeptCode }).unwrap();
       setNewDeptName("");
       setNewDeptCode("");
     } catch (err) {
@@ -24,68 +26,68 @@ const DepartmentList = () => {
     }
   };
 
-  if (isLoading) return <div className="p-8 text-center">Loading departments...</div>;
-  if (error) return <div className="p-8 text-red-500">Error loading departments.</div>;
+  if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading departments…</div>;
+  if (error) return <div className="py-16 text-center" style={{ color: "#791F1F", fontSize: 13 }}>Error loading departments.</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Departments</h1>
+    <div className="space-y-4">
+      <div>
+        <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Departments</h1>
+        <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Manage organisational departments.</p>
       </div>
 
-      {/* Create Form */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input
-            type="text"
-            placeholder="Department Code (e.g. IT)"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            value={newDeptCode}
-            onChange={(e) => setNewDeptCode(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Department Name"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            value={newDeptName}
-            onChange={(e) => setNewDeptName(e.target.value)}
-          />
+      {/* Create form */}
+      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Add department</p>
+        <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <input style={inputStyle} placeholder="Code (e.g. IT)" value={newDeptCode} onChange={(e) => setNewDeptCode(e.target.value)} />
+          <input style={inputStyle} placeholder="Department name" value={newDeptName} onChange={(e) => setNewDeptName(e.target.value)} />
           <button
             type="submit"
-            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+            className="flex items-center justify-center gap-2 transition-colors"
+            style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
           >
-            Add Department
+            <Plus size={14} aria-hidden="true" /> Add
           </button>
         </form>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider">Code</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {departments?.map((dept) => (
-              <tr key={dept.id} className="hover:bg-gray-50 transition">
-                <td className="px-6 py-4 text-sm font-mono text-blue-600">{dept.departmentCode}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{dept.departmentName}</td>
-                <td className="px-6 py-4 text-sm text-right space-x-2">
-                  <button
-                    onClick={() => deleteDepartment(dept.id)}
-                    className="text-red-600 hover:text-red-800 font-medium"
-                  >
-                    Delete
-                  </button>
-                </td>
+      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, overflow: "hidden" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left" style={{ minWidth: 400 }}>
+            <thead>
+              <tr style={{ borderBottom: "0.5px solid #E4E6EC" }}>
+                <th style={{ padding: "10px 18px", fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.5px" }}>Code</th>
+                <th style={{ padding: "10px 18px", fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.5px" }}>Name</th>
+                <th style={{ padding: "10px 18px", fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right" }}>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {departments?.map((dept, idx) => (
+                <tr key={dept.id} style={{ borderBottom: idx < departments.length - 1 ? "0.5px solid #F0F2F6" : "none" }}
+                  className="hover:bg-[#FAFBFF] transition-colors">
+                  <td style={{ padding: "11px 18px", fontSize: 12, color: "#1A56DB", fontFamily: "monospace" }}>{dept.departmentCode}</td>
+                  <td style={{ padding: "11px 18px", fontSize: 13, fontWeight: 500, color: "#111827" }}>{dept.departmentName}</td>
+                  <td style={{ padding: "11px 18px", textAlign: "right" }}>
+                    <button
+                      onClick={() => deleteDepartment(dept.id)}
+                      className="inline-flex items-center gap-1 transition-colors"
+                      style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
+                    >
+                      <Trash2 size={12} aria-hidden="true" /> Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {departments?.length === 0 && (
+                <tr><td colSpan={3} style={{ padding: "24px 18px", textAlign: "center", fontSize: 13, color: "#9EA3B0" }}>No departments yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

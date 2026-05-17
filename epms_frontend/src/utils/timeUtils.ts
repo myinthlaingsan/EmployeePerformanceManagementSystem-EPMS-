@@ -17,7 +17,7 @@ export const formatRelativeTime = (dateInput: Date | string | number | undefined
   const now = new Date();
   
   const diffInSeconds = differenceInSeconds(now, date);
-  if (diffInSeconds < 0) return format(date, 'MMM dd, yyyy'); // Future date fallback
+  if (diffInSeconds < 0) return format(date, 'dd/MM/yyyy'); // Future date fallback
   if (diffInSeconds < 60) return "Just now";
   
   const diffInMinutes = differenceInMinutes(now, date);
@@ -27,8 +27,8 @@ export const formatRelativeTime = (dateInput: Date | string | number | undefined
   if (diffInHours < 24) return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
 
   if (isThisYear(date)) {
-    return format(date, 'MMM dd');
+    return format(date, 'dd/MM');
   }
   
-  return format(date, 'MMM dd, yyyy');
+  return format(date, 'dd/MM/yyyy');
 };

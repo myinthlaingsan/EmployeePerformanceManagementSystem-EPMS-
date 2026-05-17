@@ -32,7 +32,11 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
     }
 
     try {
-      const updatedDetails = formData;
+      const updatedDetails = {
+        ...formData,
+        targetValue: (formData.targetValue as any) === '' ? 0 : formData.targetValue,
+        weightPercent: (formData.weightPercent as any) === '' ? 0 : formData.weightPercent,
+      };
 
       await reviseKpi({
         itemId: item.id,
@@ -93,12 +97,18 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
                   type="number"
                   min="0"
                   required
-                  value={formData.targetValue || ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value));
-                    setFormData({ ...formData, targetValue: val });
+                  value={(formData.targetValue as any) === '' ? '' : formData.targetValue}
+                  onKeyDown={e => {
+                    if (e.key === '-') {
+                      e.preventDefault();
+                    }
                   }}
-                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, targetValue: val === '' ? '' : Math.max(0, parseFloat(val)) } as any);
+                  }}
+                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-right"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
 
@@ -109,12 +119,18 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
                   min="0"
                   max={35}
                   required
-                  value={formData.weightPercent || ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value));
-                    setFormData({ ...formData, weightPercent: val });
+                  value={(formData.weightPercent as any) === '' ? '' : formData.weightPercent}
+                  onKeyDown={e => {
+                    if (e.key === '-') {
+                      e.preventDefault();
+                    }
                   }}
-                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, weightPercent: val === '' ? '' : Math.max(0, parseFloat(val)) } as any);
+                  }}
+                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-right"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
             </div>

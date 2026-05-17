@@ -7,15 +7,20 @@ import {
   useDeleteFinancialYearMutation,
   useRolloverFinancialYearMutation
 } from '../../features/appraisal/financialYearApi';
-import { 
-  Plus, 
-  CheckCircle2, 
-  Trash2, 
-  History, 
-  ArrowRight,
-  ShieldCheck
-} from 'lucide-react';
+import { Plus, CheckCircle2, Trash2, History, ArrowRight, ShieldCheck } from 'lucide-react';
 import { format, addYears, subDays, parseISO, isValid } from 'date-fns';
+import { CustomDateInput } from '../../components/common/CustomDateInput';
+
+const inputStyle: React.CSSProperties = {
+  background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
+  padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box',
+  fontFamily: 'inherit',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0',
+  textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5,
+};
 
 const FinancialYearManagement = () => {
   const { data: years, isLoading } = useGetFinancialYearsQuery();
@@ -25,262 +30,191 @@ const FinancialYearManagement = () => {
   const [rollover] = useRolloverFinancialYearMutation();
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newYear, setNewYear] = useState({
-    title: '',
-    startDate: '',
-    endDate: '',
-    isCurrent: false
-  });
+  const [newYear, setNewYear] = useState({ title: '', startDate: '', endDate: '', isCurrent: false });
 
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const startStr = e.target.value;
+  const handleStartDateChange = (startStr: string) => {
     if (!startStr) return;
-
     const startDate = parseISO(startStr);
     if (!isValid(startDate)) return;
-
-    // Auto-calculate end date (exactly 1 year minus 1 day later)
     const calculatedEnd = subDays(addYears(startDate, 1), 1);
     const endStr = format(calculatedEnd, 'yyyy-MM-dd');
-
-    // Auto-generate title e.g. FY 2024-2025
     const startYear = startDate.getFullYear();
-    const endYear = startYear + 1;
-    const generatedTitle = `FY ${startYear}-${endYear}`;
-
-    setNewYear({
-      ...newYear,
-      startDate: startStr,
-      endDate: endStr,
-      title: newYear.title === '' || newYear.title.startsWith('FY ') ? generatedTitle : newYear.title
-    });
+    const generatedTitle = `FY ${startYear}-${startYear + 1}`;
+    setNewYear({ ...newYear, startDate: startStr, endDate: endStr, title: newYear.title === '' || newYear.title.startsWith('FY ') ? generatedTitle : newYear.title });
   };
 
   const handleAdd = async () => {
-    if (!newYear.title || !newYear.startDate || !newYear.endDate) {
-      toast.warning('Please fill all required fields');
-      return;
-    }
-
+    if (!newYear.title || !newYear.startDate || !newYear.endDate) { toast.warning('Please fill all required fields'); return; }
     const start = parseISO(newYear.startDate);
     const end = parseISO(newYear.endDate);
-
     if (end < addYears(start, 1) && format(end, 'yyyy-MM-dd') !== format(subDays(addYears(start, 1), 1), 'yyyy-MM-dd')) {
-       if (!window.confirm('The selected period is less than one year. Do you want to proceed?')) {
-         return;
-       }
+      if (!window.confirm('The period is less than one year. Proceed?')) return;
     }
     try {
       await createYear(newYear).unwrap();
       setShowAddModal(false);
       setNewYear({ title: '', startDate: '', endDate: '', isCurrent: false });
-    } catch (err) {
-      toast.error('Failed to create financial year');
-    }
+    } catch { toast.error('Failed to create financial year'); }
   };
 
   const handleSetCurrent = async (id: number) => {
-    if (window.confirm('Set this as the current Financial Year? All others will be deactivated.')) {
-      await setCurrent(id);
-    }
+    if (window.confirm('Set this as the current Financial Year? All others will be deactivated.')) await setCurrent(id);
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this financial year?')) {
-      await deleteYear(id);
-    }
+    if (window.confirm('Delete this financial year?')) await deleteYear(id);
   };
 
   const handleRollover = async () => {
-    if (window.confirm('Execute Rollover? This will validate all active appraisals, create the next financial year, and archive the current one.')) {
-      try {
-        await rollover().unwrap();
-      } catch (err: any) {
-        toast.error(err?.data?.message || err?.error || 'Failed to rollover. Please ensure no active appraisal cycles are blocking the rollover.');
-      }
+    if (window.confirm('Execute Rollover? This validates active appraisals, creates the next FY, and archives the current one.')) {
+      try { await rollover().unwrap(); }
+      catch (err: any) { toast.error(err?.data?.message || 'Rollover failed.'); }
     }
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Page Header */}
-      <div className="flex justify-between items-end">
+    <div className="space-y-4 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Financial Year Configuration</h2>
-          <p className="text-slate-500 font-medium">Manage corporate periods and active appraisal timelines.</p>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Financial Year Configuration</h1>
+          <p style={{ fontSize: 13, color: '#9EA3B0', marginTop: 2 }}>Manage corporate periods and active appraisal timelines.</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" /> Initialize New FY
+        <button onClick={() => setShowAddModal(true)} className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+          style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+          <Plus size={14} /> Initialize New FY
         </button>
       </div>
 
-      {/* Stats / Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-            <History className="w-6 h-6" />
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EEF3FD', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <History size={16} style={{ color: '#1A56DB' }} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Periods</p>
-            <p className="text-xl font-black text-slate-900">{years?.length || 0}</p>
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Periods</p>
+            <p style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{years?.length || 0}</p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-            <ShieldCheck className="w-6 h-6" />
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EAF3DE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ShieldCheck size={16} style={{ color: '#27500A' }} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Status</p>
-            <p className="text-xl font-black text-slate-900">
-              {years?.filter(y => y.isCurrent || (y as any).current).length || 0} Period Live
-            </p>
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Status</p>
+            <p style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{years?.filter(y => y.isCurrent || (y as any).current).length || 0} Period Live</p>
           </div>
         </div>
-        <div 
-          onClick={handleRollover}
-          className="bg-indigo-900 p-6 rounded-[2rem] shadow-xl relative overflow-hidden group cursor-pointer hover:bg-indigo-800 transition-colors"
-        >
-          <div className="relative z-10">
-            <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Next Phase</p>
-            <p className="text-lg font-bold text-white mt-1">Execute Rollover</p>
+        <div onClick={handleRollover} style={{ background: '#111827', border: 'none', borderRadius: 12, padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+          className="hover:opacity-90 transition-opacity">
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Next Phase</p>
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#FFFFFF', marginTop: 2 }}>Execute Rollover</p>
           </div>
-          <ArrowRight className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 text-white/10 group-hover:translate-x-2 transition-transform" />
+          <ArrowRight size={18} style={{ color: 'rgba(255,255,255,0.4)' }} />
         </div>
       </div>
 
-      {/* FY List */}
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50/50">
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Financial Year Title</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Start Date</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">End Date</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {isLoading ? (
-              <tr><td colSpan={5} className="px-8 py-12 text-center text-slate-400 font-medium">Loading periods...</td></tr>
-            ) : years?.length === 0 ? (
-              <tr><td colSpan={5} className="px-8 py-12 text-center text-slate-400 font-medium">No financial years configured.</td></tr>
-            ) : years?.map((year) => {
-              const isCurrent = year.isCurrent || (year as any).current;
-              return (
-              <tr key={year.id} className="hover:bg-slate-50/50 transition-colors group">
-                <td className="px-8 py-6">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${isCurrent ? 'bg-indigo-600 shadow-[0_0_8px_rgba(79,70,229,0.5)]' : 'bg-slate-200'}`}></div>
-                    <span className="font-bold text-slate-800">{year.title}</span>
-                  </div>
-                </td>
-                <td className="px-8 py-6 text-sm font-medium text-slate-500">{format(new Date(year.startDate), 'MMM dd, yyyy')}</td>
-                <td className="px-8 py-6 text-sm font-medium text-slate-500">{format(new Date(year.endDate), 'MMM dd, yyyy')}</td>
-                <td className="px-8 py-6">
-                  {isCurrent ? (
-                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-indigo-100">
-                      Current Active
-                    </span>
-                  ) : (
-                    <span className="px-3 py-1 bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-lg">
-                      Historical
-                    </span>
-                  )}
-                </td>
-                <td className="px-8 py-6 text-right">
-                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {!isCurrent && (
-                      <button
-                        onClick={() => handleSetCurrent(year.id)}
-                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                        title="Set as Current"
-                      >
-                        <CheckCircle2 className="w-5 h-5" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(year.id)}
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </td>
+      {/* Table */}
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left" style={{ minWidth: 520 }}>
+            <thead>
+              <tr style={{ borderBottom: '0.5px solid #E4E6EC' }}>
+                {['Financial Year', 'Start Date', 'End Date', 'Status', ''].map((h, i) => (
+                  <th key={h + i} style={{ padding: '10px 18px', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 4 ? 'right' : 'left' }}>{h}</th>
+                ))}
               </tr>
-            )})}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={5} style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading…</td></tr>
+              ) : years?.length === 0 ? (
+                <tr><td colSpan={5} style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No financial years configured.</td></tr>
+              ) : years?.map((year, idx) => {
+                const isCurrent = year.isCurrent || (year as any).current;
+                return (
+                  <tr key={year.id} style={{ borderBottom: idx < (years.length - 1) ? '0.5px solid #F0F2F6' : 'none' }}
+                    className="hover:bg-[#FAFBFF] transition-colors">
+                    <td style={{ padding: '11px 18px' }}>
+                      <div className="flex items-center gap-2">
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isCurrent ? '#1A56DB' : '#E4E6EC', flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{year.title}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '11px 18px', fontSize: 12, color: '#5A6070' }}>{format(new Date(year.startDate), 'dd/MM/yyyy')}</td>
+                    <td style={{ padding: '11px 18px', fontSize: 12, color: '#5A6070' }}>{format(new Date(year.endDate), 'dd/MM/yyyy')}</td>
+                    <td style={{ padding: '11px 18px' }}>
+                      <span style={{ fontSize: 11, fontWeight: 500, background: isCurrent ? '#EEF3FD' : '#F1EFE8', color: isCurrent ? '#0C447C' : '#444441', border: `0.5px solid ${isCurrent ? '#B5D4F4' : '#DDDBD2'}`, borderRadius: 20, padding: '2px 8px' }}>
+                        {isCurrent ? 'Current Active' : 'Historical'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '11px 18px', textAlign: 'right' }}>
+                      <div className="flex justify-end items-center gap-1">
+                        {!isCurrent && (
+                          <button onClick={() => handleSetCurrent(year.id)} title="Set as Current"
+                            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
+                            className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
+                            <CheckCircle2 size={14} />
+                          </button>
+                        )}
+                        <button onClick={() => handleDelete(year.id)} title="Delete"
+                          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
+                          className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)}></div>
-          <div className="relative bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-10 border-b border-slate-50">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Initialize Financial Year</h3>
-              <p className="text-slate-400 font-medium text-sm">Define the boundaries of a new corporate calendar period.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
+          <div onClick={() => setShowAddModal(false)} className="absolute inset-0" />
+          <div style={{ position: 'relative', background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, width: '100%', maxWidth: 480 }}>
+            <div style={{ padding: '16px 18px', borderBottom: '0.5px solid #E4E6EC' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 500, color: '#111827', marginBottom: 4 }}>Initialize Financial Year</h3>
+              <p style={{ fontSize: 12, color: '#9EA3B0' }}>Define a new corporate calendar period.</p>
             </div>
-            <div className="p-10 space-y-6">
+            <div style={{ padding: '16px 18px' }} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Financial Year Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. FY 2024-2025"
-                  className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700"
-                  value={newYear.title}
-                  onChange={e => setNewYear({ ...newYear, title: e.target.value })}
-                />
+                <label style={labelStyle}>Financial Year Title</label>
+                <input type="text" placeholder="e.g. FY 2024-2025" style={inputStyle}
+                  value={newYear.title} onChange={e => setNewYear({ ...newYear, title: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Start Date</label>
-                  <input
-                    type="date"
-                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700"
-                    value={newYear.startDate}
-                    onChange={handleStartDateChange}
-                  />
+                  <label style={labelStyle}>Start Date</label>
+                  <CustomDateInput style={inputStyle} value={newYear.startDate} onChange={handleStartDateChange} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">End Date</label>
-                  <input
-                    type="date"
-                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700"
-                    value={newYear.endDate}
-                    onChange={e => setNewYear({ ...newYear, endDate: e.target.value })}
-                  />
+                  <label style={labelStyle}>End Date</label>
+                  <CustomDateInput style={inputStyle} value={newYear.endDate} onChange={val => setNewYear({ ...newYear, endDate: val })} />
                 </div>
               </div>
-              <label className="flex items-center gap-3 cursor-pointer p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
-                <input
-                  type="checkbox"
-                  checked={newYear.isCurrent}
-                  onChange={e => setNewYear({ ...newYear, isCurrent: e.target.checked })}
-                  className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
+              <label className="flex items-center gap-3 cursor-pointer" style={{ background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '10px 12px' }}>
+                <input type="checkbox" checked={newYear.isCurrent} onChange={e => setNewYear({ ...newYear, isCurrent: e.target.checked })}
+                  style={{ accentColor: '#1A56DB' }} />
                 <div>
-                  <span className="block text-sm font-bold text-indigo-900">Set as Active Year</span>
-                  <p className="text-[10px] font-medium text-indigo-400">Current active year will be archived</p>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#0C447C', display: 'block' }}>Set as Active Year</span>
+                  <span style={{ fontSize: 11, color: '#5A6070' }}>Current active year will be archived</span>
                 </div>
               </label>
             </div>
-            <div className="p-10 bg-slate-50 flex gap-3">
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 py-3 text-slate-400 font-bold hover:text-slate-600 transition-colors"
-              >
+            <div className="flex gap-2" style={{ padding: '14px 18px', borderTop: '0.5px solid #E4E6EC' }}>
+              <button onClick={() => setShowAddModal(false)} className="flex-1 transition-colors"
+                style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
                 Cancel
               </button>
-              <button
-                onClick={handleAdd}
-                className="flex-[2] py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
-              >
+              <button onClick={handleAdd} className="flex-[2] transition-colors"
+                style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
                 Create Period
               </button>
             </div>

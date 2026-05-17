@@ -170,7 +170,7 @@ export const employeeApi = api.injectEndpoints({
         const formData = new FormData();
         formData.append("file", file);
         return {
-          url: `/emp/${id}/profile-image`,
+          url: `/emp/me/profile`,
           method: "POST",
           body: formData,
         };

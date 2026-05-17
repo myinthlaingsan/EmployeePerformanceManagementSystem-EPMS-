@@ -80,12 +80,16 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="number"
-                    id={`targetValue-${index}`}
-                    name={`targetValue-${index}`}
-                    value={detail.targetValue}
-                    disabled={detail.isCompliance || isReadOnly}
+                    min="0"
+                    value={detail.targetValue === '' ? '' : detail.targetValue}
+                    onKeyDown={e => {
+                      if (e.key === '-') {
+                        e.preventDefault();
+                      }
+                    }}
                     onChange={(e) => onDetailChange(index, 'targetValue', e.target.value)}
-                    className={`w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-right font-medium ${(detail.isCompliance || isReadOnly) ? 'text-gray-400 bg-gray-50/50' : 'text-gray-900'}`}
+                    className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-medium"
+                    style={{ textAlign: 'right' }}
                   />
                 </td>
                 <td className="border-r border-gray-200 p-0">
@@ -103,12 +107,16 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <td className="border-r border-gray-200 p-0">
                   <input
                     type="number"
-                    id={`weightPercent-${index}`}
-                    name={`weightPercent-${index}`}
-                    value={detail.weightPercent}
-                    disabled={isReadOnly}
+                    min="0"
+                    value={detail.weightPercent === '' ? '' : detail.weightPercent}
+                    onKeyDown={e => {
+                      if (e.key === '-') {
+                        e.preventDefault();
+                      }
+                    }}
                     onChange={(e) => onDetailChange(index, 'weightPercent', e.target.value)}
-                    className={`w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-bold ${isReadOnly ? 'cursor-default' : ''}`}
+                    className="w-full h-full min-h-10 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 px-3 py-2 text-sm text-gray-900 text-right font-bold"
+                    style={{ textAlign: 'right' }}
                   />
                 </td>
                 <td className="border-r border-gray-200 p-0 text-center align-middle">

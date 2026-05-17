@@ -9,16 +9,17 @@ interface ProgressUpdateModalProps {
 
 const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose }) => {
   const [updateProgress, { isLoading }] = useUpdateProgressMutation();
-  const [actualValue, setActualValue] = useState<number>(item.currentProgress || 0);
+  const [actualValue, setActualValue] = useState<number | "">(item.currentProgress || 0);
   const [note, setNote] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const progressPercent = (actualValue / item.targetValue) * 100;
+      const finalActualValue = actualValue === '' ? 0 : actualValue;
+      const progressPercent = (finalActualValue / item.targetValue) * 100;
       await updateProgress({
         goalItemId: item.id,
-        actualValue,
+        actualValue: finalActualValue,
         progressPercent: Math.min(progressPercent, 100),
         evidenceNote: note,
       }).unwrap();
@@ -49,17 +50,25 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
                   required
                   min={0}
                   max={item.targetValue}
-                  value={actualValue}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    if (isNaN(val)) {
-                      setActualValue(0);
-                    } else {
-                      // Clamp between 0 and targetValue
-                      setActualValue(Math.max(0, Math.min(val, item.targetValue)));
+                  value={actualValue === '' ? '' : actualValue}
+                  onKeyDown={e => {
+                    if (e.key === '-') {
+                      e.preventDefault();
                     }
                   }}
-                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  onChange={(e) => {
+                    const valStr = e.target.value;
+                    if (valStr === '') {
+                      setActualValue('');
+                    } else {
+                      const val = parseFloat(valStr);
+                      if (!isNaN(val)) {
+                        setActualValue(Math.max(0, Math.min(val, item.targetValue)));
+                      }
+                    }
+                  }}
+                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-right"
+                  style={{ textAlign: 'right' }}
                 />
                 <span className="text-sm font-bold text-gray-400">/ {item.targetValue}</span>
               </div>
@@ -81,13 +90,13 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
                 <div className="flex justify-between text-xs font-bold mb-1.5">
                   <span className="text-blue-700">Calculated Completion</span>
                   <span className="text-blue-700">
-                    {Math.floor((actualValue / item.targetValue) * 100)}%
+                    {Math.floor(((actualValue === '' ? 0 : actualValue) / item.targetValue) * 100)}%
                   </span>
                 </div>
                 <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
                   <div
                     className="bg-blue-600 h-full transition-all duration-500"
-                    style={{ width: `${Math.min((actualValue / item.targetValue) * 100, 100)}%` }}
+                    style={{ width: `${Math.min(((actualValue === '' ? 0 : actualValue) / item.targetValue) * 100, 100)}%` }}
                   />
                 </div>
               </div>
@@ -96,13 +105,13 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-blue-500 font-bold">Score</p>
                   <p className="text-lg font-black text-blue-700">
-                    {((actualValue / item.targetValue) * 100).toFixed(2)}%
+                    {(((actualValue === '' ? 0 : actualValue) / item.targetValue) * 100).toFixed(2)}%
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-blue-500 font-bold">Weighted Score</p>
                   <p className="text-lg font-black text-blue-700">
-                    {(((actualValue / item.targetValue) * 100) * (item.weightPercent / 100)).toFixed(2)}
+                    {((((actualValue === '' ? 0 : actualValue) / item.targetValue) * 100) * (item.weightPercent / 100)).toFixed(2)}
                   </p>
                 </div>
               </div>

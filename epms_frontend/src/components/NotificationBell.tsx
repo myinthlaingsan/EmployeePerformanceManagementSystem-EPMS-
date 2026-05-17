@@ -20,19 +20,17 @@ export const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { notifications, unreadCount } = useAppSelector((state) => state.notification);
+  const { notifications, unreadCount } = useAppSelector((s) => s.notification);
   const { data: initialNotifications, isSuccess } = useGetMyNotificationsQuery();
   const [markAsReadApi] = useMarkAsReadMutation();
   const [markAllAsReadApi] = useMarkAllAsReadMutation();
 
-  // Sync initial notifications from API to Redux state
   useEffect(() => {
     if (isSuccess && initialNotifications) {
       dispatch(setNotifications(initialNotifications));
     }
   }, [isSuccess, initialNotifications, dispatch]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -47,9 +45,7 @@ export const NotificationBell: React.FC = () => {
     await markAsReadApi(id);
     dispatch(markAsRead(id));
     setIsOpen(false);
-    if (url) {
-      navigate(url);
-    }
+    if (url) navigate(url);
   };
 
   const handleMarkAllAsRead = async () => {
@@ -57,83 +53,189 @@ export const NotificationBell: React.FC = () => {
     dispatch(markAllAsRead());
   };
 
+  const handleBtnEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.background = "#EEF3FD";
+    e.currentTarget.style.color = "#1A56DB";
+    e.currentTarget.style.borderColor = "#B5D4F4";
+  };
+  const handleBtnLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.background = "#F5F6F8";
+    e.currentTarget.style.color = "#5A6070";
+    e.currentTarget.style.borderColor = "#E0E2E8";
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-500 hover:bg-gray-50 hover:text-blue-600 rounded-lg transition-all duration-200 focus:outline-none"
+        aria-label="Notifications"
+        onMouseEnter={handleBtnEnter}
+        onMouseLeave={handleBtnLeave}
+        style={{
+          position: "relative",
+          width: 32,
+          height: 32,
+          background: "#F5F6F8",
+          border: "0.5px solid #E0E2E8",
+          borderRadius: 8,
+          color: "#5A6070",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          transition: "background 0.15s, color 0.15s, border-color 0.15s",
+        }}
       >
-        <Bell className="w-5 h-5" strokeWidth={2} />
+        <Bell size={16} aria-hidden="true" />
 
+        {/* Notification dot */}
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 flex h-3.5 w-3.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 text-[9px] font-bold text-white items-center justify-center">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          </span>
+          <span
+            style={{
+              position: "absolute",
+              top: 6,
+              right: 6,
+              width: 6,
+              height: 6,
+              background: "#E24B4A",
+              borderRadius: "50%",
+              border: "1.5px solid #F5F6F8",
+            }}
+          />
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center justify-between p-4 border-b border-gray-50 bg-gray-50/50">
-            <h3 className="font-bold text-gray-800 flex items-center gap-2">
+        <div
+          style={{
+            position: "absolute",
+            right: 0,
+            marginTop: 8,
+            width: 320,
+            background: "#FFFFFF",
+            border: "0.5px solid #E4E6EC",
+            borderRadius: 12,
+            zIndex: 50,
+            overflow: "hidden",
+          }}
+        >
+          {/* Dropdown header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 16px",
+              borderBottom: "0.5px solid #E4E6EC",
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>
               Notifications
               {unreadCount > 0 && (
-                <span className="bg-blue-100 text-blue-600 text-[10px] px-1.5 py-0.5 rounded-full">
+                <span
+                  style={{
+                    marginLeft: 6,
+                    background: "#EEF3FD",
+                    color: "#0C447C",
+                    fontSize: 10,
+                    fontWeight: 500,
+                    padding: "1px 6px",
+                    borderRadius: 10,
+                  }}
+                >
                   {unreadCount} new
                 </span>
               )}
-            </h3>
+            </span>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tight flex items-center gap-1"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "#1A56DB",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
               >
-                <MailOpen className="w-3 h-3" />
-                Mark all
+                <MailOpen size={12} />
+                Mark all read
               </button>
             )}
           </div>
 
-          <div className="max-h-96 overflow-y-auto">
+          {/* List */}
+          <div style={{ maxHeight: 384, overflowY: "auto" }}>
             {notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-12 text-gray-400">
-                <Inbox className="w-12 h-12 mb-3 opacity-20" strokeWidth={1.5} />
-                <p className="text-xs font-medium">All caught up!</p>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "40px 0",
+                  color: "#9EA3B0",
+                }}
+              >
+                <Inbox size={32} strokeWidth={1.5} style={{ marginBottom: 8, opacity: 0.4 }} />
+                <p style={{ fontSize: 12 }}>All caught up</p>
               </div>
             ) : (
-              notifications.map((notification) => (
+              notifications.map((n, idx) => (
                 <div
-                  key={notification.id}
-                  onClick={() => handleNotificationClick(notification.id, notification.actionUrl)}
-                  className={`flex flex-col p-4 border-b border-gray-50 cursor-pointer transition-colors duration-150 hover:bg-gray-50 ${!notification.isRead ? "bg-blue-50/20 border-l-4 border-l-blue-500" : ""
-                    }`}
+                  key={n.id}
+                  onClick={() => handleNotificationClick(n.id, n.actionUrl)}
+                  style={{
+                    padding: "12px 16px",
+                    borderBottom:
+                      idx < notifications.length - 1
+                        ? "0.5px solid #F0F2F6"
+                        : "none",
+                    cursor: "pointer",
+                    background: !n.isRead ? "#F9FBFF" : "#FFFFFF",
+                    borderLeft: !n.isRead ? "2px solid #1A56DB" : "2px solid transparent",
+                  }}
                 >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-bold text-gray-900 text-xs">{notification.title}</span>
-                    <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">
-                      {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "#111827" }}>
+                      {n.title}
+                    </span>
+                    <span style={{ fontSize: 11, color: "#9EA3B0", marginLeft: 8, whiteSpace: "nowrap" }}>
+                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                    {notification.message}
+                  <p style={{ fontSize: 12, color: "#5A6070", lineHeight: 1.5 }}>
+                    {n.message}
                   </p>
                 </div>
               ))
             )}
           </div>
 
-          <div className="p-3 bg-gray-50 text-center border-t border-gray-100">
+          {/* Footer */}
+          <div
+            style={{
+              padding: "10px 16px",
+              borderTop: "0.5px solid #E4E6EC",
+              textAlign: "center",
+            }}
+          >
             <button
-              onClick={() => {
-                setIsOpen(false);
-                navigate("/notifications");
+              onClick={() => { setIsOpen(false); navigate("/notifications"); }}
+              style={{
+                fontSize: 12,
+                fontWeight: 400,
+                color: "#1A56DB",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
               }}
-              className="text-sm font-bold text-gray-600 hover:text-blue-600 transition-colors uppercase tracking-widest text-[10px]"
             >
-              View all
+              View all notifications
             </button>
           </div>
         </div>

@@ -85,6 +85,26 @@ export interface CycleRequest {
   finalizationDeadline?: string;
 }
 
+export interface ScoreBreakdownResponse {
+  appraisalId: number;
+  kpiRawScore: number;
+  managerRawScore: number;
+  selfRawScore: number;
+  feedbackRawScore: number;
+  kpiWeight: number;
+  managerWeight: number;
+  selfWeight: number;
+  feedbackWeight: number;
+  kpiWeightedScore: number;
+  managerWeightedScore: number;
+  selfWeightedScore: number;
+  feedbackWeightedScore: number;
+  finalTotalScore: number;
+  finalGrade: string;
+  performanceCategoryId?: number;
+  performanceCategoryName?: string;
+}
+
 const transformResponse = (response: any) => response?.data ?? response;
 
 export const appraisalApi = api.injectEndpoints({
@@ -415,7 +435,7 @@ export const appraisalApi = api.injectEndpoints({
       }),
       invalidatesTags: ['Appraisal'],
     }),
-    getScoreBreakdown: builder.query<any, string>({
+    getScoreBreakdown: builder.query<ScoreBreakdownResponse, string>({
       query: (id) => `/appraisals/${id}/score-breakdown`,
       transformResponse,
       providesTags: ['Appraisal'],

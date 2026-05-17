@@ -1,55 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
-  /* Enable class-based dark mode */
   --dark-mode: class;
 
-  /* Brand Design System - Tonal Architecture */
-  --color-brand-primary: #0f172a;
-  --color-brand-secondary: #334155;
-  
-  --color-text-title: #0f172a;
-  --color-text-body: #334155;
-  --color-text-muted: #64748b;
-  
-  --color-surface-base: #f8fafc;
-  --color-surface-border: #e2e8f0;
-  
-  --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-  --shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  /* Primary palette */
+  --color-primary:        #1A56DB;
+  --color-primary-hover:  #1648C0;
+  --color-page-bg:        #F5F6F8;
+  --color-panel-bg:       #FFFFFF;
+  --color-border-default: #E4E6EC;
+  --color-border-subtle:  #F0F2F6;
+  --color-border-hover:   #C8CCE0;
+
+  /* Text palette */
+  --color-content-primary:   #111827;
+  --color-content-secondary: #5A6070;
+  --color-content-muted:     #9EA3B0;
+  --color-content-link:      #1A56DB;
+
+  /* Status fills + text */
+  --color-success-fill: #EAF3DE;
+  --color-success-text: #27500A;
+  --color-info-fill:    #EEF3FD;
+  --color-info-text:    #0C447C;
+  --color-warning-fill: #FAEEDA;
+  --color-warning-text: #633806;
+  --color-danger-fill:  #FCEBEB;
+  --color-danger-text:  #791F1F;
+  --color-neutral-fill: #F1EFE8;
+  --color-neutral-text: #444441;
+
+  /* Legacy aliases (used by existing Tailwind classes like text-brand-primary) */
+  --color-brand-primary:   #1A56DB;
+  --color-brand-secondary: #5A6070;
+  --color-text-title:      #111827;
+  --color-text-body:       #5A6070;
+  --color-text-muted:      #9EA3B0;
+  --color-surface-base:    #F5F6F8;
+  --color-surface-border:  #E4E6EC;
 }
 
-/* Or explicitly specify the selector */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Global Smooth Scrolling */
 html {
   scroll-behavior: smooth;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  color: #111827;
+  background: #F5F6F8;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.5s ease forwards;
+  animation: fadeIn 0.3s ease forwards;
 }
 
-/* Custom Scrollbar for better UI */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
-}
+/* Thin scrollbar matching design system */
+::-webkit-scrollbar        { width: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #E4E6EC; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #C8CCE0; }
