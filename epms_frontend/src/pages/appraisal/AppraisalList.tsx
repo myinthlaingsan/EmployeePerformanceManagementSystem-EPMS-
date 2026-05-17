@@ -105,7 +105,18 @@ const AppraisalList: React.FC = () => {
       case 'SELF_ASSESSED': return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'EVALUATED': return 'bg-indigo-100 text-indigo-700 border-indigo-200';
       case 'HR_APPROVED': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'ARCHIVED': return 'bg-slate-100 text-slate-700 border-slate-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  const getCycleStatusColor = (status: string) => {
+    switch (status) {
+      case 'PLANNING': return 'bg-slate-100 text-slate-600 border-slate-200';
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-600 border-blue-200';
+      case 'EVALUATION': return 'bg-amber-100 text-amber-600 border-amber-200';
+      case 'ARCHIVED': return 'bg-slate-500 text-white border-slate-600';
+      default: return 'bg-gray-100 text-gray-400 border-gray-200';
     }
   };
 
@@ -278,9 +289,9 @@ const AppraisalList: React.FC = () => {
 
               <div className="flex items-center gap-6">
                 <h2 className="text-5xl font-black text-slate-900 tracking-tighter uppercase italic">{cycle?.cycleName}</h2>
-                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-2 ${cycle?.isActive ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${cycle?.isActive ? 'bg-indigo-600 animate-pulse' : 'bg-slate-400'}`}></div>
-                  {cycle?.status || (cycle?.isActive ? 'IN PROGRESS' : 'INACTIVE')}
+                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-2 ${getCycleStatusColor(cycle?.status || '')}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${cycle?.isActive ? 'bg-current animate-pulse' : 'bg-slate-400'}`}></div>
+                  {cycle?.status?.replace('_', ' ') || (cycle?.isActive ? 'ACTIVE' : 'INACTIVE')}
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
@@ -296,13 +307,21 @@ const AppraisalList: React.FC = () => {
               <button className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2">
                 <Mail className="w-4 h-4" /> Send Reminders
               </button>
-              {cycle?.isActive ? (
+              {!cycle?.isActive ? (
+                <button
+                  onClick={() => activateCycle(Number(selectedCycleId))}
+                  disabled={isActivating}
+                  className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isActivating ? 'Activating...' : 'Activate Cycle'}
+                </button>
+              ) : isAdmin && (
                 <button
                   onClick={() => {
                     setConfirmModal({
                       isOpen: true,
-                      title: 'Close Appraisal Cycle',
-                      message: `Are you sure you want to close "${cycle.cycleName}"? This will deactivate it and lock all related appraisals from further editing.`,
+                      title: 'Force Close Cycle (Emergency)',
+                      message: `Are you sure you want to FORCE CLOSE "${cycle.cycleName}"? System normally handles this on ${safeFormatDate(cycle.endDate)}. Only use this for emergencies.`,
                       onConfirm: () => {
                         closeCycle(Number(selectedCycleId));
                         setSelectedCycleId(null);
@@ -312,15 +331,7 @@ const AppraisalList: React.FC = () => {
                   disabled={isClosing}
                   className="px-6 py-3 bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
-                  {isClosing ? 'Closing...' : 'Close Cycle'}
-                </button>
-              ) : (
-                <button
-                  onClick={() => activateCycle(Number(selectedCycleId))}
-                  disabled={isActivating}
-                  className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isActivating ? 'Activating...' : 'Activate Cycle'}
+                  {isClosing ? 'Closing...' : 'Emergency Close'}
                 </button>
               )}
             </div>
@@ -570,8 +581,8 @@ const AppraisalList: React.FC = () => {
             <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-0 group-hover:opacity-10 transition-opacity blur-3xl ${cycle.isActive ? 'bg-indigo-600' : 'bg-slate-400'}`}></div>
 
             <div className="flex justify-between items-start mb-8 relative z-10">
-              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${cycle.isActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                {cycle.isActive ? 'Active' : 'Inactive'}
+              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getCycleStatusColor(cycle.status || '')}`}>
+                {cycle.status?.replace('_', ' ') || (cycle.isActive ? 'ACTIVE' : 'INACTIVE')}
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
