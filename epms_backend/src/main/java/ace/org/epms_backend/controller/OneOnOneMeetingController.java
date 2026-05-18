@@ -26,9 +26,10 @@ public class OneOnOneMeetingController {
 
     @GetMapping("/meetings")
     public ResponseEntity<ApiResponse<PagedResponse<OneOnOneMeetingResponse>>> getAllMeetings(
+            @RequestParam(required = false) ace.org.epms_backend.enums.ContinuousStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PagedResponse<OneOnOneMeetingResponse> responses = meetingService.getAllMeetings(page, size);
+        PagedResponse<OneOnOneMeetingResponse> responses = meetingService.getAllMeetings(status, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -59,9 +60,10 @@ public class OneOnOneMeetingController {
     @GetMapping("/meetings/manager/{managerId}")
     public ResponseEntity<ApiResponse<PagedResponse<OneOnOneMeetingResponse>>> getMeetingsByManager(
             @PathVariable Long managerId,
+            @RequestParam(required = false) ace.org.epms_backend.enums.ContinuousStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PagedResponse<OneOnOneMeetingResponse> responses = meetingService.getMeetingsByManager(managerId, page, size);
+        PagedResponse<OneOnOneMeetingResponse> responses = meetingService.getMeetingsByManager(managerId, status, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -77,6 +79,26 @@ public class OneOnOneMeetingController {
     public ResponseEntity<ApiResponse<Void>> deleteMeeting(@PathVariable Long meetingId) {
         meetingService.deleteMeeting(meetingId);
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PatchMapping("/meetings/{meetingId}/publish")
+    public ResponseEntity<ApiResponse<OneOnOneMeetingResponse>> publishMeeting(@PathVariable Long meetingId) {
+        OneOnOneMeetingResponse response = meetingService.publishMeeting(meetingId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/meetings/employee/{employeeId}/stats")
+    public ResponseEntity<ApiResponse<ace.org.epms_backend.dto.continuous.ContinuousStatsResponse>> getMeetingStats(
+            @PathVariable Long employeeId) {
+        ace.org.epms_backend.dto.continuous.ContinuousStatsResponse response = meetingService.getMeetingStats(employeeId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/meetings/manager/{managerId}/stats")
+    public ResponseEntity<ApiResponse<ace.org.epms_backend.dto.continuous.ContinuousStatsResponse>> getMeetingStatsForManager(
+            @PathVariable Long managerId) {
+        ace.org.epms_backend.dto.continuous.ContinuousStatsResponse response = meetingService.getMeetingStatsForManager(managerId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     // --- COMMENT APIs ---
@@ -109,5 +131,25 @@ public class OneOnOneMeetingController {
     public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable Long commentId) {
         meetingService.deleteComment(commentId);
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    // --- ACTION ITEM APIs ---
+
+    @PutMapping("/meetings/{meetingId}/items/{itemId}/status")
+    public ResponseEntity<ApiResponse<Void>> updateActionItemStatus(
+            @PathVariable Long meetingId,
+            @PathVariable Long itemId,
+            @RequestParam ace.org.epms_backend.enums.ActionItemStatus status) {
+        meetingService.updateActionItemStatus(meetingId, itemId, status);
+        return ResponseEntity.ok(ApiResponse.success("Action item status updated successfully", null));
+    }
+
+    @PutMapping("/meetings/{meetingId}/items/{itemId}/reopen")
+    public ResponseEntity<ApiResponse<Void>> reopenActionItem(
+            @PathVariable Long meetingId,
+            @PathVariable Long itemId,
+            @RequestParam String reason) {
+        meetingService.reopenActionItem(meetingId, itemId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Action item re-opened successfully", null));
     }
 }

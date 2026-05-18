@@ -65,6 +65,11 @@ public enum NotificationType {
     PIP_COMPLETED,
     PIP_ESCALATED,
 
+    // Meetings
+    MEETING_SCHEDULED,
+    MEETING_UPDATED,
+    ACTION_ITEM_COMPLETED,
+
     // Employee & System
     ACCOUNT_ACTIVATED,
     PASSWORD_CHANGED,

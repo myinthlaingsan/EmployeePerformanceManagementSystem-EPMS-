@@ -7,5 +7,6 @@ public enum ReferenceType {
     FEEDBACK,
     COMMENT,
     PIP,
-    ACCOUNT
+    ACCOUNT,
+    MEETING
 }

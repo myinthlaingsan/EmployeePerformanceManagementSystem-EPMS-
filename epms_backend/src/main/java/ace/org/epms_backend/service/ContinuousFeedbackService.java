@@ -12,10 +12,13 @@ public interface ContinuousFeedbackService {
     ContinuousFeedbackResponse createFeedback(ContinuousFeedbackRequest request);
     ContinuousFeedbackResponse getFeedbackById(Long feedbackId);
     PagedResponse<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId, int page, int size);
-    PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, int page, int size);
-    PagedResponse<ContinuousFeedbackResponse> getAllFeedbacks(int page, int size);
+    PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, ace.org.epms_backend.enums.ContinuousStatus status, int page, int size);
+    ace.org.epms_backend.dto.continuous.ContinuousStatsResponse getFeedbackStatsForManager(Long managerId);
+    PagedResponse<ContinuousFeedbackResponse> getAllFeedbacks(ace.org.epms_backend.enums.ContinuousStatus status, int page, int size);
     ContinuousFeedbackResponse updateFeedback(Long feedbackId, ContinuousFeedbackRequest request);
     void deleteFeedback(Long feedbackId);
+    ContinuousFeedbackResponse publishFeedback(Long feedbackId);
+    ace.org.epms_backend.dto.continuous.ContinuousStatsResponse getFeedbackStats(Long employeeId);
 
     FeedbackReplyResponse replyToFeedback(Long feedbackId, FeedbackReplyRequest request);
     List<FeedbackReplyResponse> getRepliesForFeedback(Long feedbackId);

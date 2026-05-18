@@ -1,5 +1,6 @@
 package ace.org.epms_backend.dto.continuous;
 
+import ace.org.epms_backend.enums.ContinuousStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -22,7 +23,8 @@ public class OneOnOneMeetingRequest {
 
     private String discussionPoints;
     private String keyIssues;
-    private String actionItems;
+    private java.util.List<String> actionItems;
     private LocalDate followUpDate;
-    private Boolean isPrivateNote = false;
+
+    private ContinuousStatus status;
 }

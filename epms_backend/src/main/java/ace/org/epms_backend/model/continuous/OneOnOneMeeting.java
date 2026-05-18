@@ -1,4 +1,5 @@
 package ace.org.epms_backend.model.continuous;
+import ace.org.epms_backend.enums.ContinuousStatus;
 import ace.org.epms_backend.model.BaseEntity;
 import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
@@ -6,6 +7,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import org.hibernate.annotations.SQLDelete;
@@ -18,7 +20,6 @@ import org.hibernate.annotations.SQLRestriction;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 public class OneOnOneMeeting extends BaseEntity {
@@ -45,12 +46,24 @@ public class OneOnOneMeeting extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String keyIssues;
 
-    @Column(columnDefinition = "TEXT")
-    private String actionItems;
+    @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private java.util.List<MeetingActionItem> actionItems = new java.util.ArrayList<>();
 
     private LocalDate followUpDate;
 
-    private Boolean isPrivateNote = false;
+
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private ContinuousStatus status = ContinuousStatus.PUBLISHED;
+
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
+    @org.hibernate.annotations.Formula("(SELECT COUNT(*) FROM meeting_comments c WHERE c.meeting_id = meeting_id AND (c.is_deleted = false OR c.is_deleted IS NULL))")
+    private Integer commentCount;
 
     private Long createdBy;
 }

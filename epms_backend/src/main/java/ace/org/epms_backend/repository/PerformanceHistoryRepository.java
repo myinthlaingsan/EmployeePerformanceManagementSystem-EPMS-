@@ -22,9 +22,13 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
             @Param("sourceType") SourceType sourceType,
             Pageable pageable);
 
-    @Query("SELECT h FROM PerformanceHistory h WHERE (:sourceType IS NULL OR h.sourceType = :sourceType)")
-    Page<PerformanceHistory> findAllByOptionalSource(
+    @Query("SELECT h FROM PerformanceHistory h " +
+           "LEFT JOIN EmployeeDepartment ed ON ed.employee.id = h.employee.id " +
+           "WHERE (:sourceType IS NULL OR h.sourceType = :sourceType) " +
+           "AND (:deptId IS NULL OR (ed.currentDepartment.id = :deptId AND ed.isCurrent = true))")
+    Page<PerformanceHistory> findAllByOptionalSourceAndDepartment(
             @Param("sourceType") SourceType sourceType,
+            @Param("deptId") Long deptId,
             Pageable pageable);
 
     Page<PerformanceHistory> findBySourceTypeAndSourceId(SourceType sourceType, Long sourceId, Pageable pageable);
@@ -52,6 +56,16 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            ") " +
            "AND h.title <> 'Feedback Deleted' " +
            "AND h.title <> 'Meeting Deleted' " +
+           "AND (" +
+           "  (h.sourceType = ace.org.epms_backend.enums.SourceType.FEEDBACK AND EXISTS (" +
+           "    SELECT 1 FROM ContinuousFeedback f WHERE f.feedbackId = h.sourceId " +
+           "    AND f.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "  )) OR " +
+           "  (h.sourceType = ace.org.epms_backend.enums.SourceType.MEETING AND EXISTS (" +
+           "    SELECT 1 FROM OneOnOneMeeting m WHERE m.meetingId = h.sourceId " +
+           "    AND m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "  ))" +
+           ") " +
            "ORDER BY h.createdAt ASC")
     List<PerformanceHistory> findLatestStateByEmployee(@Param("id") Long id);
 
@@ -67,6 +81,59 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            ") " +
            "AND h.title <> 'Feedback Deleted' " +
            "AND h.title <> 'Meeting Deleted' " +
+           "AND (" +
+           "  (h.sourceType = ace.org.epms_backend.enums.SourceType.FEEDBACK AND EXISTS (" +
+           "    SELECT 1 FROM ContinuousFeedback f WHERE f.feedbackId = h.sourceId " +
+           "    AND f.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "  )) OR " +
+           "  (h.sourceType = ace.org.epms_backend.enums.SourceType.MEETING AND EXISTS (" +
+           "    SELECT 1 FROM OneOnOneMeeting m WHERE m.meetingId = h.sourceId " +
+           "    AND m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "  ))" +
+           ") " +
            "ORDER BY h.createdAt ASC")
     List<PerformanceHistory> findAllLatestStates();
+
+    @Query("SELECT h FROM PerformanceHistory h " +
+           "JOIN EmployeeDepartment ed ON ed.employee.id = h.employee.id " +
+           "WHERE h.historyId IN (" +
+           "  SELECT MAX(h2.historyId) FROM PerformanceHistory h2 " +
+           "  GROUP BY h2.sourceType, h2.sourceId" +
+           ") " +
+           "AND ed.currentDepartment.id = :deptId " +
+           "AND ed.isCurrent = true " +
+           "AND h.title <> 'Feedback Deleted' " +
+           "AND h.title <> 'Meeting Deleted' " +
+           "AND (" +
+           "  (h.sourceType = ace.org.epms_backend.enums.SourceType.FEEDBACK AND EXISTS (" +
+           "    SELECT 1 FROM ContinuousFeedback f WHERE f.feedbackId = h.sourceId " +
+           "    AND f.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "  )) OR " +
+           "  (h.sourceType = ace.org.epms_backend.enums.SourceType.MEETING AND EXISTS (" +
+           "    SELECT 1 FROM OneOnOneMeeting m WHERE m.meetingId = h.sourceId " +
+           "    AND m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "  ))" +
+           ") " +
+           "ORDER BY h.createdAt ASC")
+    List<PerformanceHistory> findLatestStatesByDepartment(@Param("deptId") Long deptId);
+    
+    /**
+     * Activity History — Performer scope.
+     * Returns the full audit trail of actions performed by a specific manager/employee.
+     * Unlike the 'Latest State' queries, this does NOT deduplicate by sourceId,
+     * ensuring every distinct action (like re-opening multiple items) is counted.
+     */
+    @Query("SELECT h FROM PerformanceHistory h WHERE " +
+           "(h.performer.id = :id OR h.createdBy = :id) " +
+           "AND h.title <> 'Feedback Deleted' " +
+           "AND h.title <> 'Meeting Deleted' " +
+           "ORDER BY h.createdAt ASC")
+    List<PerformanceHistory> findActionHistoryByPerformer(@Param("id") Long id);
+
+    @Query("SELECT h FROM PerformanceHistory h WHERE " +
+           "(h.employee.id = :id) " +
+           "AND h.title <> 'Feedback Deleted' " +
+           "AND h.title <> 'Meeting Deleted' " +
+           "ORDER BY h.createdAt ASC")
+    List<PerformanceHistory> findActionHistoryByEmployee(@Param("id") Long id);
 }
