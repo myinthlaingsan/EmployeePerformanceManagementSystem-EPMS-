@@ -24,13 +24,13 @@ const panelStyle: React.CSSProperties = {
 
 const SOURCE_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   FEEDBACK: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
-  MEETING:  { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
+  MEETING: { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
 };
 
 const FEEDBACK_TYPE_STYLE: Record<string, { bg: string; text: string; border: string }> = {
-  PRAISE:      { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
+  PRAISE: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
   IMPROVEMENT: { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
-  WARNING:     { bg: '#FCEBEB', text: '#791F1F', border: '#F5BFBF' },
+  WARNING: { bg: '#FCEBEB', text: '#791F1F', border: '#F5BFBF' },
 };
 
 const SentimentChart = ({ history, employeeName, filterType }: { history: any[]; employeeName?: string; filterType: string }) => {
@@ -67,10 +67,10 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[];
   const maxValue = isMeetingOnly
     ? Math.max(...chartData.map(m => m.meetingsPublic + m.meetingsPrivate), 5)
     : Math.max(...chartData.flatMap(m => [
-        showPraise ? m.praisePublic + m.praisePrivate : 0,
-        showImprovement ? m.improvementPublic + m.improvementPrivate : 0,
-        showCorrection ? m.warningPublic + m.warningPrivate : 0,
-      ]), 5);
+      showPraise ? m.praisePublic + m.praisePrivate : 0,
+      showImprovement ? m.improvementPublic + m.improvementPrivate : 0,
+      showCorrection ? m.warningPublic + m.warningPrivate : 0,
+    ]), 5);
 
   const selectStyle: React.CSSProperties = {
     background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6,
@@ -445,22 +445,6 @@ export const PerformanceHistoryPage = () => {
                                 {record.tagName && <span style={{ fontSize: 9, fontWeight: 500, color: '#9EA3B0', fontStyle: 'italic' }}>#{record.tagName}</span>}
                               </div>
                             </td>
-                            <td style={{ padding: '12px 8px', maxWidth: 220 }}>
-                              {record.isPrivate ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                  <svg style={{ width: 11, height: 11, color: '#9EA3B0', flexShrink: 0 }} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                                  <span style={{ fontSize: 9, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Confidential</span>
-                                </div>
-                              ) : (
-                                <p style={{ fontSize: 11, color: '#5A6070', fontStyle: 'italic' }} className="line-clamp-1">"{record.description}"</p>
-                              )}
-                            </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right' }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: record.isPrivate ? '#791F1F' : '#1A56DB' }}>
-                                <span style={{ width: 5, height: 5, borderRadius: '50%', background: record.isPrivate ? '#791F1F' : '#1A56DB', display: 'inline-block' }} />
-                                {record.isPrivate ? 'Private' : 'Public'}
-                              </span>
-                            </td>
                           </tr>
                         );
                       })}
@@ -485,12 +469,7 @@ export const PerformanceHistoryPage = () => {
                                 <span style={{ background: srcStyle.bg, color: srcStyle.text, border: `0.5px solid ${srcStyle.border}`, borderRadius: 4, padding: '1px 6px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{record.sourceType}</span>
                                 {ftStyle && <span style={{ background: ftStyle.bg, color: ftStyle.text, border: `0.5px solid ${ftStyle.border}`, borderRadius: 4, padding: '1px 6px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{record.feedbackType}</span>}
                                 {record.tagName && <span style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 4, padding: '1px 6px', fontSize: 9, fontWeight: 500, color: '#5A6070' }}>#{record.tagName}</span>}
-                                {record.isPrivate && (
-                                  <span style={{ background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5BFBF', borderRadius: 4, padding: '1px 6px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: 3 }}>
-                                    <svg style={{ width: 9, height: 9 }} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                                    Private
-                                  </span>
-                                )}
+
                               </div>
                               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{record.title}</h3>
                               <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>
