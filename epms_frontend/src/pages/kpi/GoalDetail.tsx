@@ -244,7 +244,7 @@ const GoalDetail: React.FC = () => {
                         )}
 
                         {/* Manager verify button - for compliance items */}
-                        {isManager && item.isCompliance && (
+                        {isManager && item.isCompliance && goalSet.status === 'APPROVED' && (
                           <button
                             onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
                             style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
@@ -254,7 +254,7 @@ const GoalDetail: React.FC = () => {
                         )}
 
                         {/* Manager revise button - for all items */}
-                        {isManager && (
+                        {isManager && goalSet.status !== 'LOCKED' && goalSet.status !== 'ARCHIVED' && (
                           <button
                             onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
                             style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}

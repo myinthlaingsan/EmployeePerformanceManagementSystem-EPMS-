@@ -21,8 +21,8 @@ import React from 'react';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
-  DRAFT:    { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
-  LOCKED:   { bg: '#111827', text: '#FFFFFF', border: '#111827' },
+  DRAFT: { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
+  LOCKED: { bg: '#111827', text: '#FFFFFF', border: '#111827' },
 };
 
 const GoalAssignmentWorkspace: React.FC = () => {
