@@ -8,6 +8,7 @@ import {
   MessageSquare,
   TrendingUp,
   BarChart3,
+  Settings,
   ChevronDown,
   Plus,
   LifeBuoy,
@@ -212,6 +213,16 @@ const Sidebar = () => {
               >
                 <BarChart3 className="w-5 h-5" strokeWidth={2} />
                 Cycle Results
+              </NavLink>
+              <NavLink
+                to="/feedback360/config"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${isActive ? activeClass : inactiveClass
+                  }`
+                }
+              >
+                <Settings className="w-5 h-5" strokeWidth={2} />
+                360 Rule Overrides
               </NavLink>
             </>
           )}

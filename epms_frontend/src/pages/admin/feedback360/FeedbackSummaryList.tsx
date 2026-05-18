@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useGetCyclesQuery } from '../../../features/appraisal/appraisalApi';
 import { 
   useGetSummariesByCycleQuery, 
-  useFinalizeSummaryMutation 
+  useFinalizeSummaryMutation,
+  useGenerateAllSummariesMutation
 } from '../../../features/feedback360/feedback360Api';
 import { usePagination } from '../../../hooks/usePagination';
 import StatusBadge from '../../../components/shared/StatusBadge';
@@ -32,6 +33,7 @@ const FeedbackSummaryList: React.FC = () => {
   });
 
   const [finalize, { isLoading: isFinalizing }] = useFinalizeSummaryMutation();
+  const [generateAll, { isLoading: isGenerating }] = useGenerateAllSummariesMutation();
 
   const filteredSummaries = summaries?.filter(s => 
     s.targetUserName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -43,6 +45,17 @@ const FeedbackSummaryList: React.FC = () => {
       await finalize(id).unwrap();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleGenerateAll = async () => {
+    if (!selectedCycleId) return;
+    try {
+      await generateAll(selectedCycleId).unwrap();
+      alert('Summaries generated successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate summaries. Please check if there are any completed feedbacks.');
     }
   };
 
@@ -60,15 +73,28 @@ const FeedbackSummaryList: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-200">
-          <select 
-            value={selectedCycleId}
-            onChange={(e) => setSelectedCycleId(Number(e.target.value))}
-            className="bg-transparent border-none text-slate-900 font-black focus:ring-0 cursor-pointer text-sm"
-          >
-            <option value="">Select Appraisal Cycle</option>
-            {cycles?.map(c => <option key={c.cycleId} value={c.cycleId}>{c.cycleName}</option>)}
-          </select>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-200">
+            <select 
+              value={selectedCycleId}
+              onChange={(e) => setSelectedCycleId(Number(e.target.value))}
+              className="bg-transparent border-none text-slate-900 font-black focus:ring-0 cursor-pointer text-sm"
+            >
+              <option value="">Select Appraisal Cycle</option>
+              {cycles?.map(c => <option key={c.cycleId} value={c.cycleId}>{c.cycleName}</option>)}
+            </select>
+          </div>
+
+          {selectedCycleId && (
+            <button
+              onClick={handleGenerateAll}
+              disabled={isGenerating}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl text-sm font-black shadow-lg shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50"
+            >
+              {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
+              Generate All
+            </button>
+          )}
         </div>
       </div>
 
@@ -96,9 +122,10 @@ const FeedbackSummaryList: React.FC = () => {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/50">
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
+              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee & Dept</th>
+              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Progress</th>
               <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Avg. Score</th>
-              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+              <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Final Status</th>
               <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
             </tr>
           </thead>
@@ -112,8 +139,20 @@ const FeedbackSummaryList: React.FC = () => {
                     </div>
                     <div>
                       <div className="font-black text-slate-900">{s.targetUserName}</div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{s.cycleName}</div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md uppercase tracking-tight">{s.targetJobLevelCode}</span>
+                        <span className="text-slate-300">|</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{s.targetDepartmentName}</span>
+                      </div>
                     </div>
+                  </div>
+                </td>
+                <td className="px-8 py-6">
+                  <div className="flex flex-col items-center">
+                    <div className="text-sm font-black text-slate-700">
+                      {s.completedRequests} <span className="text-slate-300">/</span> {s.totalRequests}
+                    </div>
+                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Submitted</div>
                   </div>
                 </td>
                 <td className="px-8 py-6">
@@ -128,7 +167,7 @@ const FeedbackSummaryList: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-8 py-6">
-                  <StatusBadge type="status" value={s.isFinalized ? 'COMPLETED' : 'PENDING'} />
+                  <StatusBadge type="status" value={s.isFinalized ? 'LOCKED' : 'DRAFT'} />
                 </td>
                 <td className="px-8 py-6">
                   <div className="flex items-center gap-3">

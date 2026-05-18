@@ -5,22 +5,23 @@ import { Link } from 'react-router-dom';
 
 interface GovernanceHeaderProps {
   cycles: AppraisalCycle[] | undefined;
-  selectedCycleId: number | undefined;
+  selectedCycle: AppraisalCycle | undefined;
   onCycleChange: (id: number) => void;
   onFinalize?: (id: number) => void;
   onReset?: (id: number) => void;
   isFinalizing?: boolean;
+  progress?: Record<string, number>;
 }
 
 const GovernanceHeader: React.FC<GovernanceHeaderProps> = ({ 
   cycles, 
-  selectedCycleId, 
+  selectedCycle, 
   onCycleChange,
   onFinalize,
   onReset,
-  isFinalizing
+  isFinalizing,
+  progress
 }) => {
-  const selectedCycle = cycles?.find(c => (c.cycleId || c.id) === selectedCycleId);
   return (
     <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm flex flex-col lg:flex-row justify-between items-center gap-8">
       <div className="flex items-center gap-6">
@@ -46,7 +47,7 @@ const GovernanceHeader: React.FC<GovernanceHeaderProps> = ({
           <div className="px-6 py-4 flex flex-col border-r border-slate-200">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Cycle</span>
             <select 
-              value={selectedCycleId}
+              value={selectedCycle?.cycleId || selectedCycle?.id || ""}
               onChange={(e) => onCycleChange(Number(e.target.value))}
               className="bg-transparent border-none text-slate-900 font-black focus:ring-0 cursor-pointer text-lg p-0"
             >
@@ -76,6 +77,23 @@ const GovernanceHeader: React.FC<GovernanceHeaderProps> = ({
                 <CheckCircle2 className="w-5 h-5" />
                 {selectedCycle.status}
               </div>
+
+              {progress && selectedCycle.status === 'GENERATED' && (
+                <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
+                  <div className="px-3 py-1.5 bg-amber-50 rounded-full text-[10px] font-black text-amber-600 border border-amber-100 flex items-center gap-1.5">
+                    PENDING: {progress.PENDING || 0}
+                  </div>
+                  <div className="px-3 py-1.5 bg-emerald-50 rounded-full text-[10px] font-black text-emerald-600 border border-emerald-100 flex items-center gap-1.5">
+                    COMPLETED: {progress.COMPLETED || 0}
+                  </div>
+                  {((progress.PENDING || 0) + (progress.COMPLETED || 0)) > 0 && (
+                    <div className="text-[10px] font-black text-slate-400 ml-2">
+                      {Math.round(((progress.COMPLETED || 0) / ((progress.PENDING || 0) + (progress.COMPLETED || 0))) * 100)}%
+                    </div>
+                  )}
+                </div>
+              )}
+
               <button
                 onClick={() => onReset && onReset(selectedCycle.id)}
                 className="px-6 py-4 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-400 font-black rounded-[2rem] text-[10px] uppercase tracking-widest transition-all active:scale-95"

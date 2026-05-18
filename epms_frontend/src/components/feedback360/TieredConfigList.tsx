@@ -38,6 +38,11 @@ export const TieredConfigList: React.FC<ConfigListProps> = ({
                 <span className="text-sm bg-slate-100 text-slate-600 px-3 py-1 rounded-full flex items-center gap-2">
                   <Shield className="w-4 h-4" /> Subs: {config.maxSubordinates}
                 </span>
+                {config.formSetName && (
+                  <span className="text-sm bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full flex items-center gap-2 font-bold">
+                    Form Set: {config.formSetName}
+                  </span>
+                )}
               </div>
             </div>
           </div>

@@ -27,13 +27,13 @@ export const useFeedbackForm = (requestId: number, form?: FullFormResponse) => {
 
   const isSectionComplete = (sectionIndex: number) => {
     if (!form) return false;
-    const questions = form.sections[sectionIndex].questions;
-    return questions.every(q => answers[q.questionId]?.score > 0);
+    const questions = form.categories[sectionIndex].questions;
+    return questions.every(q => (answers[q.questionId]?.score || 0) > 0);
   };
 
   const isFormValid = () => {
     if (!form) return false;
-    return form.sections.every((_, idx) => isSectionComplete(idx));
+    return form.categories.every((_, idx) => isSectionComplete(idx));
   };
 
   const handleSubmit = async () => {

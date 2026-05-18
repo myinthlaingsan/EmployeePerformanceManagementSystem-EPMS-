@@ -72,12 +72,25 @@ export interface FeedbackSummaryResponse {
   summaryId?: number;
   targetUserId: number;
   targetUserName: string;
+  cycleId: number;
   cycleName: string;
   selfScores: CategoryScore[];
   scores: CategoryScore[];       // Others (Mgr, Peer, Sub) aggregate
   detailedComments: DetailedComment[];
   totalAverageScore: number;
   isFinalized: boolean;
+  targetDepartmentName?: string;
+  targetJobLevelCode?: string;
+  totalRequests?: number;
+  completedRequests?: number;
+  questionRatings?: QuestionRatingReport[];
+}
+
+export interface QuestionRatingReport {
+  questionText: string;
+  categoryName: string;
+  averageScore: number;
+  responseCount: number;
 }
 
 // HR — Evaluator Assignment Preview
@@ -115,3 +128,56 @@ export interface FeedbackFormCreationRequest {
   formName: string;
   categories: CategoryPayload[];
 }
+
+// GET /api/v1/feedback/submission/{requestId}
+export interface FeedbackResponseDetails {
+  questionId: number;
+  questionText: string;
+  categoryName: string;
+  score: number;
+  comment?: string;
+}
+
+export interface FeedbackDetailsResponse {
+  feedbackId: number;
+  requestId: number;
+  targetUserName: string;
+  evaluatorName: string;
+  relationship: FeedbackRelationship;
+  averageScore: number;
+  overallComment?: string;
+  submittedAt: string;
+  responses: FeedbackResponseDetails[];
+}
+
+export interface DepartmentFeedbackConfigDTO {
+  id?: number;
+  departmentId: number;
+  departmentName?: string;
+  levelId: number;
+  levelName?: string;
+  formSetId?: number;
+  formSetName?: string;
+  minPeers: number;
+  maxPeers: number;
+  minSubordinates: number;
+  maxSubordinates: number;
+  allowCrossDepartment: boolean;
+}
+
+// HR Dashboard — Pending Feedback List
+export interface PendingFeedbackDTO {
+  requestId: number;
+  evaluatorId: number;
+  evaluatorName: string;
+  evaluatorDepartmentName: string;
+  targetUserId: number;
+  targetUserName: string;
+  targetDepartmentName: string;
+  cycleId: number;
+  cycleName: string;
+  cycleEndDate: string; // ISO date string e.g. "2026-06-30"
+  relationship: FeedbackRelationship;
+  isAnonymous: boolean;
+}
+

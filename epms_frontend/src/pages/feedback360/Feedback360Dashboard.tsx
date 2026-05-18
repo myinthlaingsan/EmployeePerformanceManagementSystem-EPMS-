@@ -1,6 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGetMyFeedbackRequestsQuery } from '../../features/feedback360/feedback360Api';
+import { 
+  useGetMyFeedbackRequestsQuery, 
+  useGetMyFinalizedSummariesQuery,
+  useGetMySubmissionsQuery 
+} from '../../features/feedback360/feedback360Api';
 import DashboardStats from '../../features/feedback360/components/DashboardStats';
 import FeedbackTaskCard from '../../features/feedback360/components/FeedbackTaskCard';
 import StatusBadge from '../../components/shared/StatusBadge';
@@ -9,7 +13,9 @@ import {
   CheckCircle2, 
   AlertCircle,
   ClipboardList,
-  ShieldCheck
+  ShieldCheck,
+  Trophy,
+  ExternalLink
 } from 'lucide-react';
 
 const Feedback360Dashboard: React.FC = () => {
@@ -19,10 +25,14 @@ const Feedback360Dashboard: React.FC = () => {
   const pendingPaging = usePagination('pending');
   const completedPaging = usePagination('completed');
 
-  const { data: requests, isLoading } = useGetMyFeedbackRequestsQuery();
+  const { data: requests, isLoading: requestsLoading } = useGetMyFeedbackRequestsQuery();
+  const { data: submissions, isLoading: submissionsLoading } = useGetMySubmissionsQuery();
+  const { data: mySummaries, isLoading: summariesLoading } = useGetMyFinalizedSummariesQuery();
 
-  const pendingRequests = requests?.filter(r => r.status === 'PENDING') || [];
-  const completedRequests = requests?.filter(r => r.status === 'COMPLETED') || [];
+  const isLoading = requestsLoading || summariesLoading || submissionsLoading;
+
+  const pendingRequests = requests || [];
+  const completedRequests = submissions || [];
 
   if (isLoading) {
     return (
@@ -72,15 +82,29 @@ const Feedback360Dashboard: React.FC = () => {
                 Completed Recently
               </h2>
               <div className="grid gap-3">
-                {completedRequests.map((req) => (
-                  <div key={req.id} className="bg-white/60 p-4 rounded-2xl border border-slate-100 flex items-center justify-between opacity-75 grayscale hover:grayscale-0 hover:opacity-100 transition-all">
+                {completedRequests.map((sub) => (
+                  <div 
+                    key={sub.feedbackId} 
+                    onClick={() => navigate(`/feedback360/submission/${sub.requestId}`)}
+                    className="bg-white/60 p-4 rounded-2xl border border-slate-100 flex items-center justify-between cursor-pointer hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all group"
+                  >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold">
-                        {req.targetUserName.charAt(0)}
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                        {sub.targetUserName.charAt(0)}
                       </div>
-                      <span className="font-bold text-slate-700">{req.isAnonymous ? 'Confidential Review' : req.targetUserName}</span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-700">{sub.targetUserName}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                          Score: {sub.averageScore.toFixed(0)}%
+                        </span>
+                      </div>
                     </div>
-                    <StatusBadge type="relationship" value={req.relationship} />
+                    <div className="flex items-center gap-4">
+                      <StatusBadge type="relationship" value={sub.relationship} />
+                      <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-indigo-600">
+                        <ExternalLink className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -121,6 +145,31 @@ const Feedback360Dashboard: React.FC = () => {
               </p>
             </div>
           </div>
+
+          {mySummaries && mySummaries.length > 0 && (
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+              <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-3">
+                <Trophy className="w-6 h-6 text-amber-500" />
+                My Performance Insights
+              </h3>
+              <div className="space-y-4">
+                {mySummaries.map((s) => (
+                  <div key={s.summaryId} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between group hover:border-indigo-200 hover:bg-indigo-50/30 transition-all">
+                    <div>
+                      <div className="text-xs font-black text-slate-400 uppercase tracking-widest">{s.cycleName}</div>
+                      <div className="font-black text-slate-800 mt-0.5">Performance Summary</div>
+                    </div>
+                    <button 
+                      onClick={() => navigate(`/feedback360/summary/${s.targetUserId}/${s.cycleId}`)}
+                      className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-600 shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all"
+                    >
+                      <ExternalLink className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

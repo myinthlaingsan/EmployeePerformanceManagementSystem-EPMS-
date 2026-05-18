@@ -17,7 +17,7 @@ const FeedbackTaskCard: React.FC<FeedbackTaskCardProps> = ({ request, onAction }
         </div>
         <div>
           <h4 className="text-lg font-black text-slate-900">
-            {request.isAnonymous ? 'Anonymous Review' : request.targetUserName}
+            {request.targetUserName}
           </h4>
           <div className="flex items-center gap-3 mt-1">
             <StatusBadge type="relationship" value={request.relationship} />

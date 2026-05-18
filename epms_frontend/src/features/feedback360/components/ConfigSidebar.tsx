@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, ChevronRight, Eye, Play, Loader2, AlertTriangle } from 'lucide-react';
+import { Lock, ChevronRight, Eye, Play, Loader2, AlertTriangle, Shuffle } from 'lucide-react';
 
 interface ConfigSidebarProps {
   globalMaxLimit: number;
@@ -9,6 +9,7 @@ interface ConfigSidebarProps {
   isPreviewing: boolean;
   isGenerating: boolean;
   onPreview: () => void;
+  onShuffle: () => void;
   onGenerate: () => void;
   canAction: boolean;
 }
@@ -21,6 +22,7 @@ const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
   isPreviewing,
   isGenerating,
   onPreview,
+  onShuffle,
   onGenerate,
   canAction
 }) => {
@@ -71,6 +73,18 @@ const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
                 Preview Population
               </div>
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-all" />
+            </button>
+
+            <button 
+              onClick={onShuffle}
+              disabled={!canAction || isPreviewing}
+              className="w-full py-4 px-8 rounded-2xl border-2 border-indigo-600/30 hover:border-indigo-600/60 bg-indigo-50/50 hover:bg-indigo-50 text-indigo-600 font-black text-sm flex items-center justify-between group transition-all active:scale-95 disabled:opacity-50"
+            >
+              <div className="flex items-center gap-3">
+                {isPreviewing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Shuffle className="w-5 h-5" />}
+                Shuffle Random Matrix
+              </div>
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-all text-indigo-400 group-hover:text-indigo-600" />
             </button>
 
             <button 

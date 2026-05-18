@@ -6,6 +6,9 @@ import type {
   FeedbackSummaryResponse,
   EvaluatorAssignmentDTO,
   GenerationValidationResponse,
+  DepartmentFeedbackConfigDTO,
+  PendingFeedbackDTO,
+  FeedbackDetailsResponse,
 } from './feedback360Types';
 
 // Helper: unwrap the standard { data: ... } ApiResponse wrapper
@@ -110,6 +113,12 @@ export const feedback360Api = api.injectEndpoints({
       providesTags: ['FeedbackSummary'],
     }),
 
+    getMyFinalizedSummaries: builder.query<FeedbackSummaryResponse[], void>({
+      query: () => '/360-feedback/summary/my-summaries',
+      transformResponse,
+      providesTags: ['FeedbackSummary'],
+    }),
+
     // Finalize a summary (lock it)
     finalizeSummary: builder.mutation<void, number>({
       query: (summaryId) => ({
@@ -117,6 +126,20 @@ export const feedback360Api = api.injectEndpoints({
         method: 'PUT',
       }),
       invalidatesTags: ['FeedbackSummary'],
+    }),
+
+    // Get evaluator's submission history
+    getMySubmissions: builder.query<FeedbackDetailsResponse[], void>({
+      query: () => '/feedback/my-submissions',
+      transformResponse,
+      providesTags: ['Feedback'],
+    }),
+
+    // Get specific submission details
+    getSubmissionByRequest: builder.query<FeedbackDetailsResponse, number>({
+      query: (requestId) => `/feedback/submission/${requestId}`,
+      transformResponse,
+      providesTags: (_res, _err, requestId) => [{ type: 'Feedback', id: requestId }],
     }),
 
     // Rotation Preview (Top Management → L04)
@@ -129,6 +152,20 @@ export const feedback360Api = api.injectEndpoints({
         params: { currentCycleId, previousCycleId },
       }),
       transformResponse,
+    }),
+
+    // Get all requests for a specific cycle (HR monitor)
+    getRequestsByCycle: builder.query<FeedbackRequestResponse[], number>({
+      query: (cycleId) => `/feedback/cycle/${cycleId}/requests`,
+      transformResponse,
+      providesTags: ['Feedback'],
+    }),
+
+    // Get progress counts for a cycle (HR dashboard)
+    getCycleProgress: builder.query<Record<string, number>, number>({
+      query: (cycleId) => `/feedback/cycle/${cycleId}/progress`,
+      transformResponse,
+      providesTags: ['Feedback'],
     }),
 
     // Finalize the evaluator population for a cycle (moves status to FINALIZED)
@@ -172,6 +209,53 @@ export const feedback360Api = api.injectEndpoints({
       }),
       invalidatesTags: (_res, _err, { cycleId }) => [{ type: 'Cycle', id: cycleId }],
     }),
+ 
+    // ── CONFIGURATION ENDPOINTS ────────────────────────────────────────────────
+ 
+    getFeedbackConfigs: builder.query<DepartmentFeedbackConfigDTO[], void>({
+      query: () => '/feedback/config',
+      transformResponse,
+      providesTags: ['FeedbackConfig'],
+    }),
+ 
+    saveFeedbackConfig: builder.mutation<DepartmentFeedbackConfigDTO, DepartmentFeedbackConfigDTO>({
+      query: (body) => ({
+        url: '/feedback/config',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['FeedbackConfig'],
+    }),
+ 
+    deleteFeedbackConfig: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `/feedback/config/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['FeedbackConfig'],
+    }),
+
+    // HR Dashboard: All PENDING feedback requests across all cycles
+    getPendingFeedbacks: builder.query<PendingFeedbackDTO[], void>({
+      query: () => '/360-feedback/requests/pending',
+      transformResponse,
+      providesTags: ['Feedback'],
+    }),
+    
+    sendFeedbackReminder: builder.mutation<void, number>({
+      query: (requestId) => ({
+        url: `/360-feedback/requests/remind/${requestId}`,
+        method: 'POST',
+      }),
+    }),
+
+    sendAllFeedbackReminders: builder.mutation<void, number | undefined>({
+      query: (cycleId) => ({
+        url: '/360-feedback/requests/remind-all',
+        method: 'POST',
+        params: { cycleId },
+      }),
+    }),
   }),
 });
 
@@ -185,11 +269,22 @@ export const {
   useRegenerateEmployeeFeedbackMutation,
   useGenerateAllSummariesMutation,
   useGetSummariesByCycleQuery,
+  useGetMyFinalizedSummariesQuery,
   useFinalizeSummaryMutation,
+  useGetMySubmissionsQuery,
+  useGetSubmissionByRequestQuery,
   usePreviewRotationAssignmentsQuery,
+  useGetRequestsByCycleQuery,
+  useGetCycleProgressQuery,
   useFinalizeEvaluatorsMutation,
   useResetCycleStatusMutation,
   useValidateGenerationQuery,
   useGetFeedbackFormByCycleQuery,
   useSaveFeedbackFormMutation,
+  useGetFeedbackConfigsQuery,
+  useSaveFeedbackConfigMutation,
+  useDeleteFeedbackConfigMutation,
+  useGetPendingFeedbacksQuery,
+  useSendFeedbackReminderMutation,
+  useSendAllFeedbackRemindersMutation,
 } = feedback360Api;
