@@ -13,7 +13,8 @@ import {
   useGetAppraisalFormSetsQuery,
   useDeleteAppraisalFormMutation,
   useDeleteFormSetMutation,
-  useDeleteCycleMutation
+  useDeleteCycleMutation,
+  useSendCycleRemindersMutation
 } from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
 import {
@@ -81,6 +82,8 @@ const AppraisalList: React.FC = () => {
   const [deleteFormSet] = useDeleteFormSetMutation();
   const [deleteForm] = useDeleteAppraisalFormMutation();
   const [deleteCycle] = useDeleteCycleMutation();
+  const [sendReminders, { isLoading: isSendingReminders }] = useSendCycleRemindersMutation();
+
   const { data: formSets = [] } = useGetAppraisalFormSetsQuery(undefined, { skip: !isPrivileged });
 
   const isLoading = loadingAppraisals || loadingTeam || (isPrivileged && (loadingCycles || loadingForms || (!!selectedCycleId && loadingCycleData)));
@@ -210,8 +213,22 @@ const AppraisalList: React.FC = () => {
               <button className="px-6 py-3 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all flex items-center gap-2">
                 <Share2 className="w-4 h-4 text-slate-400" /> Export Status
               </button>
-              <button className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2">
-                <Mail className="w-4 h-4" /> Send Reminders
+              <button
+                onClick={async () => {
+                  if (selectedCycleId) {
+                    try {
+                      await sendReminders(Number(selectedCycleId)).unwrap();
+                      toast.success("Reminder notifications sent successfully!");
+                    } catch (err: any) {
+                      const errorMsg = err?.data?.message || "Failed to send reminders.";
+                      toast.error(`Error: ${errorMsg}`);
+                    }
+                  }
+                }}
+                disabled={isSendingReminders}
+                className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                <Mail className="w-4 h-4" /> {isSendingReminders ? 'Sending...' : 'Send Reminders'}
               </button>
               {isPrivileged && !cycle?.isAssigned && (
                 <button
@@ -573,7 +590,7 @@ const AppraisalList: React.FC = () => {
                     try { await createFormSet({ name: newSetName, cycleId: cycleData.cycleId }).unwrap(); setExpandedSet(newSetName); setShowNewSetModal(false); }
                     catch { toast.error('Failed to create form set'); }
                   }
-                }} disabled={!newSetName.trim()} className="transition-colors disabled:opacity-50"
+                }} className="transition-colors disabled:opacity-50"
                   style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500 }}>
                   Create
                 </button>

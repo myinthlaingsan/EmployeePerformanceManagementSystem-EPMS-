@@ -397,6 +397,13 @@ export const appraisalApi = api.injectEndpoints({
       invalidatesTags: ['Cycle'],
     }),
 
+    sendCycleReminders: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `/appraisal-cycles/${id}/reminders`,
+        method: 'POST',
+      }),
+    }),
+
     uploadEmployeeSignature: builder.mutation<void, { id: string, file: File }>({
       query: ({ id, file }) => {
         const formData = new FormData();
@@ -460,6 +467,7 @@ export const {
   useActivateCycleMutation,
   useCloseCycleMutation,
   useDeleteCycleMutation,
+  useSendCycleRemindersMutation,
   useGetAppraisalFormQuery,
   useLazyGetAppraisalFormQuery,
   useGetAppraisalFormsQuery,
