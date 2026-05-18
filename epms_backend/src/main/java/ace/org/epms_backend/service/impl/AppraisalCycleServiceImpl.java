@@ -414,4 +414,63 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .status(AuditStatus.SUCCESS)
                 .build());
     }
+
+    @Override
+    @Transactional
+    public void sendReminders(Long id) {
+        System.out.println(">>> [DEBUG sendReminders] Triggering manual reminders for Cycle ID: " + id);
+        AppraisalCycle cycle = getCycleById(id);
+        List<Appraisal> appraisals = appraisalRepository.findByCycle_CycleId(id);
+        System.out.println(">>> [DEBUG sendReminders] Found " + appraisals.size() + " appraisals for Cycle: " + cycle.getCycleName());
+
+        for (Appraisal appraisal : appraisals) {
+            AppraisalStatus status = appraisal.getStatus();
+            String empName = appraisal.getEmployee() != null ? appraisal.getEmployee().getStaffName() : "Unknown";
+            Long empId = appraisal.getEmployee() != null ? appraisal.getEmployee().getId() : null;
+            Long mgrId = appraisal.getManager() != null ? appraisal.getManager().getId() : null;
+            System.out.println(">>> [DEBUG sendReminders] Processing Appraisal ID: " + appraisal.getAppraisalId() 
+                + ", Employee: " + empName + " (ID: " + empId + ")"
+                + ", Status: " + status 
+                + ", Manager ID: " + mgrId);
+
+            if (status == AppraisalStatus.PENDING) {
+                System.out.println(">>> [DEBUG sendReminders] Publishing SELF_ASSESSMENT_REMINDER to Employee ID: " + empId);
+                eventPublisher.publishEvent(NotificationEvent.builder()
+                        .recipientId(empId)
+                        .type(NotificationType.SELF_ASSESSMENT_REMINDER)
+                        .title("Self Assessment Reminder")
+                        .message("Please complete your self-assessment for cycle: " + cycle.getCycleName())
+                        .referenceType(ReferenceType.APPRAISAL)
+                        .referenceId(appraisal.getAppraisalId())
+                        .actionUrl("/appraisals/self-assessment/" + appraisal.getAppraisalId())
+                        .build());
+            } else if (status == AppraisalStatus.SELF_ASSESSED) {
+                if (mgrId != null) {
+                    System.out.println(">>> [DEBUG sendReminders] Publishing MANAGER_EVALUATION_REMINDER to Manager ID: " + mgrId);
+                    eventPublisher.publishEvent(NotificationEvent.builder()
+                            .recipientId(mgrId)
+                            .type(NotificationType.MANAGER_EVALUATION_REMINDER)
+                            .title("Manager Evaluation Reminder")
+                            .message("Please complete the evaluation for: " + empName)
+                            .referenceType(ReferenceType.APPRAISAL)
+                            .referenceId(appraisal.getAppraisalId())
+                            .actionUrl("/appraisals/manager-evaluation/" + appraisal.getAppraisalId())
+                            .build());
+                } else {
+                    System.out.println(">>> [DEBUG sendReminders] WARNING: Appraisal ID " + appraisal.getAppraisalId() + " is SELF_ASSESSED but Manager is NULL!");
+                }
+            } else {
+                System.out.println(">>> [DEBUG sendReminders] Status " + status + " does not require manual reminder.");
+            }
+        }
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisal_cycle")
+                .recordId(cycle.getCycleId())
+                .action(AuditAction.UPDATE)
+                .newState(cycle)
+                .status(AuditStatus.SUCCESS)
+                .build());
+    }
 }

@@ -17,23 +17,37 @@ public class NotificationListener {
     @Async
     @EventListener
     public void handleNotificationEvent(NotificationEvent event) {
-        NotificationRequest request = NotificationRequest.builder()
-                .recipientId(event.getRecipientId())
-                .senderId(event.getSenderId())
-                .type(event.getType())
-                .title(event.getTitle())
-                .message(event.getMessage())
-                .referenceType(event.getReferenceType())
-                .referenceId(event.getReferenceId())
-                .actionUrl(event.getActionUrl())
-                .build();
+        System.out.println(">>> [DEBUG NotificationListener] Caught NotificationEvent: type=" + event.getType() 
+            + ", recipientId=" + event.getRecipientId() 
+            + ", title=\"" + event.getTitle() + "\""
+            + ", broadcast=" + event.isBroadcast()
+            + ", targetRole=" + event.getTargetRole());
+        try {
+            NotificationRequest request = NotificationRequest.builder()
+                    .recipientId(event.getRecipientId())
+                    .senderId(event.getSenderId())
+                    .type(event.getType())
+                    .title(event.getTitle())
+                    .message(event.getMessage())
+                    .referenceType(event.getReferenceType())
+                    .referenceId(event.getReferenceId())
+                    .actionUrl(event.getActionUrl())
+                    .build();
 
-        if (event.getTargetRole() != null) {
-            notificationService.sendToRole(event.getTargetRole(), request);
-        } else if (event.isBroadcast()) {
-            notificationService.notifyAllEmployees(request);
-        } else {
-            notificationService.send(request);
+            if (event.getTargetRole() != null) {
+                System.out.println(">>> [DEBUG NotificationListener] Sending to role: " + event.getTargetRole());
+                notificationService.sendToRole(event.getTargetRole(), request);
+            } else if (event.isBroadcast()) {
+                System.out.println(">>> [DEBUG NotificationListener] Broadcasting to all employees...");
+                notificationService.notifyAllEmployees(request);
+            } else {
+                System.out.println(">>> [DEBUG NotificationListener] Sending private notification to recipient ID: " + event.getRecipientId());
+                notificationService.send(request);
+            }
+            System.out.println(">>> [DEBUG NotificationListener] Successfully processed NotificationEvent!");
+        } catch (Exception e) {
+            System.err.println(">>> [DEBUG NotificationListener] ERROR: Failed to handle NotificationEvent!");
+            e.printStackTrace();
         }
     }
 }
