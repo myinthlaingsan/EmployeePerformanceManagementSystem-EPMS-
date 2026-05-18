@@ -10,13 +10,13 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface OneOnOneMeetingRepository extends JpaRepository<OneOnOneMeeting, Long> {
-    @Query("SELECT m FROM OneOnOneMeeting m WHERE m.manager.id = :managerId " +
-            "AND (m.manager.id = :currentUserId OR (m.employee.id = :currentUserId AND (m.isPrivateNote = false OR m.isPrivateNote IS NULL)))")
-    Page<OneOnOneMeeting> findVisibleMeetingsByManager(@Param("managerId") Long managerId,
-                                                       @Param("currentUserId") Long currentUserId, Pageable pageable);
-
-    @Query("SELECT m FROM OneOnOneMeeting m WHERE m.manager.id = :currentUserId OR (m.employee.id = :currentUserId AND (m.isPrivateNote = false OR m.isPrivateNote IS NULL))")
-    Page<OneOnOneMeeting> findAllVisibleMeetings(@Param("currentUserId") Long currentUserId, Pageable pageable);
+//    @Query("SELECT m FROM OneOnOneMeeting m WHERE m.manager.id = :managerId " +
+//            "AND (m.manager.id = :currentUserId OR (m.employee.id = :currentUserId AND (m.isPrivateNote = false OR m.isPrivateNote IS NULL)))")
+//    Page<OneOnOneMeeting> findVisibleMeetingsByManager(@Param("managerId") Long managerId,
+//                                                       @Param("currentUserId") Long currentUserId, Pageable pageable);
+//
+//    @Query("SELECT m FROM OneOnOneMeeting m WHERE m.manager.id = :currentUserId OR (m.employee.id = :currentUserId AND (m.isPrivateNote = false OR m.isPrivateNote IS NULL))")
+//    Page<OneOnOneMeeting> findAllVisibleMeetings(@Param("currentUserId") Long currentUserId, Pageable pageable);
 
     Page<OneOnOneMeeting> findByEmployeeId(Long employeeId, Pageable pageable);
 
