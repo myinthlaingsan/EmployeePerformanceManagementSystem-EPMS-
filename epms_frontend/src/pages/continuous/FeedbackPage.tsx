@@ -544,7 +544,11 @@ const FeedbackPage = () => {
                       {fb.employeeId !== user?.id && <span className="text-gray-400 font-normal ml-1 text-sm">to {fb.employeeName}</span>}
                       {fb.employeeId === user?.id && fb.managerId === user?.id && <span className="text-gray-400 font-normal ml-1 text-sm">(Self)</span>}
                     </h3>
-                    <p className="text-xs text-gray-400">{format(new Date(fb.createdAt), 'PPP p')}</p>
+                    <p className="text-xs text-gray-400">
+                      {fb.publishedAt
+                        ? <>Published {format(new Date(fb.publishedAt), 'PPP p')}</>
+                        : format(new Date(fb.createdAt), 'PPP p')}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -706,8 +710,8 @@ const FeedbackPage = () => {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
             </div>
             <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Published</p>
-              <h3 className="text-2xl font-bold text-gray-900">{feedbackStats?.totalPublished || 0}</h3>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isManager ? 'Total Published' : 'Total Received'}</p>
+              <h3 className="text-2xl font-bold text-gray-900">{isManager ? (feedbackStats?.totalPublished || 0) : totalItems}</h3>
             </div>
           </div>
 

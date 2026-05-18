@@ -379,8 +379,8 @@ const MeetingPage = () => {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Published</p>
-            <h3 className="text-2xl font-bold text-gray-900">{meetingStats?.totalPublished || 0}</h3>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isManager ? 'Total Published' : 'Total Received'}</p>
+            <h3 className="text-2xl font-bold text-gray-900">{isManager ? (meetingStats?.totalPublished || 0) : totalItems}</h3>
           </div>
         </div>
 
@@ -449,7 +449,12 @@ const MeetingPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+                  {m.publishedAt 
+                    ? <>Published {format(new Date(m.publishedAt), 'MMM d, yyyy')}</> 
+                    : <>Created {format(new Date(m.createdAt), 'MMM d, yyyy')}</>}
+                </span>
                 {m.status === ContinuousStatus.DRAFT && (
                   <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[8px] font-black rounded uppercase tracking-widest border border-gray-200 flex items-center gap-1">
                     <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
@@ -491,23 +496,23 @@ const MeetingPage = () => {
                             type="checkbox"
                             checked={isDone}
                             onChange={async () => {
-                              if (!isEmployee) return;
+                              if (!isEmployee || isDone) return;
                               try {
                                 await updateActionItemStatus({
                                   meetingId: m.meetingId,
                                   itemId: item.id,
-                                  status: isDone ? ActionItemStatus.PENDING : ActionItemStatus.DONE
+                                  status: ActionItemStatus.DONE
                                 }).unwrap();
                               } catch (err) {
                                 console.error("Failed to update status", err);
                               }
                             }}
-                            disabled={!isEmployee}
-                            className={`w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 transition-all ${!isEmployee ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:scale-110'}`}
+                            disabled={!isEmployee || isDone}
+                            className={`w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 transition-all ${(!isEmployee || isDone) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:scale-110'}`}
                           />
-                          {!isEmployee && (
+                          {(!isEmployee || isDone) && (
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
-                              This status is managed by the employee
+                              {isDone ? 'Completed items cannot be unchecked' : 'This status is managed by the employee'}
                               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
                             </div>
                           )}

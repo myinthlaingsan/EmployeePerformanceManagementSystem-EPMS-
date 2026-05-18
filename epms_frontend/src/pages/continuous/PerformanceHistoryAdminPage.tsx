@@ -614,9 +614,21 @@ const ManagerActionStats = ({ history, managerId, filterType }: { history: any[]
   const isMeetingOnly = filterType === 'MEETING';
 
   if (isFeedbackOnly) {
-    const praise = history.filter(h => h.performerId === managerId && h.feedbackType === 'PRAISE').length;
-    const improvement = history.filter(h => h.performerId === managerId && h.feedbackType === 'IMPROVEMENT').length;
-    const correction = history.filter(h => h.performerId === managerId && h.feedbackType === 'WARNING').length;
+    // Deduplicate by sourceId — keep only ONE row per unique feedback (the most recent),
+    // so that edit/update events don't inflate the count.
+    const managerFeedbackRows = history.filter(h => h.performerId === managerId && h.sourceType === 'FEEDBACK');
+    const latestBySource = new Map<number, any>();
+    managerFeedbackRows.forEach(h => {
+      const existing = latestBySource.get(h.sourceId);
+      if (!existing || new Date(h.createdAt) > new Date(existing.createdAt)) {
+        latestBySource.set(h.sourceId, h);
+      }
+    });
+    const uniqueFeedbacks = Array.from(latestBySource.values());
+
+    const praise = uniqueFeedbacks.filter(h => h.feedbackType === 'PRAISE').length;
+    const improvement = uniqueFeedbacks.filter(h => h.feedbackType === 'IMPROVEMENT').length;
+    const correction = uniqueFeedbacks.filter(h => h.feedbackType === 'WARNING').length;
     const total = praise + improvement + correction;
 
     return (

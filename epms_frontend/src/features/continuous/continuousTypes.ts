@@ -50,6 +50,8 @@ export interface ContinuousFeedbackResponse {
   createdBy: number;
   replyCount?: number;
   createdAt: string;
+  publishedAt?: string; // Set when the draft is published; null if created directly as published (use createdAt fallback)
+  isPrivate?: boolean;
 }
 
 export interface ContinuousFeedbackRequest {
@@ -103,6 +105,7 @@ export interface OneOnOneMeetingResponse {
   createdBy: number;
   commentCount?: number;
   createdAt: string;
+  publishedAt?: string; // Set when the draft is published; null if created directly as published (use createdAt fallback)
 }
 
 export interface OneOnOneMeetingRequest {
