@@ -91,9 +91,9 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         java.util.Map<String, DepartmentFeedbackConfig> deptConfigs = deptConfigRepository.findAll().stream()
                 .filter(c -> c.getDepartment() != null && c.getJobLevel() != null)
                 .collect(Collectors.toMap(
-                    c -> c.getDepartment().getId() + ":" + c.getJobLevel().getLevelId(), 
-                    c -> c, 
-                    (a, b) -> a));
+                        c -> c.getDepartment().getId() + ":" + c.getJobLevel().getLevelId(),
+                        c -> c,
+                        (a, b) -> a));
 
         // 4. Fetch previous cycle assignments for rotation
         java.util.Map<Long, java.util.Set<Long>> excludedEvaluatorsMap = new java.util.HashMap<>();
@@ -120,7 +120,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         AppraisalCycle cycle = cycleRepository.findById(cycleId)
                 .orElseThrow(() -> new NotFoundException("Cycle not found"));
 
-        log.info("{} 360 feedback generation for cycle: {}. Global Max Limit: {}. Exclude Long Term Leave: {}", 
+        log.info("{} 360 feedback generation for cycle: {}. Global Max Limit: {}. Exclude Long Term Leave: {}",
                 persist ? "Starting" : "Previewing", cycleId, globalMaxLimit, excludeLongTermLeave);
 
         List<FeedbackRequestResponse> previewResults = new ArrayList<>();
@@ -136,9 +136,9 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         java.util.Map<String, DepartmentFeedbackConfig> deptConfigs = deptConfigRepository.findAll().stream()
                 .filter(c -> c.getDepartment() != null && c.getJobLevel() != null)
                 .collect(Collectors.toMap(
-                    c -> c.getDepartment().getId() + ":" + c.getJobLevel().getLevelId(), 
-                    c -> c, 
-                    (a, b) -> a));
+                        c -> c.getDepartment().getId() + ":" + c.getJobLevel().getLevelId(),
+                        c -> c,
+                        (a, b) -> a));
 
         List<Employee> allEmployees = employeeRepository.findAll().stream()
                 .filter(e -> getLevelRank(e) < 8)
@@ -168,12 +168,12 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         return previewResults;
     }
 
-    private void generateRequestsForEmployee(AppraisalCycle cycle, Employee target, Long cycleId, Long previousCycleId, 
-                                            int globalMaxLimit, java.util.Map<Long, Integer> workloadMap, 
-                                            java.util.Map<String, DepartmentFeedbackConfig> deptConfigs, 
-                                            boolean persist, List<FeedbackRequestResponse> previewResults,
-                                            java.util.Map<Long, java.util.Set<Long>> excludedEvaluatorsMap,
-                                            AppraisalForm form) {
+    private void generateRequestsForEmployee(AppraisalCycle cycle, Employee target, Long cycleId, Long previousCycleId,
+                                             int globalMaxLimit, java.util.Map<Long, Integer> workloadMap,
+                                             java.util.Map<String, DepartmentFeedbackConfig> deptConfigs,
+                                             boolean persist, List<FeedbackRequestResponse> previewResults,
+                                             java.util.Map<Long, java.util.Set<Long>> excludedEvaluatorsMap,
+                                             AppraisalForm form) {
         int rank = getLevelRank(target);
         if (rank < 4) return;
 
@@ -182,12 +182,12 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         Long deptId = departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(target.getId())
                 .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getId() : null)
                 .orElse(null);
-        
+
         DepartmentFeedbackConfig config = null;
         if (deptId != null && target.getLevel() != null) {
             config = deptConfigs.get(deptId + ":" + target.getLevel().getLevelId());
         }
-        
+
         int maxPeers;
         int maxSubs;
 
@@ -197,11 +197,26 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         } else {
             // Default ranges based on the level-based target assignment table
             switch (rank) {
-                case 4: maxPeers = 2; maxSubs = 3; break;
-                case 5: maxPeers = 3; maxSubs = 3; break;
-                case 6: maxPeers = 3; maxSubs = 4; break;
-                case 7: maxPeers = 5; maxSubs = 0; break;
-                default: maxPeers = 3; maxSubs = 3; break;
+                case 4:
+                    maxPeers = 2;
+                    maxSubs = 3;
+                    break;
+                case 5:
+                    maxPeers = 3;
+                    maxSubs = 3;
+                    break;
+                case 6:
+                    maxPeers = 3;
+                    maxSubs = 4;
+                    break;
+                case 7:
+                    maxPeers = 5;
+                    maxSubs = 0;
+                    break;
+                default:
+                    maxPeers = 3;
+                    maxSubs = 3;
+                    break;
             }
         }
 
@@ -226,12 +241,12 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         List<Employee> peerPool = new java.util.ArrayList<>();
         if (rank == 4) {
             // L04 Heads can have Global Shuffle for peers
-            peerPool.addAll(findPeersGlobal(target)); 
+            peerPool.addAll(findPeersGlobal(target));
         } else if (rank == 7) {
             // L07 Peers: Team first, then Department
             List<Employee> teamPeers = findPeersByTeam(target);
             peerPool.addAll(teamPeers);
-            
+
             if (peerPool.size() < maxPeers) {
                 List<Employee> deptPeers = findPeersByDepartment(target);
                 for (Employee dp : deptPeers) {
@@ -244,12 +259,12 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             // L05 and L06 must be SAME DEPARTMENT for peers
             peerPool.addAll(findPeersByDepartment(target));
         }
-        
+
         // ROTATION: Filter out peers who evaluated this target in previous cycle
         List<Employee> rotatedPeerPool = peerPool.stream()
                 .filter(p -> !excludedForThisTarget.contains(p.getId()))
                 .collect(Collectors.toList());
-        
+
         // Fallback: If not enough new peers, use some from the previous cycle but keep them at the end of shuffle
         if (rotatedPeerPool.size() < maxPeers) {
             for (Employee p : peerPool) {
@@ -259,7 +274,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
 
         Collections.shuffle(rotatedPeerPool);
         int pCount = 0;
-        
+
         // PASS 1: Rotated & Non-Reciprocal (List A)
         for (Employee peer : rotatedPeerPool) {
             if (pCount >= maxPeers) break;
@@ -292,7 +307,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         if (maxSubs > 0) {
             // Subordinates (L04, L05, L06 must be SAME DEPARTMENT)
             List<Employee> subPool = (rank == 6) ? findSubordinatesByTeam(target) : findSubordinatesByDepartment(target);
-            
+
             // ROTATION: Filter out subordinates who evaluated this target in previous cycle
             List<Employee> rotatedSubPool = subPool.stream()
                     .filter(s -> !excludedForThisTarget.contains(s.getId()))
@@ -306,7 +321,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
 
             Collections.shuffle(rotatedSubPool);
             int sCount = 0;
-            
+
             // PASS 1: Non-Reciprocal
             for (Employee sub : rotatedSubPool) {
                 if (sCount >= maxSubs) break;
@@ -314,7 +329,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     sCount++;
                 }
             }
-            
+
             // PASS 2: Reciprocal Fallback
             if (sCount < maxSubs) {
                 for (Employee sub : rotatedSubPool) {
@@ -354,7 +369,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                         Long managerDeptId = departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(manager.getId())
                                 .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getId() : null)
                                 .orElse(-2L);
-                        
+
                         if (!targetDeptId.equals(managerDeptId)) {
                             log.info("Skipping manager {} for target {} - Different department", manager.getId(), target.getId());
                             return;
@@ -365,7 +380,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     }
 
     private boolean handleRequest(AppraisalCycle cycle, Employee target, Employee evaluator, FeedbackRelationship rel,
-                                  boolean anon, java.util.Map<Long, Integer> workloadMap, int limit, boolean persist, 
+                                  boolean anon, java.util.Map<Long, Integer> workloadMap, int limit, boolean persist,
                                   List<FeedbackRequestResponse> previewResults, boolean allowReciprocal,
                                   AppraisalForm form) {
         if (target == null || evaluator == null) return false;
@@ -531,13 +546,13 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         return 99; // Default for unknown level
     }
 
-    private boolean createRequest(AppraisalCycle cycle, Employee target, Employee evaluator, FeedbackRelationship rel, 
-                                 boolean anon, java.util.Map<Long, Integer> workloadMap, int limit, boolean isFallback,
-                                 AppraisalForm form) {
+    private boolean createRequest(AppraisalCycle cycle, Employee target, Employee evaluator, FeedbackRelationship rel,
+                                  boolean anon, java.util.Map<Long, Integer> workloadMap, int limit, boolean isFallback,
+                                  AppraisalForm form) {
         if (target == null || evaluator == null || cycle == null) {
-            log.warn("Skipping request creation due to null values: target={}, evaluator={}, cycle={}", 
-                    target != null ? target.getId() : "null", 
-                    evaluator != null ? evaluator.getId() : "null", 
+            log.warn("Skipping request creation due to null values: target={}, evaluator={}, cycle={}",
+                    target != null ? target.getId() : "null",
+                    evaluator != null ? evaluator.getId() : "null",
                     cycle != null ? cycle.getCycleId() : "null");
             return false;
         }
@@ -565,8 +580,8 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             // Update workload map
             workloadMap.put(evaluator.getId(), currentWorkload + 1);
 
-            log.info("Created {} request: Target {} <- Evaluator {} (Workload: {})", 
-                rel, target.getId(), evaluator.getId(), currentWorkload + 1);
+            log.info("Created {} request: Target {} <- Evaluator {} (Workload: {})",
+                    rel, target.getId(), evaluator.getId(), currentWorkload + 1);
             // Notify Evaluator
             eventPublisher.publishEvent(NotificationEvent.builder()
                     .recipientId(evaluator.getId())
