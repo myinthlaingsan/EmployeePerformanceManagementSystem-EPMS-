@@ -1,5 +1,5 @@
-import React from "react";
-import { Trash2, Plus, AlertTriangle } from "lucide-react";
+import React, { useState } from "react";
+import { Trash2, Plus, AlertTriangle, Lock } from "lucide-react";
 
 interface LibraryKpiTableProps {
   details: any[];
@@ -77,9 +77,23 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
   }
 
   // EDIT MODE: card grid layout
+  const [tooltipIndex, setTooltipIndex] = useState<number | null>(null);
+
   const remaining = 100 - totalWeight;
   const isOver = totalWeight > 100;
   const isExact = totalWeight === 100;
+  const isLocked = totalWeight >= 100;
+
+  // Clamp weight so this card can't push total above 100.
+  // Max for card[i] = current weight of card[i] + remaining budget (negative means must reduce).
+  const handleWeightChange = (index: number, raw: string) => {
+    const parsed = raw === '' ? '' : Math.max(0, Number(raw));
+    if (parsed === '') { onDetailChange(index, 'weightPercent', ''); return; }
+    const currentCardWeight = Number(details[index].weightPercent) || 0;
+    const budget = currentCardWeight + (100 - totalWeight); // max this card can be
+    const capped = Math.min(parsed as number, Math.min(35, Math.max(0, budget)));
+    onDetailChange(index, 'weightPercent', capped);
+  };
 
   const inputBase: React.CSSProperties = {
     width: '100%',
@@ -148,19 +162,54 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>Weight %</label>
+                {/* Label row with lock icon + tooltip */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4, position: 'relative' }}>
+                  <span style={labelStyle}>Weight %</span>
+                  {isLocked && (
+                    <div
+                      style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'default' }}
+                      onMouseEnter={() => setTooltipIndex(index)}
+                      onMouseLeave={() => setTooltipIndex(null)}>
+                      <Lock size={11} style={{ color: '#F59E0B' }} />
+                      {tooltipIndex === index && (
+                        <div style={{
+                          position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: '#1F2937', color: '#F9FAFB',
+                          fontSize: 11, fontWeight: 500, lineHeight: 1.5,
+                          padding: '6px 10px', borderRadius: 7,
+                          whiteSpace: 'nowrap', pointerEvents: 'none',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                          zIndex: 50,
+                        }}>
+                          {isExact
+                            ? 'Total is 100%. Reduce another card to add more here.'
+                            : 'Total exceeded 100%. You must reduce this weight.'}
+                          <div style={{
+                            position: 'absolute', top: '100%', left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: 0, height: 0,
+                            borderLeft: '5px solid transparent',
+                            borderRight: '5px solid transparent',
+                            borderTop: '5px solid #1F2937',
+                          }} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <input
                   type="number"
                   min="0"
                   max="35"
                   value={detail.weightPercent}
                   onKeyDown={e => e.key === '-' && e.preventDefault()}
-                  onChange={e => onDetailChange(index, 'weightPercent', e.target.value)}
+                  onChange={e => handleWeightChange(index, e.target.value)}
                   style={{
                     ...inputBase,
-                    border: `1.5px solid ${detail.weightPercent > 35 ? '#EF4444' : '#1A56DB'}`,
-                    background: detail.weightPercent > 35 ? '#FEF2F2' : '#EEF3FD',
-                    color: detail.weightPercent > 35 ? '#DC2626' : '#1A56DB',
+                    border: `1.5px solid ${detail.weightPercent > 35 ? '#EF4444' : isLocked ? '#F59E0B' : '#1A56DB'}`,
+                    background: detail.weightPercent > 35 ? '#FEF2F2' : isLocked ? '#FFFBEB' : '#EEF3FD',
+                    color: detail.weightPercent > 35 ? '#DC2626' : isLocked ? '#B45309' : '#1A56DB',
                     fontWeight: 600,
                     fontSize: 14,
                   }}
@@ -177,11 +226,14 @@ const LibraryKpiTable: React.FC<LibraryKpiTableProps> = ({
                 <label style={labelStyle}>Target Value</label>
                 <input
                   type="number"
-                  min="0"
-                  value={detail.isCompliance ? 1 : detail.targetValue}
+                  min="1"
+                  value={detail.targetValue}
                   disabled={detail.isCompliance}
                   onKeyDown={e => e.key === '-' && e.preventDefault()}
-                  onChange={e => onDetailChange(index, 'targetValue', e.target.value)}
+                  onChange={e => {
+                    const v = e.target.value;
+                    onDetailChange(index, 'targetValue', v === '' ? '' : Math.max(1, Number(v)));
+                  }}
                   style={{
                     ...inputBase,
                     color: detail.isCompliance ? '#9EA3B0' : '#111827',

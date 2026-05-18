@@ -18,7 +18,9 @@ import LibraryBasicInfo from '../../components/kpi/LibraryBasicInfo';
 import LibraryKpiTable from '../../components/kpi/LibraryKpiTable';
 import LibrarySyncInfo from '../../components/kpi/LibrarySyncInfo';
 
-interface FormKpiDetail extends KpiLibraryDetailRequest { }
+interface FormKpiDetail extends KpiLibraryDetailRequest {
+  _savedTargetValue?: number;
+}
 
 const KpiLibraryEntry: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,7 +38,7 @@ const KpiLibraryEntry: React.FC = () => {
 
   const [formData, setFormData] = useState({ title: '', description: '', positionId: 0, targetLevelId: 0 });
   const [details, setDetails] = useState<FormKpiDetail[]>([
-    { goalTitle: '', unit: '', targetValue: 0, weightPercent: 5, categoryId: 0, isCompliance: false }
+    { goalTitle: '', unit: '', targetValue: 1, weightPercent: 5, categoryId: 0, isCompliance: false }
   ]);
 
   useEffect(() => {
@@ -77,14 +79,21 @@ const KpiLibraryEntry: React.FC = () => {
       ...newDetails[index],
       [field]: field === 'categoryId' ? parseInt(value) || 0
         : field === 'isCompliance' ? !!value
-          : ['targetValue', 'weightPercent'].includes(field as string) ? parseFloat(value) || 0
+          : ['targetValue', 'weightPercent'].includes(field as string) ? (value === '' ? '' : parseFloat(value) || 0)
             : value
     };
 
-    // Auto-setup for Compliance items: Target must be 1 for Pass/Fail logic
-    if (field === 'isCompliance' && value === true) {
-      updatedItem.targetValue = 1;
-      if (!updatedItem.unit) updatedItem.unit = 'Score';
+    if (field === 'isCompliance') {
+      if (value === true) {
+        // Save current target so it can be restored when toggled off, then lock to 1
+        updatedItem._savedTargetValue = Number(newDetails[index].targetValue) || 1;
+        updatedItem.targetValue = 1;
+        if (!updatedItem.unit) updatedItem.unit = 'Score';
+      } else {
+        // Restore the value that existed before compliance was switched on
+        updatedItem.targetValue = newDetails[index]._savedTargetValue ?? 1;
+        updatedItem._savedTargetValue = undefined;
+      }
     }
 
     newDetails[index] = updatedItem;
@@ -92,7 +101,7 @@ const KpiLibraryEntry: React.FC = () => {
   };
 
   const addRow = () => {
-    setDetails([...details, { goalTitle: '', unit: '', targetValue: 0, weightPercent: 10, categoryId: 0, isCompliance: false }]);
+    setDetails([...details, { goalTitle: '', unit: '', targetValue: 1, weightPercent: 10, categoryId: 0, isCompliance: false }]);
   };
 
   const removeRow = (index: number) => {
@@ -103,9 +112,9 @@ const KpiLibraryEntry: React.FC = () => {
 
   const buildPayload = () => ({
     ...formData,
-    details: details.map(d => ({
+    details: details.map(({ _savedTargetValue: _saved, ...d }) => ({
       ...d,
-      targetValue: (d.targetValue as any) === '' ? 0 : d.targetValue,
+      targetValue: (d.targetValue as any) === '' ? 1 : Math.max(1, Number(d.targetValue)),
       weightPercent: (d.weightPercent as any) === '' ? 0 : d.weightPercent,
     })),
   });
@@ -117,7 +126,7 @@ const KpiLibraryEntry: React.FC = () => {
       const d = details[i];
       if (!d.goalTitle.trim()) { toast.warning(`Goal card ${i + 1}: Please enter a goal title.`); return; }
       if (d.categoryId === 0) { toast.warning(`Goal card ${i + 1}: Please select a Category.`); return; }
-      if (((d.targetValue as any) === '' ? 0 : d.targetValue) <= 0) { toast.warning(`Goal card ${i + 1}: Target value must be greater than 0.`); return; }
+      if (((d.targetValue as any) === '' ? 0 : Number(d.targetValue)) < 1) { toast.warning(`Goal card ${i + 1}: Target value must be at least 1.`); return; }
       if (!d.unit?.trim()) { toast.warning(`Goal card ${i + 1}: Please enter a Unit.`); return; }
     }
     if (!isValid) { toast.error(errors.join('\n')); return; }
@@ -155,6 +164,12 @@ const KpiLibraryEntry: React.FC = () => {
         style={{ paddingBottom: 14, borderBottom: '0.5px solid #E4E6EC' }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>KPI Library Entry</h1>
         <div className="flex gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => navigate(-1)}
+            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 500 }}
+            className="hover:bg-gray-50 transition-colors">
+            Cancel
+          </button>
           <button
             onClick={handleSave}
             disabled={isCreating || isUpdating}
