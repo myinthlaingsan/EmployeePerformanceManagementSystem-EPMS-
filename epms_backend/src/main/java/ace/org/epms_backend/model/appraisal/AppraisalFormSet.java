@@ -33,5 +33,22 @@ public class AppraisalFormSet extends BaseEntity {
     @JoinColumn(name = "manager_evaluation_form_id")
     private AppraisalForm managerEvaluationForm;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "self_feedback_form_id")
+    private AppraisalForm selfFeedbackForm;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_feedback_form_id")
+    private AppraisalForm managerFeedbackForm;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "peer_feedback_form_id")
+    private AppraisalForm peerFeedbackForm;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subordinate_feedback_form_id")
+    private AppraisalForm subordinateFeedbackForm;
+
+    @Builder.Default
     private Boolean isActive = true;
 }

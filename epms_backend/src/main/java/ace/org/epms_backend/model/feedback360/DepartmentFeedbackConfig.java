@@ -1,6 +1,7 @@
 package ace.org.epms_backend.model.feedback360;
 
 import ace.org.epms_backend.model.BaseEntity;
+import ace.org.epms_backend.model.appraisal.AppraisalFormSet;
 import ace.org.epms_backend.model.employee.Department;
 import ace.org.epms_backend.model.employee.JobLevel;
 import jakarta.persistence.*;
@@ -12,9 +13,7 @@ import lombok.experimental.SuperBuilder;
  * If a department/level combination has an entry here, these settings override the global ones.
  */
 @Entity
-@Table(name = "dept_feedback_config", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"department_id", "job_level_id"})
-})
+@Table(name = "dept_feedback_config")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,13 +25,17 @@ public class DepartmentFeedbackConfig extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "department_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
     private Department department;
 
-    @ManyToOne
-    @JoinColumn(name = "job_level_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "job_level_id")
     private JobLevel jobLevel;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "form_set_id")
+    private AppraisalFormSet formSet;
 
     private Integer minPeers;
     private Integer maxPeers;
@@ -41,4 +44,10 @@ public class DepartmentFeedbackConfig extends BaseEntity {
 
     @Builder.Default
     private Boolean allowCrossDepartment = false;
+
+    @Builder.Default
+    private Boolean isDefault = false;
+
+    @Builder.Default
+    private Boolean isActive = true;
 }

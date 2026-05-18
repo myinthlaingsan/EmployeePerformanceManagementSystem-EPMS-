@@ -22,6 +22,9 @@ public interface FeedbackRequestRepository extends JpaRepository<FeedbackRequest
     void deleteByCycleCycleIdAndStatus(Long cycleId, FeedbackStatus status);
     long countByTargetUserIdAndCycleCycleId(Long targetUserId, Long cycleId);
     long countByTargetUserIdAndCycleCycleIdAndStatus(Long targetUserId, Long cycleId, FeedbackStatus status);
+    List<FeedbackRequest> findByStatus(FeedbackStatus status);
+
+    List<FeedbackRequest> findByCycleCycleIdAndStatus(Long cycleId, FeedbackStatus status);
 
     // --- Evaluator Rotation Rule Queries ---
 

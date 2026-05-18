@@ -13,6 +13,8 @@ public class DepartmentFeedbackConfigDTO {
     private String departmentName;
     private Long levelId;
     private String levelName;
+    private Long formSetId;
+    private String formSetName;
     private Integer minPeers;
     private Integer maxPeers;
     private Integer minSubordinates;

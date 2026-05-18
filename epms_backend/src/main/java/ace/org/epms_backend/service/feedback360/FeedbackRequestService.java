@@ -3,6 +3,7 @@ package ace.org.epms_backend.service.feedback360;
 import ace.org.epms_backend.dto.feedback360.FeedbackRequestGenerateDTO;
 import ace.org.epms_backend.dto.feedback360.FeedbackRequestResponse;
 import ace.org.epms_backend.dto.feedback360.GenerationValidationResponse;
+import ace.org.epms_backend.dto.feedback360.PendingFeedbackDTO;
 import java.util.List;
 import java.util.Map;
 
@@ -32,4 +33,10 @@ public interface FeedbackRequestService {
     FeedbackRequestResponse getRequest(Long requestId);
 
     void resetCycleStatus(Long cycleId);
+
+    List<PendingFeedbackDTO> getAllPendingFeedbacks();
+
+    void sendReminder(Long requestId);
+
+    void sendRemindersToAll(Long cycleId);
 }

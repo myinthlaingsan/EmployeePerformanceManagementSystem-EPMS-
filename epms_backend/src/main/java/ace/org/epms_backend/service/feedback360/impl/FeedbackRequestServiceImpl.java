@@ -3,6 +3,7 @@ package ace.org.epms_backend.service.feedback360.impl;
 import ace.org.epms_backend.dto.feedback360.FeedbackRequestResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackRequestGenerateDTO;
 import ace.org.epms_backend.dto.feedback360.GenerationValidationResponse;
+import ace.org.epms_backend.dto.feedback360.PendingFeedbackDTO;
 import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.enums.FeedbackStatus;
 import ace.org.epms_backend.enums.FormType;
@@ -29,6 +30,10 @@ import ace.org.epms_backend.repository.feedback360.GlobalFeedbackConfigRepositor
 import ace.org.epms_backend.repository.AppraisalFormRepository;
 import ace.org.epms_backend.service.feedback360.FeedbackRequestService;
 import ace.org.epms_backend.service.feedback360.EvaluatorRotationService;
+import ace.org.epms_backend.service.feedback360.FeedbackFormResolverService;
+import ace.org.epms_backend.service.feedback360.ManagerAssignmentService;
+import ace.org.epms_backend.service.feedback360.PeerRandomizationService;
+import ace.org.epms_backend.service.feedback360.SubordinateRandomizationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -55,6 +60,10 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     private final AppraisalFormRepository formRepository;
     private final GlobalFeedbackConfigRepository globalConfigRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final FeedbackFormResolverService formResolverService;
+    private final ManagerAssignmentService managerAssignmentService;
+    private final PeerRandomizationService peerRandomizationService;
+    private final SubordinateRandomizationService subordinateRandomizationService;
 
     @Override
     @Transactional
@@ -131,14 +140,14 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             int reqSubs = (config != null && config.getMaxSubordinates() != null) ? config.getMaxSubordinates() : globalConfig.getDefaultMaxSubordinates();
 
             if (reqPeers > 0) {
-                int availablePeers = findPeersByDepartment(target).size();
+                int availablePeers = peerRandomizationService.selectPeers(target, 999, Collections.emptySet()).size();
                 if (availablePeers < reqPeers) {
                     String deptName = getDeptName(target);
                     warnings.add(String.format("%s (%s): Peers available (%d) < Limit (%d)", target.getStaffName(), deptName, availablePeers, reqPeers));
                 }
             }
             if (reqSubs > 0) {
-                int availableSubs = findSubordinatesByDepartment(target).size();
+                int availableSubs = subordinateRandomizationService.selectSubordinates(target, 999, Collections.emptySet()).size();
                 if (availableSubs < reqSubs) {
                     String deptName = getDeptName(target);
                     warnings.add(String.format("%s (%s): Subordinates available (%d) < Limit (%d)", target.getStaffName(), deptName, availableSubs, reqSubs));
@@ -178,12 +187,12 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         }
 
         for (Employee target : allEmployees) {
-            generateRequestsForEmployee(cycle, target, cycleId, previousCycleId, globalMaxLimit, workloadMap, deptConfigs, persist, previewResults, excludedEvaluatorsMap, defaultForm);
+            generateRequestsForEmployee(cycle, target, cycleId, previousCycleId, globalMaxLimit, workloadMap, deptConfigs, persist, previewResults, excludedEvaluatorsMap);
         }
         return previewResults;
     }
 
-    private void generateRequestsForEmployee(AppraisalCycle cycle, Employee target, Long cycleId, Long previousCycleId, int globalMaxLimit, Map<Long, Integer> workloadMap, Map<String, DepartmentFeedbackConfig> deptConfigs, boolean persist, List<FeedbackRequestResponse> previewResults, Map<Long, Set<Long>> excludedEvaluatorsMap, AppraisalForm form) {
+    private void generateRequestsForEmployee(AppraisalCycle cycle, Employee target, Long cycleId, Long previousCycleId, int globalMaxLimit, Map<Long, Integer> workloadMap, Map<String, DepartmentFeedbackConfig> deptConfigs, boolean persist, List<FeedbackRequestResponse> previewResults, Map<Long, Set<Long>> excludedEvaluatorsMap) {
         int rank = getLevelRank(target);
         if (rank < 4) return;
 
@@ -195,50 +204,55 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         int maxPeers = (config != null && config.getMaxPeers() != null) ? config.getMaxPeers() : globalConfig.getDefaultMaxPeers();
         int maxSubs = (config != null && config.getMaxSubordinates() != null) ? config.getMaxSubordinates() : globalConfig.getDefaultMaxSubordinates();
 
-        handleRequest(cycle, target, target, FeedbackRelationship.SELF, false, workloadMap, 999, persist, previewResults, true, form, maxPeers, maxSubs);
+        // 1. SELF Feedback
+        handleRequest(cycle, target, target, FeedbackRelationship.SELF, workloadMap, 999, persist, previewResults, true, maxPeers, maxSubs);
 
-        if (rank == 4) {
-            Employee rotationEval = evaluatorRotationService.assignTopManagementEvaluator(target.getId(), cycleId, previousCycleId);
-            if (rotationEval != null) handleRequest(cycle, target, rotationEval, FeedbackRelationship.SUPERIOR, false, workloadMap, globalMaxLimit, persist, previewResults, true, form, maxPeers, maxSubs);
-            else assignManager(cycle, target, workloadMap, globalMaxLimit, persist, previewResults, true, form, maxPeers, maxSubs);
-        } else {
-            assignManager(cycle, target, workloadMap, globalMaxLimit, persist, previewResults, true, form, maxPeers, maxSubs);
+        // 2. MANAGER Feedback (Fixed, strict rank check + fallback via ManagerAssignmentService)
+        Optional<Employee> directManager = managerAssignmentService.getDirectManager(target);
+        boolean managerAssigned = false;
+        if (directManager.isPresent()) {
+            managerAssigned = handleRequest(cycle, target, directManager.get(), FeedbackRelationship.MANAGER, workloadMap, 10, persist, previewResults, true, maxPeers, maxSubs);
         }
 
-        List<Employee> peerPool = (rank == 4) ? findPeersGlobal(target) : (rank == 7) ? findPeersHybrid(target, maxPeers) : findPeersByDepartment(target);
-        List<Employee> rotatedPeers = peerPool.stream().filter(p -> !excluded.contains(p.getId())).collect(Collectors.toList());
-        if (rotatedPeers.size() < maxPeers) peerPool.forEach(p -> { if (!rotatedPeers.contains(p)) rotatedPeers.add(p); });
+        // If primary manager is overloaded (workload >= 10) or not found, find an Alternate Manager in the same Dept/Team
+        if (!managerAssigned && rank > 4) {
+            Optional<Employee> alternateManager = findAlternateManager(target, workloadMap, 10);
+            alternateManager.ifPresent(altManager -> {
+                handleRequest(cycle, target, altManager, FeedbackRelationship.MANAGER, workloadMap, 10, persist, previewResults, true, maxPeers, maxSubs);
+            });
+        }
 
-        Collections.shuffle(rotatedPeers);
+        // 3. PEER Feedback (Randomized, using PeerRandomizationService)
+        List<Employee> selectedPeers = peerRandomizationService.selectPeers(target, maxPeers, excluded);
         int pCount = 0;
-        for (Employee p : rotatedPeers) {
+        // First pass: try to assign without reciprocal evaluations
+        for (Employee p : selectedPeers) {
             if (pCount >= maxPeers) break;
-            if (handleRequest(cycle, target, p, FeedbackRelationship.PEER, true, workloadMap, globalMaxLimit, persist, previewResults, false, form, maxPeers, maxSubs)) pCount++;
+            if (handleRequest(cycle, target, p, FeedbackRelationship.PEER, workloadMap, globalMaxLimit, persist, previewResults, false, maxPeers, maxSubs)) {
+                pCount++;
+            }
         }
+        // Second pass: fallback if quota not met, allow reciprocity
         if (pCount < maxPeers) {
-            for (Employee p : rotatedPeers) {
+            for (Employee p : selectedPeers) {
                 if (pCount >= maxPeers) break;
-                if (handleRequest(cycle, target, p, FeedbackRelationship.PEER, true, workloadMap, globalMaxLimit, persist, previewResults, true, form, maxPeers, maxSubs)) pCount++;
+                if (handleRequest(cycle, target, p, FeedbackRelationship.PEER, workloadMap, globalMaxLimit, persist, previewResults, true, maxPeers, maxSubs)) {
+                    pCount++;
+                }
             }
         }
 
+        // 4. SUBORDINATE Feedback (Randomized, using SubordinateRandomizationService)
         if (maxSubs > 0) {
-            List<Employee> subPool = (rank == 6) ? findSubordinatesByTeam(target) : findSubordinatesByDepartment(target);
-            List<Employee> rotatedSubs = subPool.stream().filter(s -> !excluded.contains(s.getId())).collect(Collectors.toList());
-            if (rotatedSubs.size() < maxSubs) subPool.forEach(s -> { if (!rotatedSubs.contains(s)) rotatedSubs.add(s); });
-            Collections.shuffle(rotatedSubs);
+            List<Employee> selectedSubs = subordinateRandomizationService.selectSubordinates(target, maxSubs, excluded);
             int sCount = 0;
-            for (Employee s : rotatedSubs) {
+            for (Employee s : selectedSubs) {
                 if (sCount >= maxSubs) break;
-                if (handleRequest(cycle, target, s, FeedbackRelationship.SUBORDINATE, true, workloadMap, globalMaxLimit, persist, previewResults, true, form, maxPeers, maxSubs)) sCount++;
+                if (handleRequest(cycle, target, s, FeedbackRelationship.SUBORDINATE, workloadMap, globalMaxLimit, persist, previewResults, true, maxPeers, maxSubs)) {
+                    sCount++;
+                }
             }
         }
-    }
-
-    private List<Employee> findPeersHybrid(Employee target, int maxPeers) {
-        List<Employee> pool = findPeersByTeam(target);
-        if (pool.size() < maxPeers) findPeersByDepartment(target).forEach(p -> { if (!pool.contains(p)) pool.add(p); });
-        return pool;
     }
 
     private Long getDeptId(Employee e) {
@@ -251,18 +265,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                 .orElse("N/A");
     }
 
-    private void assignManager(AppraisalCycle cycle, Employee target, Map<Long, Integer> workloadMap, int limit, boolean persist, List<FeedbackRequestResponse> previewResults, boolean strictDept, AppraisalForm form, Integer pLimit, Integer sLimit) {
-        reportingLineRepository.findByEmployeeAndIsActiveTrue(target).ifPresent(line -> {
-            Employee m = line.getManager();
-            if (strictDept) {
-                Long td = getDeptId(target); Long md = getDeptId(m);
-                if (td == null || !td.equals(md)) return;
-            }
-            handleRequest(cycle, target, m, FeedbackRelationship.MANAGER, false, workloadMap, limit, persist, previewResults, true, form, pLimit, sLimit);
-        });
-    }
-
-    private boolean handleRequest(AppraisalCycle cycle, Employee target, Employee evaluator, FeedbackRelationship rel, boolean anon, Map<Long, Integer> workloadMap, int limit, boolean persist, List<FeedbackRequestResponse> previewResults, boolean allowReciprocal, AppraisalForm form, Integer pLimit, Integer sLimit) {
+    private boolean handleRequest(AppraisalCycle cycle, Employee target, Employee evaluator, FeedbackRelationship rel, Map<Long, Integer> workloadMap, int limit, boolean persist, List<FeedbackRequestResponse> previewResults, boolean allowReciprocal, Integer pLimit, Integer sLimit) {
         if (target == null || evaluator == null) return false;
         if (target.getId().equals(evaluator.getId()) && rel != FeedbackRelationship.SELF) return false;
         int currentWorkload = workloadMap.getOrDefault(evaluator.getId(), 0);
@@ -271,6 +274,9 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         boolean isReciprocal = persist ? requestRepository.existsByTargetUserIdAndEvaluatorIdAndCycleCycleId(evaluator.getId(), target.getId(), cycle.getCycleId())
                 : previewResults.stream().anyMatch(r -> r.getTargetUserId().equals(evaluator.getId()) && r.getEvaluatorId().equals(target.getId()));
         if (isReciprocal && !allowReciprocal && rel == FeedbackRelationship.PEER) return false;
+
+        boolean anon = isAnonymous(rel);
+        AppraisalForm resolvedForm = formResolverService.resolveForm(target, rel, cycle.getCycleId());
 
         if (!persist) {
             if (previewResults.stream().anyMatch(r -> r.getTargetUserId().equals(target.getId()) && r.getEvaluatorId().equals(evaluator.getId()))) return false;
@@ -298,7 +304,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             workloadMap.put(evaluator.getId(), currentWorkload + 1);
             return true;
         }
-        return createRequest(cycle, target, evaluator, rel, anon, workloadMap, limit, isReciprocal, form, pLimit, sLimit);
+        return createRequest(cycle, target, evaluator, rel, anon, workloadMap, limit, isReciprocal, resolvedForm, pLimit, sLimit);
     }
 
     private boolean createRequest(AppraisalCycle cycle, Employee target, Employee evaluator, FeedbackRelationship rel, boolean anon, Map<Long, Integer> workloadMap, int limit, boolean isFallback, AppraisalForm form, Integer pLimit, Integer sLimit) {
@@ -309,14 +315,14 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         Optional<FeedbackRequest> existing = requestRepository.findByTargetUserIdAndEvaluatorIdAndCycleCycleId(target.getId(), evaluator.getId(), cycle.getCycleId());
         if (existing.isPresent()) {
             FeedbackRequest req = existing.get();
-            if (req.getForm() == null && form != null) {
-                req.setForm(form); req.setPeerLimitSnapshot(pLimit); req.setSubordinateLimitSnapshot(sLimit);
+            if (req.getAssignedForm() == null && form != null) {
+                req.setAssignedForm(form); req.setPeerLimitSnapshot(pLimit); req.setSubordinateLimitSnapshot(sLimit);
                 requestRepository.save(req);
             }
             return false;
         }
 
-        FeedbackRequest request = FeedbackRequest.builder().targetUser(target).evaluator(evaluator).cycle(cycle).relationship(rel).form(form).isAnonymous(anon).status(FeedbackStatus.PENDING).peerLimitSnapshot(pLimit).subordinateLimitSnapshot(sLimit).build();
+        FeedbackRequest request = FeedbackRequest.builder().targetUser(target).evaluator(evaluator).cycle(cycle).relationship(rel).assignedForm(form).isAnonymous(anon).status(FeedbackStatus.PENDING).peerLimitSnapshot(pLimit).subordinateLimitSnapshot(sLimit).build();
         FeedbackRequest savedRequest = requestRepository.save(request);
         workloadMap.put(evaluator.getId(), currentWorkload + 1);
         eventPublisher.publishEvent(NotificationEvent.builder()
@@ -331,65 +337,91 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         return true;
     }
 
-    private List<Employee> findPeersByDepartment(Employee employee) {
-        return departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(employee.getId()).map(ed -> {
-            if (ed.getCurrentDepartment() == null) return new ArrayList<Employee>();
-            int rank = getLevelRank(employee);
-            return departmentRepository.findByCurrentDepartmentIdAndIsCurrentTrue(ed.getCurrentDepartment().getId()).stream().map(ace.org.epms_backend.model.employee.EmployeeDepartment::getEmployee).filter(e -> e != null && !e.getId().equals(employee.getId()) && getLevelRank(e) == rank && e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE).collect(Collectors.toList());
-        }).orElse(Collections.emptyList());
-    }
-
-    private List<Employee> findSubordinatesByDepartment(Employee target) {
-        int rank = getLevelRank(target);
-        return departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(target.getId()).map(ed -> {
-            if (ed.getCurrentDepartment() == null) return new ArrayList<Employee>();
-            return departmentRepository.findByCurrentDepartmentIdAndIsCurrentTrue(ed.getCurrentDepartment().getId()).stream().map(ace.org.epms_backend.model.employee.EmployeeDepartment::getEmployee).filter(e -> e != null && getLevelRank(e) == (rank + 1) && e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE).collect(Collectors.toList());
-        }).orElse(Collections.emptyList());
-    }
-
-    private List<Employee> findPeersGlobal(Employee target) {
-        int rank = getLevelRank(target);
-        return employeeRepository.findAll().stream().filter(e -> !e.getId().equals(target.getId()) && getLevelRank(e) == rank && e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE).collect(Collectors.toList());
-    }
-
-    private List<Employee> findPeersByTeam(Employee target) {
-        List<Employee> peers = new ArrayList<>();
-        int rank = getLevelRank(target);
-        teamRepository.findByEmployeeIdAndIsPrimaryTrue(target.getId()).ifPresent(et -> {
-            peers.addAll(teamRepository.findByTeamTeamId(et.getTeam().getTeamId()).stream().map(ace.org.epms_backend.model.employee.EmployeeTeam::getEmployee).filter(e -> e != null && !e.getId().equals(target.getId()) && getLevelRank(e) == rank && e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE).collect(Collectors.toList()));
-        });
-        return peers;
-    }
-
-    private List<Employee> findSubordinatesByTeam(Employee target) {
-        List<Employee> subs = new ArrayList<>();
-        int rank = getLevelRank(target);
-        teamRepository.findFirstByEmployeeIdAndIsPrimaryTrue(target.getId()).ifPresent(et -> {
-            subs.addAll(teamRepository.findByTeamTeamId(et.getTeam().getTeamId()).stream().map(ace.org.epms_backend.model.employee.EmployeeTeam::getEmployee).filter(e -> e != null && getLevelRank(e) == (rank + 1) && e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE).collect(Collectors.toList()));
-        });
-        return subs;
-    }
-
     @Override
     @Transactional
     public void generateRequests(FeedbackRequestGenerateDTO dto) {
         AppraisalCycle cycle = cycleRepository.findById(dto.getCycleId()).orElseThrow(() -> new NotFoundException("Cycle not found"));
-        AppraisalForm manualForm = dto.getFormId() != null ? formRepository.findById(dto.getFormId()).orElseThrow(() -> new NotFoundException("Form not found")) : null;
         Map<Long, Integer> workloadMap = new HashMap<>();
         for (Long eid : dto.getEmployeeIds()) {
             Employee target = employeeRepository.findById(eid).orElseThrow(() -> new NotFoundException("Employee not found"));
-            createRequest(cycle, target, target, FeedbackRelationship.SELF, false, workloadMap, 999, false, manualForm, null, null);
-            reportingLineRepository.findByEmployeeAndIsActiveTrue(target).ifPresent(rl -> createRequest(cycle, target, rl.getManager(), FeedbackRelationship.MANAGER, false, workloadMap, 99, false, manualForm, null, null));
-            List<Employee> peers = findPeersByDepartment(target); Collections.shuffle(peers);
-            int pCount = 0; for (Employee p : peers) { if (pCount >= dto.getPeerLimit()) break; if (createRequest(cycle, target, p, FeedbackRelationship.PEER, true, workloadMap, 99, false, manualForm, dto.getPeerLimit(), 0)) pCount++; }
+            
+            // Resolve forms dynamically per relationship
+            AppraisalForm selfForm = formResolverService.resolveForm(target, FeedbackRelationship.SELF, cycle.getCycleId());
+            createRequest(cycle, target, target, FeedbackRelationship.SELF, false, workloadMap, 999, false, selfForm, null, null);
+            
+            // Manager Assignment (Using Decoupled robust ManagerAssignmentService)
+            Optional<Employee> directManager = managerAssignmentService.getDirectManager(target);
+            directManager.ifPresent(manager -> {
+                AppraisalForm managerForm = formResolverService.resolveForm(target, FeedbackRelationship.MANAGER, cycle.getCycleId());
+                createRequest(cycle, target, manager, FeedbackRelationship.MANAGER, false, workloadMap, 10, false, managerForm, null, null);
+            });
+            
+            // Peer Assignment (Using Decoupled robust PeerRandomizationService)
+            List<Employee> peers = peerRandomizationService.selectPeers(target, dto.getPeerLimit(), Collections.emptySet());
+            int pCount = 0; 
+            AppraisalForm peerForm = formResolverService.resolveForm(target, FeedbackRelationship.PEER, cycle.getCycleId());
+            for (Employee p : peers) { 
+                if (pCount >= dto.getPeerLimit()) break; 
+                if (createRequest(cycle, target, p, FeedbackRelationship.PEER, true, workloadMap, 99, false, peerForm, dto.getPeerLimit(), 0)) pCount++; 
+            }
+            
+            // Subordinate Assignment (Using Decoupled robust SubordinateRandomizationService)
             if (Boolean.TRUE.equals(dto.getIncludeSubordinates())) {
-                reportingLineRepository.findAllByManagerAndIsActiveTrue(target).forEach(rl -> createRequest(cycle, target, rl.getEmployee(), FeedbackRelationship.SUBORDINATE, true, workloadMap, 99, false, manualForm, 0, 0));
+                List<Employee> subs = subordinateRandomizationService.selectSubordinates(target, 99, Collections.emptySet());
+                AppraisalForm subForm = formResolverService.resolveForm(target, FeedbackRelationship.SUBORDINATE, cycle.getCycleId());
+                for (Employee s : subs) {
+                    createRequest(cycle, target, s, FeedbackRelationship.SUBORDINATE, true, workloadMap, 99, false, subForm, 0, 0);
+                }
             }
         }
     }
 
+    private boolean isAnonymous(FeedbackRelationship relationship) {
+        return relationship == FeedbackRelationship.PEER || relationship == FeedbackRelationship.SUBORDINATE;
+    }
+
     private int getLevelRank(Employee employee) {
         return (employee.getLevel() != null && employee.getLevel().getLevelRank() != null) ? employee.getLevel().getLevelRank() : 99;
+    }
+
+    private Optional<Employee> findAlternateManager(Employee target, Map<Long, Integer> workloadMap, int limit) {
+        int expectedRank = getLevelRank(target) - 1;
+        Long deptId = getDeptId(target);
+        
+        // 1. Look for alternate managers in the same Department who haven't hit their workload limit
+        if (deptId != null) {
+            List<Employee> deptAlternates = departmentRepository.findByCurrentDepartmentIdAndIsCurrentTrue(deptId)
+                .stream()
+                .map(ace.org.epms_backend.model.employee.EmployeeDepartment::getEmployee)
+                .filter(e -> e != null 
+                        && getLevelRank(e) == expectedRank 
+                        && e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE
+                        && workloadMap.getOrDefault(e.getId(), 0) < limit)
+                .collect(Collectors.toList());
+            if (!deptAlternates.isEmpty()) {
+                log.info("Alternate Manager Fallback: Assigned {} from department for target {}", deptAlternates.get(0).getStaffName(), target.getStaffName());
+                return Optional.of(deptAlternates.get(0));
+            }
+        }
+        
+        // 2. Look for alternate managers in the same Team who haven't hit their workload limit
+        Optional<Employee> teamAlternate = teamRepository.findFirstByEmployeeIdAndIsPrimaryTrue(target.getId())
+            .flatMap(et -> {
+                if (et.getTeam() == null) return Optional.empty();
+                return teamRepository.findByTeamTeamId(et.getTeam().getTeamId())
+                    .stream()
+                    .map(ace.org.epms_backend.model.employee.EmployeeTeam::getEmployee)
+                    .filter(e -> e != null 
+                            && getLevelRank(e) == expectedRank 
+                            && e.getStatus() == ace.org.epms_backend.enums.EmployeeStatus.ACTIVE
+                            && workloadMap.getOrDefault(e.getId(), 0) < limit)
+                    .findFirst();
+            });
+            
+        if (teamAlternate.isPresent()) {
+            log.info("Alternate Manager Fallback: Assigned {} from team for target {}", teamAlternate.get().getStaffName(), target.getStaffName());
+        }
+        return teamAlternate;
     }
 
     @Override
@@ -413,8 +445,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         Map<String, DepartmentFeedbackConfig> deptConfigs = deptConfigRepository.findAll().stream().filter(c -> c.getDepartment() != null && c.getJobLevel() != null).collect(Collectors.toMap(c -> c.getDepartment().getId() + ":" + c.getJobLevel().getLevelId(), c -> c, (a, b) -> a));
         Map<Long, Set<Long>> excluded = new HashMap<>();
         if (previousCycleId != null) requestRepository.findByCycleCycleId(previousCycleId).forEach(req -> excluded.computeIfAbsent(req.getTargetUser().getId(), k -> new HashSet<>()).add(req.getEvaluator().getId()));
-        AppraisalForm defaultForm = cycle.getForms().stream().filter(f -> f.getFormType() == FormType.FEEDBACK).findFirst().orElse(null);
-        generateRequestsForEmployee(cycle, target, cycleId, previousCycleId, globalMaxLimit, workloadMap, deptConfigs, true, new ArrayList<>(), excluded, defaultForm);
+        generateRequestsForEmployee(cycle, target, cycleId, previousCycleId, globalMaxLimit, workloadMap, deptConfigs, true, new ArrayList<>(), excluded);
     }
 
     @Override
@@ -466,5 +497,70 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         // Reset status to PLANNING
         cycle.setStatus(ace.org.epms_backend.enums.CycleStatus.PLANNING);
         cycleRepository.save(cycle);
+    }
+
+    @Override
+    public List<PendingFeedbackDTO> getAllPendingFeedbacks() {
+        return requestRepository.findByStatus(FeedbackStatus.PENDING)
+                .stream()
+                .map(req -> PendingFeedbackDTO.builder()
+                        .requestId(req.getId())
+                        .evaluatorId(req.getEvaluator().getId())
+                        .evaluatorName(req.getEvaluator().getStaffName())
+                        .evaluatorDepartmentName(getDeptName(req.getEvaluator()))
+                        .targetUserId(req.getTargetUser().getId())
+                        .targetUserName(req.getTargetUser().getStaffName())
+                        .targetDepartmentName(getDeptName(req.getTargetUser()))
+                        .cycleId(req.getCycle().getCycleId())
+                        .cycleName(req.getCycle().getCycleName())
+                        .cycleEndDate(req.getCycle().getEndDate())
+                        .relationship(req.getRelationship() != null ? req.getRelationship().toEvaluatorPerspective() : null)
+                        .isAnonymous(req.getIsAnonymous())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void sendReminder(Long requestId) {
+        FeedbackRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new NotFoundException("Feedback request not found"));
+
+        if (request.getStatus() != FeedbackStatus.PENDING) {
+            throw new IllegalStateException("Can only send reminders for pending requests.");
+        }
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(request.getEvaluator().getId())
+                .type(NotificationType.FEEDBACK_REMINDER)
+                .title("Feedback Reminder")
+                .message("Reminder: You have a pending 360 feedback request for " + request.getTargetUser().getStaffName() + ".")
+                .referenceType(ReferenceType.FEEDBACK)
+                .referenceId(request.getId())
+                .actionUrl("/feedback360")
+                .build());
+    }
+
+    @Override
+    @Transactional
+    public void sendRemindersToAll(Long cycleId) {
+        List<FeedbackRequest> pendingRequests;
+        if (cycleId != null) {
+            pendingRequests = requestRepository.findByCycleCycleIdAndStatus(cycleId, FeedbackStatus.PENDING);
+        } else {
+            pendingRequests = requestRepository.findByStatus(FeedbackStatus.PENDING);
+        }
+
+        for (FeedbackRequest request : pendingRequests) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(request.getEvaluator().getId())
+                    .type(NotificationType.FEEDBACK_REMINDER)
+                    .title("Feedback Reminder")
+                    .message("Reminder: You have a pending 360 feedback request for " + request.getTargetUser().getStaffName() + ".")
+                    .referenceType(ReferenceType.FEEDBACK)
+                    .referenceId(request.getId())
+                    .actionUrl("/feedback360")
+                    .build());
+        }
     }
 }

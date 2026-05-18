@@ -4,8 +4,6 @@ import ace.org.epms_backend.dto.feedback360.DepartmentFeedbackConfigDTO;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.model.employee.Department;
 import ace.org.epms_backend.model.feedback360.DepartmentFeedbackConfig;
-import ace.org.epms_backend.repository.AppraisalCycleRepository; // actually need DepartmentRepository
-import ace.org.epms_backend.repository.EmployeeDepartmentRepository; // actually need DepartmentRepository from core
 import ace.org.epms_backend.repository.feedback360.DepartmentFeedbackConfigRepository;
 import ace.org.epms_backend.service.feedback360.DepartmentFeedbackConfigService;
 import lombok.RequiredArgsConstructor;
@@ -22,26 +20,47 @@ public class DepartmentFeedbackConfigServiceImpl implements DepartmentFeedbackCo
     private final DepartmentFeedbackConfigRepository configRepository;
     private final ace.org.epms_backend.repository.DepartmentRepository departmentRepository;
     private final ace.org.epms_backend.repository.JobLevelRepository jobLevelRepository;
+    private final ace.org.epms_backend.repository.appraisal.AppraisalFormSetRepository formSetRepository;
 
     @Override
     @Transactional
     public DepartmentFeedbackConfigDTO saveOrUpdate(DepartmentFeedbackConfigDTO dto) {
-        ace.org.epms_backend.model.employee.Department department = departmentRepository.findById(dto.getDepartmentId())
+        ace.org.epms_backend.model.employee.Department department = null;
+        if (dto.getDepartmentId() != null) {
+            department = departmentRepository.findById(dto.getDepartmentId())
                 .orElseThrow(() -> new NotFoundException("Department not found: " + dto.getDepartmentId()));
+        }
 
-        ace.org.epms_backend.model.employee.JobLevel jobLevel = jobLevelRepository.findById(dto.getLevelId())
+        ace.org.epms_backend.model.employee.JobLevel jobLevel = null;
+        if (dto.getLevelId() != null) {
+            jobLevel = jobLevelRepository.findById(dto.getLevelId())
                 .orElseThrow(() -> new NotFoundException("Level not found: " + dto.getLevelId()));
+        }
 
-        DepartmentFeedbackConfig config = configRepository.findByDepartmentIdAndJobLevelLevelId(dto.getDepartmentId(), dto.getLevelId())
+        ace.org.epms_backend.model.appraisal.AppraisalFormSet formSet = null;
+        if (dto.getFormSetId() != null) {
+            formSet = formSetRepository.findById(dto.getFormSetId())
+                .orElseThrow(() -> new NotFoundException("Form Set not found: " + dto.getFormSetId()));
+        }
+
+        DepartmentFeedbackConfig config;
+        if (dto.getId() != null) {
+            config = configRepository.findById(dto.getId())
+                .orElseThrow(() -> new NotFoundException("Config not found: " + dto.getId()));
+        } else {
+            config = configRepository.findByDepartmentAndJobLevelAndIsActiveTrue(department, jobLevel)
                 .orElse(new DepartmentFeedbackConfig());
+        }
 
         config.setDepartment(department);
         config.setJobLevel(jobLevel);
+        config.setFormSet(formSet);
         config.setMinPeers(dto.getMinPeers());
         config.setMaxPeers(dto.getMaxPeers());
         config.setMinSubordinates(dto.getMinSubordinates());
         config.setMaxSubordinates(dto.getMaxSubordinates());
         config.setAllowCrossDepartment(dto.getAllowCrossDepartment() != null ? dto.getAllowCrossDepartment() : false);
+        config.setIsDefault(department == null && jobLevel == null);
 
         DepartmentFeedbackConfig saved = configRepository.save(config);
         return mapToDTO(saved);
@@ -70,10 +89,12 @@ public class DepartmentFeedbackConfigServiceImpl implements DepartmentFeedbackCo
     private DepartmentFeedbackConfigDTO mapToDTO(DepartmentFeedbackConfig entity) {
         return DepartmentFeedbackConfigDTO.builder()
                 .id(entity.getId())
-                .departmentId(entity.getDepartment().getId())
-                .departmentName(entity.getDepartment().getDepartmentName())
-                .levelId(entity.getJobLevel().getLevelId())
-                .levelName(entity.getJobLevel().getLevelName())
+                .departmentId(entity.getDepartment() != null ? entity.getDepartment().getId() : null)
+                .departmentName(entity.getDepartment() != null ? entity.getDepartment().getDepartmentName() : "Default")
+                .levelId(entity.getJobLevel() != null ? entity.getJobLevel().getLevelId() : null)
+                .levelName(entity.getJobLevel() != null ? entity.getJobLevel().getLevelName() : "All Levels")
+                .formSetId(entity.getFormSet() != null ? entity.getFormSet().getId() : null)
+                .formSetName(entity.getFormSet() != null ? entity.getFormSet().getName() : null)
                 .minPeers(entity.getMinPeers())
                 .maxPeers(entity.getMaxPeers())
                 .minSubordinates(entity.getMinSubordinates())

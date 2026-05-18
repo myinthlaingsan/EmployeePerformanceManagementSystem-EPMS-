@@ -36,14 +36,5 @@ public class Question extends BaseEntity {
     private Boolean isRequired;
     private Boolean requiresComment = false;
     
-    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<SelfAssessmentAnswer> selfAssessmentAnswers;
-
-    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<ManagerEvaluationAnswer> managerEvaluationAnswers;
-
-    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<ace.org.epms_backend.model.feedback360.FeedbackResponse> feedbackResponses;
-
     private Boolean isActive = true;
 }

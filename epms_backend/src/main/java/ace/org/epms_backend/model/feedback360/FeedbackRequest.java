@@ -41,8 +41,8 @@ public class FeedbackRequest extends BaseEntity {
     private AppraisalCycle cycle;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "form_id")
-    private AppraisalForm form;
+    @JoinColumn(name = "assigned_form_id")
+    private AppraisalForm assignedForm;
 
     @Enumerated(EnumType.STRING)
     private FeedbackRelationship relationship;

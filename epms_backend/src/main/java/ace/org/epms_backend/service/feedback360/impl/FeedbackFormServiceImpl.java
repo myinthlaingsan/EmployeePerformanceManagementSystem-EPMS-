@@ -39,11 +39,17 @@ public class FeedbackFormServiceImpl implements FeedbackFormService {
         FeedbackRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException("Feedback request not found: " + requestId));
 
-        if (request.getForm() == null) {
-            throw new NotFoundException("No form assigned to this feedback request.");
+        if (request.getAssignedForm() != null) {
+            return formService.getFullForm(request.getAssignedForm().getFormId());
         }
+        
+        AppraisalCycle cycle = request.getCycle();
+        AppraisalForm feedbackForm = cycle.getForms().stream()
+                .filter(f -> f.getFormType() == FormType.FEEDBACK)
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("No feedback form found for this cycle"));
 
-        return formService.getFullForm(request.getForm().getFormId());
+        return formService.getFullForm(feedbackForm.getFormId());
     }
 
     @Override
