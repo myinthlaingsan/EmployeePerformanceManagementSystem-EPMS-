@@ -142,7 +142,7 @@ const GoalManagement: React.FC = () => {
         </select>
         <select style={selectStyle} value={selectedCycle} onChange={e => setSelectedCycle(e.target.value)}>
           <option value="All">Cycle: {activeCycleId ? 'Current' : 'All'}</option>
-          {cycles.map((c: any, i) => <option key={`${c.cycleId || c.id}-${i}`} value={c.cycleId || c.id}>{c.cycleName || c.name}</option>)}
+          {cycles.map((c: any, i: number) => <option key={`${c.cycleId || c.id}-${i}`} value={c.cycleId || c.id}>{c.cycleName || c.name}</option>)}
         </select>
       </div>
 

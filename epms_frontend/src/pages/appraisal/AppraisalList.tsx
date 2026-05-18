@@ -31,7 +31,6 @@ import {
   Search,
   Mail,
   Share2,
-  Trophy,
   Trash2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -568,7 +567,7 @@ const AppraisalList: React.FC = () => {
                 <input autoFocus type="text" value={newSetName} onChange={(e) => setNewSetName(e.target.value)}
                   placeholder="e.g. Senior Software Engineer"
                   style={{ flex: 1, background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none' }} />
-                <button disabled={!newSetName.trim()} onClick={async () => {
+                <button onClick={async () => {
                   if (cycleData) {
                     try { await createFormSet({ name: newSetName, cycleId: cycleData.cycleId }).unwrap(); setExpandedSet(newSetName); setShowNewSetModal(false); }
                     catch { toast.error('Failed to create form set'); }

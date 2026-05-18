@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSetPasswordMutation } from "../features/employee/employeeapi";
+import { validatePassword } from "../utils/validation";
 import React from "react";
 
 const SetPasswordPage = () => {
@@ -15,6 +16,13 @@ const SetPasswordPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) { setMessage({ type: 'error', text: "Invalid or missing token." }); return; }
+    
+    const validationError = validatePassword(password);
+    if (validationError) {
+      setMessage({ type: 'error', text: validationError });
+      return;
+    }
+
     try {
       await setPassword({ token, body: { password } }).unwrap();
       setMessage({ type: 'success', text: "Password set successfully! Redirecting to login…" });
