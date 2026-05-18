@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGetAllLibrariesQuery } from '../../services/kpiApi';
+import { useGetAllLibrariesWithInactiveQuery } from '../../services/kpiApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import {
   Search, Plus, ChevronDown, LayoutGrid, List,
@@ -25,18 +25,20 @@ const KpiLibraryDashboard: React.FC = () => {
     isOpen: false, positionId: 0, positionName: ''
   });
 
-  const { data: librariesResponse, isLoading } = useGetAllLibrariesQuery();
+  const { data: librariesResponse, isLoading } = useGetAllLibrariesWithInactiveQuery();
   const { data: positions = [] } = useGetPositionsQuery();
   const libraries = librariesResponse?.data || [];
 
-  const filteredLibraries = libraries.filter(lib => {
-    const matchesSearch = lib.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lib.positionName?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPosition = positionFilter === 'all' || lib.positionId === positionFilter;
-    const matchesStatus = statusFilter === 'all'
-      ? true : statusFilter === 'active' ? lib.isActive : !lib.isActive;
-    return matchesSearch && matchesPosition && matchesStatus;
-  });
+  const filteredLibraries = libraries
+    .filter(lib => {
+      const matchesSearch = lib.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lib.positionName?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesPosition = positionFilter === 'all' || lib.positionId === positionFilter;
+      const matchesStatus = statusFilter === 'all'
+        ? true : statusFilter === 'active' ? lib.isActive : !lib.isActive;
+      return matchesSearch && matchesPosition && matchesStatus;
+    })
+    .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0));
 
   const totalPages = Math.max(1, Math.ceil(filteredLibraries.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);

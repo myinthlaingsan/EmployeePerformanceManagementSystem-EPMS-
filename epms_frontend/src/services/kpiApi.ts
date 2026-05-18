@@ -73,6 +73,11 @@ export const kpiApi = api.injectEndpoints({
       providesTags: ['Library'],
     }),
 
+    getAllLibrariesWithInactive: builder.query<ApiResponse<KpiLibraryResponse[]>, void>({
+      query: () => '/kpi/library/all',
+      providesTags: ['Library'],
+    }),
+
     toggleLibraryStatus: builder.mutation<
       ApiResponse<KpiLibraryResponse>,
       { id: number; active: boolean }
@@ -287,6 +292,7 @@ export const {
   useDeleteKpiCategoryMutation,
   useCreateLibraryMutation,
   useGetAllLibrariesQuery,
+  useGetAllLibrariesWithInactiveQuery,
   useToggleLibraryStatusMutation,
   useToggleHistoryStatusMutation,
   useDeleteLibraryMutation,
