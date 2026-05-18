@@ -87,6 +87,12 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         syncActionItems(savedMeeting, request.getActionItems());
         savedMeeting = meetingRepository.save(savedMeeting);
 
+        // If created directly as PUBLISHED, set publishedAt immediately
+        if (savedMeeting.getStatus() == ContinuousStatus.PUBLISHED) {
+            savedMeeting.setPublishedAt(java.time.LocalDateTime.now());
+            savedMeeting = meetingRepository.save(savedMeeting);
+        }
+
         // Update PerformanceHistory (only if PUBLISHED)
         if (savedMeeting.getStatus() == ContinuousStatus.PUBLISHED) {
             PerformanceHistory history = PerformanceHistory.builder()
@@ -455,6 +461,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         }
 
         meeting.setStatus(ContinuousStatus.PUBLISHED);
+        meeting.setPublishedAt(java.time.LocalDateTime.now());
         OneOnOneMeeting publishedMeeting = meetingRepository.save(meeting);
 
         // Update PerformanceHistory for publishing
@@ -463,6 +470,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .sourceType(SourceType.MEETING)
                 .sourceId(publishedMeeting.getMeetingId())
                 .title("1-on-1 Meeting Published")
+                .description("Manager " + publishedMeeting.getManager().getStaffName() + " published the draft meeting.")
                 .createdBy(authService.getCurrentUser().getId())
                 .manager(publishedMeeting.getManager())
                 .performer(authService.getCurrentUser())
@@ -520,6 +528,13 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
 
         if (!item.getMeeting().getMeetingId().equals(meetingId)) {
             throw new IllegalArgumentException("Action item does not belong to this meeting.");
+        }
+
+        // Prevent employees from unchecking completed items
+        if (currentUser.getId().equals(meeting.getEmployee().getId()) && 
+            item.getStatus() == ace.org.epms_backend.enums.ActionItemStatus.DONE &&
+            status == ace.org.epms_backend.enums.ActionItemStatus.PENDING) {
+            throw new AccessDeniedException("Employees cannot uncheck completed action items.");
         }
 
         item.setStatus(status);

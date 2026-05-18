@@ -253,9 +253,17 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
         // If only departmentId is present, we are tracking organizational health -> Latest States (Pulse)
         List<PerformanceHistoryResponse> historyList;
         if (employeeId != null) {
-            historyList = historyRepository.findActionHistoryByPerformer(employeeId).stream()
-                    .map(this::mapToResponseWithFallback)
-                    .collect(Collectors.toList());
+            boolean selectedUserIsManager = employeeRoleRepository.findRolesByEmployeeId(employeeId).stream()
+                    .anyMatch(r -> r.getRoleName() == RoleType.MANAGER);
+            if (selectedUserIsManager) {
+                historyList = historyRepository.findActionHistoryByPerformer(employeeId).stream()
+                        .map(this::mapToResponseWithFallback)
+                        .collect(Collectors.toList());
+            } else {
+                historyList = historyRepository.findActionHistoryByEmployee(employeeId).stream()
+                        .map(this::mapToResponseWithFallback)
+                        .collect(Collectors.toList());
+            }
         } else {
             historyList = getPerformancePulse(finalDeptId, null).stream()
                     .collect(Collectors.toList());

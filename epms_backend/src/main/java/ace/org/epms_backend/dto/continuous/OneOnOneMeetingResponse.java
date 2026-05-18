@@ -25,4 +25,5 @@ public class OneOnOneMeetingResponse {
     private Long createdBy;
     private Integer commentCount;
     private Instant createdAt;
+    private java.time.LocalDateTime publishedAt;
 }

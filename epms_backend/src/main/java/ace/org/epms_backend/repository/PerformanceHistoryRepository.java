@@ -129,4 +129,11 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            "AND h.title <> 'Meeting Deleted' " +
            "ORDER BY h.createdAt ASC")
     List<PerformanceHistory> findActionHistoryByPerformer(@Param("id") Long id);
+
+    @Query("SELECT h FROM PerformanceHistory h WHERE " +
+           "(h.employee.id = :id) " +
+           "AND h.title <> 'Feedback Deleted' " +
+           "AND h.title <> 'Meeting Deleted' " +
+           "ORDER BY h.createdAt ASC")
+    List<PerformanceHistory> findActionHistoryByEmployee(@Param("id") Long id);
 }

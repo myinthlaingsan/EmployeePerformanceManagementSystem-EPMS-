@@ -20,4 +20,7 @@ public class ContinuousFeedbackResponse {
     private Long createdBy;
     private Integer replyCount;
     private Instant createdAt;
+    private java.time.LocalDateTime publishedAt;
+    private boolean isPrivate;
 }
+

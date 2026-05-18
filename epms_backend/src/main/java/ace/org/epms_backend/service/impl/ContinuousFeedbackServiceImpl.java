@@ -72,6 +72,11 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         // Assuming the manager is the one creating it for now
         feedback.setCreatedBy(manager.getId());
 
+        // If created directly as PUBLISHED, set publishedAt immediately
+        if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
+            feedback.setPublishedAt(java.time.LocalDateTime.now());
+        }
+
         feedback = feedbackRepository.save(feedback);
 
         // Update PerformanceHistory (only if PUBLISHED)
@@ -474,6 +479,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         }
         
         feedback.setStatus(ContinuousStatus.PUBLISHED);
+        feedback.setPublishedAt(java.time.LocalDateTime.now());
         feedback = feedbackRepository.save(feedback);
         
         eventPublisher.publishEvent(NotificationEvent.builder()

@@ -7,6 +7,7 @@ import ace.org.epms_backend.model.employee.Employee;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import java.time.LocalDateTime;
 
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
@@ -48,6 +49,9 @@ public class ContinuousFeedback extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private ContinuousStatus status = ContinuousStatus.PUBLISHED;
+
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
 
     @org.hibernate.annotations.Formula("(SELECT COUNT(*) FROM feedback_reply r WHERE r.feedback_id = feedback_id AND (r.is_deleted = false OR r.is_deleted IS NULL))")
     private Integer replyCount;

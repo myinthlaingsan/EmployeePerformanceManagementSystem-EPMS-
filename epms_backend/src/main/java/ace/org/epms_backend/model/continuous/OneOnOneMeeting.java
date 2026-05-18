@@ -7,6 +7,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import org.hibernate.annotations.SQLDelete;
@@ -57,6 +58,9 @@ public class OneOnOneMeeting extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private ContinuousStatus status = ContinuousStatus.PUBLISHED;
+
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
 
     @org.hibernate.annotations.Formula("(SELECT COUNT(*) FROM meeting_comments c WHERE c.meeting_id = meeting_id AND (c.is_deleted = false OR c.is_deleted IS NULL))")
     private Integer commentCount;
