@@ -12,6 +12,7 @@ import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
+import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,6 +32,7 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
     private final FeedbackRepository feedbackRepository;
     private final FeedbackResponseRepository responseRepository;
     private final FeedbackRequestRepository requestRepository;
+    private final FeedbackSummaryRepository summaryRepository;
     private final QuestionRepository questionRepository;
     private final FeedbackMapper feedbackMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -46,6 +49,15 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
 
         if (!feedbackRequest.getEvaluator().getId().equals(evaluatorId)) {
             throw new RuntimeException("You are not authorized to submit feedback for this request");
+        }
+
+        // Validate required questions before building responses
+        for (FeedbackResponseRequest r : request.getResponses()) {
+            Question q = questionRepository.findById(r.getQuestionId())
+                    .orElseThrow(() -> new NotFoundException("Question not found: " + r.getQuestionId()));
+            if (Boolean.TRUE.equals(q.getIsRequired()) && r.getScore() == null) {
+                throw new ValidationException("Required question " + q.getQuestionId() + " is missing a score");
+            }
         }
 
         Feedback feedback = Feedback.builder()
@@ -66,22 +78,36 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
                     .build();
         }).collect(Collectors.toList());
 
-        // Calculate Average Score: (Total Points / (Questions * 5)) * 100
-        int totalPoints = responses.stream().mapToInt(FeedbackResponse::getScore).sum();
-        int questionCount = responses.size();
-        BigDecimal averageScore = BigDecimal.valueOf(totalPoints)
-                .divide(BigDecimal.valueOf(questionCount * 5), 4, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100));
+        // Average score: null scores (comment-only) are excluded from calculation
+        List<Integer> ratings = responses.stream()
+                .map(FeedbackResponse::getScore)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        BigDecimal averageScore = ratings.isEmpty()
+                ? null
+                : BigDecimal.valueOf(ratings.stream().mapToInt(Integer::intValue).sum())
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(BigDecimal.valueOf((long) ratings.size() * 5), 2, RoundingMode.HALF_UP);
 
         feedback.setAverageScore(averageScore);
-        
+
+        // Cascade save: responses are saved via Feedback.responses collection
+        feedback.setResponses(responses);
         feedbackRepository.save(feedback);
-        responseRepository.saveAll(responses);
 
         feedbackRequest.setStatus(FeedbackStatus.COMPLETED);
         requestRepository.save(feedbackRequest);
 
-        // Notify Target User (the one being evaluated)
+        // Mark the target's summary stale so it gets recomputed
+        summaryRepository.findByEmployeeIdAndCycleCycleId(
+                feedbackRequest.getTargetUser().getId(),
+                feedbackRequest.getCycle().getCycleId())
+                .ifPresent(s -> {
+                    s.setIsFinalized(false);
+                    summaryRepository.save(s);
+                });
+
         eventPublisher.publishEvent(NotificationEvent.builder()
                 .recipientId(feedbackRequest.getTargetUser().getId())
                 .type(NotificationType.FEEDBACK_SUBMITTED)
@@ -97,12 +123,12 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
     public FeedbackDetailsResponse getFeedbackByRequest(Long requestId) {
         Feedback feedback = feedbackRepository.findByRequestId(requestId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
-        
+
         FeedbackDetailsResponse response = feedbackMapper.toFeedbackDetails(feedback);
         response.setResponses(responseRepository.findByFeedbackId(feedback.getId()).stream()
                 .map(feedbackMapper::toResponseDetails)
                 .collect(Collectors.toList()));
-        
+
         return response;
     }
 
@@ -135,11 +161,11 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
     public void deleteFeedback(Long feedbackId) {
         Feedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
-        
+
         FeedbackRequest request = feedback.getRequest();
         request.setStatus(FeedbackStatus.PENDING);
         requestRepository.save(request);
-        
+
         responseRepository.deleteByFeedbackId(feedbackId);
         feedbackRepository.delete(feedback);
     }

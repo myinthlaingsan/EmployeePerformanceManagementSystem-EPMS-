@@ -9,11 +9,13 @@ import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.feedback360.Feedback;
 import ace.org.epms_backend.model.feedback360.FeedbackResponse;
 import ace.org.epms_backend.model.feedback360.FeedbackSummary;
+import ace.org.epms_backend.model.feedback360.ScoringPolicy;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackResponseRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository;
+import ace.org.epms_backend.repository.feedback360.ScoringPolicyRepository;
 import ace.org.epms_backend.service.feedback360.FeedbackReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,11 +27,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FeedbackReportServiceImpl implements FeedbackReportService {
 
+    private static final int DEFAULT_SUPPRESSION_THRESHOLD = 3;
+
     private final FeedbackRepository feedbackRepository;
     private final FeedbackResponseRepository feedbackResponseRepository;
     private final EmployeeRepository employeeRepository;
     private final AppraisalCycleRepository appraisalCycleRepository;
     private final FeedbackSummaryRepository feedbackSummaryRepository;
+    private final ScoringPolicyRepository scoringPolicyRepository;
 
     @Override
     public FeedbackSummaryResponse getFeedbackSummary(Long targetUserId, Long cycleId) {
@@ -38,25 +43,40 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
         AppraisalCycle cycle = appraisalCycleRepository.findById(cycleId)
                 .orElseThrow(() -> new RuntimeException("Appraisal cycle not found"));
 
-        List<Feedback> allFeedbacks = feedbackRepository.findByRequestTargetUserIdAndRequestCycleCycleId(targetUserId,
-                cycleId);
+        List<Feedback> allFeedbacks = feedbackRepository
+                .findByRequestTargetUserIdAndRequestCycleCycleId(targetUserId, cycleId);
 
-        Map<String, List<Integer>> selfScoresMap = new HashMap<>();
-        Map<String, List<Integer>> othersScoresMap = new HashMap<>();
-        List<DetailedComment> detailedComments = new ArrayList<>();
-        int totalOthersPoints = 0;
+        // Suppression threshold from policy; fallback to 3
+        int suppressionThreshold = scoringPolicyRepository.findCycleDefault(cycle)
+                .map(ScoringPolicy::getSuppressionThreshold)
+                .filter(Objects::nonNull)
+                .orElse(DEFAULT_SUPPRESSION_THRESHOLD);
+
+        // Count feedbacks per relationship for comment suppression
+        Map<FeedbackRelationship, Long> countByRelationship = allFeedbacks.stream()
+                .collect(Collectors.groupingBy(
+                        f -> f.getRequest().getRelationship(),
+                        Collectors.counting()));
+
+        Map<String, List<Integer>> selfScoresMap       = new HashMap<>();
+        Map<String, List<Integer>> managerScoresMap    = new HashMap<>();
+        Map<String, List<Integer>> peerScoresMap       = new HashMap<>();
+        Map<String, List<Integer>> subordinateScoresMap = new HashMap<>();
+        Map<String, List<Integer>> othersScoresMap     = new HashMap<>();
+
+        List<DetailedComment> allComments = new ArrayList<>();
+        int totalOthersPoints    = 0;
         int totalOthersQuestions = 0;
 
         for (Feedback feedback : allFeedbacks) {
             List<FeedbackResponse> responses = feedbackResponseRepository.findByFeedbackId(feedback.getId());
             FeedbackRelationship relationship = feedback.getRequest().getRelationship();
 
-            String evaluatorName;
-            if (relationship == FeedbackRelationship.PEER || relationship == FeedbackRelationship.SUBORDINATE) {
-                evaluatorName = "Anonymous " + relationship.name();
-            } else {
-                evaluatorName = feedback.getRequest().getEvaluator().getStaffName();
-            }
+            // Anonymity enforced on the read layer regardless of the isAnonymous flag value
+            boolean anonymous = Boolean.TRUE.equals(feedback.getRequest().getIsAnonymous());
+            String evaluatorName = anonymous
+                    ? "Anonymous"
+                    : feedback.getRequest().getEvaluator().getStaffName();
 
             for (FeedbackResponse response : responses) {
                 String categoryName = response.getQuestion().getCategory() != null
@@ -64,17 +84,32 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                         : "General";
 
                 Integer score = response.getScore();
-
-                if (relationship == FeedbackRelationship.SELF) {
-                    selfScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
-                } else {
-                    othersScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
-                    totalOthersPoints += score;
-                    totalOthersQuestions++;
+                if (score != null) {
+                    switch (relationship) {
+                        case SELF         -> selfScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                        case DIRECT_MANAGER -> {
+                            managerScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                            othersScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                            totalOthersPoints += score;
+                            totalOthersQuestions++;
+                        }
+                        case PEER -> {
+                            peerScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                            othersScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                            totalOthersPoints += score;
+                            totalOthersQuestions++;
+                        }
+                        case SUBORDINATE -> {
+                            subordinateScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                            othersScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                            totalOthersPoints += score;
+                            totalOthersQuestions++;
+                        }
+                    }
                 }
 
                 if (response.getComment() != null && !response.getComment().isBlank()) {
-                    detailedComments.add(DetailedComment.builder()
+                    allComments.add(DetailedComment.builder()
                             .categoryName(categoryName)
                             .evaluatorRole(relationship.name())
                             .evaluatorName(evaluatorName)
@@ -85,26 +120,40 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
             }
         }
 
+        // Suppress comments from groups below the threshold and shuffle to prevent order-based identity leak
+        List<DetailedComment> visibleComments = allComments.stream()
+                .filter(c -> {
+                    FeedbackRelationship rel;
+                    try { rel = FeedbackRelationship.valueOf(c.getEvaluatorRole()); }
+                    catch (IllegalArgumentException e) { return true; }
+                    long count = countByRelationship.getOrDefault(rel, 0L);
+                    return rel == FeedbackRelationship.SELF
+                            || rel == FeedbackRelationship.DIRECT_MANAGER
+                            || count >= suppressionThreshold;
+                })
+                .collect(Collectors.toList());
+        Collections.shuffle(visibleComments);
+
         double totalAverageScore = totalOthersQuestions > 0
                 ? (totalOthersPoints / (double) (totalOthersQuestions * 5)) * 100.0
                 : 0.0;
 
-        FeedbackSummary summary = feedbackSummaryRepository.findByEmployeeIdAndCycleCycleId(targetUserId, cycleId)
-                .orElse(null);
-
-        Long summaryId = summary != null ? summary.getId() : null;
-        Boolean isFinalized = summary != null ? summary.getIsFinalized() : false;
+        FeedbackSummary summary = feedbackSummaryRepository
+                .findByEmployeeIdAndCycleCycleId(targetUserId, cycleId).orElse(null);
 
         return FeedbackSummaryResponse.builder()
-                .summaryId(summaryId)
+                .summaryId(summary != null ? summary.getId() : null)
                 .targetUserId(targetUserId)
                 .targetUserName(target.getStaffName())
                 .cycleName(cycle.getCycleName())
                 .selfScores(calculateAverages(selfScoresMap))
+                .managerScores(calculateAverages(managerScoresMap))
+                .peerScores(calculateAverages(peerScoresMap))
+                .subordinateScores(calculateAverages(subordinateScoresMap))
                 .scores(calculateAverages(othersScoresMap))
-                .detailedComments(detailedComments)
+                .detailedComments(visibleComments)
                 .totalAverageScore(Math.round(totalAverageScore * 100.0) / 100.0)
-                .isFinalized(isFinalized)
+                .isFinalized(summary != null ? summary.getIsFinalized() : false)
                 .build();
     }
 
@@ -112,13 +161,10 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
         return scoresMap.entrySet().stream()
                 .map(entry -> {
                     List<Integer> scores = entry.getValue();
-                    int totalPoints = scores.stream().mapToInt(Integer::intValue).sum();
+                    int totalPoints   = scores.stream().mapToInt(Integer::intValue).sum();
                     int questionCount = scores.size();
-
-                    // Formula from image: (Total Point / (Number of Questions Answered * 5)) * 100
-                    double percentageScore = (totalPoints / (double) (questionCount * 5)) * 100.0;
-
-                    return new CategoryScore(entry.getKey(), Math.round(percentageScore * 100.0) / 100.0);
+                    double pct = (totalPoints / (double) (questionCount * 5)) * 100.0;
+                    return new CategoryScore(entry.getKey(), Math.round(pct * 100.0) / 100.0);
                 })
                 .collect(Collectors.toList());
     }

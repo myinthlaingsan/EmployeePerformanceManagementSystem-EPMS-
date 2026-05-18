@@ -1,6 +1,7 @@
 package ace.org.epms_backend.service.feedback360;
 
 import ace.org.epms_backend.dto.feedback360.FeedbackSummaryResponse;
+import ace.org.epms_backend.dto.feedback360.ManagerReviewRequest;
 import java.util.List;
 
 public interface FeedbackSummaryService {
@@ -9,4 +10,5 @@ public interface FeedbackSummaryService {
     FeedbackSummaryResponse getSummary(Long employeeId, Long cycleId);
     List<FeedbackSummaryResponse> getSummariesByCycle(Long cycleId);
     void finalizeSummary(Long summaryId);
+    void addManagerReview(Long summaryId, ManagerReviewRequest request, Long callerId);
 }

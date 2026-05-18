@@ -1,5 +1,6 @@
 package ace.org.epms_backend.model.appraisal;
 
+import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
@@ -34,5 +35,10 @@ public class AppraisalForm extends BaseEntity {
     private AppraisalFormSet formSet;
 
     private Long createdBy;
+
+    // Nullable; when set, this form is the designated 360° form for that relationship type
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_relationship")
+    private FeedbackRelationship targetRelationship;
 }
 

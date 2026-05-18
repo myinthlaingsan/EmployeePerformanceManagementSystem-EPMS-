@@ -11,20 +11,9 @@ public interface FeedbackRequestService {
 
     void regenerateUserFeedbackRequests(Long targetEmployeeId, Long cycleId, Long previousCycleId, int globalMaxLimit);
 
-
-    void generateRequests(FeedbackRequestGenerateDTO dto);
-
     List<FeedbackRequestResponse> getMyPendingRequests(Long evaluatorId);
 
-    /*
-    List<FeedbackRequestResponse> getRequestsByEmployee(Long targetEmployeeId, Long cycleId);
+    void cancelFeedbackRequest(Long requestId);
 
-    List<FeedbackRequestResponse> getRequestsByCycle(Long cycleId);
-
-    FeedbackRequestResponse getRequest(Long requestId);
-
-    void updateRequestStatus(Long requestId, FeedbackStatus status);
-
-    void deleteRequest(Long requestId);
-    */
+    void reassignFeedbackRequest(Long requestId, Long newEvaluatorId);
 }

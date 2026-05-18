@@ -47,7 +47,7 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
 
         // 1. MANAGER
         reportingLineRepository.findByEmployeeAndIsActiveTrue(target)
-                .ifPresent(line -> result.add(mapToDTO(line.getManager(), FeedbackRelationship.MANAGER)));
+                .ifPresent(line -> result.add(mapToDTO(line.getManager(), FeedbackRelationship.DIRECT_MANAGER)));
 
         // 2. PEERS
         List<Employee> allPeers = findPeers(target);

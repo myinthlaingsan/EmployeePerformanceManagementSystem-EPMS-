@@ -109,10 +109,10 @@ public class EvaluatorRotationServiceImpl implements EvaluatorRotationService {
             boolean alreadyAssigned = feedbackRequestRepository
                     .findByTargetUserIdAndCycleCycleId(target.getId(), currentCycleId)
                     .stream()
-                    .anyMatch(fr -> fr.getRelationship() == FeedbackRelationship.SUPERIOR);
+                    .anyMatch(fr -> fr.getRelationship() == FeedbackRelationship.DIRECT_MANAGER);
 
             if (alreadyAssigned) {
-                log.info("Skipping target [{}] — SUPERIOR assignment already exists for cycle [{}]",
+                log.info("Skipping target [{}] — DIRECT_MANAGER assignment already exists for cycle [{}]",
                         target.getId(), currentCycleId);
                 continue;
             }
@@ -126,7 +126,7 @@ public class EvaluatorRotationServiceImpl implements EvaluatorRotationService {
                     .targetUser(target)
                     .evaluator(evaluator)
                     .cycle(currentCycle)
-                    .relationship(FeedbackRelationship.SUPERIOR)
+                    .relationship(FeedbackRelationship.DIRECT_MANAGER)
                     .isAnonymous(false)       // Top Management assignments are not anonymous
                     .status(FeedbackStatus.PENDING)
                     .build();
@@ -215,7 +215,7 @@ public class EvaluatorRotationServiceImpl implements EvaluatorRotationService {
         }
         return feedbackRequestRepository
                 .findEvaluatorsByTargetAndCycleAndRelationship(
-                        targetId, previousCycleId, FeedbackRelationship.SUPERIOR)
+                        targetId, previousCycleId, FeedbackRelationship.DIRECT_MANAGER)
                 .stream()
                 .map(Employee::getId)
                 .collect(Collectors.toSet());
@@ -232,7 +232,7 @@ public class EvaluatorRotationServiceImpl implements EvaluatorRotationService {
     private Employee getOldestEvaluator(List<Employee> pool, Long targetId) {
         // Retrieve all historical assignments to this target, oldest-first
         List<FeedbackRequest> history = feedbackRequestRepository
-                .findAllByTargetOrderedByOldestFirst(targetId, FeedbackRelationship.SUPERIOR);
+                .findAllByTargetOrderedByOldestFirst(targetId, FeedbackRelationship.DIRECT_MANAGER);
 
         if (history.isEmpty()) {
             // No history at all — just return the first evaluator in the pool
