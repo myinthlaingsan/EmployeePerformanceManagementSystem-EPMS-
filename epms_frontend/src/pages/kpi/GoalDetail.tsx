@@ -1,29 +1,34 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   useGetGoalSetByEmployeeQuery,
   useApproveGoalSetMutation,
-  useCalculateScoreMutation
+  useCalculateScoresMutation
 } from '../../services/kpiApi';
 import { useAuth } from '../../hooks/useAuth';
-import { useActiveCycle } from '../../context/ActiveCycleContext';
 import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
 import KpiRevisionModal from '../../components/kpi/KpiRevisionModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
+import { ChevronLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+
+const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
+  LOCKED: { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
+  DRAFT: { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
+};
 
 const GoalDetail: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { activeCycleId } = useActiveCycle();
+  const { user, activeCycleId } = useAuth();
 
-  const { data: goalSetResponse, isLoading, error } = useGetGoalSetByEmployeeQuery({
-    employeeId: parseInt(employeeId!),
-    cycleId: activeCycleId
-  });
-
+  const { data: goalSetResponse, isLoading, error } = useGetGoalSetByEmployeeQuery(
+    { employeeId: parseInt(employeeId!), cycleId: Number(activeCycleId!) },
+    { skip: !user?.id || !activeCycleId }
+  );
   const [approveGoal] = useApproveGoalSetMutation();
-  const [calculateScore] = useCalculateScoreMutation();
+  const [calculateScores] = useCalculateScoresMutation();
 
   const goalSet = goalSetResponse?.data;
   const items = goalSet?.items || [];
@@ -37,179 +42,172 @@ const GoalDetail: React.FC = () => {
 
   const handleApprove = async () => {
     if (!goalSet) return;
-    try {
-      await approveGoal(goalSet.id).unwrap();
-      alert('Goal set approved!');
-    } catch (err) {
-      alert('Failed to approve goal set');
-    }
+    try { await approveGoal(goalSet.id).unwrap(); toast.success('Goal set approved!'); }
+    catch { toast.error('Failed to approve goal set'); }
   };
 
   const handleCalculate = async () => {
     if (!goalSet) return;
     try {
-      await calculateScore({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
-      alert('Score calculated successfully!');
-    } catch (err) {
-      alert('Failed to calculate score');
-    }
+      await calculateScores({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
+      toast.success('Score calculated!');
+    } catch { toast.error('Failed to calculate score'); }
   };
 
-  if (isLoading) return <div className="p-8 text-center text-gray-500">Loading goal details...</div>;
-  if (error || !goalSet) return <div className="p-8 text-center text-red-500">Goal set not found for this cycle.</div>;
+  if (isLoading) return (
+    <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading goal details…</div>
+  );
+  if (error || !goalSet) return (
+    <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#791F1F' }}>Goal set not found for this cycle.</div>
+  );
 
   const totalWeight = items.reduce((sum, i) => sum + i.weightPercent, 0);
+  const ss = STATUS_STYLE[goalSet.status] || { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8' };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-4 pb-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <button
-            onClick={() => navigate(-1)}
-            className="text-xs font-bold text-gray-400 hover:text-blue-600 mb-2 flex items-center gap-1 uppercase tracking-wider"
-          >
-            ← Back to List
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <button onClick={() => navigate(-1)}
+            style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.5px solid #E4E6EC', borderRadius: 8, background: '#FFFFFF', color: '#5A6070', flexShrink: 0, marginTop: 2 }}
+            className="hover:bg-[#F5F6F8] transition-colors">
+            <ChevronLeft size={16} />
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">{goalSet.employeeName}'s Performance Goals</h1>
-          <p className="text-sm text-gray-500">Cycle: {goalSet.appraisalCycleId} | Manager: {goalSet.managerName}</p>
+          <div>
+            <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{goalSet.employeeName}'s Performance Goals</h1>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>
+              Cycle: {goalSet.appraisalCycleId} &bull; Manager: {goalSet.managerName}
+            </p>
+          </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold border ${goalSet.status === 'APPROVED' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-amber-50 text-amber-700 border-amber-100'
-            }`}>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <span style={{ fontSize: 11, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '3px 10px' }}>
             {goalSet.status}
           </span>
-
           {isManager && (goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => navigate(`/kpi/assign/${employeeId}`)}
-                className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-black font-bold text-sm shadow-sm transition flex items-center gap-2"
-              >
+            <>
+              <button onClick={() => navigate(`/kpi/assign/${employeeId}`)}
+                style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none' }}>
                 Modify Goals
               </button>
-              
               {goalSet.status === 'DRAFT' && (
-                <button
-                  onClick={handleApprove}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold text-sm shadow-sm transition"
-                >
+                <button onClick={handleApprove}
+                  style={{ background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
                   Approve Goals
                 </button>
               )}
-
               {goalSet.status === 'APPROVED' && (
-                <button
-                  onClick={handleCalculate}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold text-sm shadow-sm transition"
-                >
+                <button onClick={handleCalculate}
+                  style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
                   Calculate Score
                 </button>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Weight</p>
-          <p className={`text-2xl font-bold ${totalWeight === 100 ? 'text-blue-600' : 'text-red-600'}`}>
-            {totalWeight}% <span className="text-sm text-gray-300">/ 100%</span>
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px' }}>
+          <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Total Weight</p>
+          <p style={{ fontSize: 22, fontWeight: 500, color: totalWeight === 100 ? '#1A56DB' : '#791F1F' }}>
+            {totalWeight}% <span style={{ fontSize: 13, color: '#9EA3B0' }}>/ 100%</span>
           </p>
         </div>
-        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">KPI Count</p>
-          <p className="text-2xl font-bold text-gray-900">{items.length} Goals</p>
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px' }}>
+          <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>KPI Count</p>
+          <p style={{ fontSize: 22, fontWeight: 500, color: '#111827' }}>{items.length} Goals</p>
         </div>
-        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Execution Status</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {goalSet.status === 'APPROVED' ? 'Active' : 'Pending'}
-          </p>
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px' }}>
+          <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Execution Status</p>
+          <p style={{ fontSize: 22, fontWeight: 500, color: '#111827' }}>{goalSet.status === 'APPROVED' ? 'Active' : 'Pending'}</p>
         </div>
       </div>
 
-      {/* Goal Table */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* Goals table */}
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">KPI Item</th>
-                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Weight</th>
-                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Target</th>
-                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Progress</th>
-                <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+          <table className="w-full text-left" style={{ minWidth: 600 }}>
+            <thead>
+              <tr style={{ borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
+                {['KPI Item', 'Weight', 'Target', 'Progress', 'Actions'].map((h, i) => (
+                  <th key={h} style={{ padding: '10px 18px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 4 ? 'right' : 'left' }}>{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {items.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-bold text-gray-900">{item.title}</div>
-                    <div className="text-[10px] text-gray-500 font-semibold uppercase">{item.categoryName}</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-bold text-gray-700">
-                    {item.weightPercent}%
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 font-medium">
-                    {item.targetValue} <span className="text-[10px] uppercase text-gray-300">{item.unit}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3 min-w-37.5">
-                      <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-blue-600 h-full transition-all duration-500"
-                          style={{ width: `${Math.min(((item.currentProgress || 0) / item.targetValue) * 100, 100)}%` }}
-                        />
+            <tbody>
+              {items.map((item, idx) => {
+                const pct = Math.min(Math.round(((item.currentProgress || 0) / item.targetValue) * 100), 100);
+                return (
+                  <tr key={item.id} style={{ borderBottom: idx < items.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
+                    className="hover:bg-[#FAFBFF] transition-colors">
+                    <td style={{ padding: '12px 18px' }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginBottom: 2 }}>{item.title}</p>
+                      <p style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.categoryName}</p>
+                    </td>
+                    <td style={{ padding: '12px 18px', fontSize: 13, fontWeight: 500, color: '#111827' }}>{item.weightPercent}%</td>
+                    <td style={{ padding: '12px 18px', fontSize: 12, color: '#5A6070' }}>
+                      {item.targetValue} <span style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase' }}>{item.unit}</span>
+                    </td>
+                    <td style={{ padding: '12px 18px' }}>
+                      <div className="flex items-center gap-3">
+                        <div style={{ flex: 1, maxWidth: 100, background: '#F0F2F6', borderRadius: 4, height: 4, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', background: '#1A56DB', width: `${pct}%`, transition: 'width 0.5s' }} />
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: '#111827' }}>{pct}%</span>
                       </div>
-                      <span className="text-xs font-bold text-gray-700">
-                        {Math.round(((item.currentProgress || 0) / item.targetValue) * 100)}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      {isOwner && goalSet.status === 'APPROVED' && (
-                        <button
-                          onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
-                          className="text-[10px] bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition border border-blue-100"
-                        >
-                          UPDATE
-                        </button>
-                      )}
-                      {isManager && (
-                        <button
-                          onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
-                          className="text-[10px] bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg font-bold hover:bg-gray-100 transition border border-gray-200"
-                        >
-                          REVISE
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td style={{ padding: '12px 18px', textAlign: 'right' }}>
+                      <div className="flex justify-end gap-2">
+                        {/* Employee update button - for regular goals */}
+                        {isOwner && goalSet.status === 'APPROVED' && !item.isCompliance && (
+                          <button
+                            onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
+                            style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                            className="hover:bg-blue-100 transition">
+                            UPDATE
+                          </button>
+                        )}
+
+                        {/* Manager verify button - for compliance items */}
+                        {isManager && item.isCompliance && (
+                          <button
+                            onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
+                            style={{ background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                            className="hover:bg-emerald-100 transition">
+                            VERIFY
+                          </button>
+                        )}
+
+                        {/* Manager revise button - for all items */}
+                        {isManager && (
+                          <button
+                            onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
+                            style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                            className="hover:bg-gray-100 transition">
+                            REVISE
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
       {showProgressModal && selectedItem && (
-        <ProgressUpdateModal
-          item={selectedItem}
-          onClose={() => { setShowProgressModal(false); setSelectedItem(null); }}
-        />
+        <ProgressUpdateModal item={selectedItem} onClose={() => { setShowProgressModal(false); setSelectedItem(null); }} />
       )}
       {showRevisionModal && selectedItem && (
-        <KpiRevisionModal
-          item={selectedItem}
-          onClose={() => { setShowRevisionModal(false); setSelectedItem(null); }}
-        />
+        <KpiRevisionModal item={selectedItem} onClose={() => { setShowRevisionModal(false); setSelectedItem(null); }} />
       )}
+
+      <div style={{ display: 'none' }}><CheckCircle2 /><AlertCircle /></div>
     </div>
   );
 };

@@ -21,135 +21,104 @@ const LoginPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
     try {
       const response = await login({ email, password }).unwrap();
       dispatch(loginSuccess(response));
-
-      // Navigate to intended page or dashboard
       navigate(from, { replace: true });
     } catch (err: any) {
       setError(err.data?.message || "Invalid credentials. Please try again.");
     }
   };
 
+  const inputCls = "block w-full pl-10 pr-4 py-2.5 text-[13px] font-[400] outline-none transition-colors";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 animate-fade-in">
-        <div className="bg-white p-10 rounded-[2rem] shadow-premium border border-slate-100 relative overflow-hidden">
-          {/* Subtle Accent Gradient */}
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
-
-          <div className="flex flex-col items-center">
-            <div className="mb-6 p-3 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm">
-              <img
-                src={logo}
-                alt="EPMS Logo"
-                className="w-16 h-16 object-contain"
-              />
-            </div>
-            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">
-              Sign In
-            </h2>
-            <p className="mt-2 text-slate-500 text-sm font-medium">
-              Welcome back! Please enter your details.
-            </p>
+    <div className="min-h-screen flex items-center justify-center py-10 px-4" style={{ background: "#F5F6F8" }}>
+      <div className="w-full max-w-sm animate-fade-in">
+        {/* Brand */}
+        <div className="flex flex-col items-center mb-6">
+          <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "10px", marginBottom: 14 }}>
+            <img src={logo} alt="EPMS Logo" className="w-10 h-10 object-contain" />
           </div>
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>EPMS Global</p>
+          <p style={{ fontSize: 12, color: "#9EA3B0", marginTop: 2 }}>Employee Performance Management System</p>
+        </div>
 
-          <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-shake">
-                <AlertCircle className="w-4 h-4" />
-                {error}
-              </div>
-            )}
+        {/* Card */}
+        <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "24px" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 500, color: "#111827", marginBottom: 4 }}>Sign in</h2>
+          <p style={{ fontSize: 13, color: "#9EA3B0", marginBottom: 20 }}>Welcome back! Please enter your details.</p>
 
-            <div className="space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 mb-4" style={{ background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 8, padding: "10px 12px" }}>
+              <AlertCircle size={14} style={{ color: "#791F1F", flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: "#791F1F" }}>{error}</span>
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            {/* Email */}
+            <div>
+              <label htmlFor="email-address" style={{ display: "block", fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 5 }}>
+                Email address
+              </label>
               <div className="relative">
-                <label htmlFor="email-address" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
-                  Email Address
+                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#9EA3B0" }} />
+                <input
+                  id="email-address" name="email" type="email" autoComplete="email" required
+                  className={inputCls}
+                  style={{ background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8, color: "#111827" }}
+                  placeholder="name@company.com"
+                  value={email} onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <div className="flex justify-between items-center" style={{ marginBottom: 5 }}>
+                <label htmlFor="password" style={{ fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Password
                 </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                    <Mail className="h-5 w-5" />
-                  </div>
-                  <input
-                    id="email-address"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className="block w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
-                    placeholder="name@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
+                <Link to="/forgot-password" style={{ fontSize: 12, color: "#1A56DB" }}>Forgot password?</Link>
               </div>
-
               <div className="relative">
-                <div className="flex items-center justify-between mb-1.5 ml-1">
-                  <label htmlFor="password" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Password
-                  </label>
-                  <Link
-                    to="/forgot-password"
-                    id="forgot-password"
-                    className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                    <Lock className="h-5 w-5" />
-                  </div>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    className="block w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
+                <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#9EA3B0" }} />
+                <input
+                  id="password" name="password" type="password" autoComplete="current-password" required
+                  className={inputCls}
+                  style={{ background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8, color: "#111827" }}
+                  placeholder="••••••••"
+                  value={password} onChange={(e) => setPassword(e.target.value)}
+                />
               </div>
             </div>
 
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-4 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:active:scale-100 transition-all shadow-lg shadow-blue-500/20"
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Signing in...</span>
-                  </div>
-                ) : (
-                  <>
-                    <LogIn className="w-4 h-4" />
-                    <span>Sign In</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="submit" disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 500, border: "none", marginTop: 4 }}
+              onMouseEnter={(e) => { if (!isLoading) e.currentTarget.style.background = "#1648C0"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} />
+                  Signing in…
+                </>
+              ) : (
+                <><LogIn size={14} aria-hidden="true" /> Sign in</>
+              )}
+            </button>
           </form>
         </div>
 
-        <div className="flex flex-col items-center gap-4 mt-8">
-          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">
-            &copy; {new Date().getFullYear()} EPMS Global • Secure Access
-          </p>
-        </div>
+        <p className="text-center mt-6" style={{ fontSize: 11, color: "#9EA3B0" }}>
+          © {new Date().getFullYear()} EPMS Global · Secure access
+        </p>
       </div>
     </div>
   );
 };
 
 export default LoginPage;
-

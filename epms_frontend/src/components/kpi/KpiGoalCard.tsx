@@ -95,13 +95,20 @@ const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
               ></div>
             </div>
           </div>
-          <button 
-            onClick={() => onUpdate(kpi)}
-            className="w-full py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
-          >
-            {progress === 0 ? <Play className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-            {progress === 0 ? 'Start Goal' : 'Update Progress'}
-          </button>
+          {!kpi.isCompliance ? (
+            <button 
+              onClick={() => onUpdate(kpi)}
+              className="w-full py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
+            >
+              {progress === 0 ? <Play className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+              {progress === 0 ? 'Start Goal' : 'Update Progress'}
+            </button>
+          ) : (
+            <div className="w-full py-2 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 cursor-default">
+               <Award className="w-3 h-3" />
+               Verified by Manager
+            </div>
+          )}
         </div>
       </div>
     </div>

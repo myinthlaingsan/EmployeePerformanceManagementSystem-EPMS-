@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PerformanceRankingReportDTO {
+    private Integer rank;
     private String employeeName;
     private String departmentName;
     private BigDecimal currentScore;

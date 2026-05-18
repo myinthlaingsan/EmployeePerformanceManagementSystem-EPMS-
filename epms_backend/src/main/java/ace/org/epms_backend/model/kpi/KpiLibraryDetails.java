@@ -34,5 +34,6 @@ public class KpiLibraryDetails extends BaseEntity {
 
     private BigDecimal weightPercent;
 
+    private Boolean isCompliance = false;
     private Boolean isActive = true;
 }

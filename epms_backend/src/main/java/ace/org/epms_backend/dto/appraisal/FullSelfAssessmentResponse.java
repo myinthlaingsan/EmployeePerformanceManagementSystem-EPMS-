@@ -21,6 +21,7 @@ public class FullSelfAssessmentResponse {
     private FormType formType;
 
     // Employee Info
+    private Long employeeId;
     private String employeeName;
     private String employeeCode;
     private String positionName;
@@ -44,6 +45,7 @@ public class FullSelfAssessmentResponse {
     private String employeeSignature;
     private String employeeSignComment;
     private String managerSignComment;
+    private String overallReflection;
 
     private List<CategoryWithAnswersDTO> categories;
 }

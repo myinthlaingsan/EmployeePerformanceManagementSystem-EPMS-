@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -49,11 +50,19 @@ public class AppraisalCycleController {
     }
 
     @PutMapping("/{id}/activate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<AppraisalCycleResponse>> activate(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.activate(id)));
     }
 
+    @PutMapping("/{id}/advance-to-evaluation")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    public ResponseEntity<ApiResponse<AppraisalCycleResponse>> advanceToEvaluation(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.advanceToEvaluation(id)));
+    }
+
     @PutMapping("/{id}/close")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AppraisalCycleResponse>> close(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.close(id)));
     }

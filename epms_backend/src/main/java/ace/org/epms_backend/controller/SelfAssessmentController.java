@@ -33,8 +33,11 @@ public class SelfAssessmentController {
     }
 
     @PostMapping("/{selfAssessmentId}/draft")
-    public ResponseEntity<ApiResponse<Void>> saveDraft(@PathVariable Long selfAssessmentId) {
-        service.saveDraft(selfAssessmentId);
+    public ResponseEntity<ApiResponse<Void>> saveDraft(
+            @PathVariable Long selfAssessmentId,
+            @RequestParam(required = false) String overallReflection
+    ) {
+        service.saveDraft(selfAssessmentId, overallReflection);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 

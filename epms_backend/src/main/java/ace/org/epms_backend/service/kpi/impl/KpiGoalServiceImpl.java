@@ -46,8 +46,17 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional(readOnly = true)
     public AppraisalCycleResponse getActiveCycle() {
-        AppraisalCycle cycle = cycleRepository.findByIsActiveTrue().stream().findFirst()
+        List<AppraisalCycle> cycles = cycleRepository.findActiveCyclesByStatus(List.of(CycleStatus.PLANNING, CycleStatus.IN_PROGRESS));
+        
+        // Fallback: If status-specific search fails, return the first active cycle regardless of status
+        if (cycles.isEmpty()) {
+            cycles = cycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
+        }   
+
+        AppraisalCycle cycle = cycles.stream().findFirst()
                 .orElseThrow(() -> new NotFoundException("No active appraisal cycle found"));
+        System.out.println(cycle.getCycleId());
+        System.out.println(cycle.getCycleName());
         return AppraisalCycleResponse.builder()
                 .cycleId(cycle.getCycleId())
                 .cycleName(cycle.getCycleName())
@@ -69,9 +78,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             }
         }
         AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
-                .orElseGet(() -> cycleRepository.findByIsActiveTrue().stream().findFirst()
-                        .orElseThrow(() -> new NotFoundException(
-                                "No active appraisal cycle found in the system. Please create one in Admin settings.")));
+                .orElseThrow(() -> new NotFoundException("Selected appraisal cycle not found. ID: " + request.getAppraisalCycleId()));
 
         Employee currentManager = getCurrentEmployee();
 
@@ -88,12 +95,22 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         }
 
         // Atomic archive existing goals
-        if (request.isOverwriteExisting()) {
-            goalsRepository.archiveExistingGoalSets(request.getEmployeeId(), cycle.getCycleId());
-        } else {
-            List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
-                    request.getEmployeeId(), cycle.getCycleId());
-            if (!existing.isEmpty()) {
+        List<KpiGoals> existing = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
+                request.getEmployeeId(), cycle.getCycleId());
+
+        if (!existing.isEmpty()) {
+            boolean hasApprovedOrLocked = existing.stream()
+                    .anyMatch(g -> g.getStatus() == KpiGoalStatus.APPROVED
+                            || g.getStatus() == KpiGoalStatus.LOCKED);
+
+            if (hasApprovedOrLocked) {
+                throw new IllegalStateException(
+                        "Employee already has APPROVED or LOCKED goals for this cycle. Cannot overwrite.");
+            }
+
+            if (request.isOverwriteExisting()) {
+                goalsRepository.archiveExistingGoalSets(request.getEmployeeId(), cycle.getCycleId());
+            } else {
                 throw new IllegalStateException(
                         "Employee already has goals assigned for this cycle. Use the overwrite option if you wish to replace them.");
             }
@@ -124,6 +141,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         .scorePercent(BigDecimal.ZERO)
                         .weightedScore(BigDecimal.ZERO)
                         .status(KpiItemStatus.NOT_STARTED)
+                        .isCompliance(libDetail.getIsCompliance())
                         .isActive(true)
                         .build();
             }).collect(Collectors.toList());
@@ -140,7 +158,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .message("A new KPI set has been assigned to you for the current cycle.")
                 .referenceType(ReferenceType.KPI)
                 .referenceId(savedGoalSet.getId())
-                .actionUrl("/kpis/my-goals")
+                .actionUrl("/kpi/my")
                 .build());
 
         // Log KPI Journey
@@ -176,9 +194,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         }
 
         AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
-                .orElseGet(() -> cycleRepository.findByIsActiveTrue().stream().findFirst()
-                        .orElseThrow(() -> new NotFoundException(
-                                "No active appraisal cycle found in the system.")));
+                .orElseThrow(() -> new NotFoundException("Selected appraisal cycle not found. ID: " + request.getAppraisalCycleId()));
 
         Employee currentManager = getCurrentEmployee();
 
@@ -263,6 +279,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                             .scorePercent(BigDecimal.ZERO)
                             .weightedScore(BigDecimal.ZERO)
                             .status(KpiItemStatus.NOT_STARTED)
+                            .isCompliance(libDetail.getIsCompliance())
                             .isActive(true)
                             .build();
                 }).collect(Collectors.toList());
@@ -279,7 +296,26 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                                 + library.getTitle())
                         .referenceType(ReferenceType.KPI)
                         .referenceId(savedGoalSet.getId())
-                        .actionUrl("/kpis/my-goals")
+                        .actionUrl("/kpi/my")
+                        .build());
+
+                // Log KPI Journey
+                historyRepo.save(KpiHistoryLog.builder()
+                        .employeeId(savedGoalSet.getEmployee().getId())
+                        .goalSetId(savedGoalSet.getId())
+                        .action("KPI_ASSIGNED")
+                        .changeDetails(
+                                "Goal set bulk-assigned to " + employee.getStaffName() + " for cycle: " + cycle.getCycleName() + " from library: " + library.getTitle())
+                        .changedBy(currentManager.getId())
+                        .build());
+
+                // Log Audit
+                auditService.log(AuditRequest.builder()
+                        .tableName("kpi_goals")
+                        .recordId(savedGoalSet.getId())
+                        .action(AuditAction.INSERT)
+                        .newState(savedGoalSet)
+                        .status(AuditStatus.SUCCESS)
                         .build());
 
                 response.setSuccessfulCount(response.getSuccessfulCount() + 1);
@@ -329,6 +365,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .scorePercent(BigDecimal.ZERO)
                 .weightedScore(BigDecimal.ZERO)
                 .status(KpiItemStatus.NOT_STARTED)
+                .isCompliance(request.getIsCompliance())
                 .isActive(true)
                 .build();
 
@@ -358,6 +395,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         item.setWeightPercent(request.getWeightPercent());
         item.setCategory(categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new NotFoundException("Category not found")));
+        item.setIsCompliance(request.getIsCompliance());
 
         goalItemRepository.save(item);
         return kpiMapper.toGoalSetResponse(goalSet);
@@ -404,6 +442,10 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
             if (!item.getGoalSet().getId().equals(goalSetId)) {
                 throw new IllegalArgumentException("Item does not belong to this goal set");
+            }
+
+            if (update.getWeightPercent() != null && update.getWeightPercent().compareTo(new BigDecimal("35")) > 0) {
+                throw new IllegalArgumentException("Individual KPI weight cannot exceed 35%");
             }
 
             item.setTitle(update.getTitle());
@@ -475,7 +517,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     .message("Your Manager has approved your KPI goals.")
                     .referenceType(ReferenceType.KPI)
                     .referenceId(goalSet.getId())
-                    .actionUrl("/kpis/my-goals")
+                    .actionUrl("/kpi/my")
                     .build());
         }
 
@@ -516,6 +558,39 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         goalSet.setStatus(KpiGoalStatus.DRAFT);
         KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+        // Notify employee that their goals have been reverted to draft
+        if (goalSet.getEmployee() != null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(goalSet.getEmployee().getId())
+                    .senderId(getCurrentEmployee().getId())
+                    .type(NotificationType.KPI_REJECTED)
+                    .title("KPI Reverted to Draft")
+                    .message("Your KPI goals have been returned to draft by your manager. Please check with your manager for further instructions.")
+                    .referenceType(ReferenceType.KPI)
+                    .referenceId(goalSet.getId())
+                    .actionUrl("/kpi/my")
+                    .build());
+        }
+
+        // Log KPI Journey
+        historyRepo.save(KpiHistoryLog.builder()
+                .employeeId(goalSet.getEmployee().getId())
+                .goalSetId(goalSet.getId())
+                .action("KPI_REVERTED")
+                .changeDetails("Goal set reverted to DRAFT by manager.")
+                .changedBy(getCurrentEmployee().getId())
+                .build());
+
+        // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("kpi_goals")
+                .recordId(savedGoalSet.getId())
+                .action(AuditAction.UPDATE)
+                .newState(savedGoalSet)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
@@ -534,6 +609,20 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         goalSet.setStatus(KpiGoalStatus.LOCKED);
         KpiGoals savedGoalSet = goalsRepository.save(goalSet);
+
+        // Notify employee that their goals have been locked
+        if (goalSet.getEmployee() != null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(goalSet.getEmployee().getId())
+                    .senderId(getCurrentEmployee().getId())
+                    .type(NotificationType.KPI_LOCKED)
+                    .title("KPI Goals Locked")
+                    .message("Your KPI goals have been locked by your manager. No further progress updates can be made.")
+                    .referenceType(ReferenceType.KPI)
+                    .referenceId(goalSet.getId())
+                    .actionUrl("/kpi/my")
+                    .build());
+        }
 
         // Log KPI Journey
         historyRepo.save(KpiHistoryLog.builder()
@@ -634,6 +723,20 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         goalSet.setVersion(goalSet.getVersion() + 1);
         goalsRepository.save(goalSet);
 
+        // Notify employee about the revision
+        if (goalSet.getEmployee() != null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(goalSet.getEmployee().getId())
+                    .senderId(currentUser.getId())
+                    .type(NotificationType.KPI_REVISED)
+                    .title("KPI Goal Revised")
+                    .message("Your KPI goal '" + item.getTitle() + "' has been revised by your manager. Reason: " + request.getChangeReason())
+                    .referenceType(ReferenceType.KPI)
+                    .referenceId(goalSet.getId())
+                    .actionUrl("/kpi/my")
+                    .build());
+        }
+
         // Detailed audit log
         historyRepo.save(
                 KpiHistoryLog.builder()
@@ -652,12 +755,24 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional(readOnly = true)
     public GoalSetResponse getGoalSetByEmployee(Long employeeId, Long cycleId) {
-        List<KpiGoals> goals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId,
-                cycleId);
+        if (cycleId == null) {
+            throw new IllegalArgumentException("Appraisal Cycle ID must be provided.");
+        }
+        // First try finding for the specific cycle provided
+        List<KpiGoals> goals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
+        
+        if (goals.isEmpty()) {
+            // Fallback: If cycleId was not provided or correctly matched, look for ANY current goal set 
+            // for the employee to see if they were accidentally assigned to a different cycle (like ID 1)
+            goals = goalsRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId).stream()
+                    .filter(KpiGoals::getIsCurrent)
+                    .collect(Collectors.toList());
+        }
+
         if (goals.isEmpty()) {
             throw new NotFoundException("Current goal set not found for employee ID: " + employeeId);
         }
-        // Return the most recently created one if duplicates exist
+        
         return kpiMapper.toGoalSetResponse(goals.get(0));
     }
 
@@ -680,6 +795,17 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional(readOnly = true)
     public List<GoalSetResponse> getTeamGoalSets(Long managerId, Long cycleId) {
+        Employee currentUser = getCurrentEmployee();
+        var authorities = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .collect(Collectors.toSet());
+
+        boolean isHrOrAdmin = authorities.contains("ROLE_HR") || authorities.contains("ROLE_ADMIN");
+
+        if (!isHrOrAdmin && !currentUser.getId().equals(managerId)) {
+            throw new SecurityException("You are not authorized to view this team's goals");
+        }
+
         return goalsRepository.findTeamGoals(managerId, cycleId).stream()
                 .map(kpiMapper::toGoalSetResponse)
                 .collect(Collectors.toList());
@@ -698,22 +824,4 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         return employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Current user not found"));
     }
-
 }
-
-    
-
-    
-    
-    
-        
-                
-                
-    
-
-    
-        
-        
-                
-    
-

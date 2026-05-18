@@ -1,23 +1,27 @@
-import React, { createContext, useContext, type ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useGetActiveCycleQuery } from '../services/kpiApi';
 
 interface ActiveCycleContextType {
-  activeCycleId: number;
+  activeCycleId: number | undefined;
   activeCycleName: string;
   isLoading: boolean;
+  isError: boolean;
 }
 
 const ActiveCycleContext = createContext<ActiveCycleContextType | undefined>(undefined);
 
 export const ActiveCycleProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { data: cycleResponse, isLoading } = useGetActiveCycleQuery();
+  const { data: cycleResponse, isLoading, isError } = useGetActiveCycleQuery();
 
-  // Default to 1 if no active cycle is found (backward compatibility)
-  const activeCycleId = cycleResponse?.data?.cycleId || 1;
-  const activeCycleName = cycleResponse?.data?.cycleName || 'Current Appraisal Cycle';
+  const value = useMemo(() => ({
+    activeCycleId: cycleResponse?.data?.cycleId,
+    activeCycleName: cycleResponse?.data?.cycleName || 'No Active Cycle Selected',
+    isLoading,
+    isError
+  }), [cycleResponse, isLoading, isError]);
 
   return (
-    <ActiveCycleContext.Provider value={{ activeCycleId, activeCycleName, isLoading }}>
+    <ActiveCycleContext.Provider value={value}>
       {children}
     </ActiveCycleContext.Provider>
   );

@@ -7,10 +7,8 @@ import ace.org.epms_backend.model.UserPrincipal;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.repository.AuditLogRepository;
 import ace.org.epms_backend.service.AuditService;
-import ace.org.epms_backend.service.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -23,17 +21,19 @@ public class AuditServiceImpl implements AuditService {
 
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
-//    private final HttpServletRequest httpServletRequest;
-//    private final AuthService authService;
+    // private final HttpServletRequest httpServletRequest;
+    // private final AuthService authService;
 
     @Override
-//    @Async
+    // @Async
     public void log(AuditRequest auditRequest) {
         try {
-            String oldValues = auditRequest.getOldState() != null 
-                    ? objectMapper.writeValueAsString(auditRequest.getOldState()) : null;
-            String newValues = auditRequest.getNewState() != null 
-                    ? objectMapper.writeValueAsString(auditRequest.getNewState()) : null;
+            String oldValues = auditRequest.getOldState() != null
+                    ? objectMapper.writeValueAsString(auditRequest.getOldState())
+                    : null;
+            String newValues = auditRequest.getNewState() != null
+                    ? objectMapper.writeValueAsString(auditRequest.getNewState())
+                    : null;
 
             AuditLog log = AuditLog.builder()
                     .tableName(auditRequest.getTableName())
@@ -54,11 +54,12 @@ public class AuditServiceImpl implements AuditService {
     }
 
     private Employee getCurrentEmployee() {
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new InvalidTokenException("No user logged in or session expired. Please provide a valid authentication token.");
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new InvalidTokenException(
+                    "No user logged in or session expired. Please provide a valid authentication token.");
         }
 
         Object principal = authentication.getPrincipal();
@@ -68,6 +69,5 @@ public class AuditServiceImpl implements AuditService {
         }
         throw new InvalidTokenException("Invalid authentication principal");
     }
-
 
 }

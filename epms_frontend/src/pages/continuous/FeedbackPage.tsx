@@ -242,23 +242,50 @@ const FeedbackPage = () => {
 
   const blankFeedback = { employeeId: 0, tagId: "" as number | "", feedbackType: FeedbackType.PRAISE, description: "", isPrivate: false };
   const [showModal, setShowModal] = useState(false);
-  const [newFeedback, setNewFeedback] = useState<{ employeeId: number; tagId: number | ""; feedbackType: FeedbackType; description: string; isPrivate: boolean }>(blankFeedback);
+  const [submitStatus, setSubmitStatus] = useState<ContinuousStatus>(ContinuousStatus.PUBLISHED);
+  const [newFeedback, setNewFeedback] = useState<{
+    employeeId: number;
+    tagId: number | "";
+    feedbackType: FeedbackType;
+    description: string;
+
+  }>({
+    employeeId: 0,
+    tagId: "",
+    feedbackType: FeedbackType.PRAISE,
+    description: "",
+
+  });
 
   const selectedEmp = employees?.find(e => e.id === newFeedback.employeeId);
 
-  const handleCreate = async (e: React.FormEvent, status: ContinuousStatus = ContinuousStatus.PUBLISHED) => {
+  const handleCreate = async (e: React.FormEvent, status?: ContinuousStatus) => {
     if (e) e.preventDefault();
     if (!user || !newFeedback.employeeId || !newFeedback.tagId) {
       toast.warning("Please select an employee and a category.");
       return;
     }
     try {
-      const body = { employeeId: newFeedback.employeeId, tagId: newFeedback.tagId as number, feedbackType: newFeedback.feedbackType, description: newFeedback.description, isPrivate: newFeedback.isPrivate, managerId: user.id };
-      if (editingId) { await updateFeedback({ id: editingId, body }).unwrap(); }
-      else { await createFeedback(body).unwrap(); }
+      const resolvedStatus = status || (editingId ? undefined : submitStatus);
+      const body = {
+        employeeId: newFeedback.employeeId,
+        tagId: newFeedback.tagId as number,
+        feedbackType: newFeedback.feedbackType,
+        description: newFeedback.description,
+
+        managerId: user.id,
+        status: resolvedStatus,
+      };
+
+      if (editingId) {
+        await updateFeedback({ id: editingId, body }).unwrap();
+      } else {
+        await createFeedback(body).unwrap();
+      }
+
       setShowModal(false);
       setEditingId(null);
-      setNewFeedback(blankFeedback);
+      setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "" });
     } catch (err: any) {
       toast.error(err.data?.message || "Failed to save feedback");
     }
@@ -296,15 +323,22 @@ const FeedbackPage = () => {
 
   const handleEdit = (fb: any) => {
     setEditingId(fb.feedbackId);
-    setNewFeedback({ employeeId: fb.employeeId, tagId: fb.tag?.tagId || 0, feedbackType: fb.feedbackType, description: fb.description, isPrivate: fb.isPrivate });
+    setNewFeedback({
+      employeeId: fb.employeeId,
+      tagId: fb.tag?.tagId || 0,
+      feedbackType: fb.feedbackType,
+      description: fb.description,
+
+    });
     setShowModal(true);
   };
 
   const handlePublish = async (id: number) => {
     try {
       await publishFeedback(id).unwrap();
+      toast.success('Feedback published successfully!');
     } catch (err: any) {
-      alert(err.data?.message || "Failed to publish feedback");
+      toast.error(err.data?.message || 'Failed to publish feedback');
     }
   };
 
@@ -359,7 +393,19 @@ const FeedbackPage = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+      {isManager && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {([{ label: 'All', value: undefined }, { label: 'Published', value: ContinuousStatus.PUBLISHED }, { label: 'Drafts', value: ContinuousStatus.DRAFT }] as const).map(({ label, value }) => (
+            <button key={label} type="button"
+              onClick={() => { setFilterStatus(value as string | undefined); setCurrentPage(1); }}
+              style={{ padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.15s', background: filterStatus === value ? '#111827' : '#F5F6F8', color: filterStatus === value ? '#FFFFFF' : '#5A6070' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Main Feed */}
         <div className="lg:col-span-2 space-y-3 order-2 lg:order-1">
           {(isAdmin || isHR) && (
@@ -376,11 +422,11 @@ const FeedbackPage = () => {
             </div>
           )}
 
-          {feedbacks?.map((fb) => {
+          {!(isAdmin || isHR) && feedbacks?.map((fb) => {
             const typeStyle = FEEDBACK_TYPE_STYLE[fb.feedbackType] || FEEDBACK_TYPE_STYLE[FeedbackType.PRAISE];
             return (
               <div key={fb.feedbackId} style={panelStyle} className="group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 38, height: 38, borderRadius: 8, background: typeStyle.bg, color: typeStyle.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>
                       {fb.managerName.charAt(0)}
@@ -391,15 +437,24 @@ const FeedbackPage = () => {
                         {fb.employeeId !== user?.id && <span style={{ color: '#9EA3B0', fontWeight: 400, marginLeft: 4, fontSize: 12 }}>to {fb.employeeName}</span>}
                         {fb.employeeId === user?.id && fb.managerId === user?.id && <span style={{ color: '#9EA3B0', fontWeight: 400, marginLeft: 4, fontSize: 12 }}>(Self)</span>}
                       </h3>
-                      <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 1 }}>{format(new Date(fb.createdAt), 'dd/MM/yyyy, p')}</p>
+                      <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 1 }}>
+                        {fb.publishedAt
+                          ? <>Published {format(new Date(fb.publishedAt), 'dd/MM/yyyy, p')}</>
+                          : format(new Date(fb.createdAt), 'dd/MM/yyyy, p')}
+                      </p>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ background: typeStyle.bg, color: typeStyle.text, border: `0.5px solid ${typeStyle.border}`, borderRadius: 6, padding: '2px 8px', fontSize: 10, fontWeight: 600 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {fb.status === ContinuousStatus.DRAFT && (
+                      <span style={{ fontSize: 9, fontWeight: 600, background: '#FAEEDA', color: '#633806', border: '0.5px solid #F0D4A4', borderRadius: 6, padding: '3px 8px' }}>
+                        Draft
+                      </span>
+                    )}
+                    <span style={{ fontSize: 9, fontWeight: 600, background: typeStyle.bg, color: typeStyle.text, border: `0.5px solid ${typeStyle.border}`, borderRadius: 6, padding: '3px 8px', textTransform: 'uppercase' }}>
                       {fb.feedbackType}
                     </span>
                     {(fb.managerId === user?.id || isAdmin || isHR) && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <button onClick={() => handleEdit(fb)} style={{ padding: 5, background: 'none', border: 'none', color: '#9EA3B0', cursor: 'pointer', borderRadius: 6 }} className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
                           <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
@@ -411,101 +466,83 @@ const FeedbackPage = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2" style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {fb.tag && <span style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 4, padding: '1px 6px', fontSize: 10, fontWeight: 600, color: '#5A6070' }}>#{fb.tag.tagName}</span>}
-                    {fb.isPrivate && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, color: '#791F1F' }}>
-                        <svg style={{ width: 10, height: 10 }} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                        Private
-                      </span>
-                    )}
-                  </div>
-                  <p style={{ fontSize: 13, color: '#5A6070', lineHeight: 1.5 }}>{fb.description}</p>
-                </div>
 
-                <div style={{ paddingTop: 10, borderTop: '0.5px solid #E4E6EC' }}>
-                  <button onClick={() => setExpandedFeedbackId(expandedFeedbackId === fb.feedbackId ? null : fb.feedbackId)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
-                    className="hover:text-[#1A56DB] transition-colors">
-                    <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                    Replies
-                  </button>
-                </div>
-
-                {expandedFeedbackId === fb.feedbackId && (
-                  <FeedbackReplies feedbackId={fb.feedbackId} authorId={fb.managerId} />
-                )}
-              </div>
-            );
-          })}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 0', borderTop: '0.5px solid #E4E6EC' }}>
-              <span style={{ fontSize: 11, color: '#9EA3B0' }}>Showing {startIndex + 1}–{Math.min(endIndex, totalItems)} of {totalItems}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}
-                  style={{ ...btnPageStyle(false), opacity: currentPage === 1 ? 0.3 : 1 }}>
-                  <svg style={{ width: 12, height: 12, margin: 'auto' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
-                </button>
-                {[...Array(totalPages)].map((_, i) => {
-                  const p = i + 1;
-                  if (totalPages > 5 && p !== 1 && p !== totalPages && (p < currentPage - 1 || p > currentPage + 1)) {
-                    if (p === currentPage - 2 || p === currentPage + 2) return <span key={p} style={{ fontSize: 11, color: '#9EA3B0', padding: '0 2px' }}>…</span>;
-                    return null;
-                  }
-                  return <button key={p} onClick={() => handlePageChange(p)} style={btnPageStyle(currentPage === p)}>{p}</button>;
-                })}
-                <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0}
-                  style={{ ...btnPageStyle(false), opacity: currentPage === totalPages || totalPages === 0 ? 0.3 : 1 }}>
-                  <svg style={{ width: 12, height: 12, margin: 'auto' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+              {fb.tag && (
+                <span style={{ fontSize: 10, fontWeight: 600, background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 20, padding: '2px 8px', display: 'inline-block', marginBottom: 8 }}>#{fb.tag.tagName}</span>
+              )}
+              <p style={{ fontSize: 13, color: '#5A6070', lineHeight: 1.6 }}>{fb.description}</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginTop: 12, borderTop: '0.5px solid #F0F2F6' }}>
+                <button type="button"
+                  onClick={() => setExpandedFeedbackId(expandedFeedbackId === fb.feedbackId ? null : fb.feedbackId)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: expandedFeedbackId === fb.feedbackId ? '#1A56DB' : '#9EA3B0', fontSize: 12, fontWeight: 500 }}>
+                  <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  Replies{(fb.replyCount ?? 0) > 0 ? ` (${fb.replyCount})` : ''}
                 </button>
                 {fb.status === ContinuousStatus.DRAFT && fb.managerId === user?.id && (
-                  <button 
-                    onClick={() => handlePublish(fb.feedbackId)}
-                    disabled={isPublishing}
-                    className="px-4 py-1.5 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-black transition shadow-sm disabled:opacity-50 flex items-center gap-2"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Publish Feedback
+                  <button type="button" onClick={() => handlePublish(fb.feedbackId)} disabled={isPublishing}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, cursor: isPublishing ? 'not-allowed' : 'pointer', opacity: isPublishing ? 0.5 : 1 }}>
+                    <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                    Publish
                   </button>
                 )}
               </div>
-              <form onSubmit={handleGoToPage} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {expandedFeedbackId === fb.feedbackId && (
+                <FeedbackReplies feedbackId={fb.feedbackId} authorId={fb.managerId} />
+              )}
+            </div>
+          )
+        })}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, ...panelStyle }}>
+            <span style={{ fontSize: 12, color: '#9EA3B0' }}>
+              Showing <strong style={{ color: '#111827' }}>{startIndex + 1}–{endIndex}</strong> of <strong style={{ color: '#111827' }}>{totalItems}</strong>
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}
+                style={{ ...btnPageStyle(false), padding: '0 10px', border: '0.5px solid #E0E2E8', opacity: currentPage === 1 ? 0.4 : 1 }}>‹</button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const page = totalPages <= 5 ? i + 1 : Math.max(1, Math.min(currentPage - 2, totalPages - 4)) + i;
+                return <button key={page} onClick={() => handlePageChange(page)} style={btnPageStyle(currentPage === page)}>{page}</button>;
+              })}
+              <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}
+                style={{ ...btnPageStyle(false), padding: '0 10px', border: '0.5px solid #E0E2E8', opacity: currentPage === totalPages ? 0.4 : 1 }}>›</button>
+              <form onSubmit={handleGoToPage} style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>
                 <label style={{ fontSize: 11, color: '#9EA3B0' }}>Go to</label>
                 <input type="text" value={goToPage} onChange={(e) => setGoToPage(e.target.value)} placeholder="…"
-                  style={{ width: 48, background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 8px', fontSize: 11, color: '#111827', outline: 'none' }} />
+                  style={{ width: 40, background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 8px', fontSize: 11, color: '#111827', outline: 'none' }} />
               </form>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        {/* Sidebar */}
+        {/* Sidebar Widgets */}
         <div className="lg:col-span-1 space-y-4 order-1 lg:order-2 lg:sticky lg:top-6">
           <div style={{ ...panelStyle, display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 8, background: '#EEF3FD', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg style={{ width: 20, height: 20, color: '#1A56DB' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
+            <div style={{ width: 42, height: 42, borderRadius: 8, background: '#EEF3FD', color: '#1A56DB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg style={{ width: 18, height: 18 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
             </div>
             <div>
-              <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Feedback</p>
-              <h3 style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>{totalItems}</h3>
+              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>{isManager ? 'Total Published' : 'Total Received'}</p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>{isManager ? (feedbackStats?.totalPublished || 0) : totalItems}</p>
             </div>
           </div>
-
           {isManager && (
-            <button 
+            <button type="button"
               onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
-              className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group text-left w-full"
+              style={{ ...panelStyle, display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left', cursor: 'pointer' }}
+              className="hover:border-[#F0D4A4] transition-colors"
             >
-              <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              <div style={{ width: 42, height: 42, borderRadius: 8, background: '#FAEEDA', color: '#633806', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg style={{ width: 18, height: 18 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
               </div>
               <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Drafts</p>
-                <h3 className="text-2xl font-bold text-amber-600">{feedbackStats?.totalDraft || 0}</h3>
+                <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>Total Drafts</p>
+                <p style={{ fontSize: 22, fontWeight: 700, color: '#633806' }}>{feedbackStats?.totalDraft || 0}</p>
               </div>
             </button>
           )}
@@ -599,22 +636,31 @@ const FeedbackPage = () => {
                     value={newFeedback.description} onChange={e => setNewFeedback({ ...newFeedback, description: e.target.value })} />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input type="checkbox" id="isPrivate" checked={newFeedback.isPrivate}
-                    onChange={e => setNewFeedback({ ...newFeedback, isPrivate: e.target.checked })}
-                    style={{ width: 14, height: 14 }} />
-                  <label htmlFor="isPrivate" style={{ fontSize: 13, color: '#5A6070' }}>Mark as Private (Visible only to Employee and Manager)</label>
-                </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 8 }}>
-                  <button type="button" onClick={() => { setShowModal(false); setEditingId(null); setNewFeedback(blankFeedback); }}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 16, borderTop: '0.5px solid #E4E6EC', flexWrap: 'wrap' }}>
+                  <button type="button"
+                    onClick={() => { setShowModal(false); setEditingId(null); setNewFeedback({ employeeId: 0, tagId: '', feedbackType: FeedbackType.PRAISE, description: '' }); }}
                     style={{ padding: '8px 16px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
                     Cancel
                   </button>
-                  <button type="submit" disabled={isCreating || isUpdating}
-                    style={{ padding: '8px 20px', background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: isCreating || isUpdating ? 'not-allowed' : 'pointer', opacity: isCreating || isUpdating ? 0.6 : 1 }}>
-                    {isCreating || isUpdating ? 'Saving…' : editingId ? 'Update Feedback' : 'Submit Feedback'}
-                  </button>
+                  {editingId ? (
+                    <button type="submit" disabled={isUpdating}
+                      style={{ padding: '8px 16px', background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: isUpdating ? 'not-allowed' : 'pointer', opacity: isUpdating ? 0.6 : 1 }}>
+                      {isUpdating ? 'Updating…' : 'Update Feedback'}
+                    </button>
+                  ) : (
+                    <>
+                      <button type="submit" onClick={() => setSubmitStatus(ContinuousStatus.DRAFT)} disabled={isCreating}
+                        style={{ padding: '8px 14px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: isCreating ? 'not-allowed' : 'pointer', opacity: isCreating ? 0.6 : 1 }}>
+                        Save as Draft
+                      </button>
+                      <button type="submit" onClick={() => setSubmitStatus(ContinuousStatus.PUBLISHED)} disabled={isCreating}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: isCreating ? 'not-allowed' : 'pointer', opacity: isCreating ? 0.6 : 1 }}>
+                        <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                        Publish Feedback
+                      </button>
+                    </>
+                  )}
                 </div>
               </form>
             </div>

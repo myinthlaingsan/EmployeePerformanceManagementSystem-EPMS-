@@ -74,7 +74,7 @@ public class FinancialYearServiceImpl implements FinancialYearService {
         FinancialYear current = financialYearRepository.findByIsCurrentTrue()
                 .orElseThrow(() -> new RuntimeException("No current active financial year found"));
 
-        if (!appraisalCycleRepository.findByIsActiveTrue().isEmpty()) {
+        if (!appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc().isEmpty()) {
             throw new RuntimeException("Cannot rollover. There are active appraisal cycles.");
         }
 

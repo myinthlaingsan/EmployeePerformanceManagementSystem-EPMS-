@@ -3,6 +3,7 @@ import type { ApiResponse } from './ApiResponse';
 import type {
   KpiLibraryRequest,
   KpiLibraryResponse,
+  KpiImportResult,
   KpiCategory,
   GoalAssignmentRequest,
   GoalSetResponse,
@@ -58,6 +59,15 @@ export const kpiApi = api.injectEndpoints({
       invalidatesTags: ['Library'],
     }),
 
+    importLibraries: builder.mutation<ApiResponse<KpiImportResult>, FormData>({
+      query: (body) => ({
+        url: '/kpi/library/import',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Library'],
+    }),
+
     getAllLibraries: builder.query<ApiResponse<KpiLibraryResponse[]>, void>({
       query: () => '/kpi/library',
       providesTags: ['Library'],
@@ -74,6 +84,25 @@ export const kpiApi = api.injectEndpoints({
       invalidatesTags: ['Library'],
     }),
 
+    toggleHistoryStatus: builder.mutation<
+      ApiResponse<KpiLibraryResponse>,
+      { id: number; active: boolean }
+    >({
+      query: ({ id, active }) => ({
+        url: `/kpi/library/${id}/toggle-history-status?active=${active}`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['Library'],
+    }),
+
+    deleteLibrary: builder.mutation<ApiResponse<void>, number>({
+      query: (id) => ({
+        url: `/kpi/library/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Library'],
+    }),
+
     getLibraryById: builder.query<ApiResponse<KpiLibraryResponse>, number>({
       query: (id) => `/kpi/library/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Library', id }],
@@ -86,6 +115,10 @@ export const kpiApi = api.injectEndpoints({
         body: data,
       }),
       invalidatesTags: (_result, _error, { id }) => [{ type: 'Library', id }, 'Library'],
+    }),
+    getLibraryHistory: builder.query<ApiResponse<KpiLibraryResponse[]>, number>({
+      query: (positionId) => `/kpi/library/history/${positionId}`,
+      providesTags: ['Library'],
     }),
 
     // ==================== Assignment ====================
@@ -214,7 +247,7 @@ export const kpiApi = api.injectEndpoints({
     }),
 
     // ==================== Score Calculation ====================
-    calculateScore: builder.mutation<
+    calculateScores: builder.mutation<
       ApiResponse<KpiScoreResponse>,
       { employeeId: number; cycleId: number }
     >({
@@ -255,6 +288,8 @@ export const {
   useCreateLibraryMutation,
   useGetAllLibrariesQuery,
   useToggleLibraryStatusMutation,
+  useToggleHistoryStatusMutation,
+  useDeleteLibraryMutation,
   useAssignKpiToEmployeeMutation,
   useAddGoalItemMutation,
   useUpdateGoalItemMutation,
@@ -262,15 +297,17 @@ export const {
   useBulkUpdateGoalItemsMutation,
   useApproveGoalSetMutation,
   useRevertGoalSetMutation,
+  useImportLibrariesMutation,
   useUpdateProgressMutation,
   useReviseKpiMutation,
-  useCalculateScoreMutation,
+  useCalculateScoresMutation,
   useGetGoalSetByEmployeeQuery,
   useGetGoalSetByIdQuery,
   useGetProgressHistoryQuery,
   useGetActiveCycleQuery,
   useGetLibraryByIdQuery,
   useUpdateLibraryMutation,
+  useGetLibraryHistoryQuery,
   useGetTeamGoalSetsQuery,
   useGetDepartmentGoalSetsQuery,
 

@@ -39,5 +39,6 @@ public class KpiGoalItem extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private KpiItemStatus status;
 
+    private Boolean isCompliance = false;
     private Boolean isActive = true;
 }

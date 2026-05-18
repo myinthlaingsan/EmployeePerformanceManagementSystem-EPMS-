@@ -1,4 +1,5 @@
 import { api } from "../../services/api";
+import type { ApiResponse } from "../../services/ApiResponse";
 
 export interface FinancialYear {
   id: number;
@@ -18,41 +19,47 @@ export interface FinancialYearRequest {
 export const financialYearApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getFinancialYears: builder.query<FinancialYear[], void>({
-      query: () => '/financial-years',
-      providesTags: ['FinancialYear'],
+      query: () => "/financial-years",
+      transformResponse: (response: ApiResponse<FinancialYear[]>) => response.data,
+      providesTags: ["FinancialYear"],
     }),
     getCurrentFinancialYear: builder.query<FinancialYear, void>({
-      query: () => '/financial-years/current',
-      providesTags: ['FinancialYear'],
+      query: () => "/financial-years/current",
+      transformResponse: (response: ApiResponse<FinancialYear>) => response.data,
+      providesTags: ["FinancialYear"],
     }),
     createFinancialYear: builder.mutation<FinancialYear, FinancialYearRequest>({
       query: (body) => ({
-        url: '/financial-years',
-        method: 'POST',
+        url: "/financial-years",
+        method: "POST",
         body,
       }),
-      invalidatesTags: ['FinancialYear'],
+      transformResponse: (response: ApiResponse<FinancialYear>) => response.data,
+      invalidatesTags: ["FinancialYear"],
     }),
     setCurrentFinancialYear: builder.mutation<FinancialYear, number>({
       query: (id) => ({
         url: `/financial-years/${id}/set-current`,
-        method: 'PATCH',
+        method: "PATCH",
       }),
-      invalidatesTags: ['FinancialYear'],
+      transformResponse: (response: ApiResponse<FinancialYear>) => response.data,
+      invalidatesTags: ["FinancialYear"],
     }),
     deleteFinancialYear: builder.mutation<void, number>({
       query: (id) => ({
         url: `/financial-years/${id}`,
-        method: 'DELETE',
+        method: "DELETE",
       }),
-      invalidatesTags: ['FinancialYear'],
+      transformResponse: (response: ApiResponse<void>) => response.data,
+      invalidatesTags: ["FinancialYear"],
     }),
     rolloverFinancialYear: builder.mutation<FinancialYear, void>({
       query: () => ({
-        url: '/financial-years/rollover',
-        method: 'POST',
+        url: "/financial-years/rollover",
+        method: "POST",
       }),
-      invalidatesTags: ['FinancialYear'],
+      transformResponse: (response: ApiResponse<FinancialYear>) => response.data,
+      invalidatesTags: ["FinancialYear"],
     }),
   }),
 });

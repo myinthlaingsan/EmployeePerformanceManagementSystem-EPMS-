@@ -1,4 +1,4 @@
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
 import {
@@ -10,7 +10,6 @@ import {
   BarChart3,
   ChevronDown,
   Plus,
-  LifeBuoy,
   LogOut,
   Building2,
   ShieldCheck,
@@ -19,7 +18,8 @@ import {
   Target,
   History,
   Calendar,
-  Layers
+  Layers,
+  X,
 } from "lucide-react";
 
 interface NavItem {
@@ -37,7 +37,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "360 Feedback", to: "/appraisal/360", icon: Users },
-  { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck },
+  { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck, end: true },
   { label: "Performance Pulse", to: "/performance-history/admin", icon: History, adminOnly: true },
   { label: "Team Pulse", to: "/performance-history/manager", icon: History, privilegedOnly: true, hideForAdmin: true },
   { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true },
@@ -61,15 +61,31 @@ const ADMIN_ITEMS: NavItem[] = [
   { label: "Strategic Analytics", to: "/analytics", icon: TrendingUp },
 ];
 
-const Sidebar = () => {
+const AVATAR_COLORS = [
+  { bg: "#EEF3FD", text: "#0C447C" },
+  { bg: "#EAF3DE", text: "#27500A" },
+  { bg: "#FAEEDA", text: "#633806" },
+  { bg: "#F1EFE8", text: "#444441" },
+  { bg: "#FCEBEB", text: "#791F1F" },
+];
+
+const navCls = (active: boolean) =>
+  [
+    "flex items-center gap-[9px] w-full text-[13px] rounded-[8px] transition-colors",
+    active
+      ? "bg-[#EEF3FD] text-[#1A56DB] font-medium"
+      : "text-[#5A6070] font-normal hover:bg-[#F0F2F8] hover:text-[#111827]",
+  ].join(" ");
+
+interface SidebarProps {
+  onClose?: () => void;
+}
+
+const Sidebar = ({ onClose }: SidebarProps) => {
   const { logout, isAdmin, isHR, isManager, user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
   const [perfOpen, setPerfOpen] = useState(false);
-
-  const activeClass = "bg-blue-50 text-blue-600 border-r-4 border-blue-600";
-  const inactiveClass = "text-gray-500 hover:bg-gray-50 hover:text-gray-900";
 
   const filteredNav = NAV_ITEMS.filter((item) => {
     if (item.adminOnly && !isAdmin && !isHR) return false;
@@ -79,133 +95,140 @@ const Sidebar = () => {
     return true;
   });
 
+  const avatarColor =
+    AVATAR_COLORS[(user?.staffName?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length];
+
+  const perfSubItems: Array<{ to: string; label: string; end?: boolean }> = [
+    { to: "/kpi", label: "KPI Intelligence Hub", end: true },
+    { to: "/kpi/my", label: "My Goals" },
+    ...(isManager ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
+    ...(user ? [{ to: `/kpi/history/${user.id}`, label: "KPI Journey" }] : []),
+    ...((isAdmin || isHR)
+      ? [
+          { to: "/kpi/manage", label: "Goal Management" },
+          { to: "/kpi/library", label: "KPI Library" },
+          { to: "/kpi/categories", label: "KPI Categories" },
+        ]
+      : []),
+  ];
+
+  const handleNavClick = () => {
+    onClose?.();
+  };
+
   return (
-    <aside className="w-64 bg-white border-r border-gray-100 flex flex-col h-screen sticky top-0">
+    <aside
+      className="flex flex-col h-screen bg-white shrink-0"
+      style={{ width: 200, borderRight: "0.5px solid #E4E6EC" }}
+    >
       {/* Brand */}
-      <div className="p-6">
-        <h1 className="text-xl font-bold text-gray-900 tracking-tight">HR Portal</h1>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mt-1">Enterprise Suite</p>
+      <div
+        className="flex items-center justify-between"
+        style={{ padding: "20px 18px", borderBottom: "0.5px solid #E4E6EC" }}
+      >
+        <div className="flex items-center gap-[9px]">
+          <div
+            className="flex items-center justify-center text-white shrink-0"
+            style={{ width: 28, height: 28, background: "#1A56DB", borderRadius: 7 }}
+          >
+            <BarChart3 size={14} aria-hidden="true" />
+          </div>
+          <span style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>EPMS</span>
+        </div>
+        {/* Close button — mobile only */}
+        <button
+          className="md:hidden flex items-center justify-center rounded-[8px] transition-colors hover:bg-[#F0F2F8]"
+          style={{ width: 28, height: 28, color: "#5A6070" }}
+          onClick={onClose}
+          aria-label="Close menu"
+        >
+          <X size={16} aria-hidden="true" />
+        </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4">
-        <div className="space-y-1">
+      <nav className="flex-1 overflow-y-auto" style={{ padding: "20px 10px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          {/* Main nav items */}
           {filteredNav.map((item) => (
             <NavLink
               key={item.label}
               to={item.to}
               end={item.end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all ${isActive ? activeClass : inactiveClass
-                }`
-              }
+              style={{ padding: "8px 10px" }}
+              className={({ isActive }) => navCls(isActive)}
+              onClick={handleNavClick}
             >
-              <item.icon className="w-5 h-5" strokeWidth={2} />
+              <item.icon size={16} aria-hidden="true" />
               {item.label}
             </NavLink>
           ))}
 
-          {/* Performance Hub Accordion */}
+          {/* Performance Hub accordion */}
           <div>
             <button
               onClick={() => setPerfOpen(!perfOpen)}
-              className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
+              style={{ padding: "8px 10px" }}
+              className="w-full flex items-center justify-between rounded-[8px] text-[13px] font-normal text-[#5A6070] hover:bg-[#F0F2F8] hover:text-[#111827] transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <Target className="w-5 h-5" strokeWidth={2} />
+              <span className="flex items-center gap-[9px]">
+                <Target size={16} aria-hidden="true" />
                 Performance Hub
-              </div>
-              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${perfOpen ? 'rotate-180' : ''}`} />
+              </span>
+              <ChevronDown
+                size={14}
+                className={`transition-transform duration-200 ${perfOpen ? "rotate-180" : ""}`}
+              />
             </button>
 
             {perfOpen && (
-              <div className="bg-gray-50/50 py-1">
-                <NavLink
-                  to="/kpi"
-                  end
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${isActive ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`
-                  }
-                >
-                  KPI Intelligence Hub
-                </NavLink>
-                <NavLink
-                  to="/kpi/my"
-                  className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/my' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
-                >
-                  My Goals
-                </NavLink>
-                {isManager && (
+              <div style={{ paddingLeft: 8, marginTop: 1 }}>
+                {perfSubItems.map((sub) => (
                   <NavLink
-                    to="/kpi/team"
-                    className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/team' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
+                    key={sub.to}
+                    to={sub.to}
+                    end={sub.end}
+                    style={{ padding: "7px 10px" }}
+                    className={({ isActive }) => navCls(isActive)}
+                    onClick={handleNavClick}
                   >
-                    Team Performance
+                    {sub.label}
                   </NavLink>
-                )}
-                {user && (
-                  <NavLink
-                    to={`/kpi/history/${user.id}`}
-                    className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname.startsWith('/kpi/history/') ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
-                  >
-                    KPI Journey
-                  </NavLink>
-                )}
-
-                {(isAdmin || isHR) && (
-                  <NavLink
-                    to="/kpi/manage"
-                    className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/manage' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
-                  >
-                    Goal Management
-                  </NavLink>
-                )}
-                {(isAdmin || isHR) && (
-                  <>
-                    <NavLink
-                      to="/kpi/library"
-                      className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/library' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
-                    >
-                      KPI Library
-                    </NavLink>
-                    <NavLink
-                      to="/kpi/categories"
-                      className={`flex items-center gap-3 pl-14 pr-6 py-2 text-xs font-medium transition-all ${location.pathname === '/kpi/categories' ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-900'}`}
-                    >
-                      KPI Categories
-                    </NavLink>
-                  </>
-                )}
+                ))}
               </div>
             )}
           </div>
 
-          {/* Management Accordion */}
+          {/* Management accordion */}
           {(isAdmin || isHR) && (
             <div>
               <button
                 onClick={() => setMgmtOpen(!mgmtOpen)}
-                className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
+                style={{ padding: "8px 10px" }}
+                className="w-full flex items-center justify-between rounded-[8px] text-[13px] font-normal text-[#5A6070] hover:bg-[#F0F2F8] hover:text-[#111827] transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <Building2 className="w-5 h-5" strokeWidth={2} />
+                <span className="flex items-center gap-[9px]">
+                  <Building2 size={16} aria-hidden="true" />
                   Management
-                </div>
-                <ChevronDown className={`w-4 h-4 transition-transform ${mgmtOpen ? "rotate-180" : ""}`} />
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform ${mgmtOpen ? "rotate-180" : ""}`}
+                />
               </button>
+
               {mgmtOpen && (
-                <div className="bg-gray-50/50 py-1">
+                <div style={{ paddingLeft: 8, marginTop: 1 }}>
                   {ADMIN_ITEMS.map((item) => (
                     <NavLink
                       key={item.label}
                       to={item.to}
                       end={item.end}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 pl-12 pr-6 py-2.5 text-xs font-medium transition-all ${isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
-                        }`
-                      }
+                      style={{ padding: "7px 10px" }}
+                      className={({ isActive }) => navCls(isActive)}
+                      onClick={handleNavClick}
                     >
-                      <item.icon className="w-4 h-4" strokeWidth={2} />
+                      <item.icon size={16} aria-hidden="true" />
                       {item.label}
                     </NavLink>
                   ))}
@@ -216,29 +239,55 @@ const Sidebar = () => {
         </div>
       </nav>
 
-      {/* CTA Button */}
-      <div className="p-6">
+      {/* Primary action button */}
+      <div style={{ padding: "0 10px 10px" }}>
         <button
-          onClick={() => navigate("/appraisal/new")}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 px-4 text-sm font-semibold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
+          onClick={() => { navigate("/appraisal/new"); handleNavClick(); }}
+          className="w-full flex items-center justify-center gap-[9px] text-white text-[13px] font-medium transition-colors"
+          style={{ background: "#1A56DB", borderRadius: 8, padding: "8px 14px", border: "none" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
         >
-          <Plus className="w-4 h-4" strokeWidth={3} />
+          <Plus size={14} aria-hidden="true" />
           New Review
         </button>
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-gray-100 p-4 space-y-1">
-        <button className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-all">
-          <LifeBuoy className="w-5 h-5" strokeWidth={2} />
-          Support
-        </button>
-        <button
-          onClick={logout}
-          className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-red-600 rounded-lg transition-all"
+      {/* User profile row */}
+      <div
+        className="flex items-center gap-[10px] cursor-pointer hover:bg-[#F0F2F8] transition-colors"
+        style={{ borderTop: "0.5px solid #E4E6EC", padding: "12px 14px" }}
+        onClick={() => { navigate("/profile"); handleNavClick(); }}
+      >
+        <div
+          className="flex items-center justify-center shrink-0"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            background: avatarColor.bg,
+            color: avatarColor.text,
+            fontSize: 11,
+            fontWeight: 500,
+          }}
         >
-          <LogOut className="w-5 h-5" strokeWidth={2} />
-          Logout
+          {user?.staffName?.charAt(0) ?? "U"}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="truncate" style={{ fontSize: 13, fontWeight: 500, color: "#111827", lineHeight: 1.2 }}>
+            {user?.staffName ?? "User"}
+          </p>
+          <p className="truncate" style={{ fontSize: 11, color: "#9EA3B0", lineHeight: 1.2, marginTop: 2 }}>
+            {user?.positionName ?? ""}
+          </p>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); logout(); }}
+          className="shrink-0 hover:text-[#5A6070] transition-colors"
+          style={{ color: "#9EA3B0" }}
+          aria-label="Log out"
+        >
+          <LogOut size={14} />
         </button>
       </div>
     </aside>

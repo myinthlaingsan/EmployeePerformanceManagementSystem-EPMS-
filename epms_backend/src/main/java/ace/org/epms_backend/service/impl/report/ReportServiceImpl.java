@@ -138,7 +138,7 @@ public class ReportServiceImpl implements ReportService {
 
         List<CycleScoreDTO> trends = appraisals.stream().map(a -> {
             BigDecimal kpiScore = kpiFinalScoreRepository
-                    .findByEmployeeIdAndCycleId(employeeId, a.getCycle().getCycleId())
+                    .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, a.getCycle().getCycleId())
                     .map(KpiFinalScore::getWeightedScore).orElse(BigDecimal.ZERO);
 
             return CycleScoreDTO.builder()
@@ -286,7 +286,8 @@ public class ReportServiceImpl implements ReportService {
 
             double avgKpi = deptAppraisals.stream()
                     .mapToDouble(
-                            a -> kpiFinalScoreRepository.findByEmployeeIdAndCycleId(a.getEmployee().getId(), cycleId)
+                            a -> kpiFinalScoreRepository
+                                    .findByEmployee_IdAndGoalSet_Cycle_CycleId(a.getEmployee().getId(), cycleId)
                                     .map(s -> s.getWeightedScore().doubleValue()).orElse(0.0))
                     .average().orElse(0.0);
 
@@ -481,7 +482,7 @@ public class ReportServiceImpl implements ReportService {
 
         EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(employeeId).orElse(null);
 
-        BigDecimal kpiScore = kpiFinalScoreRepository.findByEmployeeIdAndCycleId(employeeId, cycleId)
+        BigDecimal kpiScore = kpiFinalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
                 .map(KpiFinalScore::getWeightedScore).orElse(BigDecimal.ZERO);
 
         BigDecimal selfScore = selfAssessmentRepository.findByAppraisal_AppraisalId(appraisal.getAppraisalId())
@@ -548,48 +549,49 @@ public class ReportServiceImpl implements ReportService {
         final AppraisalCycle prevCycle = previousCycle;
         List<Appraisal> appraisals = appraisalRepository.findByCycle_CycleId(cycleId);
 
-        return appraisals.stream().filter(a -> a.getPerformanceCategory() != null).map(a -> {
-            String name = a.getPerformanceCategory().getName();
-            Integer rating = a.getPerformanceCategory().getRatingValue();
-            boolean isHigh = name.contains("Exceed") || name.contains("Top") || (rating != null && rating >= 4);
-            boolean isLow = name.contains("Need") || name.contains("Below") || (rating != null && rating <= 2);
+        List<PerformanceRankingReportDTO> results = appraisals.stream().filter(a -> a.getPerformanceCategory() != null)
+                .map(a -> {
+                    String name = a.getPerformanceCategory().getName();
+                    Integer rating = a.getPerformanceCategory().getRatingValue();
+                    boolean isHigh = name.contains("Exceed") || name.contains("Top") || (rating != null && rating >= 4);
+                    boolean isLow = name.contains("Need") || name.contains("Below") || (rating != null && rating <= 2);
 
-            if (!isHigh && !isLow)
-                return null;
+                    if (!isHigh && !isLow)
+                        return null;
 
-            BigDecimal currentScore = appraisalSummaryRepository
-                    .findByEmployee_IdAndCycle_CycleId(a.getEmployee().getId(), cycleId)
-                    .map(AppraisalSummary::getTotalScore).orElse(BigDecimal.ZERO);
+                    BigDecimal currentScore = appraisalSummaryRepository
+                            .findByEmployee_IdAndCycle_CycleId(a.getEmployee().getId(), cycleId)
+                            .map(AppraisalSummary::getTotalScore).orElse(BigDecimal.ZERO);
 
-            BigDecimal prevScore = BigDecimal.ZERO;
-            if (prevCycle != null) {
-                prevScore = appraisalSummaryRepository
-                        .findByEmployee_IdAndCycle_CycleId(a.getEmployee().getId(), prevCycle.getCycleId())
-                        .map(AppraisalSummary::getTotalScore).orElse(BigDecimal.ZERO);
-            }
+                    BigDecimal prevScore = BigDecimal.ZERO;
+                    if (prevCycle != null) {
+                        prevScore = appraisalSummaryRepository
+                                .findByEmployee_IdAndCycle_CycleId(a.getEmployee().getId(), prevCycle.getCycleId())
+                                .map(AppraisalSummary::getTotalScore).orElse(BigDecimal.ZERO);
+                    }
 
-            String trend = "STABLE";
-            if (prevScore.compareTo(BigDecimal.ZERO) > 0) {
-                int comparison = currentScore.compareTo(prevScore);
-                if (comparison > 0)
-                    trend = "UP";
-                else if (comparison < 0)
-                    trend = "DOWN";
-            }
+                    String trend = "STABLE";
+                    if (prevScore.compareTo(BigDecimal.ZERO) > 0) {
+                        int comparison = currentScore.compareTo(prevScore);
+                        if (comparison > 0)
+                            trend = "UP";
+                        else if (comparison < 0)
+                            trend = "DOWN";
+                    }
 
-            EmployeeDepartment ed = employeeDepartmentRepository
-                    .findByEmployeeIdAndIsCurrentTrue(a.getEmployee().getId()).orElse(null);
+                    EmployeeDepartment ed = employeeDepartmentRepository
+                            .findByEmployeeIdAndIsCurrentTrue(a.getEmployee().getId()).orElse(null);
 
-            return PerformanceRankingReportDTO.builder()
-                    .employeeName(a.getEmployee().getStaffName())
-                    .departmentName(ed != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
-                    .currentScore(currentScore)
-                    .previousScore(prevScore)
-                    .rating(name)
-                    .trend(trend)
-                    .isHighPerformer(isHigh)
-                    .build();
-        })
+                    return PerformanceRankingReportDTO.builder()
+                            .employeeName(a.getEmployee().getStaffName())
+                            .departmentName(ed != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                            .currentScore(currentScore)
+                            .previousScore(prevScore)
+                            .rating(name)
+                            .trend(trend)
+                            .isHighPerformer(isHigh)
+                            .build();
+                })
                 .filter(dto -> dto != null)
                 .sorted((d1, d2) -> {
                     if (Boolean.TRUE.equals(d1.getIsHighPerformer()) && !Boolean.TRUE.equals(d2.getIsHighPerformer()))
@@ -599,6 +601,13 @@ public class ReportServiceImpl implements ReportService {
                     return d2.getCurrentScore().compareTo(d1.getCurrentScore());
                 })
                 .collect(Collectors.toList());
+
+        // Assign Rank
+        for (int i = 0; i < results.size(); i++) {
+            results.get(i).setRank(i + 1);
+        }
+
+        return results;
     }
 
     @Override
@@ -628,7 +637,8 @@ public class ReportServiceImpl implements ReportService {
         }
 
         List<EmployeeReportDTO> data = employees.stream().map(e -> {
-            EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(e.getId()).orElse(null);
+            EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(e.getId())
+                    .orElse(null);
             ReportingLine rl = reportingLineRepository.findFirstByEmployee_IdAndIsActiveTrue(e.getId()).orElse(null);
             EmployeeTeam et = employeeTeamRepository.findFirstByEmployeeIdAndIsPrimaryTrue(e.getId()).orElse(null);
 

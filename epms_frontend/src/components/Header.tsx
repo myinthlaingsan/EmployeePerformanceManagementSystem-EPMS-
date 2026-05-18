@@ -1,82 +1,172 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
 import { NotificationBell } from "./NotificationBell";
-import { 
-  Search, 
-  HelpCircle, 
-  Settings 
-} from "lucide-react";
+import { Search, HelpCircle, Settings, ChevronRight, Menu } from "lucide-react";
 
-const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "Performance Orchestrator",
-  "/appraisal": "Appraisals",
-  "/profile": "My Profile",
-  "/notifications": "Notifications",
-  "/hr": "HR Dashboard",
-  "/employees": "Employee Management",
-  "/departments": "Departments",
-  "/roles": "Roles",
-  "/job-levels": "Job Levels",
-  "/positions": "Positions",
-  "/permissions": "Permissions",
-  "/pip": "Performance Improvement Plans",
+interface PageInfo {
+  section?: string;
+  title: string;
+}
+
+const PAGE_MAP: Record<string, PageInfo> = {
+  "/dashboard":            { title: "Dashboard" },
+  "/appraisal":            { section: "Appraisals", title: "Appraisal list" },
+  "/appraisal/360":        { section: "Appraisals", title: "360 Feedback" },
+  "/profile":              { title: "My profile" },
+  "/notifications":        { title: "Notifications" },
+  "/employees":            { section: "Management", title: "Employees" },
+  "/departments":          { section: "Management", title: "Departments" },
+  "/roles":                { section: "Management", title: "Roles" },
+  "/job-levels":           { section: "Management", title: "Job levels" },
+  "/positions":            { section: "Management", title: "Positions" },
+  "/teams":                { section: "Management", title: "Teams" },
+  "/permissions":          { section: "Management", title: "Permissions" },
+  "/permissions/matrix":   { section: "Management", title: "Permissions matrix" },
+  "/permissions/assign":   { section: "Management", title: "Assign permissions" },
+  "/financial-years":      { section: "Management", title: "Financial years" },
+  "/performance-categories": { section: "Management", title: "Performance categories" },
+  "/pip":                  { title: "Performance improvement plans" },
+  "/analytics":            { title: "Analytics" },
+  "/kpi":                  { section: "Performance Hub", title: "KPI hub" },
+  "/kpi/my":               { section: "Performance Hub", title: "My goals" },
+  "/kpi/team":             { section: "Performance Hub", title: "Team performance" },
+  "/kpi/manage":           { section: "Performance Hub", title: "Goal management" },
+  "/kpi/library":          { section: "Performance Hub", title: "KPI library" },
+  "/kpi/categories":       { section: "Performance Hub", title: "KPI categories" },
+  "/meetings":             { title: "1-on-1 meetings" },
+  "/continuous-feedback":  { title: "Continuous feedback" },
+  "/performance-history":  { title: "Performance pulse" },
 };
 
-const Header = () => {
+function resolvePageInfo(pathname: string): PageInfo {
+  if (PAGE_MAP[pathname]) return PAGE_MAP[pathname];
+  const prefix = Object.keys(PAGE_MAP)
+    .filter((k) => pathname.startsWith(k) && k !== "/")
+    .sort((a, b) => b.length - a.length)[0];
+  return prefix ? PAGE_MAP[prefix] : { title: "EPMS" };
+}
+
+const iconBtnBase: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  background: "#F5F6F8",
+  border: "0.5px solid #E0E2E8",
+  borderRadius: 8,
+  color: "#5A6070",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  transition: "background 0.15s, color 0.15s, border-color 0.15s",
+};
+
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+const Header = ({ onMenuClick }: HeaderProps) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const pageInfo = resolvePageInfo(pathname);
 
-  const title = PAGE_TITLES[pathname] || "EPMS";
+  const handleIconEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.background = "#EEF3FD";
+    e.currentTarget.style.color = "#1A56DB";
+    e.currentTarget.style.borderColor = "#B5D4F4";
+  };
+  const handleIconLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.background = "#F5F6F8";
+    e.currentTarget.style.color = "#5A6070";
+    e.currentTarget.style.borderColor = "#E0E2E8";
+  };
 
   return (
-    <header className="h-20 bg-white border-b border-surface-border flex items-center justify-between px-10 sticky top-0 z-30">
-      {/* Title */}
-      <h2 className="text-xl font-black text-brand-primary tracking-tight uppercase tracking-[0.1em]">{title}</h2>
+    <header
+      className="flex items-center justify-between bg-white sticky top-0 z-30 shrink-0"
+      style={{ height: 52, borderBottom: "0.5px solid #E4E6EC", padding: "0 16px" }}
+    >
+      <div className="flex items-center gap-2">
+        {/* Hamburger — mobile only */}
+        <button
+          className="md:hidden flex items-center justify-center rounded-lg transition-colors hover:bg-[#F0F2F8]"
+          style={{ width: 32, height: 32, color: "#5A6070" }}
+          onClick={onMenuClick}
+          aria-label="Open menu"
+        >
+          <Menu size={18} aria-hidden="true" />
+        </button>
 
-      {/* Search Bar */}
-      <div className="flex-1 max-w-xl mx-12">
-        <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted group-focus-within:text-brand-primary transition-colors" strokeWidth={2.5} />
-          <input
-            type="text"
-            placeholder="Search performance records..."
-            className="w-full bg-surface-base border border-surface-border rounded-xl py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-4 focus:ring-brand-primary/5 focus:border-brand-primary/20 transition-all placeholder:text-text-muted/50 font-medium"
-          />
-        </div>
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1" aria-label="Breadcrumb">
+          {pageInfo.section ? (
+            <>
+              <span className="hidden sm:inline" style={{ fontSize: 13, fontWeight: 400, color: "#9EA3B0" }}>
+                {pageInfo.section}
+              </span>
+              <ChevronRight size={12} className="hidden sm:block" style={{ color: "#9EA3B0" }} aria-hidden="true" />
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>
+                {pageInfo.title}
+              </span>
+            </>
+          ) : (
+            <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>
+              {pageInfo.title}
+            </span>
+          )}
+        </nav>
       </div>
 
-      {/* Actions */}
+      {/* Right actions */}
       <div className="flex items-center gap-2">
+        {/* Search — hidden on very small screens */}
+        <div className="relative hidden sm:flex items-center">
+          <Search
+            size={14}
+            className="absolute left-3 pointer-events-none"
+            style={{ color: "#9EA3B0" }}
+            aria-hidden="true"
+          />
+          <input
+            type="text"
+            placeholder="Search..."
+            style={{
+              background: "#F5F6F8",
+              border: "0.5px solid #E0E2E8",
+              borderRadius: 8,
+              padding: "6px 12px 6px 32px",
+              width: 160,
+              fontSize: 13,
+              color: "#9EA3B0",
+              fontFamily: "inherit",
+              outline: "none",
+            }}
+          />
+        </div>
+
+        {/* Notification bell */}
         <NotificationBell />
-        
-        <button 
-          className="p-2.5 text-text-muted hover:bg-surface-base hover:text-brand-primary rounded-xl transition-all"
+
+        {/* Help — hidden on mobile */}
+        <button
+          className="hidden md:flex"
+          style={iconBtnBase}
           title="Help"
+          aria-label="Help"
+          onMouseEnter={handleIconEnter}
+          onMouseLeave={handleIconLeave}
         >
-          <HelpCircle className="w-5 h-5" strokeWidth={2} />
+          <HelpCircle size={16} aria-hidden="true" />
         </button>
 
-        <button 
-          className="p-2.5 text-text-muted hover:bg-surface-base hover:text-brand-primary rounded-xl transition-all"
+        {/* Settings */}
+        <button
+          style={iconBtnBase}
           title="Settings"
+          aria-label="Settings"
           onClick={() => navigate("/profile")}
+          onMouseEnter={handleIconEnter}
+          onMouseLeave={handleIconLeave}
         >
-          <Settings className="w-5 h-5" strokeWidth={2} />
-        </button>
-
-        {/* User Profile */}
-        <button 
-          onClick={() => navigate("/profile")}
-          className="ml-4 flex items-center gap-3 p-1.5 pl-4 hover:bg-surface-base rounded-2xl transition-all border border-transparent hover:border-surface-border"
-        >
-          <div className="text-right hidden md:block">
-            <p className="text-sm font-black text-brand-primary leading-none">{user?.staffName}</p>
-            <p className="text-[10px] text-text-muted mt-1.5 font-bold uppercase tracking-widest">{user?.positionName}</p>
-          </div>
-          <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center text-white text-sm font-black shadow-lg shadow-brand-primary/20">
-            {user?.staffName?.charAt(0) || "U"}
-          </div>
+          <Settings size={16} aria-hidden="true" />
         </button>
       </div>
     </header>

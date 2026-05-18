@@ -81,8 +81,9 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
         ManagerEvaluation eval = evalRepo.findById(evaluationId)
                 .orElseThrow(() -> new NotFoundException("Evaluation not found"));
 
-        if (Boolean.TRUE.equals(eval.getSubmitted())) {
-            throw new RuntimeException("Cannot modify a submitted manager evaluation");
+        if (eval.getAppraisal().getStatus() == AppraisalStatus.HR_APPROVED || 
+            eval.getAppraisal().getStatus() == AppraisalStatus.FINALIZED) {
+            throw new RuntimeException("Cannot modify an evaluation that has been approved or finalized");
         }
 
         for (ManagerEvaluationAnswerRequest req : answers) {
@@ -122,8 +123,19 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
         ManagerEvaluation eval = evalRepo.findById(evaluationId)
                 .orElseThrow(() -> new NotFoundException("Evaluation not found"));
 
-        if (Boolean.TRUE.equals(eval.getSubmitted())) {
-            throw new RuntimeException("Manager evaluation is already submitted");
+        if (eval.getAppraisal().getStatus() == AppraisalStatus.HR_APPROVED || 
+            eval.getAppraisal().getStatus() == AppraisalStatus.FINALIZED) {
+            throw new RuntimeException("Cannot submit an evaluation that has been approved or finalized");
+        }
+
+        // Guard: manager evaluation can only be submitted during IN_PROGRESS or EVALUATION phase.
+        // IN_PROGRESS = self-assessment phase (employees submit); managers may also evaluate
+        // as soon as an employee's self-assessment is done, without waiting for the scheduler
+        // to flip the cycle to EVALUATION.
+        CycleStatus cycleStatus = eval.getAppraisal().getCycle().getStatus();
+        if (cycleStatus != CycleStatus.EVALUATION && cycleStatus != CycleStatus.IN_PROGRESS) {
+            throw new RuntimeException(
+                "Manager evaluation submission is not open. Cycle phase: " + cycleStatus);
         }
 
         // Calculate total score based on formula: (Total Point * 100) / (Number of Questions Answered * 5)
@@ -158,7 +170,7 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
 
         // Notify HR
         eventPublisher.publishEvent(NotificationEvent.builder()
-                .broadcast(true)
+                .targetRole("HR")
                 .type(NotificationType.MANAGER_EVALUATION_SUBMITTED)
                 .title("Evaluation Submitted")
                 .message("Manager " + appraisal.getManager().getStaffName()
@@ -226,16 +238,18 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 .totalScore(fullSelf.getTotalScore())
                 .submittedAt(fullSelf.getSubmittedAt())
                 .categories(categoryViews)
-
                 .build();
     }
 
     private FullManagerEvaluationResponse buildFullResponse(Appraisal appraisal, ManagerEvaluation eval) {
-        // Use the specific form linked to the appraisal
-        AppraisalForm form = appraisal.getForm();
+        // Use the specific form linked to the appraisal via FormSet
+        AppraisalForm form = null;
+        if (appraisal.getFormSet() != null) {
+            form = appraisal.getFormSet().getManagerEvaluationForm();
+        }
 
         if (form == null) {
-            // Fallback: Find the first MANAGER_EVALUATION form in the cycle if none linked
+            // Fallback: Find the first MANAGER_EVALUATION form in the cycle
             form = appraisal.getCycle().getForms().stream()
                     .filter(f -> f.getFormType() == FormType.MANAGER_EVALUATION)
                     .findFirst()
@@ -309,6 +323,10 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 .appraisalId(appraisal.getAppraisalId())
                 .formName(form.getFormName())
                 .formType(form.getFormType())
+                .appraisalStatus(appraisal.getStatus().name())
+                // Manager Info
+                .managerId(appraisal.getManager() != null ? appraisal.getManager().getId() : null)
+                .isSelfSubmitted(appraisal.getSelfSubmittedAt() != null)
                 // Employee Info
                 .employeeName(appraisal.getEmployee().getStaffName())
                 .employeeId(appraisal.getEmployee().getId())
@@ -336,12 +354,8 @@ public class ManagerEvaluationServiceImpl implements ManagerEvaluationService {
                 .submittedAt(eval.getSubmittedAt())
                 .employeeSignedAt(appraisal.getEmployeeSignedAt())
                 .managerSignedAt(appraisal.getManagerSignedAt())
-                .employeeSignature(appraisal.getEmployeeSignComment() != null
-                        ? java.util.Base64.getEncoder().encodeToString(appraisal.getEmployeeSignComment())
-                        : null)
-                .managerSignature(appraisal.getManagerSignComment() != null
-                        ? java.util.Base64.getEncoder().encodeToString(appraisal.getManagerSignComment())
-                        : null)
+                .employeeSignature(appraisal.getEmployeeSignComment())
+                .managerSignature(appraisal.getManagerSignComment())
                 .categories(categoryDTOs)
                 .build();
 

@@ -19,6 +19,10 @@ public class FullManagerEvaluationResponse {
     private Long appraisalId;
     private String formName;
     private FormType formType;
+    private String appraisalStatus;
+
+    // Manager Info
+    private Long managerId;
 
     // Employee Info
     private String employeeName;
@@ -38,6 +42,7 @@ public class FullManagerEvaluationResponse {
     private Instant lastSavedAt;
     private String finalComment;
     private Instant submittedAt;
+    private Boolean isSelfSubmitted;
 
     // Signatures
     private Instant employeeSignedAt;

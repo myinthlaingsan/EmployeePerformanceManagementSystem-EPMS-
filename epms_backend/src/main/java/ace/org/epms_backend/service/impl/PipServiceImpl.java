@@ -16,7 +16,6 @@ import ace.org.epms_backend.service.PipService;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmployeeRoleService;
 import ace.org.epms_backend.mapper.PipMapper;
-import ace.org.epms_backend.enums.ObjectiveStatus;
 import ace.org.epms_backend.model.pip.PipObjective;
 import ace.org.epms_backend.repository.PipObjectiveRepository;
 import ace.org.epms_backend.dto.pip.PipExtendRequest;
@@ -33,7 +32,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -165,20 +163,21 @@ public class PipServiceImpl implements PipService {
 
     private PipResponse enrichPipResponse(PipRecord pip) {
         PipResponse response = pipMapper.toResponse(pip);
-        
+
         List<PipObjective> objectives = pip.getObjectives();
         if (objectives == null || objectives.isEmpty()) {
             response.setOverallProgress(0);
         } else {
             double totalProgress = objectives.stream()
-                .mapToDouble(obj -> progressLogRepository.findFirstByObjective_ObjectiveIdOrderByCreatedAtDesc(obj.getObjectiveId())
-                    .map(log -> log.getProgressPercent().doubleValue())
-                    .orElse(0.0))
-                .average()
-                .orElse(0.0);
+                    .mapToDouble(obj -> progressLogRepository
+                            .findFirstByObjective_ObjectiveIdOrderByCreatedAtDesc(obj.getObjectiveId())
+                            .map(log -> log.getProgressPercent().doubleValue())
+                            .orElse(0.0))
+                    .average()
+                    .orElse(0.0);
             response.setOverallProgress((int) Math.round(totalProgress));
         }
-        
+
         return response;
     }
 

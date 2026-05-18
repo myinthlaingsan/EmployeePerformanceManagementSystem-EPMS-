@@ -13,4 +13,5 @@ public class KpiLibraryDetailResponse {
     private String unit;
     private String categoryName;
     private Long categoryId;
+    private Boolean isCompliance;
 }

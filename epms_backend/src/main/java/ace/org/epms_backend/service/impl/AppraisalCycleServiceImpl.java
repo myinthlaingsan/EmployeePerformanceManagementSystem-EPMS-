@@ -2,9 +2,11 @@ package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.appraisal.AppraisalCycleRequest;
 import ace.org.epms_backend.dto.appraisal.AppraisalCycleResponse;
+import ace.org.epms_backend.enums.AppraisalStatus;
 import ace.org.epms_backend.enums.CycleStatus;
 import ace.org.epms_backend.exception.ResourceNotFoundException;
 import ace.org.epms_backend.mapper.AppraisalCycleMapper;
+import ace.org.epms_backend.model.appraisal.Appraisal;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.AppraisalRepository;
@@ -36,13 +38,16 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
     private final AppraisalRepository appraisalRepository;
+    private final ace.org.epms_backend.repository.appraisal.AppraisalFormSetRepository appraisalFormSetRepository;
+    private final ace.org.epms_backend.service.AppraisalFormService appraisalFormService;
 
     @Override
     @Transactional
     public AppraisalCycleResponse create(AppraisalCycleRequest request) {
         if (Boolean.TRUE.equals(request.getIsActive())) {
-            deactivateCurrentActiveCycles();
+            checkForActiveCycles(null);
         }
+        validateNoDateOverlap(request.getStartDate(), request.getEndDate(), null);
 
         AppraisalCycle cycle = appraisalCycleMapper.toEntity(request);
         
@@ -75,6 +80,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
 
         AppraisalCycleResponse response = appraisalCycleMapper.toResponse(cycle);
         mapWeightsToResponse(weights, response);
+        response.setIsAssigned(false);
         return response;
     }
 
@@ -85,6 +91,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
             AppraisalCycleResponse resp = appraisalCycleMapper.toResponse(cycle);
             scoringWeightRepository.findByCycle_CycleId(cycle.getCycleId())
                     .ifPresent(w -> mapWeightsToResponse(w, resp));
+            resp.setIsAssigned(!appraisalRepository.findByCycle_CycleId(cycle.getCycleId()).isEmpty());
             return resp;
         }).toList();
     }
@@ -95,6 +102,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         AppraisalCycleResponse resp = appraisalCycleMapper.toResponse(cycle);
         scoringWeightRepository.findByCycle_CycleId(cycle.getCycleId())
                 .ifPresent(w -> mapWeightsToResponse(w, resp));
+        resp.setIsAssigned(!appraisalRepository.findByCycle_CycleId(cycle.getCycleId()).isEmpty());
         return resp;
     }
 
@@ -104,8 +112,9 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         AppraisalCycle cycle = getCycleById(id);
 
         if (Boolean.TRUE.equals(request.getIsActive()) && !Boolean.TRUE.equals(cycle.getIsActive())) {
-            deactivateCurrentActiveCycles();
+            checkForActiveCycles(id);
         }
+        validateNoDateOverlap(request.getStartDate(), request.getEndDate(), id);
 
         appraisalCycleMapper.updateEntityFromRequest(request, cycle);
         
@@ -138,6 +147,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
 
         AppraisalCycleResponse response = appraisalCycleMapper.toResponse(cycle);
         mapWeightsToResponse(weights, response);
+        response.setIsAssigned(!appraisalRepository.findByCycle_CycleId(id).isEmpty());
         return response;
     }
 
@@ -152,9 +162,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!appraisalCycleRepository.existsById(id)) {
-            throw new ResourceNotFoundException("AppraisalCycle not found with id: " + id);
-        }
+        AppraisalCycle cycle = getCycleById(id);
 
         // Check if cycle has any appraisals assigned
         if (!appraisalRepository.findByCycle_CycleId(id).isEmpty()) {
@@ -162,7 +170,21 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                     "Cannot delete cycle. It has active appraisals assigned. Please close or archive it instead.");
         }
 
-        appraisalCycleRepository.deleteById(id);
+        // 0. Find and delete related ScoringWeight first to satisfy DB FK constraints
+        scoringWeightRepository.findByCycle_CycleId(id).ifPresent(scoringWeightRepository::delete);
+
+        // 1. Find and delete related Forms cleanly (clearing child categories, questions, and references first)
+        List<ace.org.epms_backend.model.appraisal.AppraisalForm> forms = new java.util.ArrayList<>(cycle.getForms());
+        for (ace.org.epms_backend.model.appraisal.AppraisalForm form : forms) {
+            appraisalFormService.deleteForm(form.getFormId());
+        }
+
+        // 2. Find and delete related FormSets after forms are gone to prevent transient references
+        List<ace.org.epms_backend.model.appraisal.AppraisalFormSet> formSets = appraisalFormSetRepository.findByCycle_CycleId(id);
+        appraisalFormSetRepository.deleteAll(formSets);
+
+        // 3. Delete the cycle itself
+        appraisalCycleRepository.delete(cycle);
     }
 
     @Override
@@ -170,21 +192,19 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     public AppraisalCycleResponse activate(Long id) {
         AppraisalCycle cycle = getCycleById(id);
 
-        deactivateCurrentActiveCycles();
+        checkForActiveCycles(id);
 
         cycle.setIsActive(true);
-        if (cycle.getStatus() == null || cycle.getStatus() == CycleStatus.ARCHIVED) {
-            cycle.setStatus(CycleStatus.PLANNING);
-        }
+        cycle.setStatus(CycleStatus.IN_PROGRESS);
         cycle = appraisalCycleRepository.save(cycle);
 
         // Trigger Broadcast Notification
         eventPublisher.publishEvent(NotificationEvent.builder()
                 .broadcast(true)
                 .type(NotificationType.APPRAISAL_CYCLE_OPENED)
-                .title("Appraisal Cycle Opened")
+                .title("Appraisal Cycle Activated")
                 .message("The appraisal cycle '" + cycle.getCycleName()
-                        + "' is now open. You can start your self-assessments.")
+                        + "' has been activated. Self-assessments are now open.")
                 .referenceType(ReferenceType.APPRAISAL)
                 .referenceId(cycle.getCycleId())
                 .actionUrl("/appraisals/my-appraisals")
@@ -193,6 +213,41 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         cycle = appraisalCycleRepository.save(cycle);
 
         // Log Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisal_cycle")
+                .recordId(cycle.getCycleId())
+                .action(AuditAction.UPDATE)
+                .newState(cycle)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
+        return appraisalCycleMapper.toResponse(cycle);
+    }
+
+    @Override
+    @Transactional
+    public AppraisalCycleResponse advanceToEvaluation(Long id) {
+        AppraisalCycle cycle = getCycleById(id);
+
+        if (cycle.getStatus() != CycleStatus.IN_PROGRESS) {
+            throw new RuntimeException(
+                "Can only advance to EVALUATION from IN_PROGRESS. Current status: " + cycle.getStatus());
+        }
+
+        cycle.setStatus(CycleStatus.EVALUATION);
+        cycle = appraisalCycleRepository.save(cycle);
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .broadcast(true)
+                .type(NotificationType.CYCLE_PHASE_STARTED)
+                .title("Manager Evaluation Phase Open")
+                .message("The manager evaluation phase for appraisal cycle '"
+                        + cycle.getCycleName() + "' is now open.")
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(cycle.getCycleId())
+                .actionUrl("/appraisals")
+                .build());
+
         auditService.log(AuditRequest.builder()
                 .tableName("appraisal_cycle")
                 .recordId(cycle.getCycleId())
@@ -239,7 +294,16 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
 
     @Override
     public AppraisalCycleResponse getActiveCycle() {
-        return appraisalCycleRepository.findByIsActiveTrue().stream()
+        List<AppraisalCycle> cycles = appraisalCycleRepository.findActiveCyclesByStatus(
+            List.of(CycleStatus.PLANNING, CycleStatus.IN_PROGRESS, CycleStatus.EVALUATION)
+        );
+        
+        // Fallback: If status-specific search fails, return the most recent active cycle regardless of status
+        if (cycles.isEmpty()) {
+            cycles = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
+        }
+
+        return cycles.stream()
                 .findFirst()
                 .map(appraisalCycleMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("No active appraisal cycle found"));
@@ -250,13 +314,104 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .orElseThrow(() -> new ResourceNotFoundException("AppraisalCycle not found with id: " + id));
     }
 
-    private void deactivateCurrentActiveCycles() {
-        List<AppraisalCycle> activeCycles = appraisalCycleRepository.findByIsActiveTrue();
+    private void checkForActiveCycles(Long excludeCycleId) {
+        List<AppraisalCycle> activeCycles = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
         for (AppraisalCycle c : activeCycles) {
-            c.setIsActive(false);
+            if (excludeCycleId == null || !c.getCycleId().equals(excludeCycleId)) {
+                throw new RuntimeException(
+                        "Cannot activate this cycle. Another cycle '" + c.getCycleName()
+                                + "' is currently active. Please close or archive it first.");
+            }
         }
-        if (!activeCycles.isEmpty()) {
-            appraisalCycleRepository.saveAll(activeCycles);
+    }
+
+    private void validateNoDateOverlap(java.time.LocalDate startDate, java.time.LocalDate endDate, Long excludeCycleId) {
+        if (startDate == null || endDate == null) {
+            return;
         }
+        if (startDate.isAfter(endDate)) {
+            throw new RuntimeException("Start date cannot be after end date.");
+        }
+        List<AppraisalCycle> allCycles = appraisalCycleRepository.findAll();
+        for (AppraisalCycle c : allCycles) {
+            if (excludeCycleId != null && c.getCycleId().equals(excludeCycleId)) {
+                continue;
+            }
+            if (c.getStatus() == CycleStatus.ARCHIVED) {
+                continue;
+            }
+            if (startDate.compareTo(c.getEndDate()) <= 0 && endDate.compareTo(c.getStartDate()) >= 0) {
+                throw new RuntimeException(
+                        "The cycle date range (" + startDate + " to " + endDate
+                        + ") overlaps with an existing cycle '" + c.getCycleName()
+                        + "' (" + c.getStartDate() + " to " + c.getEndDate() + ").");
+            }
+        }
+    }
+
+    /**
+     * Called only by the scheduler when endDate is reached.
+     * Bulk-archives FINALIZED appraisals and notifies HR of any incomplete ones.
+     */
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void schedulerDrivenClose(Long cycleId) {
+        AppraisalCycle cycle = getCycleById(cycleId);
+
+        // 1. Bulk-archive all FINALIZED appraisals in this cycle
+        List<Appraisal> finalized = appraisalRepository
+                .findByCycle_CycleIdAndStatus(cycleId, AppraisalStatus.FINALIZED);
+        for (Appraisal a : finalized) {
+            a.setStatus(AppraisalStatus.ARCHIVED);
+        }
+        if (!finalized.isEmpty()) {
+            appraisalRepository.saveAll(finalized);
+        }
+
+        // 2. Find any appraisals that are NOT finalized/archived (incomplete)
+        List<Appraisal> incomplete = appraisalRepository.findByCycleIdAndStatusNotIn(
+                cycleId,
+                java.util.List.of(AppraisalStatus.FINALIZED, AppraisalStatus.ARCHIVED));
+
+        // 3. Close the cycle
+        cycle.setIsActive(false);
+        cycle.setStatus(CycleStatus.ARCHIVED);
+        appraisalCycleRepository.save(cycle);
+
+        // 4. Notify all users the cycle is closed
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .broadcast(true)
+                .type(NotificationType.APPRAISAL_CYCLE_CLOSED)
+                .title("Appraisal Cycle Closed")
+                .message("The appraisal cycle '" + cycle.getCycleName() + "' has been automatically closed.")
+                .referenceType(ReferenceType.APPRAISAL)
+                .referenceId(cycleId)
+                .actionUrl("/appraisals/history")
+                .build());
+
+        // 5. Notify HR about incomplete appraisals
+        if (!incomplete.isEmpty()) {
+            StringBuilder names = new StringBuilder();
+            incomplete.forEach(a -> names.append(a.getEmployee().getStaffName())
+                    .append(" (").append(a.getStatus()).append("), "));
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .targetRole("HR")
+                    .type(NotificationType.CYCLE_INCOMPLETE_APPRAISALS)
+                    .title("Incomplete Appraisals at Cycle Close")
+                    .message(incomplete.size() + " appraisal(s) were not completed when cycle '"
+                            + cycle.getCycleName() + "' closed: " + names.toString().replaceAll(", $", ""))
+                    .referenceType(ReferenceType.APPRAISAL)
+                    .referenceId(cycleId)
+                    .build());
+        }
+
+        // 6. Audit
+        auditService.log(AuditRequest.builder()
+                .tableName("appraisal_cycle")
+                .recordId(cycleId)
+                .action(AuditAction.UPDATE)
+                .newState(cycle)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 }

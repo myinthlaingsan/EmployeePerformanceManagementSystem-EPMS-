@@ -6,10 +6,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface KpiLibraryRepository extends JpaRepository<KpiLibrary, Long> {
     List<KpiLibrary> findByIsActiveTrue();
     
     Page<KpiLibrary> findByTitleContainingIgnoreCase(String title, Pageable pageable);
+
+    Optional<KpiLibrary> findByTitleAndPositionPositionIdAndIsActiveTrue(String title, Long positionId);
+
+    List<KpiLibrary> findByPositionPositionIdOrderByUpdatedAtDesc(Long positionId);
 }

@@ -1,187 +1,286 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useGetEmployeeAssessmentQuery } from '../../features/appraisal/appraisalApi';
+import { toast } from 'react-toastify';
+import {
+  useGetEmployeeAssessmentQuery,
+  useCalculateScoreMutation,
+  useApproveAppraisalMutation,
+  useFinalizeAppraisalMutation
+} from '../../features/appraisal/appraisalApi';
 import { format } from 'date-fns';
-import { 
-  ClipboardList, 
-  FileText, 
-  ChevronLeft, 
-  User, 
-  CheckCircle2, 
-  Clock, 
-  Target, 
+import {
+  ClipboardList,
+  FileText,
+  ChevronLeft,
+  User,
+  CheckCircle2,
+  Clock,
+  Target,
   ArrowRight,
-  Lock
+  Lock,
+  Calculator,
+  ShieldCheck,
+  Flag,
+  Calendar,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+
+const panelStyle: React.CSSProperties = {
+  background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px',
+};
+
+const STATUS_INFO: Record<string, { label: string; bg: string; text: string; border: string; icon: React.ElementType }> = {
+  PENDING:      { label: 'Pending Self Assessment',   bg: '#FAEEDA', text: '#633806', border: '#F0D4A4', icon: Clock },
+  SELF_ASSESSED:{ label: 'Awaiting Manager Review',   bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4', icon: UserCheck },
+  EVALUATED:    { label: 'Ready for HR Calculation',  bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4', icon: Calculator },
+  HR_APPROVED:  { label: 'Awaiting Sign-offs',        bg: '#F1EFE8', text: '#444441', border: '#DDDBD2', icon: ShieldCheck },
+  FINALIZED:    { label: 'Finalized',                 bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0', icon: CheckCircle2 },
+};
 
 const AppraisalDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  
+  const { user, isAdmin, isHR } = useAuth();
+
   const { data: appraisal, isLoading } = useGetEmployeeAssessmentQuery(id || '', { skip: !id });
+  const [calculateScore, { isLoading: isCalculating }] = useCalculateScoreMutation();
+  const [approveAppraisal, { isLoading: isApproving }] = useApproveAppraisalMutation();
+  const [finalizeAppraisal, { isLoading: isFinalizing }] = useFinalizeAppraisalMutation();
+  const [approvalComment, setApprovalComment] = useState('');
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="py-16 text-center" style={{ color: '#9EA3B0', fontSize: 13 }}>Loading…</div>;
+  if (!appraisal) return (
+    <div style={{ background: '#FCEBEB', border: '0.5px solid #F5C2C2', borderRadius: 12, padding: '16px 18px', fontSize: 13, color: '#791F1F' }}>
+      Appraisal not found.
+    </div>
+  );
 
-  if (!appraisal) {
-    return (
-      <div className="p-8 text-center text-red-500 font-bold bg-red-50 rounded-2xl border border-red-100 max-w-2xl mx-auto mt-20">
-        Appraisal not found.
-      </div>
-    );
-  }
+  const isEmployee = Number(user?.id) === Number(appraisal.employeeId);
+  const isManager = Number(user?.id) === Number(appraisal.managerId);
+  const isPrivileged = isAdmin || isHR;
+  const canViewSelfAssessment = isEmployee || isManager || isPrivileged;
+  const canViewManagerEvaluation = isManager || isPrivileged || (isEmployee && !!appraisal.managerSubmittedAt);
 
-  const isEmployee = user?.id === appraisal.employeeId;
-  const isManager = user?.id === appraisal.managerId;
-  const canViewSelfAssessment = isEmployee || appraisal.selfSubmittedAt;
+  const handleCalculate = async () => {
+    try { await calculateScore(id!).unwrap(); toast.success('Scores calculated!'); }
+    catch (err: any) { toast.error(err?.data?.message || 'Calculation failed'); }
+  };
+  const handleApprove = async () => {
+    try { await approveAppraisal({ id: id!, comment: approvalComment }).unwrap(); toast.success('Approved!'); }
+    catch (err: any) { toast.error(err?.data?.message || 'Approval failed'); }
+  };
+  const handleFinalize = async () => {
+    try { await finalizeAppraisal(id!).unwrap(); toast.success('Finalized!'); }
+    catch (err: any) { toast.error(err?.data?.message || 'Finalization failed'); }
+  };
+
+  const statusInfo = STATUS_INFO[appraisal.status] ?? STATUS_INFO['PENDING'];
+  const StatusIcon = statusInfo.icon;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-8 py-6 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate('/appraisal')} 
-              className="p-2.5 bg-slate-50 text-slate-500 rounded-xl hover:bg-slate-100 transition-all active:scale-95 border border-slate-200"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">Appraisal Overview</h1>
-              <p className="text-slate-500 text-xs font-medium mt-0.5">{appraisal.cycleName}</p>
+    <div className="space-y-4 pb-8">
+      {/* Top bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/appraisal')}
+            style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.5px solid #E4E6EC', borderRadius: 8, background: '#FFFFFF', color: '#5A6070' }}
+            className="hover:bg-[#F5F6F8] transition-colors">
+            <ChevronLeft size={16} />
+          </button>
+          <div>
+            <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Appraisal Detail</h1>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>{appraisal.cycleName}</p>
+          </div>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 500, background: statusInfo.bg, color: statusInfo.text, border: `0.5px solid ${statusInfo.border}`, borderRadius: 20, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <StatusIcon size={11} /> {statusInfo.label}
+        </span>
+      </div>
+
+      {/* Employee profile + score */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2" style={panelStyle}>
+          <div className="flex items-start gap-4">
+            <div style={{ width: 48, height: 48, borderRadius: 8, background: '#EEF3FD', color: '#0C447C', fontSize: 18, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {appraisal.employeeName?.charAt(0)}
+            </div>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 6 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>{appraisal.employeeName}</h2>
+                <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#9EA3B0', background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '1px 6px' }}>{appraisal.employeeCode}</span>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                <span style={{ fontSize: 12, color: '#5A6070', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Target size={12} style={{ color: '#1A56DB' }} /> {appraisal.positionName || 'Associate'}
+                </span>
+                <span style={{ fontSize: 12, color: '#5A6070', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <User size={12} style={{ color: '#1A56DB' }} /> {appraisal.managerName || 'Pending'}
+                </span>
+                <span style={{ fontSize: 12, color: '#5A6070', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Calendar size={12} style={{ color: '#1A56DB' }} />
+                  {appraisal.assignedAt ? format(new Date(appraisal.assignedAt), 'dd/MM/yyyy') : 'N/A'}
+                </span>
+              </div>
             </div>
           </div>
-          
-          <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-2 
-            ${appraisal.status === 'FINALIZED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${appraisal.status === 'FINALIZED' ? 'bg-emerald-600' : 'bg-indigo-600 animate-pulse'}`}></div>
-            {appraisal.status.replace('_', ' ')}
+        </div>
+
+        <div style={{ ...panelStyle, background: '#111827' }}>
+          <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Performance Score</p>
+          <p style={{ fontSize: 32, fontWeight: 500, color: '#FFFFFF', marginBottom: 8 }}>
+            {appraisal.finalScore != null ? Number(appraisal.finalScore).toFixed(1) : '--'}
+            <span style={{ fontSize: 14, color: '#9EA3B0', fontWeight: 400 }}> / 100</span>
+          </p>
+          <div style={{ height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 4 }}>
+            <div style={{ height: '100%', borderRadius: 4, background: '#1A56DB', width: `${appraisal.finalScore || 0}%` }} />
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-8 pt-10">
-        {/* Employee Profile Section */}
-        <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 mb-10 flex flex-col md:flex-row items-center gap-10">
-          <div className="w-24 h-24 rounded-3xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-3xl shadow-inner border border-indigo-100">
-            {appraisal.employeeName?.charAt(0)}
+      {/* HR Admin controls */}
+      {isPrivileged && (
+        <div style={panelStyle}>
+          <div className="flex items-center gap-2" style={{ marginBottom: 14 }}>
+            <ShieldCheck size={15} style={{ color: '#1A56DB' }} />
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>HR Administrator Controls</p>
           </div>
-          <div className="flex-1 text-center md:text-left">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">{appraisal.employeeName}</h2>
-            <div className="flex flex-wrap justify-center md:justify-start gap-6">
-              <div className="flex items-center gap-2 text-slate-400 font-bold text-sm">
-                <Target className="w-4 h-4" /> {appraisal.employeeCode}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Calculate */}
+            <div style={{ border: `0.5px solid ${appraisal.status === 'EVALUATED' || appraisal.status === 'HR_APPROVED' ? '#B5D4F4' : '#E4E6EC'}`, borderRadius: 10, padding: '14px', background: appraisal.status === 'EVALUATED' || appraisal.status === 'HR_APPROVED' ? '#EEF3FD' : '#F5F6F8', opacity: ['PENDING', 'SELF_ASSESSED'].includes(appraisal.status) ? 0.6 : 1 }}>
+              <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+                <Calculator size={14} style={{ color: '#0C447C' }} />
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>Score Calculation</p>
               </div>
-              <div className="flex items-center gap-2 text-slate-400 font-bold text-sm">
-                <User className="w-4 h-4" /> Assigned to {appraisal.managerName || 'System'}
+              <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 10 }}>Process all form ratings into the final weighted score.</p>
+              <button disabled={isCalculating || !['EVALUATED', 'HR_APPROVED'].includes(appraisal.status)} onClick={handleCalculate}
+                className="w-full transition-colors disabled:opacity-50"
+                style={{ background: '#FFFFFF', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '7px', fontSize: 12, fontWeight: 500 }}>
+                {isCalculating ? 'Processing…' : 'Run Calculation'}
+              </button>
+            </div>
+
+            {/* Approve */}
+            <div style={{ border: `0.5px solid ${appraisal.status === 'EVALUATED' ? '#DDDBD2' : '#E4E6EC'}`, borderRadius: 10, padding: '14px', background: appraisal.status === 'EVALUATED' ? '#F1EFE8' : '#F5F6F8', opacity: appraisal.status === 'EVALUATED' ? 1 : 0.6 }}>
+              <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+                <ShieldCheck size={14} style={{ color: '#444441' }} />
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>HR Approval</p>
               </div>
-              <div className="flex items-center gap-2 text-slate-400 font-bold text-sm">
-                <Clock className="w-4 h-4" /> Created {appraisal.assignedAt ? format(new Date(appraisal.assignedAt), 'MMM dd, yyyy') : 'N/A'}
+              <input type="text" placeholder="Approval comment…" value={approvalComment} onChange={(e) => setApprovalComment(e.target.value)}
+                disabled={appraisal.status !== 'EVALUATED'}
+                style={{ width: '100%', background: '#FFFFFF', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#111827', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }} />
+              <button disabled={isApproving || appraisal.status !== 'EVALUATED'} onClick={handleApprove}
+                className="w-full transition-colors disabled:opacity-50"
+                style={{ background: '#FFFFFF', color: '#444441', border: '0.5px solid #DDDBD2', borderRadius: 8, padding: '7px', fontSize: 12, fontWeight: 500 }}>
+                {isApproving ? 'Approving…' : 'Approve Results'}
+              </button>
+            </div>
+
+            {/* Finalize */}
+            <div style={{ border: `0.5px solid ${appraisal.status === 'HR_APPROVED' ? '#B8DCA0' : '#E4E6EC'}`, borderRadius: 10, padding: '14px', background: appraisal.status === 'HR_APPROVED' ? '#EAF3DE' : '#F5F6F8', opacity: appraisal.status === 'HR_APPROVED' ? 1 : 0.6 }}>
+              <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+                <Flag size={14} style={{ color: '#27500A' }} />
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>Finalize & Lock</p>
               </div>
+              <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 10 }}>Complete the cycle and archive the record.</p>
+              <button disabled={isFinalizing || appraisal.status !== 'HR_APPROVED'} onClick={handleFinalize}
+                className="w-full transition-colors disabled:opacity-50"
+                style={{ background: '#FFFFFF', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 8, padding: '7px', fontSize: 12, fontWeight: 500 }}>
+                {isFinalizing ? 'Finalizing…' : 'Close Appraisal'}
+              </button>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Selection Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {/* Manager Evaluation Card */}
-          <div 
-            onClick={() => navigate(`/appraisal/${id}/manager-evaluation`)}
-            className="group bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm hover:shadow-2xl hover:border-indigo-200 transition-all duration-500 cursor-pointer flex flex-col relative overflow-hidden h-full"
-          >
-            <div className="absolute top-0 right-0 w-40 h-40 -mr-10 -mt-10 rounded-full bg-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity blur-3xl"></div>
-            
-            <div className="flex justify-between items-start mb-10 relative z-10">
-              <div className="p-5 rounded-3xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
-                <FileText className="w-8 h-8" />
+      {/* Results banner */}
+      {(appraisal.status === 'HR_APPROVED' || appraisal.status === 'FINALIZED') && (
+        <div onClick={() => navigate(`/appraisal/${id}/results`)} style={{ background: '#1A56DB', border: 'none', borderRadius: 12, padding: '16px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
+          className="hover:opacity-90 transition-opacity">
+          <div className="flex items-center gap-3">
+            <ShieldCheck size={20} style={{ color: '#FFFFFF', flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#FFFFFF' }}>
+                {appraisal.status === 'FINALIZED' ? 'View Final Report' : 'Final Results & Formal Sign-off'}
+              </p>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>
+                {appraisal.status === 'FINALIZED' ? 'The appraisal process is complete.' : 'HR approved. Proceed to sign-off.'}
+              </p>
+            </div>
+          </div>
+          <ArrowRight size={16} style={{ color: '#FFFFFF', flexShrink: 0 }} />
+        </div>
+      )}
+
+      {/* Form cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Manager Evaluation */}
+        {canViewManagerEvaluation ? (
+          <div onClick={() => navigate(`/appraisal/${id}/manager-evaluation`)}
+            style={{ ...panelStyle, cursor: 'pointer' }}
+            className="hover:border-[#1A56DB] transition-colors">
+            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EEF3FD', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileText size={16} style={{ color: '#1A56DB' }} />
               </div>
               {appraisal.managerSubmittedAt ? (
-                <div className="px-4 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full text-[10px] font-black uppercase tracking-widest">
-                  Completed
-                </div>
+                <span style={{ fontSize: 11, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 20, padding: '2px 8px' }}>Completed</span>
               ) : (
-                <div className="px-4 py-1.5 bg-slate-50 text-slate-400 border border-slate-100 rounded-full text-[10px] font-black uppercase tracking-widest">
+                <span style={{ fontSize: 11, fontWeight: 500, background: isManager ? '#FAEEDA' : '#F1EFE8', color: isManager ? '#633806' : '#444441', border: `0.5px solid ${isManager ? '#F0D4A4' : '#DDDBD2'}`, borderRadius: 20, padding: '2px 8px' }}>
                   {isManager ? 'Action Required' : 'In Progress'}
-                </div>
+                </span>
               )}
             </div>
-
-            <div className="flex-1 relative z-10">
-              <h3 className="text-2xl font-black text-slate-900 mb-3 group-hover:text-indigo-600 transition-colors">Evaluation Form</h3>
-              <p className="text-slate-400 font-medium leading-relaxed mb-10">
-                Manager's performance review and objective ratings for the current cycle.
-              </p>
-            </div>
-
-            <div className="pt-8 border-t border-slate-50 flex items-center justify-between relative z-10">
-              <span className="text-sm font-black text-slate-900 uppercase tracking-widest">
-                {appraisal.managerSubmittedAt ? 'View Evaluation' : (isManager ? 'Start Evaluating' : 'View Progress')}
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 6 }}>Evaluation Form</p>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 14 }}>Manager's performance review and objective ratings.</p>
+            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: '#1A56DB' }}>
+                {appraisal.managerSubmittedAt
+                  ? (isManager && !['FINALIZED', 'HR_APPROVED'].includes(appraisal.status) ? 'Edit Evaluation' : 'View Evaluation')
+                  : (isManager ? 'Start Evaluating' : 'View Progress')}
               </span>
-              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-2">
-                <ArrowRight className="w-5 h-5" />
-              </div>
+              <ArrowRight size={14} style={{ color: '#1A56DB' }} />
             </div>
           </div>
+        ) : (
+          <div style={{ ...panelStyle, background: '#F5F6F8', border: '0.5px dashed #E0E2E8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 140 }}>
+            <Lock size={20} style={{ color: '#9EA3B0', marginBottom: 8 }} />
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#9EA3B0' }}>Evaluation Locked</p>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 4 }}>Available once submitted.</p>
+          </div>
+        )}
 
-          {/* Self Assessment Card */}
-          {canViewSelfAssessment ? (
-            <div 
-              onClick={() => navigate(`/appraisal/${id}/self-assessment`)}
-              className="group bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm hover:shadow-2xl hover:border-blue-200 transition-all duration-500 cursor-pointer flex flex-col relative overflow-hidden h-full"
-            >
-              <div className="absolute top-0 right-0 w-40 h-40 -mr-10 -mt-10 rounded-full bg-blue-600 opacity-0 group-hover:opacity-10 transition-opacity blur-3xl"></div>
-              
-              <div className="flex justify-between items-start mb-10 relative z-10">
-                <div className="p-5 rounded-3xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                  <ClipboardList className="w-8 h-8" />
-                </div>
-                {appraisal.selfSubmittedAt ? (
-                  <div className="px-4 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full text-[10px] font-black uppercase tracking-widest">
-                    Submitted
-                  </div>
-                ) : (
-                  <div className="px-4 py-1.5 bg-amber-50 text-amber-600 border border-amber-100 rounded-full text-[10px] font-black uppercase tracking-widest">
-                    In Progress
-                  </div>
-                )}
+        {/* Self Assessment */}
+        {canViewSelfAssessment ? (
+          <div onClick={() => navigate(`/appraisal/${id}/self-assessment`)}
+            style={{ ...panelStyle, cursor: 'pointer' }}
+            className="hover:border-[#1A56DB] transition-colors">
+            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EEF3FD', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ClipboardList size={16} style={{ color: '#1A56DB' }} />
               </div>
-
-              <div className="flex-1 relative z-10">
-                <h3 className="text-2xl font-black text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">Self Assessment</h3>
-                <p className="text-slate-400 font-medium leading-relaxed mb-10">
-                  The employee's personal reflection on achievements, challenges, and core values.
-                </p>
-              </div>
-
-              <div className="pt-8 border-t border-slate-50 flex items-center justify-between relative z-10">
-                <span className="text-sm font-black text-slate-900 uppercase tracking-widest">
-                  {appraisal.selfSubmittedAt ? 'View Assessment' : 'Continue Assessment'}
-                </span>
-                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all transform group-hover:translate-x-2">
-                  <ArrowRight className="w-5 h-5" />
-                </div>
-              </div>
+              {appraisal.selfSubmittedAt ? (
+                <span style={{ fontSize: 11, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 20, padding: '2px 8px' }}>Submitted</span>
+              ) : (
+                <span style={{ fontSize: 11, fontWeight: 500, background: '#FAEEDA', color: '#633806', border: '0.5px solid #F0D4A4', borderRadius: 20, padding: '2px 8px' }}>In Progress</span>
+              )}
             </div>
-          ) : (
-            <div className="bg-slate-50 rounded-[2.5rem] p-10 border border-slate-200 border-dashed flex flex-col items-center justify-center text-center opacity-60 h-full">
-              <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center text-slate-300 mb-6 border border-slate-100 shadow-sm">
-                <Lock className="w-10 h-10" />
-              </div>
-              <h3 className="text-2xl font-black text-slate-400 mb-2">Self Assessment Locked</h3>
-              <p className="text-slate-400 font-medium max-w-[280px]">
-                You can view the employee's assessment once it has been submitted.
-              </p>
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 6 }}>Self Assessment</p>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 14 }}>Personal reflection on achievements, challenges, and core values.</p>
+            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: '#1A56DB' }}>
+                {appraisal.selfSubmittedAt ? 'View Assessment' : (isEmployee ? 'Continue Assessment' : 'View Progress')}
+              </span>
+              <ArrowRight size={14} style={{ color: '#1A56DB' }} />
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div style={{ ...panelStyle, background: '#F5F6F8', border: '0.5px dashed #E0E2E8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 140 }}>
+            <Lock size={20} style={{ color: '#9EA3B0', marginBottom: 8 }} />
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#9EA3B0' }}>Self Assessment Locked</p>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 4 }}>Available once submitted.</p>
+          </div>
+        )}
       </div>
     </div>
   );

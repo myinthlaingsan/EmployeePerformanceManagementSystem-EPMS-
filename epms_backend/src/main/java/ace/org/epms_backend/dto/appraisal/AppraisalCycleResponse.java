@@ -37,5 +37,6 @@ public class AppraisalCycleResponse {
     
     private Long financialYearId;
     private String financialYearTitle;
+    private Boolean isAssigned;
 }
 

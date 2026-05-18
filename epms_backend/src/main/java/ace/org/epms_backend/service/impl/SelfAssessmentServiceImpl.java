@@ -85,11 +85,12 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
 
     @Override
     @Transactional
-    public void saveDraft(Long selfAssessmentId) {
+    public void saveDraft(Long selfAssessmentId, String overallReflection) {
         SelfAssessment self = selfRepo.findById(selfAssessmentId)
                 .orElseThrow(() -> new NotFoundException("Self assessment not found"));
 
         self.setLastSavedAt(Instant.now());
+        self.setOverallReflection(overallReflection);
         selfRepo.save(self);
     }
 
@@ -101,6 +102,13 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
 
         if (Boolean.TRUE.equals(self.getSubmitted())) {
             throw new RuntimeException("Self-assessment is already submitted");
+        }
+
+        // Guard: self-assessment can only be submitted during IN_PROGRESS phase
+        CycleStatus cycleStatus = self.getAppraisal().getCycle().getStatus();
+        if (cycleStatus != CycleStatus.IN_PROGRESS) {
+            throw new RuntimeException(
+                "Self-assessment submission is not open. Cycle phase: " + cycleStatus);
         }
 
         // Calculate total score based on formula: (Total Point * 100) / (Number of Questions Answered * 5)
@@ -163,11 +171,14 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
     }
 
     private FullSelfAssessmentResponse buildFullResponse(Appraisal appraisal, SelfAssessment self) {
-        // Use the specific form linked to the appraisal
-        AppraisalForm form = appraisal.getForm();
+        // Use the specific form linked to the appraisal via the FormSet
+        AppraisalForm form = null;
+        if (appraisal.getFormSet() != null) {
+            form = appraisal.getFormSet().getSelfAssessmentForm();
+        }
         
         if (form == null) {
-            // Fallback: Find the first SELF_ASSESSMENT form in the cycle if none linked (backward compatibility)
+            // Fallback: Find the first SELF_ASSESSMENT form in the cycle
             form = appraisal.getCycle().getForms().stream()
                 .filter(f -> f.getFormType() == FormType.SELF_ASSESSMENT)
                 .findFirst()
@@ -218,6 +229,7 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
                 .formName(form.getFormName())
                 .formType(form.getFormType())
                 // Employee Info
+                .employeeId(appraisal.getEmployee().getId())
                 .employeeName(appraisal.getEmployee().getStaffName())
                 .employeeCode(appraisal.getEmployee().getEmployeeCode())
                 .positionName(appraisal.getEmployee().getPosition() != null
@@ -238,11 +250,10 @@ public class SelfAssessmentServiceImpl implements SelfAssessmentService {
                 .submitted(self.getSubmitted())
                 .lastSavedAt(self.getLastSavedAt())
                 .submittedAt(self.getSubmittedAt())
+                .overallReflection(self.getOverallReflection())
                 .employeeSignedAt(appraisal.getEmployeeSignedAt())
                 .managerSignedAt(appraisal.getManagerSignedAt())
-                .employeeSignature(appraisal.getEmployeeSignComment() != null 
-                    ? java.util.Base64.getEncoder().encodeToString(appraisal.getEmployeeSignComment()) 
-                    : null)
+                .employeeSignature(appraisal.getEmployeeSignComment())
                 .categories(categoryDTOs)
                 .build();
     }

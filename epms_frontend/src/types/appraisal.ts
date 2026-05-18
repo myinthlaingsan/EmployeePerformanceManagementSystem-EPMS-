@@ -51,11 +51,11 @@ export interface UpdateAssessmentPayload {
   responses: AssessmentResponse[];
 }
 
-export type PerformanceGrade = 
-  | 'OUTSTANDING' 
-  | 'EXCEEDS_EXPECTATIONS' 
-  | 'MEETS_EXPECTATIONS' 
-  | 'NEEDS_IMPROVEMENT' 
+export type PerformanceGrade =
+  | 'OUTSTANDING'
+  | 'EXCEEDS_EXPECTATIONS'
+  | 'MEETS_EXPECTATIONS'
+  | 'NEEDS_IMPROVEMENT'
   | 'UNSATISFACTORY';
 
 export interface PerformanceCategory {

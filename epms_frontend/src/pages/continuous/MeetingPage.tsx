@@ -56,10 +56,21 @@ const CommentItem = ({
     : { background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '8px 10px', minWidth: 100, position: 'relative' };
 
   return (
-    <div id={`comment-${comment.id}`} onContextMenu={(e) => onContextMenu(e, comment)}
-      style={isHighlighted ? { background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: 8, margin: -8 } : {}}>
-      <div style={{ display: 'flex', gap: 10, ...(isOwnComment ? { flexDirection: 'row-reverse' as const } : {}) }}>
-        <div style={{ width: 30, height: 30, borderRadius: 6, background: isOwnComment || isHighlighted ? '#1A56DB' : '#F5F6F8', color: isOwnComment || isHighlighted ? '#FFFFFF' : '#111827', border: isOwnComment || isHighlighted ? 'none' : '0.5px solid #E4E6EC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 4 }}>
+    <div 
+      id={`comment-${comment.id}`} 
+      className={`space-y-2`}
+      onContextMenu={(e) => onContextMenu(e, comment)}
+    >
+      <div className={`flex gap-3 px-3 py-2 rounded-2xl transition-all duration-500 group relative ${
+        highlightedCommentId === comment.id 
+          ? 'bg-blue-100 ring-4 ring-blue-300 scale-[1.02] shadow-lg' 
+          : isOwnComment ? 'flex-row-reverse bg-blue-50/30 border-l-4 border-blue-500' : 'bg-gray-50/30'
+      }`}>
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-sm transition-colors duration-500 ${
+          highlightedCommentId === comment.id
+            ? 'bg-blue-600 text-white'
+            : isOwnComment ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-100'
+        }`}>
           {(comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)?.charAt(0)}
         </div>
         <div style={{ maxWidth: '80%', display: 'flex', flexDirection: 'column', gap: 3, alignItems: isOwnComment ? 'flex-end' : 'flex-start' }}>
@@ -159,13 +170,38 @@ const MeetingPage = () => {
   const [reopenConfig, setReopenConfig] = useState<{ meetingId: number, item: any } | null>(null);
   const [reopenReason, setReopenReason] = useState("");
 
-  const blankMeeting = { employeeId: 0, meetingDate: "", meetingTime: "", discussionPoints: "", keyIssues: "", actionItems: "", followUpDate: "", isPrivateNote: false };
-  const [newMeeting, setNewMeeting] = useState(blankMeeting);
+  interface MeetingState {
+    employeeId: number;
+    meetingDate: string;
+    meetingTime: string;
+    discussionPoints: string;
+    keyIssues: string;
+    actionItems: string | any[];
+    followUpDate: string;
 
-  const handleSchedule = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || !newMeeting.actionItems || !user) {
-      toast.warning("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
+  }
+
+  const [newMeeting, setNewMeeting] = useState<MeetingState>({
+    employeeId: 0,
+    meetingDate: "",
+    meetingTime: "",
+    discussionPoints: "",
+    keyIssues: "",
+    actionItems: "",
+    followUpDate: "",
+
+  });
+
+
+  const handleSchedule = async (e: React.FormEvent, status: ContinuousStatus = ContinuousStatus.PUBLISHED) => {
+    if (e) e.preventDefault();
+
+    const actionItemsValid = Array.isArray(newMeeting.actionItems)
+      ? newMeeting.actionItems.length > 0
+      : newMeeting.actionItems.trim() !== '';
+
+    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || !actionItemsValid || !user) {
+      alert("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
       return;
     }
     if (newMeeting.followUpDate && newMeeting.followUpDate < newMeeting.meetingDate) {
@@ -190,7 +226,15 @@ const MeetingPage = () => {
       }
       setShowModal(false);
       setEditingId(null);
-      setNewMeeting(blankMeeting);
+      setNewMeeting({
+        employeeId: 0,
+        meetingDate: "",
+        meetingTime: "",
+        discussionPoints: "",
+        keyIssues: "",
+        actionItems: "",
+        followUpDate: "",
+      });
     } catch (err: any) {
       toast.error(err.data?.message || "Failed to save meeting");
     }
@@ -198,7 +242,15 @@ const MeetingPage = () => {
 
   const handleEdit = (m: any) => {
     setEditingId(m.meetingId);
-    setNewMeeting({ employeeId: m.employeeId, meetingDate: m.meetingDate, meetingTime: m.meetingTime, discussionPoints: m.discussionPoints, keyIssues: m.keyIssues, actionItems: m.actionItems, followUpDate: m.followUpDate || "", isPrivateNote: m.isPrivateNote });
+    setNewMeeting({
+      employeeId: m.employeeId,
+      meetingDate: m.meetingDate,
+      meetingTime: m.meetingTime.substring(0, 5),
+      discussionPoints: m.discussionPoints,
+      keyIssues: m.keyIssues,
+      actionItems: m.actionItems,
+      followUpDate: m.followUpDate || "",
+    });
     setShowModal(true);
   };
 
@@ -268,24 +320,47 @@ const MeetingPage = () => {
         )}
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div style={{ ...panelStyle, display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 8, background: '#EEF3FD', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg style={{ width: 20, height: 20, color: '#1A56DB' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+      {isManager && (
+        <div className="flex items-center gap-3 mb-2 overflow-x-auto pb-2 scrollbar-hide">
+          <button
+            onClick={() => { setFilterStatus(undefined); setCurrentPage(1); }}
+            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!filterStatus ? 'bg-gray-900 text-white shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+          >
+            All Meetings
+          </button>
+          <button
+            onClick={() => { setFilterStatus(ContinuousStatus.PUBLISHED); setCurrentPage(1); }}
+            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.PUBLISHED ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+          >
+            Published
+          </button>
+          <button
+            onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
+            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.DRAFT ? 'bg-amber-500 text-white shadow-lg shadow-amber-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+          >
+            Drafts
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition">
+          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
           <div>
-            <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Scheduled Meetings</p>
-            <h3 style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>{totalItems}</h3>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isManager ? 'Total Published' : 'Total Received'}</p>
+            <h3 className="text-2xl font-bold text-gray-900">{isManager ? (meetingStats?.totalPublished || 0) : totalItems}</h3>
           </div>
         </div>
-        <div style={{ ...panelStyle, display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 8, background: '#FAEEDA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg style={{ width: 20, height: 20, color: '#633806' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group">
+          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
           </div>
           <div>
-            <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Follow Up Tasks</p>
-            <h3 style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>{meetings?.filter(m => m.followUpDate).length || 0}</h3>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Follow up Tasks</p>
+            <h3 className="text-2xl font-bold text-gray-900">{meetings?.filter(m => m.status === ContinuousStatus.PUBLISHED && m.followUpDate).length || 0}</h3>
           </div>
         </div>
 
@@ -339,9 +414,17 @@ const MeetingPage = () => {
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {m.isPrivateNote && (
-                  <span style={{ background: '#FAEEDA', color: '#633806', border: '0.5px solid #F0D4A4', borderRadius: 6, padding: '2px 8px', fontSize: 10, fontWeight: 600 }}>Private</span>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+                  {m.publishedAt 
+                    ? <>Published {format(new Date(m.publishedAt), 'MMM d, yyyy')}</> 
+                    : <>Created {format(new Date(m.createdAt), 'MMM d, yyyy')}</>}
+                </span>
+                {m.status === ContinuousStatus.DRAFT && (
+                  <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[8px] font-black rounded uppercase tracking-widest border border-gray-200 flex items-center gap-1">
+                    <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                    Draft
+                  </span>
                 )}
                 {canSchedule && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 2 }} className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -356,21 +439,121 @@ const MeetingPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '12px 14px' }}>
-              {[['Discussion Points', m.discussionPoints], ['Key Issues', m.keyIssues], ['Action Items', m.actionItems]].map(([label, val]) => (
-                <div key={label}>
-                  <span style={{ ...labelStyle, marginBottom: 4 }}>{label}</span>
-                  <p style={{ fontSize: 13, color: '#5A6070', lineHeight: 1.5 }}>{val}</p>
+            <div className="grid md:grid-cols-3 gap-6 bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100/50">
+              <div className="space-y-2">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Discussion Points</span>
+                <p className="text-gray-700 text-sm leading-relaxed">{m.discussionPoints}</p>
+              </div>
+              <div className="space-y-2">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Key Issues</span>
+                <p className="text-gray-700 text-sm leading-relaxed">{m.keyIssues}</p>
+              </div>
+              <div className="space-y-2">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</span>
+                <div className="space-y-2 mt-2">
+                  {m.actionItems.map((item: any) => {
+                    const isDone = item.status === ActionItemStatus.DONE;
+                    const isEmployee = user?.id === m.employeeId;
+                    return (
+                      <div key={item.id} className="flex items-start gap-3 group/item">
+                        <div className="pt-0.5 relative group/tooltip">
+                          <input
+                            type="checkbox"
+                            checked={isDone}
+                            onChange={async () => {
+                              if (!isEmployee || isDone) return;
+                              try {
+                                await updateActionItemStatus({
+                                  meetingId: m.meetingId,
+                                  itemId: item.id,
+                                  status: ActionItemStatus.DONE
+                                }).unwrap();
+                              } catch (err) {
+                                console.error("Failed to update status", err);
+                              }
+                            }}
+                            disabled={!isEmployee || isDone}
+                            className={`w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 transition-all ${(!isEmployee || isDone) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:scale-110'}`}
+                          />
+                          {(!isEmployee || isDone) && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
+                              {isDone ? 'Completed items cannot be unchecked' : 'This status is managed by the employee'}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {/* Item content with status-based styling */}
+                          <div className="flex items-start gap-2 flex-wrap">
+                            <p className={`text-sm leading-relaxed transition-all duration-300 ${isDone ? 'text-green-600 line-through' : 'text-gray-700'}`}>
+                              {item.content}
+                            </p>
+
+                            {/* Re-opened badge: shown when PENDING but has a reopenReason */}
+                            {!isDone && item.reopenReason && (
+                              <div className="relative group/reopen flex-shrink-0">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-black uppercase tracking-widest rounded-full cursor-default">
+                                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                  Re-opened
+                                </span>
+                                {/* Tooltip showing the reopen reason */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-gray-900 text-white rounded-xl shadow-2xl opacity-0 group-hover/reopen:opacity-100 transition-all duration-200 pointer-events-none z-20 p-3">
+                                  <p className="text-[9px] font-black uppercase tracking-widest text-amber-400 mb-1">Re-open Reason</p>
+                                  <p className="text-xs leading-relaxed text-gray-200 font-normal">"{item.reopenReason}"</p>
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Completed status row */}
+                          {isDone && (
+                            <div className="mt-1 flex items-center justify-between">
+                              <div className="flex items-center">
+                                <span className="inline-flex items-center text-[8px] font-black uppercase tracking-widest text-green-500">
+                                  <svg className="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                  Completed
+                                </span>
+                                {item.completedAt && (
+                                  <span className="text-xs text-gray-400 ml-2 font-light">
+                                    {format(new Date(item.completedAt), "MMM d, h:mm a")}
+                                  </span>
+                                )}
+                              </div>
+                              {canSchedule && (
+                                <button
+                                  onClick={() => setReopenConfig({ meetingId: m.meetingId, item })}
+                                  className="text-[8px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 transition opacity-0 group-hover/item:opacity-100 bg-indigo-50 px-2 py-1 rounded"
+                                >
+                                  Re-open
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {m.actionItems.length === 0 && (
+                    <p className="text-gray-400 text-xs italic">No action items defined.</p>
+                  )}
                 </div>
-              ))}
+              </div>
             </div>
 
-            <div style={{ paddingTop: 12, marginTop: 12, borderTop: '0.5px solid #E4E6EC' }}>
-              <button onClick={() => setExpandedMeetingId(expandedMeetingId === m.meetingId ? null : m.meetingId)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
-                className="hover:text-[#1A56DB] transition-colors">
-                <svg style={{ width: 14, height: 14, transition: 'transform 0.2s', transform: expandedMeetingId === m.meetingId ? 'rotate(180deg)' : 'rotate(0deg)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-                Meeting Discussion
+            <div className="pt-4 mt-4 border-t border-gray-50 flex items-center justify-between">
+              <button 
+                onClick={() => setExpandedMeetingId(expandedMeetingId === m.meetingId ? null : m.meetingId)}
+                className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-indigo-600 transition group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-gray-50 group-hover:bg-indigo-50 flex items-center justify-center transition">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <span>Replies {(m.commentCount || 0) > 0 && `(${(m.commentCount || 0)})`}</span>
               </button>
               {m.status === ContinuousStatus.DRAFT && m.managerId === user?.id && (
                 <button 
@@ -464,10 +647,62 @@ const MeetingPage = () => {
                     <textarea required style={{ ...inputStyle, height: 48, resize: 'none', padding: '7px 12px' }}
                       value={newMeeting.keyIssues} onChange={e => setNewMeeting({ ...newMeeting, keyIssues: e.target.value })} />
                   </div>
-                  <div>
-                    <label style={labelStyle}>Action Items</label>
-                    <textarea required style={{ ...inputStyle, height: 48, resize: 'none', padding: '7px 12px' }}
-                      value={newMeeting.actionItems} onChange={e => setNewMeeting({ ...newMeeting, actionItems: e.target.value })} />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</label>
+                    {editingId ? (
+                      <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                        {Array.isArray(newMeeting.actionItems) && newMeeting.actionItems.map((item: any, index: number) => {
+                          const isDone = item.status === ActionItemStatus.DONE;
+                          return (
+                            <div key={index} className="flex items-center gap-2">
+                              <div className="flex-1 relative group/item">
+                                <input
+                                  type="text"
+                                  disabled={isDone}
+                                  className={`w-full px-4 py-2 rounded-xl text-sm transition border-none ${
+                                    isDone 
+                                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed italic' 
+                                      : 'bg-gray-50 focus:ring-2 focus:ring-indigo-500 text-gray-700'
+                                  }`}
+                                  value={item.content}
+                                  onChange={(e) => {
+                                    const updated = [...newMeeting.actionItems];
+                                    updated[index] = { ...item, content: e.target.value };
+                                    setNewMeeting({ ...newMeeting, actionItems: updated });
+                                  }}
+                                />
+                                {isDone && (
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase tracking-widest text-green-500 bg-green-50 px-2 py-0.5 rounded-full">
+                                    Locked
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewMeeting({
+                              ...newMeeting,
+                              actionItems: [...(newMeeting.actionItems as any[]), { content: "", status: ActionItemStatus.PENDING }]
+                            });
+                          }}
+                          className="w-full py-2 border-2 border-dashed border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:border-indigo-200 hover:text-indigo-600 transition flex items-center justify-center gap-2 mt-2"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                          Add New Task
+                        </button>
+                      </div>
+                    ) : (
+                      <textarea 
+                        required
+                        className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-12 resize-none text-sm"
+                        placeholder="Enter tasks, one per line..."
+                        value={newMeeting.actionItems}
+                        onChange={e => setNewMeeting({ ...newMeeting, actionItems: e.target.value })}
+                      />
+                    )}
                   </div>
                 </div>
                 <div>
@@ -475,21 +710,59 @@ const MeetingPage = () => {
                   <input type="date" min={newMeeting.meetingDate} style={inputStyle} value={newMeeting.followUpDate}
                     onChange={e => setNewMeeting({ ...newMeeting, followUpDate: e.target.value })} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input type="checkbox" id="isPrivateNote" checked={newMeeting.isPrivateNote}
-                    onChange={e => setNewMeeting({ ...newMeeting, isPrivateNote: e.target.checked })}
-                    style={{ width: 14, height: 14 }} />
-                  <label htmlFor="isPrivateNote" style={{ fontSize: 13, color: '#5A6070' }}>Mark as Private Note (Visible only to Manager)</label>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 8 }}>
-                  <button type="button" onClick={() => { setShowModal(false); setEditingId(null); setNewMeeting(blankMeeting); }}
-                    style={{ padding: '8px 16px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      setEditingId(null);
+                      setNewMeeting({
+                        employeeId: 0,
+                        meetingDate: "",
+                        meetingTime: "",
+                        discussionPoints: "",
+                        keyIssues: "",
+                        actionItems: "",
+                        followUpDate: ""
+                      });
+                    }}
+                    className="px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+                  >
                     Cancel
                   </button>
-                  <button type="submit" disabled={isScheduling || isUpdating}
-                    style={{ padding: '8px 20px', background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: isScheduling || isUpdating ? 'not-allowed' : 'pointer', opacity: isScheduling || isUpdating ? 0.6 : 1 }}>
-                    {isScheduling || isUpdating ? 'Saving…' : editingId ? 'Update Meeting' : 'Schedule Now'}
-                  </button>
+                  {editingId ? (
+                    <button
+                      type="button"
+                      onClick={(e) => handleSchedule(e as any)}
+                      disabled={isUpdating}
+                      className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 disabled:opacity-50"
+                    >
+                      {isUpdating ? "Updating..." : "Update Meeting"}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => handleSchedule(e as any, ContinuousStatus.DRAFT)}
+                        disabled={isScheduling}
+                        className="px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
+                      >
+                        Save as Draft
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleSchedule(e as any, ContinuousStatus.PUBLISHED)}
+                        disabled={isScheduling}
+                        className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Publish Meeting
+                      </button>
+                    </>
+                  )}
                 </div>
               </form>
             </div>
@@ -744,13 +1017,20 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
           <div style={{ width: 28, height: 28, borderRadius: 6, background: '#EEF3FD', color: '#1A56DB', border: '0.5px solid #B5D4F4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
             {user?.staffName?.charAt(0) || '?'}
           </div>
-          <div style={{ flex: 1, display: 'flex', gap: 6 }}>
-            <input ref={mainInputRef} style={{ ...inputStyle, flex: 1 }}
-              placeholder={replyTarget ? `Replying to ${replyTarget.name}…` : 'Write a comment…'}
-              value={newComment} onChange={e => setNewComment(e.target.value)} />
-            <button type="submit" disabled={isCommenting || !newComment.trim()}
-              style={{ padding: '7px 10px', background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, cursor: isCommenting || !newComment.trim() ? 'not-allowed' : 'pointer', opacity: isCommenting || !newComment.trim() ? 0.5 : 1, display: 'flex', alignItems: 'center' }}>
-              <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+          <div className="flex-1 flex gap-2">
+            <input
+              ref={mainInputRef}
+              className="flex-1 px-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
+              placeholder={replyTarget ? `Replying to ${replyTarget.name}...` : "Add to the conversation..."}
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+            />
+            <button 
+              type="submit"
+              disabled={isCommenting || !newComment.trim()}
+              className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
             </button>
           </div>
         </form>

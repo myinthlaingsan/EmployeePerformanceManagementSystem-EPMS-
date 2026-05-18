@@ -1,88 +1,316 @@
-import React, { useMemo } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useGetEmployeeAssessmentQuery } from '../../features/appraisal/appraisalApi';
-import ScoreBadge from '../../components/appraisal/ScoreBadge';
+import { toast } from 'react-toastify';
+import {
+  useGetEmployeeAssessmentQuery,
+  useUploadEmployeeSignatureMutation,
+  useUploadManagerSignatureMutation,
+  useGetScoreBreakdownQuery,
+  useCalculateScoreMutation
+} from '../../features/appraisal/appraisalApi';
+import { format } from 'date-fns';
+import {
+  ChevronLeft, Award, User, CheckCircle2, ShieldCheck, MessageSquare,
+  Image as ImageIcon, ArrowRight, Download, Target, Clock, Calculator
+} from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+
+const panelStyle: React.CSSProperties = {
+  background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px',
+};
 
 const ResultPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, isHR, isAdmin } = useAuth();
 
   const { data: appraisal, isLoading } = useGetEmployeeAssessmentQuery(id || '', { skip: !id });
+  const { data: breakdown } = useGetScoreBreakdownQuery(id || '', { skip: !id });
+  const [calculateScore, { isLoading: isCalculating }] = useCalculateScoreMutation();
+  const [uploadEmployeeSignature, { isLoading: isSigningEmployee }] = useUploadEmployeeSignatureMutation();
+  const [uploadManagerSignature, { isLoading: isSigningManager }] = useUploadManagerSignatureMutation();
 
-  const calculateAverage = (responses: any) => {
-    if (!responses) return 0;
-    const values = Object.values(responses).map((r: any) => r.rating || 0);
-    if (values.length === 0) return 0;
-    const sum = values.reduce((acc, curr) => acc + curr, 0);
-    return (sum / values.length).toFixed(1);
+  const [employeeSigFile, setEmployeeSigFile] = useState<File | null>(null);
+  const [employeeSigPreview, setEmployeeSigPreview] = useState<string | null>(null);
+  const [managerSigFile, setManagerSigFile] = useState<File | null>(null);
+  const [managerSigPreview, setManagerSigPreview] = useState<string | null>(null);
+
+  if (isLoading) return <div className="py-16 text-center" style={{ color: '#9EA3B0', fontSize: 13 }}>Loading…</div>;
+  if (!appraisal) return (
+    <div style={{ background: '#FCEBEB', border: '0.5px solid #F5C2C2', borderRadius: 12, padding: '16px 18px', fontSize: 13, color: '#791F1F' }}>
+      Results not found.
+    </div>
+  );
+
+  const isEmployee = user?.id === appraisal.employeeId;
+  const isManager = user?.id === appraisal.managerId;
+  const isPrivileged = isHR || isAdmin;
+  const displayScore = breakdown?.finalTotalScore ?? appraisal.finalScore;
+
+  const handleCalculate = async () => {
+    try { await calculateScore(id!).unwrap(); toast.success('Scores calculated!'); }
+    catch (err: any) { toast.error(err?.data?.message || 'Calculation failed'); }
+  };
+  const handleEmployeeSign = async () => {
+    if (!employeeSigFile) return;
+    try { await uploadEmployeeSignature({ id: id!, file: employeeSigFile }).unwrap(); toast.success('Sign-off successful!'); setEmployeeSigFile(null); setEmployeeSigPreview(null); }
+    catch (err: any) { toast.error(err?.data?.message || 'Upload failed'); }
+  };
+  const handleManagerSign = async () => {
+    if (!managerSigFile) return;
+    try { await uploadManagerSignature({ id: id!, file: managerSigFile }).unwrap(); toast.success('Manager sign-off successful!'); setManagerSigFile(null); setManagerSigPreview(null); }
+    catch (err: any) { toast.error(err?.data?.message || 'Upload failed'); }
   };
 
-  const selfAvg = useMemo(() => calculateAverage(appraisal?.selfAssessment?.responses), [appraisal]);
-  const managerAvg = useMemo(() => calculateAverage(appraisal?.managerEvaluation?.responses), [appraisal]);
-
-  if (isLoading) return <div className="p-8 text-center text-slate-500 font-bold">Loading Results...</div>;
-  if (!appraisal) return <div className="p-8 text-center text-slate-500 font-bold">Appraisal results not found.</div>;
+  const getScoreBg = (score: number) => {
+    if (score >= 90) return '#EAF3DE';
+    if (score >= 70) return '#EEF3FD';
+    if (score >= 50) return '#FAEEDA';
+    return '#FCEBEB';
+  };
+  const getScoreText = (score: number) => {
+    if (score >= 90) return '#27500A';
+    if (score >= 70) return '#0C447C';
+    if (score >= 50) return '#633806';
+    return '#791F1F';
+  };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-black text-slate-900">Final Results</h1>
-        <div className="px-4 py-2 bg-emerald-100 text-emerald-700 font-bold rounded-full text-sm">
-          COMPLETED
+    <div className="space-y-4 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(`/appraisal/${id}`)}
+            style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.5px solid #E4E6EC', borderRadius: 8, background: '#FFFFFF', color: '#5A6070' }}
+            className="hover:bg-[#F5F6F8] transition-colors">
+            <ChevronLeft size={16} />
+          </button>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Performance Report</h1>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {isPrivileged && (
+            <button onClick={handleCalculate} disabled={isCalculating} className="inline-flex items-center gap-2 transition-colors disabled:opacity-50"
+              style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
+              <Calculator size={13} /> {isCalculating ? 'Calculating…' : 'Recalculate'}
+            </button>
+          )}
+          <button className="inline-flex items-center gap-2 transition-colors"
+            style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+            <Download size={13} /> Export PDF
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col items-center">
-          <ScoreBadge score={selfAvg} label="Self-Assessment Avg" size="lg" theme="indigo" />
-          <div className="mt-4 flex justify-center gap-1">
-            {[1, 2, 3, 4, 5].map(s => (
-              <div key={s} className={`w-2 h-2 rounded-full ${s <= Number(selfAvg) ? 'bg-indigo-400' : 'bg-slate-100'}`} />
-            ))}
+      {/* Score banner */}
+      <div style={panelStyle}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+              <Award size={15} style={{ color: '#1A56DB' }} />
+              <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Official Rating · {appraisal.cycleName}</span>
+            </div>
+            <p style={{ fontSize: 16, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{appraisal.employeeName}</p>
+            <div className="flex flex-wrap gap-4" style={{ marginTop: 6 }}>
+              <span style={{ fontSize: 12, color: '#5A6070', display: 'flex', alignItems: 'center', gap: 4 }}><User size={12} style={{ color: '#1A56DB' }} />{appraisal.employeeCode}</span>
+              <span style={{ fontSize: 12, color: '#5A6070', display: 'flex', alignItems: 'center', gap: 4 }}><Target size={12} style={{ color: '#1A56DB' }} />{appraisal.positionName || 'N/A'}</span>
+            </div>
           </div>
-        </div>
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col items-center">
-          <ScoreBadge score={managerAvg} label="Manager Evaluation Avg" size="lg" theme="emerald" />
-          <div className="mt-4 flex justify-center gap-1">
-            {[1, 2, 3, 4, 5].map(s => (
-              <div key={s} className={`w-2 h-2 rounded-full ${s <= Number(managerAvg) ? 'bg-emerald-400' : 'bg-slate-100'}`} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-slate-900 rounded-3xl p-10 text-white mb-8">
-        <h2 className="text-xl font-bold mb-6">Performance Insights</h2>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center pb-4 border-b border-slate-800">
-            <span className="text-slate-400">Total Score</span>
-            <span className="text-2xl font-bold">{appraisal.finalScore || managerAvg}</span>
-          </div>
-          <div className="flex justify-between items-center pb-4 border-b border-slate-800">
-            <span className="text-slate-400">Alignment</span>
-            <span className={`font-bold ${Math.abs(Number(selfAvg) - Number(managerAvg)) < 1 ? 'text-emerald-400' : 'text-amber-400'}`}>
-              {Math.abs(Number(selfAvg) - Number(managerAvg)) < 1 ? 'High Alignment' : 'Gap Identified'}
-            </span>
-          </div>
-          <div>
-            <p className="text-slate-400 mb-2">Manager's Final Remarks</p>
-            <p className="text-slate-300 italic">
-              "{appraisal.managerEvaluation.overallComments || 'Professional performance throughout the cycle.'}"
+          <div style={{ textAlign: 'center', padding: '16px 24px', background: getScoreBg(Number(displayScore) || 0), borderRadius: 10, border: `0.5px solid ${getScoreText(Number(displayScore) || 0)}30` }}>
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Overall Index</p>
+            <p style={{ fontSize: 36, fontWeight: 500, color: getScoreText(Number(displayScore) || 0), lineHeight: 1 }}>
+              {displayScore != null ? Number(displayScore).toFixed(1) : '--'}
             </p>
+            <div style={{ height: 4, width: 80, background: 'rgba(0,0,0,0.1)', borderRadius: 4, margin: '8px auto 0' }}>
+              <div style={{ height: '100%', borderRadius: 4, background: getScoreText(Number(displayScore) || 0), width: `${Number(displayScore) || 0}%` }} />
+            </div>
+            {(breakdown?.performanceCategoryName || breakdown?.finalGrade) && (
+              <p style={{ fontSize: 10, color: getScoreText(Number(displayScore) || 0), marginTop: 6, fontWeight: 500 }}>
+                {breakdown.performanceCategoryName || breakdown.finalGrade.replace(/_/g, ' ')}
+              </p>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <button
-          onClick={() => navigate('/appraisal')}
-          className="flex-1 py-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-50 transition-all"
-        >
-          Back to List
-        </button>
-        <button className="flex-1 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all">
-          Print Full Report
-        </button>
+      {/* HR Approval comment */}
+      <div style={panelStyle}>
+        <div className="flex items-center gap-2" style={{ marginBottom: 10 }}>
+          <ShieldCheck size={15} style={{ color: '#1A56DB' }} />
+          <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>Administrative Verification</p>
+          <span style={{ fontSize: 11, color: '#9EA3B0' }}>· HR Final Approval</span>
+        </div>
+        <p style={{ fontSize: 13, color: '#5A6070', lineHeight: 1.6, padding: '10px 12px', background: '#F5F6F8', borderRadius: 8, marginBottom: 10 }}>
+          {appraisal.approvalComment || 'The appraisal results have been verified and approved by the HR department.'}
+        </p>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span style={{ fontSize: 11, color: '#27500A', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <CheckCircle2 size={12} /> Verified & Sealed
+          </span>
+          <span style={{ fontSize: 11, color: '#9EA3B0', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Clock size={11} /> {appraisal.hrApprovedAt ? format(new Date(appraisal.hrApprovedAt), 'dd/MM/yyyy') : 'N/A'}
+          </span>
+        </div>
+      </div>
+
+      {/* Score breakdown */}
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+        <div className="flex items-center gap-2" style={{ padding: '12px 18px', borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
+          <Target size={14} style={{ color: '#1A56DB' }} />
+          <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>Weighted Score Breakdown</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left" style={{ minWidth: 480 }}>
+            <thead>
+              <tr style={{ borderBottom: '0.5px solid #E4E6EC' }}>
+                {['Performance Category', 'Raw Score (1-5)', 'Weightage', 'Weighted Score'].map((h, i) => (
+                  <th key={h} style={{ padding: '10px 18px', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i > 0 ? 'center' : 'left' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { label: 'Key Performance Indicators', raw: breakdown?.kpiRawScore, weight: breakdown?.kpiWeight, weighted: breakdown?.kpiWeightedScore },
+                { label: 'Manager Evaluation', raw: breakdown?.managerRawScore, weight: breakdown?.managerWeight, weighted: breakdown?.managerWeightedScore },
+                { label: 'Self Assessment', raw: breakdown?.selfRawScore, weight: breakdown?.selfWeight, weighted: breakdown?.selfWeightedScore },
+                { label: '360° Peer Feedback', raw: breakdown?.feedbackRawScore, weight: breakdown?.feedbackWeight, weighted: breakdown?.feedbackWeightedScore },
+              ].map((row, idx) => (
+                <tr key={idx} style={{ borderBottom: '0.5px solid #F0F2F6' }} className="hover:bg-[#FAFBFF] transition-colors">
+                  <td style={{ padding: '10px 18px', fontSize: 13, color: '#111827' }}>{row.label}</td>
+                  <td style={{ padding: '10px 18px', textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#5A6070' }}>
+                    {row.raw !== undefined ? Number(row.raw).toFixed(2) : '—'}
+                  </td>
+                  <td style={{ padding: '10px 18px', textAlign: 'center', fontSize: 12, color: '#9EA3B0' }}>
+                    {row.weight !== undefined ? `${Number(row.weight).toFixed(0)}%` : '—'}
+                  </td>
+                  <td style={{ padding: '10px 18px', textAlign: 'center', fontSize: 13, fontWeight: 500, color: '#1A56DB' }}>
+                    {row.weighted !== undefined ? Number(row.weighted).toFixed(2) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: '#111827' }}>
+                <td colSpan={3} style={{ padding: '12px 18px', fontSize: 13, fontWeight: 500, color: '#FFFFFF' }}>Calculated Performance Total</td>
+                <td style={{ padding: '12px 18px', textAlign: 'center', fontSize: 18, fontWeight: 500, color: '#FFFFFF' }}>
+                  {breakdown?.finalTotalScore !== undefined ? Number(breakdown.finalTotalScore).toFixed(2) : '—'}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* Sign-off section */}
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+        <div className="flex items-center gap-2" style={{ padding: '12px 18px', borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
+          <MessageSquare size={14} style={{ color: '#111827' }} />
+          <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>Formal Acknowledgement</p>
+          <span style={{ fontSize: 11, color: '#9EA3B0' }}>· Signatures</span>
+        </div>
+        <div style={{ padding: '16px 18px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Employee Signature */}
+            <div>
+              <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Employee Acknowledgement</p>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginTop: 2 }}>{appraisal.employeeName}</p>
+                </div>
+                {appraisal.employeeSignedAt && (
+                  <span style={{ fontSize: 11, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 20, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CheckCircle2 size={11} /> Signed
+                  </span>
+                )}
+              </div>
+              <div style={{ height: 120, background: '#F5F6F8', border: '0.5px dashed #E0E2E8', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                {appraisal.employeeSignComment ? (
+                  <img src={`http://localhost:8080${appraisal.employeeSignComment}`} alt="Employee Signature" style={{ maxHeight: 80, objectFit: 'contain' }} />
+                ) : employeeSigPreview ? (
+                  <img src={employeeSigPreview} alt="Preview" style={{ maxHeight: 80, objectFit: 'contain' }} />
+                ) : (
+                  <>
+                    <ImageIcon size={24} style={{ color: '#9EA3B0', marginBottom: 6 }} />
+                    <p style={{ fontSize: 12, color: '#9EA3B0' }}>Click to upload signature</p>
+                    {isEmployee && (
+                      <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) { setEmployeeSigFile(f); setEmployeeSigPreview(URL.createObjectURL(f)); } }} />
+                    )}
+                  </>
+                )}
+              </div>
+              {isEmployee && !appraisal.employeeSignedAt && (
+                <button disabled={!employeeSigFile || isSigningEmployee} onClick={handleEmployeeSign}
+                  className="w-full inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50 mt-3"
+                  style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
+                  {isSigningEmployee ? 'Uploading…' : 'I Acknowledge & Sign'} <ArrowRight size={13} />
+                </button>
+              )}
+              {appraisal.employeeSignedAt && (
+                <p style={{ fontSize: 11, color: '#9EA3B0', textAlign: 'center', marginTop: 6 }}>
+                  Signed {format(new Date(appraisal.employeeSignedAt), 'dd/MM/yyyy HH:mm')}
+                </p>
+              )}
+            </div>
+
+            {/* Manager Signature */}
+            <div>
+              <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Appraiser Sign-off</p>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginTop: 2 }}>{appraisal.managerName || 'Evaluator'}</p>
+                </div>
+                {appraisal.managerSignedAt && (
+                  <span style={{ fontSize: 11, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 20, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CheckCircle2 size={11} /> Signed
+                  </span>
+                )}
+              </div>
+              <div style={{ height: 120, background: '#F5F6F8', border: '0.5px dashed #E0E2E8', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                {appraisal.managerSignComment ? (
+                  <img src={`http://localhost:8080${appraisal.managerSignComment}`} alt="Manager Signature" style={{ maxHeight: 80, objectFit: 'contain' }} />
+                ) : managerSigPreview ? (
+                  <img src={managerSigPreview} alt="Preview" style={{ maxHeight: 80, objectFit: 'contain' }} />
+                ) : (
+                  <>
+                    <ImageIcon size={24} style={{ color: '#9EA3B0', marginBottom: 6 }} />
+                    <p style={{ fontSize: 12, color: '#9EA3B0' }}>Click to upload signature</p>
+                    {isManager && (
+                      <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) { setManagerSigFile(f); setManagerSigPreview(URL.createObjectURL(f)); } }} />
+                    )}
+                  </>
+                )}
+              </div>
+              {(isManager || isPrivileged) && !appraisal.managerSignedAt && (
+                <div style={{ marginTop: 10 }}>
+                  {!appraisal.employeeSignedAt && (
+                    <div style={{ background: '#FAEEDA', border: '0.5px solid #F0D4A4', borderRadius: 8, padding: '8px 12px', fontSize: 11, color: '#633806', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Target size={12} /> Awaiting employee signature first
+                    </div>
+                  )}
+                  <button disabled={!managerSigFile || isSigningManager || !appraisal.employeeSignedAt} onClick={handleManagerSign}
+                    className="w-full inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    style={{ background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
+                    {isSigningManager ? 'Processing…' : 'Authorize Final Record'} <ArrowRight size={13} />
+                  </button>
+                </div>
+              )}
+              {appraisal.managerSignedAt && (
+                <p style={{ fontSize: 11, color: '#9EA3B0', textAlign: 'center', marginTop: 6 }}>
+                  Signed {format(new Date(appraisal.managerSignedAt), 'dd/MM/yyyy HH:mm')}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <div style={{ background: '#FAEEDA', border: '0.5px solid #F0D4A4', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'start', gap: 8 }}>
+        <ShieldCheck size={14} style={{ color: '#633806', flexShrink: 0, marginTop: 1 }} />
+        <p style={{ fontSize: 12, color: '#633806', lineHeight: 1.6 }}>
+          By providing your digital signature, you acknowledge that you have reviewed the performance results for this cycle. This document will be permanently stored in your employment records.
+        </p>
       </div>
     </div>
   );

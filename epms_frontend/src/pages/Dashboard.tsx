@@ -1,203 +1,245 @@
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useGetActiveDepartmentsQuery, useGetDepartmentHeadcountQuery } from "../features/org/departmentApi";
+import { BarChart3, Users, Target, ClipboardCheck, Calendar, Building2 } from "lucide-react";
 
 const HeadcountCard = ({ departmentId, departmentName }: { departmentId: number; departmentName: string }) => {
   const { data: count, isLoading } = useGetDepartmentHeadcountQuery(departmentId);
   return (
-    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex justify-between items-center group hover:bg-white hover:shadow-md transition-all">
-      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{departmentName}</span>
-      <span className="text-sm font-bold text-brand-primary">{isLoading ? "..." : count}</span>
+    <div
+      className="flex justify-between items-center"
+      style={{
+        background: "#F5F6F8",
+        border: "0.5px solid #E4E6EC",
+        borderRadius: 10,
+        padding: "10px 12px",
+      }}
+    >
+      <span style={{ fontSize: 12, fontWeight: 400, color: "#5A6070" }}>{departmentName}</span>
+      <span style={{ fontSize: 13, fontWeight: 500, color: "#1A56DB" }}>{isLoading ? "…" : count}</span>
     </div>
   );
 };
 
 const Dashboard = () => {
-  const { user, isAdmin, isHR, isManager} = useAuth();
+  const { user, isAdmin, isHR, isManager, isEmployee } = useAuth();
   const navigate = useNavigate();
   const { data: departments } = useGetActiveDepartmentsQuery(undefined, { skip: !isAdmin && !isHR });
 
   if (!user) return (
     <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-primary"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#1A56DB" }} />
     </div>
   );
 
-  const metrics = [
-    { label: 'Active PIPs', value: '12', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', color: 'text-brand-primary', bg: 'bg-brand-primary/10' },
-    { label: 'Pending Reviews', value: '04', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Completion Rate', value: '88%', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  const getMetrics = () => {
+    if (isAdmin) return [
+      { label: "Total Workforce", value: "428", icon: <Users size={15} />, color: "blue" as const },
+      { label: "Active departments", value: "8", icon: <Building2 size={15} />, color: "green" as const },
+      { label: "System health", value: "100%", icon: <BarChart3 size={15} />, color: "green" as const },
+    ];
+    if (isHR) return [
+      { label: "Active PIPs", value: "12", icon: <Target size={15} />, color: "blue" as const },
+      { label: "Completion rate", value: "88%", icon: <BarChart3 size={15} />, color: "green" as const },
+      { label: "Training needs", value: "5", icon: <ClipboardCheck size={15} />, color: "orange" as const },
+    ];
+    if (isManager) return [
+      { label: "Direct reports", value: "14", icon: <Users size={15} />, color: "blue" as const },
+      { label: "Team avg score", value: "3.8", icon: <BarChart3 size={15} />, color: "orange" as const },
+      { label: "Pending reviews", value: "3", icon: <ClipboardCheck size={15} />, color: "blue" as const },
+    ];
+    return [
+      { label: "My last rating", value: "4.2", icon: <BarChart3 size={15} />, color: "green" as const },
+      { label: "KPI progress", value: "75%", icon: <Target size={15} />, color: "blue" as const },
+      { label: "Days to review", value: "18", icon: <Calendar size={15} />, color: "orange" as const },
+    ];
+  };
+
+  const COLOR_MAP = {
+    blue:   { bg: "#EEF3FD", text: "#1A56DB" },
+    green:  { bg: "#EAF3DE", text: "#27500A" },
+    orange: { bg: "#FAEEDA", text: "#633806" },
+  };
+
+  const metrics = getMetrics();
+
+  const actionCards = [
+    ...(isAdmin ? [{ title: "System config", desc: "Manage global parameters and system logs.", label: "Admin console", to: "/admin/settings", fill: "#EEF3FD", textColor: "#0C447C" }] : []),
+    ...(isHR ? [{ title: "Talent management", desc: "Oversee hiring, reviews and department structures.", label: "HR panel", to: "/employees", fill: "#EAF3DE", textColor: "#27500A" }] : []),
+    ...(isManager ? [{ title: "Team tracking", desc: "Monitor direct reports and KPI progress.", label: "Review team", to: "/kpi/team", fill: "#EAF3DE", textColor: "#27500A" }] : []),
+    ...(isEmployee ? [{ title: "My growth", desc: "Submit self-assessments and track your goals.", label: "Self review", to: "/appraisal", fill: "#FAEEDA", textColor: "#633806" }] : []),
   ];
 
   return (
-    <div className="space-y-10">
-      {/* Hero Section */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="space-y-5">
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ marginBottom: 0 }}>
         <div>
-          <p className="text-[10px] font-bold text-brand-primary uppercase tracking-[0.2em] mb-2">Performance Command Center</p>
-          <h1 className="text-4xl font-black text-brand-primary tracking-tight">
-            Welcome back, <span className="text-brand-primary">{user.staffName.split(' ')[0]}</span>
-          </h1>
-          <p className="text-text-muted mt-2 font-medium">
-            {user.positionName} <span className="mx-2 text-surface-border">|</span> {user.levelName}
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Dashboard</h1>
+          <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>
+            {user.positionName} — {user.levelName}
           </p>
         </div>
-        
-        <div className="flex gap-3">
-          <button 
+        {(isAdmin || isHR || isManager) && (
+          <button
             onClick={() => navigate("/pip/new")}
-            className="bg-brand-primary text-white px-6 py-3 rounded-xl text-sm font-bold shadow-xl shadow-brand-primary/20 hover:bg-brand-primary/90 transition flex items-center gap-2"
+            className="flex items-center gap-[9px] text-white text-[13px] font-medium transition-colors self-start sm:self-auto"
+            style={{ background: "#1A56DB", borderRadius: 8, padding: "8px 14px", border: "none" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
           >
-            <span className="text-lg">+</span> New Plan
+            <Target size={14} aria-hidden="true" />
+            New plan
           </button>
-        </div>
-      </header>
-
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {metrics.map((m) => (
-          <div key={m.label} className={`bg-white p-8 rounded-[2rem] border border-surface-border border-l-4 ${m.color.replace('text-', 'border-')} shadow-premium flex items-center justify-between hover:shadow-hover transition-all cursor-default group`}>
-            <div>
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">{m.label}</p>
-              <p className="text-3xl font-black text-brand-primary">{m.value}</p>
-            </div>
-            <div className={`w-14 h-14 rounded-2xl ${m.bg} flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm`}>
-              <svg className={`w-7 h-7 ${m.color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={m.icon} />
-              </svg>
-            </div>
-          </div>
-        ))}
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* Main Content Column */}
-        <div className="lg:col-span-2 space-y-10">
-          {/* Role-Specific Action Centers */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {(isAdmin || isHR) && (
-              <section className="bg-blue-50/50 p-8 rounded-4xl border border-blue-100 relative overflow-hidden group cursor-pointer" onClick={() => navigate("/hr")}>
-                <div className="absolute top-0 right-0 p-4 opacity-10 transition-opacity group-hover:opacity-20">
-                  <svg className="w-24 h-24 text-blue-900" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                  </svg>
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {metrics.map((m) => {
+          const colors = COLOR_MAP[m.color];
+          return (
+            <div
+              key={m.label}
+              style={{
+                background: "#FFFFFF",
+                border: "0.5px solid #E4E6EC",
+                borderRadius: 12,
+                padding: "14px 16px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: colors.bg, color: colors.text, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {m.icon}
                 </div>
-                <h2 className="text-xl font-bold text-blue-900 mb-2">Organization</h2>
-                <p className="text-blue-700/70 text-sm font-medium mb-6">Manage employee directory, departments, and system access.</p>
-                <span className="inline-flex items-center gap-2 text-blue-800 font-bold text-xs uppercase tracking-widest">
-                  HR Panel <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 8l4 4m0 0l-4 4m4-4H3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </span>
-              </section>
-            )}
+              </div>
+              <p style={{ fontSize: 22, fontWeight: 500, color: "#111827", lineHeight: 1, marginTop: 8 }}>{m.value}</p>
+              <p style={{ fontSize: 12, color: "#9EA3B0", marginTop: 3 }}>{m.label}</p>
+            </div>
+          );
+        })}
+      </div>
 
-            {isManager && (
-              <section className="bg-emerald-50/50 p-8 rounded-4xl border border-emerald-100 relative overflow-hidden group cursor-pointer" onClick={() => navigate("/pip")}>
-                 <div className="absolute top-0 right-0 p-4 opacity-10 transition-opacity group-hover:opacity-20">
-                  <svg className="w-24 h-24 text-emerald-900" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm-3 1a1 1 0 10-2 0v3a1 1 0 102 0V8zM8 9a1 1 0 00-2 0v2a1 1 0 102 0V9z" clipRule="evenodd" />
-                  </svg>
+      {/* Main two-column grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left: action cards + tasks */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Action cards */}
+          {actionCards.length > 0 && (
+            <div className={`grid gap-4 ${actionCards.length > 1 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+              {actionCards.map((card) => (
+                <button
+                  key={card.to}
+                  onClick={() => navigate(card.to)}
+                  className="text-left w-full transition-colors"
+                  style={{ background: card.fill, border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}
+                >
+                  <h2 style={{ fontSize: 14, fontWeight: 500, color: card.textColor }}>{card.title}</h2>
+                  <p style={{ fontSize: 12, color: card.textColor, opacity: 0.8, marginTop: 4 }}>{card.desc}</p>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: card.textColor, marginTop: 10, display: "inline-block" }}>
+                    {card.label} →
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Tasks panel */}
+          <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+            <div className="flex justify-between items-center" style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>
+                {isEmployee ? "My action items" : isManager ? "Team tasks" : "System alerts"}
+              </p>
+              <button style={{ fontSize: 12, color: "#1A56DB" }}>View all</button>
+            </div>
+            <div
+              className="flex items-center justify-between"
+              style={{ background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 10, padding: "10px 12px" }}
+            >
+              <div className="flex items-center gap-3">
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: "#EEF3FD", color: "#1A56DB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ClipboardCheck size={13} />
                 </div>
-                <h2 className="text-xl font-bold text-emerald-900 mb-2">Team Tracking</h2>
-                <p className="text-emerald-700/70 text-sm font-medium mb-6">Monitor direct reports, review KPIs, and manage PIP progress.</p>
-                <span className="inline-flex items-center gap-2 text-emerald-800 font-bold text-xs uppercase tracking-widest">
-                  Review Team <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 8l4 4m0 0l-4 4m4-4H3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </span>
-              </section>
-            )}
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>
+                    {isEmployee ? "Submit self-assessment" : isManager ? "Review team PIP" : "Audit log review"}
+                  </p>
+                  <p style={{ fontSize: 11, color: "#9EA3B0", marginTop: 1 }}>Due in 2 days</p>
+                </div>
+              </div>
+              <span style={{ background: "#FAEEDA", color: "#633806", fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 20 }}>
+                Pending
+              </span>
+            </div>
           </div>
-
-          {/* Activity/Task Section */}
-          <section className="bg-white p-10 rounded-[2.5rem] border border-surface-border shadow-premium">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xl font-black text-brand-primary tracking-tight">Pending Actions</h2>
-              <button className="text-brand-primary text-[10px] font-bold uppercase tracking-widest hover:underline">See Ledger</button>
-            </div>
-            <div className="space-y-4">
-               <div className="flex items-center justify-between p-5 bg-surface-base rounded-2xl border border-surface-border group hover:border-brand-secondary transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-brand-primary">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    </div>
-                    <div>
-                      <p className="font-bold text-text-title text-sm">Monthly Review: John Doe</p>
-                      <p className="text-[10px] text-text-muted uppercase tracking-widest">Due in 2 days</p>
-                    </div>
-                  </div>
-                  <button className="bg-white px-4 py-2 rounded-lg text-xs font-bold text-text-title border border-surface-border hover:bg-gray-50 shadow-sm">Start Review</button>
-               </div>
-               
-               <div className="flex items-center justify-between p-5 bg-surface-base rounded-2xl border border-surface-border opacity-60">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-text-muted">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </div>
-                    <div>
-                      <p className="font-bold text-text-title text-sm">Update KPI Targets</p>
-                      <p className="text-[10px] text-text-muted uppercase tracking-widest">Completed</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Done</span>
-               </div>
-            </div>
-          </section>
         </div>
 
-        {/* Sidebar Column */}
-        <div className="space-y-8">
-          {/* Profile Quick Card */}
-          <section className="bg-white p-8 rounded-[2.5rem] border border-surface-border shadow-premium text-center">
-            <div className="relative inline-block mb-6">
-               <div className="w-24 h-24 rounded-4xl bg-brand-primary flex items-center justify-center text-white text-3xl font-bold shadow-2xl shadow-brand-primary/40 mx-auto">
-                {user.staffName.charAt(0)}
-               </div>
-               <div className="absolute -bottom-2 -right-2 bg-emerald-500 w-8 h-8 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-               </div>
-            </div>
-            <h3 className="text-xl font-bold text-text-title tracking-tight">{user.staffName}</h3>
-            <p className="text-xs font-bold text-brand-primary uppercase tracking-[0.15em] mt-1">{user.employeeCode}</p>
-            
-            <div className="mt-8 pt-8 border-t border-surface-border space-y-4 text-left">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Department</span>
-                <span className="text-xs font-bold text-text-title">Engineering</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Status</span>
-                <span className="text-xs font-bold text-emerald-600">Active</span>
-              </div>
-            </div>
-            
-            <button 
-              onClick={() => navigate("/profile")}
-              className="w-full mt-8 bg-surface-base text-text-title px-4 py-3 rounded-xl hover:bg-gray-100 transition font-bold text-xs border border-surface-border shadow-sm"
+        {/* Right: profile card + headcount */}
+        <div className="space-y-4">
+          {/* Profile card */}
+          <div
+            className="text-center cursor-pointer"
+            style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}
+            onClick={() => navigate("/profile")}
+          >
+            <div
+              className="flex items-center justify-center mx-auto"
+              style={{ width: 48, height: 48, borderRadius: "50%", background: "#EEF3FD", color: "#1A56DB", fontSize: 18, fontWeight: 500, marginBottom: 10 }}
             >
-              View Full Profile
+              {user.staffName.charAt(0)}
+            </div>
+            <p style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{user.staffName}</p>
+            <p style={{ fontSize: 11, color: "#9EA3B0", marginTop: 2 }}>{user.employeeCode}</p>
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: "0.5px solid #E4E6EC" }} className="text-left space-y-2">
+              <div className="flex justify-between">
+                <span style={{ fontSize: 11, color: "#9EA3B0" }}>Department</span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "#111827" }}>{user.currentDepartmentId || "Engineering"}</span>
+              </div>
+              {isManager && (
+                <div className="flex justify-between">
+                  <span style={{ fontSize: 11, color: "#9EA3B0" }}>Direct reports</span>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: "#1A56DB" }}>14</span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate("/profile"); }}
+              className="w-full mt-4 transition-colors"
+              style={{ background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 8, padding: "7px 0", fontSize: 12, color: "#5A6070" }}
+            >
+              View profile
             </button>
-          </section>
+          </div>
 
-          {/* Quick Support Card */}
-          <section className="bg-[#1e293b] p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
-             <div className="relative z-10">
-                <h3 className="text-lg font-bold mb-2">Need assistance?</h3>
-                <p className="text-gray-400 text-xs font-medium mb-6">Our HR support team is available for system walkthroughs and guidance.</p>
-                <button className="bg-white text-gray-900 px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-100 transition shadow-lg">Contact HR</button>
-             </div>
-             <div className="absolute -bottom-10 -right-10 opacity-10">
-                <svg className="w-40 h-40" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
-             </div>
-          </section>
-
-          {/* Department Headcounts (Admin/HR only) */}
+          {/* Headcount (admin/HR only) */}
           {(isAdmin || isHR) && departments && (
-            <section className="bg-white p-8 rounded-[2.5rem] border border-surface-border shadow-premium">
-              <h3 className="text-lg font-bold text-text-title mb-6 tracking-tight">Department Headcount</h3>
-              <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
-                {departments.map(dept => (
+            <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+              <div className="flex justify-between items-center" style={{ marginBottom: 14 }}>
+                <p style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Headcount</p>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {departments.map((dept) => (
                   <HeadcountCard key={dept.id} departmentId={dept.id} departmentName={dept.departmentName} />
                 ))}
               </div>
-            </section>
+            </div>
+          )}
+
+          {/* Goal milestone (employee only) */}
+          {isEmployee && (
+            <div style={{ background: "#EEF3FD", border: "0.5px solid #B5D4F4", borderRadius: 12, padding: "16px 18px" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#0C447C" }}>Goal milestone</p>
+              <p style={{ fontSize: 12, color: "#5A6070", marginTop: 4 }}>3 of 4 quarterly KPIs completed. Keep it up!</p>
+              <button
+                onClick={() => navigate("/kpi/my")}
+                className="mt-4 transition-colors"
+                style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 500, border: "none" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+              >
+                View goals
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -206,4 +248,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

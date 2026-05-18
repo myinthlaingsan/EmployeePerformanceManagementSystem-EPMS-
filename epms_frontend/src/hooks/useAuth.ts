@@ -2,6 +2,7 @@ import type { RootState } from "../app/store";
 import { logout } from "../features/auth/authSlice";
 import { useAppDispatch, useAppSelector } from "./reduxHooks";
 import { useLogoutUserApiMutation, useGetMeQuery } from "../features/auth/authApi";
+import { useGetActiveCycleQuery } from "../services/kpiApi";
 
 const normalizeRole = (role: string) => role.replace("ROLE_", "");
 
@@ -13,8 +14,12 @@ export const useAuth = () => {
     (state: RootState) => state.auth,
   );
 
-  const { isLoading } = useGetMeQuery(undefined, {
+  const { isLoading: isLoadingUser } = useGetMeQuery(undefined, {
     skip: !accessToken || !!user,
+  });
+
+  const { data: cycleResponse, isLoading: isLoadingCycle } = useGetActiveCycleQuery(undefined, {
+    skip: !isAuthenticated,
   });
 
   const logoutUser = async () => {
@@ -47,7 +52,6 @@ export const useAuth = () => {
   return {
     user,
     isAuthenticated,
-    isLoading,
     accessToken,
     refreshToken,
     logout: logoutUser,
@@ -61,5 +65,10 @@ export const useAuth = () => {
     // ABAC Helpers
     isSenior: user ? user.levelRank <= 4 : false,
     isJunior: user ? user.levelRank >= 7 : false,
+    // Cycle Info
+    activeCycleId: cycleResponse?.data?.cycleId,
+    activeCycleName: cycleResponse?.data?.cycleName || 'No Active Cycle',
+    isLoading: isLoadingUser || isLoadingCycle,
+    isLoadingCycle,
   };
 };

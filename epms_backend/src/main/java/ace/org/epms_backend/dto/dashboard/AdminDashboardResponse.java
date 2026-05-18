@@ -1,15 +1,45 @@
 package ace.org.epms_backend.dto.dashboard;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import java.util.Map;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AdminDashboardResponse {
-    private Long totalEmployees;
-    private Long activeCycles;
-    private Long totalAppraisals;
-    private Map<String, Long> statusCounts;
-    private Double overallAverageScore;
+    private long totalEmployees;
+    private long totalDepartments;
+    private long totalManagers;
+    private long activeUsers;
+    private long lockedAccounts;
+    private long activeCycles;
+    private List<RecentActivity> recentActivities;
+    private List<SecurityAlert> securityAlerts;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RecentActivity {
+        private String action;
+        private String user;
+        private String timestamp;
+        private String module;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SecurityAlert {
+        private String event;
+        private String severity; // LOW, MEDIUM, HIGH
+        private String timestamp;
+        private String details;
+    }
 }

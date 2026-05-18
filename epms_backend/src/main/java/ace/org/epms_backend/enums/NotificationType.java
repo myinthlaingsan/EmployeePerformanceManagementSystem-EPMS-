@@ -6,6 +6,10 @@ public enum NotificationType {
     APPRAISAL_CYCLE_CLOSED,
     APPRAISAL_CYCLE_REMINDER,
     DEADLINE_REMINDER,
+    CYCLE_PHASE_STARTED,
+    CYCLE_CLOSING_SOON_EMPLOYEE,
+    CYCLE_CLOSING_SOON_MANAGER,
+    CYCLE_INCOMPLETE_APPRAISALS,
 
     // Appraisal Process
     APPRAISAL_ASSIGNED,
@@ -33,6 +37,9 @@ public enum NotificationType {
     KPI_SUBMITTED,
     KPI_APPROVED,
     KPI_REJECTED,
+    KPI_REVISED,
+    KPI_LOCKED,
+    KPI_PROGRESS_UPDATED,
 
     // Self Assessment (Deprecated or kept for compatibility)
     SELF_ASSESSMENT_OPENED,
