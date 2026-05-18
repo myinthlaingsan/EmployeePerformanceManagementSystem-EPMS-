@@ -5,3 +5,4 @@ export * from "./pipRoutes";
 export * from "./generalRoutes";
 export * from "./kpiRoutes";
 export * from "./continuousRoutes";
+export * from "./feedback360Routes";

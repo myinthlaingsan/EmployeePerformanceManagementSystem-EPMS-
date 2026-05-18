@@ -37,6 +37,12 @@ export const api = createApi({
     "Category",
     "FinancialYear",
     "PerformanceCategory",
+    "Feedback360Request",
+    "Feedback360Summary",
+    "Feedback360Preview",
+    "ScoringPolicy",
+    "Competency",
+    "Nomination",
   ],
   endpoints: () => ({}),
   // This adds more context to traces
