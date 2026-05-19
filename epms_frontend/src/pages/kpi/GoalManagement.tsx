@@ -8,18 +8,21 @@ import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
 import { Search, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
-import { useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
+import { useGetActiveCycleQuery, useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import React from 'react';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
   DRAFT:    { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4', label: 'Drafting' },
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0', label: 'Approved' },
   LOCKED:   { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2', label: 'Locked (Active)' },
+  ARCHIVED: { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8', label: 'Archived' },
 };
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAdmin, isHR, activeCycleId } = useAuth();
+  const { user, isAdmin, isHR, activeCycleId, activeCycleName: authCycleName } = useAuth();
+  const { error: cycleError } = useGetActiveCycleQuery(undefined);
+  const hasActiveCycle = !!activeCycleId && !cycleError;
   const [page, setPage] = useState(0);
   const [size] = useState(10);
   const isAdminOrHr = isAdmin || isHR;
@@ -40,7 +43,8 @@ const GoalManagement: React.FC = () => {
   const [selectedCycle, setSelectedCycle] = useState('All');
 
   const effectiveCycleId = selectedCycle === 'All' ? activeCycleId : Number(selectedCycle);
-  const activeCycleName = cycles.find((c: any) => c.id === activeCycleId)?.name || 'Active Cycle';
+  // Use cycle name from the active-cycle API (via useAuth), not from cycle list lookup
+  const activeCycleName = authCycleName !== 'No Active Cycle' ? authCycleName : undefined;
   const { data: deptGoalSetsResponse } = useGetDepartmentGoalSetsQuery(
     { cycleId: effectiveCycleId! }, { skip: !effectiveCycleId || !isAdminOrHr }
   );
@@ -85,7 +89,7 @@ const GoalManagement: React.FC = () => {
         </div>
       );
     }
-    const ss = STATUS_STYLE[status];
+    const ss = STATUS_STYLE[status] ?? { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8', label: status };
     return (
       <span style={{ fontSize: 10, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '2px 8px' }}>
         {ss.label}
@@ -101,7 +105,7 @@ const GoalManagement: React.FC = () => {
           <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Manage and track performance cycle milestones across all departments.</p>
         </div>
         <div className="flex items-center gap-3">
-          {activeCycleId && (
+          {hasActiveCycle && activeCycleName && (
             <div className="px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-black rounded-full uppercase tracking-widest border border-blue-100 flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></div>
               {activeCycleName}
@@ -141,7 +145,7 @@ const GoalManagement: React.FC = () => {
           {positions.map((p, i) => <option key={`${p.positionId}-${i}`} value={p.positionName}>{p.positionName}</option>)}
         </select>
         <select style={selectStyle} value={selectedCycle} onChange={e => setSelectedCycle(e.target.value)}>
-          <option value="All">Cycle: {activeCycleId ? 'Current' : 'All'}</option>
+          <option value="All">Cycle: {hasActiveCycle ? 'Active' : 'All'}</option>
           {cycles.map((c: any, i: number) => <option key={`${c.cycleId || c.id}-${i}`} value={c.cycleId || c.id}>{c.cycleName || c.name}</option>)}
         </select>
       </div>
@@ -174,7 +178,8 @@ const GoalManagement: React.FC = () => {
                     style={{ borderBottom: idx < filteredEmployees.length - 1 ? '0.5px solid #F0F2F6' : 'none', background: selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF', cursor: 'pointer' }}
                     className="hover:bg-[#FAFBFF] transition-colors"
                     onClick={() => {
-                      if (status === 'APPROVED' || status === 'LOCKED') navigate(`/kpi/goals/${emp.id}`);
+                      if (status === 'ARCHIVED') return;
+                      if (status === 'APPROVED' || status === 'LOCKED') navigate(`/kpi/goals/${emp.id}?cycleId=${effectiveCycleId}`);
                       else navigate(`/kpi/assign/${emp.id}`);
                     }}>
                     <td style={{ padding: '10px 16px' }} onClick={e => e.stopPropagation()}>
@@ -196,10 +201,15 @@ const GoalManagement: React.FC = () => {
                     <td style={{ padding: '10px 16px', fontSize: 12, color: '#5A6070' }}>{emp.currentDepartmentName || emp.parentDepartmentName || '—'}</td>
                     <td style={{ padding: '10px 16px', fontSize: 12, color: '#5A6070' }}>{emp.positionName || '—'}</td>
                     <td style={{ padding: '10px 16px' }}>
-                      {ss ? (
-                        <span style={{ fontSize: 10, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '2px 8px' }}>
-                          {ss.label}
-                        </span>
+                      {status ? (
+                        (() => {
+                          const safeSs = STATUS_STYLE[status] ?? { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8', label: status };
+                          return (
+                            <span style={{ fontSize: 10, fontWeight: 500, background: safeSs.bg, color: safeSs.text, border: `0.5px solid ${safeSs.border}`, borderRadius: 20, padding: '2px 8px' }}>
+                              {safeSs.label}
+                            </span>
+                          );
+                        })()
                       ) : (
                         <div className="flex items-center gap-1.5">
                           <XCircle size={13} style={{ color: '#9EA3B0' }} />

@@ -206,6 +206,14 @@ export const kpiApi = api.injectEndpoints({
       invalidatesTags: ['GoalSet'],
     }),
 
+    lockGoalSet: builder.mutation<ApiResponse<GoalSetResponse>, number>({
+      query: (id) => ({
+        url: `/kpi/goal-set/${id}/lock`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['GoalSet'],
+    }),
+
     // ==================== Progress ====================
     updateProgress: builder.mutation<ApiResponse<GoalSetResponse>, ProgressRequest>({
       query: (body) => ({
@@ -260,7 +268,12 @@ export const kpiApi = api.injectEndpoints({
         url: `/kpi/calculate-score?employeeId=${employeeId}&cycleId=${cycleId}`,
         method: 'POST',
       }),
-      invalidatesTags: ['Score'],
+      invalidatesTags: ['Score', 'GoalSet'],
+    }),
+    getFinalScore: builder.query<ApiResponse<KpiScoreResponse>, { employeeId: number; cycleId: number }>({
+      query: ({ employeeId, cycleId }) =>
+        `/kpi/calculate-score?employeeId=${employeeId}&cycleId=${cycleId}`,
+      providesTags: ['Score'],
     }),
     getTeamGoalSets: builder.query<ApiResponse<GoalSetResponse[]>, { managerId: number; cycleId: number }>({
       query: ({ managerId, cycleId }) => `/kpi/goal-set/team?managerId=${managerId}&cycleId=${cycleId}`,
@@ -303,10 +316,12 @@ export const {
   useBulkUpdateGoalItemsMutation,
   useApproveGoalSetMutation,
   useRevertGoalSetMutation,
+  useLockGoalSetMutation,
   useImportLibrariesMutation,
   useUpdateProgressMutation,
   useReviseKpiMutation,
   useCalculateScoresMutation,
+  useGetFinalScoreQuery,
   useGetGoalSetByEmployeeQuery,
   useGetGoalSetByIdQuery,
   useGetProgressHistoryQuery,
