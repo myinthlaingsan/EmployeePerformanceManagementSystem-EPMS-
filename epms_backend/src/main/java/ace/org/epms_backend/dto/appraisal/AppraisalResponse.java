@@ -40,6 +40,8 @@ public class AppraisalResponse {
 
     private String employeeSignComment;
     private String managerSignComment;
+    private String employeeSignNote;
+    private String managerSignNote;
     private String approvalComment;
     private Boolean isLocked;
     
