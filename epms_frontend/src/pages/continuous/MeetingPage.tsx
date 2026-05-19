@@ -215,9 +215,22 @@ const MeetingPage = () => {
         status: editingId ? undefined : status,
         actionItems: Array.isArray(newMeeting.actionItems)
           ? (newMeeting.actionItems as any[])
-              .map((item: any) => (typeof item === 'string' ? item : item?.content ?? '').trim())
-              .filter((c: string) => c !== '')
-          : (newMeeting.actionItems as string).split('\n').map(s => s.trim()).filter((item: string) => item !== '')
+              .map((item: any) => {
+                if (typeof item === 'string') {
+                  return { id: null, content: item.trim(), status: 'PENDING' };
+                }
+                return {
+                  id: item.id || null,
+                  content: (item.content ?? '').trim(),
+                  status: item.status || 'PENDING'
+                };
+              })
+              .filter((item: any) => item.content !== '')
+          : (newMeeting.actionItems as string)
+              .split('\n')
+              .map(s => s.trim())
+              .filter((item: string) => item !== '')
+              .map((s: string) => ({ id: null, content: s, status: 'PENDING' }))
       };
       if (editingId) {
         await updateMeeting({ id: editingId, body }).unwrap();
@@ -677,6 +690,21 @@ const MeetingPage = () => {
                                   </span>
                                 )}
                               </div>
+                              {!isDone && (
+                                <button
+                                  type="button"
+                                  title="Remove task"
+                                  onClick={() => {
+                                    const updated = (newMeeting.actionItems as any[]).filter((_, i) => i !== index);
+                                    setNewMeeting({ ...newMeeting, actionItems: updated });
+                                  }}
+                                  className="p-1.5 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition shrink-0"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              )}
                             </div>
                           );
                         })}
