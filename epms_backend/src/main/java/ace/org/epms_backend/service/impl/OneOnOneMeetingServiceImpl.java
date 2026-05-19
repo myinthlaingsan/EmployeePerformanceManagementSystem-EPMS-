@@ -670,44 +670,49 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         }
     }
 
-    private void syncActionItems(OneOnOneMeeting meeting, List<String> contents) {
-        if (contents == null) return;
+    private void syncActionItems(OneOnOneMeeting meeting, List<ace.org.epms_backend.dto.continuous.MeetingActionItemRequest> requests) {
+        if (requests == null) return;
 
         if (meeting.getActionItems() == null) {
             meeting.setActionItems(new java.util.ArrayList<>());
         }
 
-        List<String> validContents = contents.stream()
-                .filter(c -> c != null && !c.trim().isEmpty())
-                .map(String::trim)
-                .collect(java.util.stream.Collectors.toList());
+        // Identify which existing items to delete
+        // We delete any existing PENDING item whose ID is NOT in the request list of IDs
+        java.util.Set<Long> requestIds = requests.stream()
+                .map(ace.org.epms_backend.dto.continuous.MeetingActionItemRequest::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
 
-        List<ace.org.epms_backend.model.continuous.MeetingActionItem> currentPendingItems = meeting.getActionItems().stream()
+        List<ace.org.epms_backend.model.continuous.MeetingActionItem> toRemove = meeting.getActionItems().stream()
                 .filter(item -> item.getStatus() == ace.org.epms_backend.enums.ActionItemStatus.PENDING)
+                .filter(item -> item.getId() != null && !requestIds.contains(item.getId()))
                 .collect(java.util.stream.Collectors.toList());
-
-        List<ace.org.epms_backend.model.continuous.MeetingActionItem> toRemove = new java.util.ArrayList<>();
-        List<String> tempValidContents = new java.util.ArrayList<>(validContents);
-
-        for (ace.org.epms_backend.model.continuous.MeetingActionItem pendingItem : currentPendingItems) {
-            if (!tempValidContents.contains(pendingItem.getContent())) {
-                toRemove.add(pendingItem);
-            } else {
-                tempValidContents.remove(pendingItem.getContent());
-            }
-        }
 
         meeting.getActionItems().removeAll(toRemove);
         actionItemRepository.deleteAll(toRemove);
 
-        for (String content : tempValidContents) {
-            ace.org.epms_backend.model.continuous.MeetingActionItem newItem =
-                    ace.org.epms_backend.model.continuous.MeetingActionItem.builder()
-                            .meeting(meeting)
-                            .content(content)
-                            .status(ace.org.epms_backend.enums.ActionItemStatus.PENDING)
-                            .build();
-            meeting.getActionItems().add(newItem);
+        // Update or create items from the request
+        for (ace.org.epms_backend.dto.continuous.MeetingActionItemRequest req : requests) {
+            if (req.getContent() == null || req.getContent().trim().isEmpty()) {
+                continue;
+            }
+            if (req.getId() != null) {
+                // Update existing item
+                meeting.getActionItems().stream()
+                        .filter(item -> item.getId().equals(req.getId()))
+                        .findFirst()
+                        .ifPresent(item -> item.setContent(req.getContent().trim()));
+            } else {
+                // Create new item
+                ace.org.epms_backend.model.continuous.MeetingActionItem newItem =
+                        ace.org.epms_backend.model.continuous.MeetingActionItem.builder()
+                                .meeting(meeting)
+                                .content(req.getContent().trim())
+                                .status(ace.org.epms_backend.enums.ActionItemStatus.PENDING)
+                                .build();
+                meeting.getActionItems().add(newItem);
+            }
         }
     }
 

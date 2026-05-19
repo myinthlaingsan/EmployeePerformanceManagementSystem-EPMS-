@@ -117,16 +117,20 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            "ORDER BY h.createdAt ASC")
     List<PerformanceHistory> findLatestStatesByDepartment(@Param("deptId") Long deptId);
     
-    /**
-     * Activity History — Performer scope.
-     * Returns the full audit trail of actions performed by a specific manager/employee.
-     * Unlike the 'Latest State' queries, this does NOT deduplicate by sourceId,
-     * ensuring every distinct action (like re-opening multiple items) is counted.
-     */
     @Query("SELECT h FROM PerformanceHistory h WHERE " +
            "(h.performer.id = :id OR h.createdBy = :id) " +
            "AND h.title <> 'Feedback Deleted' " +
            "AND h.title <> 'Meeting Deleted' " +
+           "AND (" +
+           "  (h.sourceType = ace.org.epms_backend.enums.SourceType.FEEDBACK AND EXISTS (" +
+           "    SELECT 1 FROM ContinuousFeedback f WHERE f.feedbackId = h.sourceId " +
+           "    AND f.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "  )) OR " +
+           "  (h.sourceType = ace.org.epms_backend.enums.SourceType.MEETING AND EXISTS (" +
+           "    SELECT 1 FROM OneOnOneMeeting m WHERE m.meetingId = h.sourceId " +
+           "    AND m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "  ))" +
+           ") " +
            "ORDER BY h.createdAt ASC")
     List<PerformanceHistory> findActionHistoryByPerformer(@Param("id") Long id);
 
@@ -134,6 +138,16 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            "(h.employee.id = :id) " +
            "AND h.title <> 'Feedback Deleted' " +
            "AND h.title <> 'Meeting Deleted' " +
+           "AND (" +
+           "  (h.sourceType = ace.org.epms_backend.enums.SourceType.FEEDBACK AND EXISTS (" +
+           "    SELECT 1 FROM ContinuousFeedback f WHERE f.feedbackId = h.sourceId " +
+           "    AND f.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "  )) OR " +
+           "  (h.sourceType = ace.org.epms_backend.enums.SourceType.MEETING AND EXISTS (" +
+           "    SELECT 1 FROM OneOnOneMeeting m WHERE m.meetingId = h.sourceId " +
+           "    AND m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "  ))" +
+           ") " +
            "ORDER BY h.createdAt ASC")
     List<PerformanceHistory> findActionHistoryByEmployee(@Param("id") Long id);
 }

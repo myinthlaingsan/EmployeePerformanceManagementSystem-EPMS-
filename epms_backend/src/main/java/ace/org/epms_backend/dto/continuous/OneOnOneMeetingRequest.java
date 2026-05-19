@@ -23,7 +23,7 @@ public class OneOnOneMeetingRequest {
 
     private String discussionPoints;
     private String keyIssues;
-    private java.util.List<String> actionItems;
+    private java.util.List<MeetingActionItemRequest> actionItems;
     private LocalDate followUpDate;
 
     private ContinuousStatus status;

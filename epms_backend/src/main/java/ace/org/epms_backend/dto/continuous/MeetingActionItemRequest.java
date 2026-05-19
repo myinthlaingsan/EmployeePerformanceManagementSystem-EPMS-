@@ -5,6 +5,7 @@ import lombok.Data;
 
 @Data
 public class MeetingActionItemRequest {
+    private Long id;
     private String content;
     private ActionItemStatus status;
 }
