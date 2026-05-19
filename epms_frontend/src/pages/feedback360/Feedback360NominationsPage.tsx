@@ -8,6 +8,7 @@ import {
   useApproveNominationMutation,
   useRejectNominationMutation,
 } from '../../features/feedback360/feedback360Api';
+import { useGetAllEmployeesQuery } from '../../features/employee/employeeapi';
 import type { EvaluatorNomination } from '../../features/feedback360/feedback360Types';
 import { FeedbackRelationship } from '../../features/feedback360/feedback360Types';
 import RelBadge from '../../components/feedback360/RelBadge';
@@ -59,17 +60,82 @@ interface ProposeFormProps {
 }
 
 const ProposeForm = ({ onSubmitted }: ProposeFormProps) => {
-  const { user } = useAuth();
+  const { user, isAdmin, isHR, isManager } = useAuth();
+  
+  // Fetch all active employees
+  const { data: allEmployees = [], isLoading: loadingEmployees } = useGetAllEmployeesQuery();
+  
+  // Only HR, Admin, or Managers can specify a different target employee. Regular employees can only propose for themselves.
+  const canSelectTarget = isAdmin || isHR || isManager;
+  
   const [targetUserId, setTargetUserId]   = useState('');
   const [nomineeId, setNomineeId]         = useState('');
   const [relationship, setRelationship]   = useState<string>(FeedbackRelationship.PEER);
   const [propose, { isLoading }]          = useProposeNominationMutation();
 
+  // Automatically set target employee to self if not HR/Admin/Manager
+  React.useEffect(() => {
+    if (!canSelectTarget && user) {
+      setTargetUserId(String(user.id));
+    }
+  }, [user, canSelectTarget]);
+
+  // Find target employee object
+  const targetEmployee = allEmployees.find(emp => String(emp.id) === targetUserId);
+
+  // Dynamically compute eligible nominees based on relationship type
+  const eligibleNominees = React.useMemo(() => {
+    if (!targetEmployee) return [];
+
+    if (relationship === FeedbackRelationship.DIRECT_MANAGER) {
+      // 1. Direct Manager: Show their registered manager, or managers in the system
+      if (targetEmployee.directManagerId) {
+        const mgr = allEmployees.find(emp => emp.id === targetEmployee.directManagerId);
+        if (mgr) return [mgr];
+      }
+      return allEmployees.filter(emp => 
+        emp.id !== targetEmployee.id && 
+        (emp.roles?.some(r => r.includes('MANAGER')) || emp.levelRank < targetEmployee.levelRank)
+      );
+    } 
+    
+    if (relationship === FeedbackRelationship.PEER) {
+      // 2. Peer: Same department, excluding self
+      return allEmployees.filter(emp => 
+        emp.id !== targetEmployee.id &&
+        emp.currentDepartmentId === targetEmployee.currentDepartmentId
+      );
+    } 
+    
+    if (relationship === FeedbackRelationship.SUBORDINATE) {
+      // 3. Subordinate: Direct reports OR lower ranking in same department, excluding self
+      return allEmployees.filter(emp => 
+        emp.id !== targetEmployee.id &&
+        (emp.directManagerId === targetEmployee.id || 
+         (emp.currentDepartmentId === targetEmployee.currentDepartmentId && emp.levelRank > targetEmployee.levelRank))
+      );
+    }
+
+    return [];
+  }, [relationship, targetEmployee, allEmployees]);
+
+  // Reset or pre-select nomineeId when list of eligible nominees changes
+  React.useEffect(() => {
+    if (eligibleNominees.length > 0) {
+      const isValid = eligibleNominees.some(n => String(n.id) === nomineeId);
+      if (!isValid) {
+        setNomineeId(String(eligibleNominees[0].id));
+      }
+    } else {
+      setNomineeId('');
+    }
+  }, [eligibleNominees, nomineeId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const tId = parseInt(targetUserId);
     const nId = parseInt(nomineeId);
-    if (!tId || !nId) return toast.error('Enter valid employee IDs.');
+    if (!tId || !nId) return toast.error('Please select both a target and a nominee.');
     try {
       await propose({
         targetUserId: tId,
@@ -78,7 +144,9 @@ const ProposeForm = ({ onSubmitted }: ProposeFormProps) => {
       }).unwrap();
       toast.success('Nomination proposed.');
       setNomineeId('');
-      setTargetUserId('');
+      if (canSelectTarget) {
+        setTargetUserId('');
+      }
       onSubmitted();
     } catch {
       toast.error('Failed to propose nomination.');
@@ -87,50 +155,75 @@ const ProposeForm = ({ onSubmitted }: ProposeFormProps) => {
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
         <div>
-          <label style={labelStyle}>Target Employee ID</label>
-          <input
-            type="number"
-            value={targetUserId}
-            onChange={(e) => setTargetUserId(e.target.value)}
-            placeholder="Whose evaluator?"
-            style={inputStyle}
-          />
+          <label style={labelStyle}>Target Employee</label>
+          {canSelectTarget ? (
+            <select
+              value={targetUserId}
+              onChange={(e) => setTargetUserId(e.target.value)}
+              style={inputStyle}
+              disabled={loadingEmployees}
+            >
+              <option value="">-- Select Target --</option>
+              {allEmployees.map(emp => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.staffName} ({emp.employeeCode}) - {emp.positionName}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              readOnly
+              value={user ? `${user.staffName} (${user.employeeCode})` : 'Loading…'}
+              style={{ ...inputStyle, background: '#F3F4F6', color: '#6B7280', cursor: 'not-allowed' }}
+            />
+          )}
         </div>
         <div>
-          <label style={labelStyle}>Nominee Employee ID</label>
-          <input
-            type="number"
-            value={nomineeId}
-            onChange={(e) => setNomineeId(e.target.value)}
-            placeholder="Who should evaluate?"
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Relationship</label>
+          <label style={labelStyle}>Relationship Type</label>
           <select
             value={relationship}
             onChange={(e) => setRelationship(e.target.value)}
             style={inputStyle}
+            disabled={!targetUserId}
           >
-            <option value={FeedbackRelationship.PEER}>Peer</option>
-            <option value={FeedbackRelationship.SUBORDINATE}>Subordinate</option>
+            <option value={FeedbackRelationship.PEER}>Peer (Same Department)</option>
+            <option value={FeedbackRelationship.SUBORDINATE}>Subordinate (Direct Report / Junior)</option>
             <option value={FeedbackRelationship.DIRECT_MANAGER}>Direct Manager</option>
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Nominee (Evaluator)</label>
+          <select
+            value={nomineeId}
+            onChange={(e) => setNomineeId(e.target.value)}
+            style={inputStyle}
+            disabled={!targetUserId || eligibleNominees.length === 0}
+          >
+            {eligibleNominees.length === 0 ? (
+              <option value="">-- No eligible nominees found --</option>
+            ) : (
+              eligibleNominees.map(emp => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.staffName} ({emp.employeeCode}) - {emp.positionName}
+                </option>
+              ))
+            )}
           </select>
         </div>
       </div>
       <div>
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !targetUserId || !nomineeId}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             fontSize: 13, fontWeight: 500, color: '#FFFFFF',
-            background: isLoading ? '#93A8E8' : '#1A56DB',
+            background: isLoading || !targetUserId || !nomineeId ? '#93A8E8' : '#1A56DB',
             border: 'none', borderRadius: 8, padding: '8px 16px',
-            cursor: isLoading ? 'not-allowed' : 'pointer',
+            cursor: isLoading || !targetUserId || !nomineeId ? 'not-allowed' : 'pointer',
           }}
         >
           {isLoading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <UserPlus size={13} />}

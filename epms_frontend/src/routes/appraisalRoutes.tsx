@@ -19,5 +19,6 @@ export const appraisalRoutes = [
   { path: "/appraisal/diagnostic", element: <DiagnosticPage /> },
   { path: "/appraisal/create-cycle", element: <CreateCycle /> },
   { path: "/appraisal/design-form", element: <AppraisalFormDesign /> },
+  { path: "/appraisal-forms/design", element: <AppraisalFormDesign /> },
   { path: "/appraisal/assign", element: <AppraisalAssignment /> },
 ];

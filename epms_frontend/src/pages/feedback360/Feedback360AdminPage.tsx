@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   RefreshCw, Play, Eye, CheckCircle, Loader2, AlertCircle,
-  ChevronDown, ChevronUp, Lock, Edit3, X,
+  ChevronDown, ChevronUp, Lock, Edit3, X, Plus, FileDown,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useDownloadReportMutation } from '../../features/report/reportApi';
+import { useGetFeedbackFormsByCycleQuery, useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
+import type { AppraisalForm } from '../../features/appraisal/appraisalApi';
 import {
   useLazyPreviewFeedbackRequestsQuery,
   useGenerateFeedbackRequestsMutation,
@@ -17,7 +21,12 @@ import {
   usePostManagerSummaryMutation,
   useGetScoringPoliciesQuery,
   useUpsertScoringPolicyMutation,
+  useListRequestsByCycleQuery,
+  useGetFeedbackCycleDashboardQuery,
 } from '../../features/feedback360/feedback360Api';
+import {
+  Users, Mail, Clock, FileText, CheckCircle2, BarChart3,
+} from 'lucide-react';
 import type {
   FeedbackSummaryResponse,
   FeedbackRequestResponse,
@@ -480,10 +489,20 @@ const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign }: Pr
             </button>
             {!isDone && (
               <>
-                <button style={smBtn('neutral')} onClick={onReassign}>
+                <button
+                  style={{ ...smBtn('neutral'), opacity: req.id ? 1 : 0.45, cursor: req.id ? 'pointer' : 'not-allowed' }}
+                  onClick={onReassign}
+                  disabled={!req.id}
+                  title={!req.id ? 'Click Generate to enable per-row actions' : undefined}
+                >
                   <Edit3 size={10} /> Reassign
                 </button>
-                <button style={smBtn('danger')} onClick={onCancel}>
+                <button
+                  style={{ ...smBtn('danger'), opacity: req.id ? 1 : 0.45, cursor: req.id ? 'pointer' : 'not-allowed' }}
+                  onClick={onCancel}
+                  disabled={!req.id}
+                  title={!req.id ? 'Click Generate to enable per-row actions' : undefined}
+                >
                   <X size={10} /> Cancel
                 </button>
               </>
@@ -549,10 +568,296 @@ const ReassignModal = ({ requestId, onClose }: ReassignModalProps) => {
   );
 };
 
+// ── Form slots ─────────────────────────────────────────────────────────────────
+
+const REL_SLOTS: Array<{ rel: string; label: string; color: string }> = [
+  { rel: 'DIRECT_MANAGER', label: 'Manager → Target',    color: '#1A56DB' },
+  { rel: 'PEER',           label: 'Peer → Target',       color: '#7C3AED' },
+  { rel: 'SUBORDINATE',    label: 'Subordinate → Target', color: '#059669' },
+  { rel: 'SELF',           label: 'Self-Assessment',      color: '#D97706' },
+];
+
+interface FeedbackFormSlotsProps { cycleId: number; }
+
+const FeedbackFormSlots = ({ cycleId }: FeedbackFormSlotsProps) => {
+  const navigate = useNavigate();
+  const { data: forms = [], isLoading } = useGetFeedbackFormsByCycleQuery(cycleId, { skip: !cycleId });
+
+  const byRel: Record<string, AppraisalForm | undefined> = {};
+  forms.forEach((f) => { if (f.targetRelationship) byRel[f.targetRelationship] = f; });
+
+  const filled = REL_SLOTS.filter((s) => byRel[s.rel]).length;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div>
+          <p style={sectionTitle}>360° Feedback Forms</p>
+          <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: -12, marginBottom: 0 }}>
+            Each relationship type needs its own form. {filled}/4 slots filled.
+          </p>
+        </div>
+      </div>
+      {isLoading ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', padding: '8px 0' }}>
+          <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+          <span style={{ fontSize: 13 }}>Loading forms…</span>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+          {REL_SLOTS.map(({ rel, label, color }) => {
+            const form = byRel[rel];
+            return (
+              <div key={rel} style={{
+                border: `0.5px solid ${form ? '#A7F3D0' : '#E4E6EC'}`,
+                borderRadius: 10,
+                padding: '14px 16px',
+                background: form ? '#F0FDF4' : '#FAFBFC',
+                display: 'flex', flexDirection: 'column', gap: 8,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{label}</span>
+                  {form && <CheckCircle size={13} color="#059669" style={{ marginLeft: 'auto' }} />}
+                </div>
+                {form ? (
+                  <>
+                    <p style={{ fontSize: 12, color: '#374151', margin: 0, fontWeight: 500 }}>{form.formName}</p>
+                    <button
+                      style={{ ...smBtn('neutral'), fontSize: 11, padding: '5px 10px', alignSelf: 'flex-start' }}
+                      onClick={() => navigate(`/appraisal-forms/design?edit=true&formId=${form.formId}&type=FEEDBACK&cycleId=${cycleId}&relationship=${rel}`)}
+                    >
+                      <Edit3 size={10} /> Edit Form
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 11, color: '#9EA3B0', margin: 0 }}>No form assigned</p>
+                    <button
+                      style={{ ...smBtn('neutral'), fontSize: 11, padding: '5px 10px', alignSelf: 'flex-start', background: '#EEF3FD', color: '#1A56DB', borderColor: '#BFCFFA' }}
+                      onClick={() => navigate(`/appraisal-forms/design?type=FEEDBACK&cycleId=${cycleId}&relationship=${rel}`)}
+                    >
+                      <Plus size={10} /> Create Form
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {filled < 4 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, padding: '8px 12px', background: '#FFFBEB', border: '0.5px solid #FDE68A', borderRadius: 8 }}>
+          <AlertCircle size={13} color="#D97706" />
+          <span style={{ fontSize: 12, color: '#92400E' }}>
+            {4 - filled} form{4 - filled !== 1 ? 's' : ''} missing — Generate will use a generic fallback form for those relationships.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Cycle Dashboard Tab (Step 3) ──────────────────────────────────────────────
+
+interface CycleDashboardTabProps {
+  cycleId: number;
+}
+
+const CycleDashboardTab = ({ cycleId }: CycleDashboardTabProps) => {
+  const { data: dashboard, isLoading, error } = useGetFeedbackCycleDashboardQuery(cycleId, { skip: !cycleId });
+
+  if (!cycleId) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', fontSize: 13, padding: '20px 0' }}>
+        <AlertCircle size={15} /> Select a Cycle above to view the dashboard.
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', padding: '24px 0' }}>
+        <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+        <span style={{ fontSize: 13 }}>Loading cycle dashboard metrics…</span>
+      </div>
+    );
+  }
+
+  if (error || !dashboard) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#EF4444', fontSize: 13, padding: '20px 0' }}>
+        <AlertCircle size={15} /> Failed to load cycle dashboard metrics. Make sure feedback requests are generated for this cycle.
+      </div>
+    );
+  }
+
+  const statCard = (title: string, value: string | number, sub: string, icon: React.ReactNode, bg: string, color: string) => (
+    <div style={{
+      ...panel, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderRadius: 10, flex: 1, minWidth: 160
+    }}>
+      <div>
+        <p style={{ fontSize: 12, fontWeight: 500, color: '#5A6070', margin: '0 0 6px 0' }}>{title}</p>
+        <p style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0 }}>{value}</p>
+        <p style={{ fontSize: 11, color: '#9EA3B0', margin: '4px 0 0 0' }}>{sub}</p>
+      </div>
+      <div style={{ width: 38, height: 38, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
+        {icon}
+      </div>
+    </div>
+  );
+
+  const getRelationshipColor = (rel: string) => {
+    switch (rel) {
+      case 'DIRECT_MANAGER': return '#1A56DB';
+      case 'PEER': return '#7C3AED';
+      case 'SUBORDINATE': return '#059669';
+      case 'SELF': return '#D97706';
+      default: return '#5A6070';
+    }
+  };
+
+  const formatRelName = (rel: string) => {
+    return rel.replace('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Stat Cards Grid */}
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        {statCard(
+          'Submission Rate',
+          `${dashboard.submissionRate}%`,
+          'Overall completion rate',
+          <BarChart3 size={18} />,
+          '#EEF3FD',
+          '#1A56DB'
+        )}
+        {statCard(
+          'Total Requests',
+          dashboard.totalRequests,
+          'Total feedback slots assigned',
+          <FileText size={18} />,
+          '#F3F4F6',
+          '#374151'
+        )}
+        {statCard(
+          'Completed Feedback',
+          dashboard.submittedRequests,
+          'Submitted responses',
+          <CheckCircle2 size={18} />,
+          '#ECFDF5',
+          '#059669'
+        )}
+        {statCard(
+          'Overdue Requests',
+          dashboard.overdueRequests,
+          'Past due date requests',
+          <Clock size={18} />,
+          dashboard.overdueRequests > 0 ? '#FEF2F2' : '#F9FAFB',
+          dashboard.overdueRequests > 0 ? '#DC2626' : '#9EA3B0'
+        )}
+        {statCard(
+          'Pending / In Progress',
+          dashboard.pendingRequests,
+          'On schedule requests',
+          <Loader2 size={18} style={{ animation: dashboard.pendingRequests > 0 ? 'spin 2s linear infinite' : 'none' }} />,
+          '#FFFBEB',
+          '#D97706'
+        )}
+        {statCard(
+          'Target Employees',
+          dashboard.totalTargets,
+          'Receiving feedback',
+          <Users size={18} />,
+          '#F5F3FF',
+          '#7C3AED'
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
+        {/* Left Side: Relationship Submission Rates */}
+        <div style={panel}>
+          <p style={sectionTitle}>Submission Rate by Relationship</p>
+          {Object.keys(dashboard.relationshipRates).length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9EA3B0', margin: 0 }}>No relationship submission stats available.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {Object.entries(dashboard.relationshipRates).map(([rel, rate]) => {
+                const color = getRelationshipColor(rel);
+                return (
+                  <div key={rel} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 500 }}>
+                      <span style={{ color: '#374151' }}>{formatRelName(rel)}</span>
+                      <span style={{ color: color }}>{rate}%</span>
+                    </div>
+                    <div style={{ height: 8, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ width: `${rate}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.5s ease-out' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Right Side: Top Bottlenecks */}
+        <div style={panel}>
+          <p style={sectionTitle}>Evaluator Bottlenecks</p>
+          {dashboard.bottlenecks.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 0', color: '#9EA3B0', gap: 6 }}>
+              <CheckCircle2 size={24} color="#059669" />
+              <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>No outstanding bottleneck evaluators!</p>
+              <p style={{ fontSize: 11, margin: 0 }}>All pending reviews are nicely distributed.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #E4E6EC', background: '#FAFBFC' }}>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 600, color: '#5A6070', fontSize: 11, textTransform: 'uppercase' }}>Evaluator</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 600, color: '#5A6070', fontSize: 11, textTransform: 'uppercase' }}>Department</th>
+                    <th style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 600, color: '#5A6070', fontSize: 11, textTransform: 'uppercase' }}>Pending</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dashboard.bottlenecks.map((b) => (
+                    <tr key={b.evaluatorId} style={{ borderBottom: '0.5px solid #E4E6EC' }}>
+                      <td style={{ padding: '8px 10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 500, color: '#111827' }}>{b.evaluatorName}</span>
+                          <span style={{ fontSize: 11, color: '#9EA3B0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Mail size={10} /> {b.evaluatorEmail}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '8px 10px', color: '#5A6070' }}>{b.departmentName}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                        <span style={{
+                          fontSize: 12, fontWeight: 600, padding: '3px 8px', borderRadius: 12,
+                          background: '#FEF2F2', color: '#DC2626', border: '0.5px solid #FEE2E2'
+                        }}>
+                          {b.pendingCount}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 const Feedback360AdminPage = () => {
   const { activeCycleId } = useAuth();
+  const { data: cycles = [], isLoading: cyclesLoading } = useGetCyclesQuery();
 
   const [cycleId, setCycleId]                         = useState<number>(activeCycleId ?? 0);
   const [previousCycleId, setPreviousCycleId]         = useState<string>('');
@@ -564,6 +869,15 @@ const Feedback360AdminPage = () => {
   const [calibrateTarget, setCalibrateTarget]   = useState<FeedbackSummaryResponse | null>(null);
   const [reassignRequestId, setReassignRequestId] = useState<number | null>(null);
 
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'setup' | 'assignments' | 'summaries'>('dashboard');
+
+  const { data: savedRequests = [] } = useListRequestsByCycleQuery(cycleId, { skip: !cycleId });
+
+  useEffect(() => {
+    if (savedRequests.length > 0) setHasGenerated(true);
+  }, [savedRequests.length]);
+
   const [previewTrigger, { data: previewData, isFetching: isPreviewing }] = useLazyPreviewFeedbackRequestsQuery();
   const [generate,         { isLoading: isGenerating }]       = useGenerateFeedbackRequestsMutation();
   const [generateSummaries, { isLoading: isGeneratingSummaries }] = useGenerateAllSummariesMutation();
@@ -574,6 +888,22 @@ const Feedback360AdminPage = () => {
   const { data: summaries, isLoading: summariesLoading } = useGetAllSummariesByCycleQuery(
     cycleId, { skip: !cycleId },
   );
+
+  const [downloadReport, { isLoading: isDownloadingReport }] = useDownloadReportMutation();
+
+  const handleDownloadSummaryReport = async () => {
+    if (!cycleId) return toast.error('Please select a cycle.');
+    try {
+      await downloadReport({
+        endpoint: 'feedback-360/cycle',
+        params: { cycleId },
+        fileName: `Feedback_360_Cycle_${cycleId}_Summary.pdf`,
+      }).unwrap();
+      toast.success('Summary report downloaded successfully.');
+    } catch {
+      toast.error('Failed to download summary report.');
+    }
+  };
 
   const cycleLocked = !!(summaries && summaries.length > 0 && summaries.every((s) => s.isFinalized));
 
@@ -593,7 +923,11 @@ const Feedback360AdminPage = () => {
   const handleGenerate = async () => {
     if (!cycleId) return toast.error('Please enter a cycle ID.');
     if (!window.confirm(`Generate feedback requests for cycle ${cycleId}? This may overwrite existing PENDING requests.`)) return;
-    try { await generate(buildParams()).unwrap(); toast.success('Requests generated.'); } catch { toast.error('Generation failed.'); }
+    try {
+      await generate(buildParams()).unwrap();
+      toast.success('Requests generated.');
+      setHasGenerated(true);
+    } catch { toast.error('Generation failed.'); }
   };
 
   const handleGenerateSummaries = async () => {
@@ -632,12 +966,51 @@ const Feedback360AdminPage = () => {
             Configure policies, generate requests, and manage summaries.
           </p>
         </div>
-        {cycleLocked && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#ECFDF5', border: '0.5px solid #A7F3D0', borderRadius: 20 }}>
-            <Lock size={13} color="#059669" />
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#059669' }}>Cycle Locked — All summaries finalized</span>
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {cycleId > 0 && (
+            <button
+              onClick={handleDownloadSummaryReport}
+              disabled={isDownloadingReport}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                background: '#FFFFFF',
+                border: '1px solid #D1D5DB',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                color: '#374151',
+                cursor: isDownloadingReport ? 'not-allowed' : 'pointer',
+                opacity: isDownloadingReport ? 0.7 : 1,
+                boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
+                transition: 'all 0.15s ease-in-out',
+              }}
+              onMouseEnter={(e) => {
+                if (!isDownloadingReport) {
+                  e.currentTarget.style.borderColor = '#9CA3AF';
+                  e.currentTarget.style.background = '#F9FAFB';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isDownloadingReport) {
+                  e.currentTarget.style.borderColor = '#D1D5DB';
+                  e.currentTarget.style.background = '#FFFFFF';
+                }
+              }}
+            >
+              <FileDown size={14} />
+              {isDownloadingReport ? 'Downloading...' : 'Download Summary PDF'}
+            </button>
+          )}
+          {cycleLocked && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#ECFDF5', border: '0.5px solid #A7F3D0', borderRadius: 20 }}>
+              <Lock size={13} color="#059669" />
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#059669' }}>Cycle Locked — All summaries finalized</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Cycle selector */}
@@ -645,12 +1018,44 @@ const Feedback360AdminPage = () => {
         <p style={sectionTitle}>Cycle Settings</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
           <div>
-            <label style={labelStyle}>Cycle ID *</label>
-            <input type="number" style={inputStyle} value={cycleId || ''} onChange={(e) => setCycleId(Number(e.target.value))} placeholder="e.g. 3" />
+            <label style={labelStyle}>Active Cycle *</label>
+            {cyclesLoading ? (
+              <select style={inputStyle} disabled><option>Loading cycles…</option></select>
+            ) : (
+              <select
+                style={inputStyle}
+                value={cycleId || ''}
+                onChange={(e) => setCycleId(Number(e.target.value) || 0)}
+              >
+                <option value="">-- Select Cycle --</option>
+                {cycles.map((c) => (
+                  <option key={c.cycleId} value={c.cycleId}>
+                    {c.cycleName} (ID: {c.cycleId})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
-            <label style={labelStyle}>Previous Cycle ID</label>
-            <input type="number" style={inputStyle} value={previousCycleId} onChange={(e) => setPreviousCycleId(e.target.value)} placeholder="Optional" />
+            <label style={labelStyle}>Previous Cycle</label>
+            {cyclesLoading ? (
+              <select style={inputStyle} disabled><option>Loading cycles…</option></select>
+            ) : (
+              <select
+                style={inputStyle}
+                value={previousCycleId}
+                onChange={(e) => setPreviousCycleId(e.target.value)}
+              >
+                <option value="">-- None / Select Previous Cycle --</option>
+                {cycles
+                  .filter((c) => c.cycleId !== cycleId)
+                  .map((c) => (
+                    <option key={c.cycleId} value={String(c.cycleId)}>
+                      {c.cycleName} (ID: {c.cycleId})
+                    </option>
+                  ))}
+              </select>
+            )}
           </div>
           <div>
             <label style={labelStyle}>Max Evaluators per Person</label>
@@ -666,113 +1071,192 @@ const Feedback360AdminPage = () => {
         </div>
       </div>
 
-      {/* Scoring Policy Editor */}
-      {cycleId > 0 && (
-        <div style={panel}>
-          <p style={sectionTitle}>Scoring Policy for Cycle {cycleId}</p>
-          <ScoringPolicyEditor cycleId={cycleId} />
-        </div>
-      )}
-
-      {/* Generate / Preview */}
-      <div style={panel}>
-        <p style={sectionTitle}>Generate / Preview Requests</p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button style={secondaryBtn} onClick={handlePreview} disabled={isPreviewing || cycleLocked}>
-            {isPreviewing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Eye size={14} />}
-            Preview
-          </button>
-          <button style={primaryBtn(isGenerating || cycleLocked)} onClick={handleGenerate} disabled={isGenerating || cycleLocked}>
-            {isGenerating ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Play size={14} />}
-            {cycleLocked ? 'Locked' : 'Generate'}
-          </button>
-          <button
-            style={{ ...secondaryBtn, marginLeft: 'auto' }}
-            onClick={handleGenerateSummaries}
-            disabled={isGeneratingSummaries || !cycleId}
-          >
-            {isGeneratingSummaries ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={14} />}
-            Generate All Summaries
-          </button>
-        </div>
+      {/* Tabs Navigation */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #E4E6EC', paddingBottom: 8, marginTop: 10 }}>
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          style={{
+            padding: '8px 16px', fontSize: 13, fontWeight: activeTab === 'dashboard' ? 600 : 500,
+            color: activeTab === 'dashboard' ? '#1A56DB' : '#5A6070',
+            background: activeTab === 'dashboard' ? '#EEF3FD' : 'transparent',
+            border: 'none', borderRadius: 6, cursor: 'pointer', transition: 'all 0.2s'
+          }}
+        >
+          Cycle Dashboard
+        </button>
+        <button
+          onClick={() => setActiveTab('setup')}
+          style={{
+            padding: '8px 16px', fontSize: 13, fontWeight: activeTab === 'setup' ? 600 : 500,
+            color: activeTab === 'setup' ? '#1A56DB' : '#5A6070',
+            background: activeTab === 'setup' ? '#EEF3FD' : 'transparent',
+            border: 'none', borderRadius: 6, cursor: 'pointer', transition: 'all 0.2s'
+          }}
+        >
+          Form & Policy Setup
+        </button>
+        <button
+          onClick={() => setActiveTab('assignments')}
+          style={{
+            padding: '8px 16px', fontSize: 13, fontWeight: activeTab === 'assignments' ? 600 : 500,
+            color: activeTab === 'assignments' ? '#1A56DB' : '#5A6070',
+            background: activeTab === 'assignments' ? '#EEF3FD' : 'transparent',
+            border: 'none', borderRadius: 6, cursor: 'pointer', transition: 'all 0.2s'
+          }}
+        >
+          Assignments ({savedRequests.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('summaries')}
+          style={{
+            padding: '8px 16px', fontSize: 13, fontWeight: activeTab === 'summaries' ? 600 : 500,
+            color: activeTab === 'summaries' ? '#1A56DB' : '#5A6070',
+            background: activeTab === 'summaries' ? '#EEF3FD' : 'transparent',
+            border: 'none', borderRadius: 6, cursor: 'pointer', transition: 'all 0.2s'
+          }}
+        >
+          Summaries ({summaries?.length ?? 0})
+        </button>
       </div>
 
-      {/* Preview results */}
-      {showPreview && (
-        <div style={panel}>
-          <p style={sectionTitle}>Preview — Assignments</p>
-          {isPreviewing ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', padding: '12px 0' }}>
-              <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-              <span style={{ fontSize: 13 }}>Loading preview…</span>
+      {/* Conditionally Render Tab Content */}
+
+      {activeTab === 'dashboard' && (
+        <CycleDashboardTab cycleId={cycleId} />
+      )}
+
+      {activeTab === 'setup' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Feedback Form Slots */}
+          {cycleId > 0 && (
+            <div style={panel}>
+              <FeedbackFormSlots cycleId={cycleId} />
             </div>
-          ) : !previewData || previewData.length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9EA3B0' }}>No assignments to preview.</p>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #E4E6EC', background: '#FAFBFC' }}>
-                    {['Target', 'Evaluator', 'Relationship', 'Status', 'Due Date / Flags', 'Actions'].map((h) => (
-                      <th key={h} style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 600, color: '#5A6070', fontSize: 11, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewData.map((req) => (
-                    <PreviewRow
-                      key={req.id}
-                      req={req}
-                      cycleLocked={cycleLocked}
-                      onRegenerate={() => handleRegenerate(req)}
-                      onCancel={() => handleCancel(req.id)}
-                      onReassign={() => setReassignRequestId(req.id)}
-                    />
-                  ))}
-                </tbody>
-              </table>
-              <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 10 }}>
-                {previewData.length} assignment{previewData.length !== 1 ? 's' : ''} previewed.
-              </p>
+          )}
+
+          {/* Scoring Policy Editor */}
+          {cycleId > 0 && (
+            <div style={panel}>
+              <p style={sectionTitle}>Scoring Policy for Cycle {cycleId}</p>
+              <ScoringPolicyEditor cycleId={cycleId} />
             </div>
           )}
         </div>
       )}
 
-      {/* Summaries */}
-      <div style={panel}>
-        <p style={sectionTitle}>Cycle Summaries</p>
-        {!cycleId ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', fontSize: 13 }}>
-            <AlertCircle size={15} /> Enter a Cycle ID above to view summaries.
+      {activeTab === 'assignments' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Generate / Preview */}
+          <div style={panel}>
+            <p style={sectionTitle}>Generate / Preview Requests</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button style={secondaryBtn} onClick={handlePreview} disabled={isPreviewing || cycleLocked}>
+                {isPreviewing ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Eye size={14} />}
+                Preview
+              </button>
+              <button style={primaryBtn(isGenerating || cycleLocked)} onClick={handleGenerate} disabled={isGenerating || cycleLocked}>
+                {isGenerating ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Play size={14} />}
+                {cycleLocked ? 'Locked' : 'Generate'}
+              </button>
+              <button
+                style={{ ...secondaryBtn, marginLeft: 'auto' }}
+                onClick={handleGenerateSummaries}
+                disabled={isGeneratingSummaries || !cycleId}
+              >
+                {isGeneratingSummaries ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={14} />}
+                Generate All Summaries
+              </button>
+            </div>
           </div>
-        ) : summariesLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', padding: '12px 0' }}>
-            <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-            <span style={{ fontSize: 13 }}>Loading summaries…</span>
-          </div>
-        ) : !summaries || summaries.length === 0 ? (
-          <p style={{ fontSize: 13, color: '#9EA3B0' }}>No summaries found for cycle {cycleId}.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {summaries.map((s) => {
-              const key = s.summaryId ?? s.targetUserId;
-              return (
-                <SummaryRow
-                  key={key}
-                  summary={s}
-                  isExpanded={expandedSummary === key}
-                  cycleLocked={cycleLocked}
-                  onToggle={() => setExpandedSummary(expandedSummary === key ? null : key ?? null)}
-                  onFinalize={() => s.summaryId && handleFinalize(s.summaryId)}
-                  onCalibrate={() => setCalibrateTarget(s)}
-                  isFinalizing={isFinalizing}
-                />
-              );
-            })}
-          </div>
-        )}
-      </div>
+
+          {/* Request table — preview or saved */}
+          {(showPreview || hasGenerated) && (() => {
+            const rows: FeedbackRequestResponse[] = hasGenerated ? savedRequests : (previewData ?? []);
+            return (
+              <div style={panel}>
+                <p style={sectionTitle}>{hasGenerated ? 'Generated Assignments' : 'Preview — Assignments'}</p>
+                {!hasGenerated && rows.length > 0 && (
+                  <div style={{ background: '#FFFBEB', border: '0.5px solid #FDE68A', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#92400E', marginBottom: 12 }}>
+                    Preview mode — click <strong>Generate Requests</strong> to persist these rows. Reassign and Cancel are disabled until then.
+                  </div>
+                )}
+                {isPreviewing ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', padding: '12px 0' }}>
+                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                    <span style={{ fontSize: 13 }}>Loading preview…</span>
+                  </div>
+                ) : rows.length === 0 ? (
+                  <p style={{ fontSize: 13, color: '#9EA3B0' }}>No assignments to show.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #E4E6EC', background: '#FAFBFC' }}>
+                          {['Target', 'Evaluator', 'Relationship', 'Status', 'Due Date / Flags', 'Actions'].map((h) => (
+                            <th key={h} style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 600, color: '#5A6070', fontSize: 11, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((req, idx) => (
+                          <PreviewRow
+                            key={req.id ?? `preview-${idx}`}
+                            req={req}
+                            cycleLocked={cycleLocked}
+                            onRegenerate={() => handleRegenerate(req)}
+                            onCancel={() => req.id && handleCancel(req.id)}
+                            onReassign={() => req.id && setReassignRequestId(req.id)}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                    <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 10 }}>
+                      {rows.length} assignment{rows.length !== 1 ? 's' : ''} {hasGenerated ? 'saved' : 'previewed'}.
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {activeTab === 'summaries' && (
+        /* Summaries */
+        <div style={panel}>
+          <p style={sectionTitle}>Cycle Summaries</p>
+          {!cycleId ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', fontSize: 13 }}>
+              <AlertCircle size={15} /> Enter a Cycle ID above to view summaries.
+            </div>
+          ) : summariesLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', padding: '12px 0' }}>
+              <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+              <span style={{ fontSize: 13 }}>Loading summaries…</span>
+            </div>
+          ) : !summaries || summaries.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9EA3B0' }}>No summaries found for cycle {cycleId}.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {summaries.map((s) => {
+                const key = s.summaryId ?? s.targetUserId;
+                return (
+                  <SummaryRow
+                    key={key}
+                    summary={s}
+                    isExpanded={expandedSummary === key}
+                    cycleLocked={cycleLocked}
+                    onToggle={() => setExpandedSummary(expandedSummary === key ? null : key ?? null)}
+                    onFinalize={() => s.summaryId && handleFinalize(s.summaryId)}
+                    onCalibrate={() => setCalibrateTarget(s)}
+                    isFinalizing={isFinalizing}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {calibrateTarget && (
         <CalibrateModal summary={calibrateTarget} onClose={() => setCalibrateTarget(null)} />

@@ -8,10 +8,13 @@ import {
 import {
   BarChart3, MessageSquare, Star, Users, AlertCircle, Loader2,
   Lock, FileText, Info,
+  TrendingUp,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetFeedbackSummaryQuery } from '../../features/feedback360/feedback360Api';
+import { useDownloadReportMutation } from '../../features/report/reportApi';
 import type {
   CategoryScore,
   FeedbackSummaryResponse,
@@ -37,10 +40,10 @@ const sectionTitle: React.CSSProperties = {
 };
 
 const SCORE_CARDS = [
-  { key: 'managerScores'     as const, label: 'Manager',     color: '#1A56DB', bg: '#EEF3FD', rel: FeedbackRelationship.DIRECT_MANAGER },
-  { key: 'peerScores'        as const, label: 'Peer',        color: '#7C3AED', bg: '#F5F3FF', rel: FeedbackRelationship.PEER },
+  { key: 'managerScores' as const, label: 'Manager', color: '#1A56DB', bg: '#EEF3FD', rel: FeedbackRelationship.DIRECT_MANAGER },
+  { key: 'peerScores' as const, label: 'Peer', color: '#7C3AED', bg: '#F5F3FF', rel: FeedbackRelationship.PEER },
   { key: 'subordinateScores' as const, label: 'Subordinate', color: '#059669', bg: '#ECFDF5', rel: FeedbackRelationship.SUBORDINATE },
-  { key: 'selfScores'        as const, label: 'Self',        color: '#D97706', bg: '#FFFBEB', rel: FeedbackRelationship.SELF },
+  { key: 'selfScores' as const, label: 'Self', color: '#D97706', bg: '#FFFBEB', rel: FeedbackRelationship.SELF },
 ] as const;
 
 type ChartTab = 'radar' | 'bar' | 'gap';
@@ -67,17 +70,17 @@ function buildRadarData(summary: FeedbackSummaryResponse) {
     arr.find((c) => c.categoryName === name)?.averageScore ?? null;
   return Array.from(cats).map((cat) => ({
     category: cat,
-    Manager:     byName(summary.managerScores, cat),
-    Peer:        byName(summary.peerScores, cat),
+    Manager: byName(summary.managerScores, cat),
+    Peer: byName(summary.peerScores, cat),
     Subordinate: byName(summary.subordinateScores, cat),
-    Self:        byName(summary.selfScores, cat),
+    Self: byName(summary.selfScores, cat),
   }));
 }
 
 function buildBarData(summary: FeedbackSummaryResponse) {
   return summary.scores.map((c) => ({
     category: c.categoryName,
-    Overall:  Math.round(c.averageScore * 100) / 100,
+    Overall: Math.round(c.averageScore * 100) / 100,
   }));
 }
 
@@ -111,9 +114,9 @@ const ScoreCard = ({
 
 const REL_LABEL: Record<string, string> = {
   DIRECT_MANAGER: 'Manager',
-  PEER:           'Peers',
-  SUBORDINATE:    'Subordinates',
-  SELF:           'Self',
+  PEER: 'Peers',
+  SUBORDINATE: 'Subordinates',
+  SELF: 'Self',
 };
 
 const ParticipationStrip = ({ stats }: { stats: ParticipationStat[] }) => (
@@ -225,6 +228,8 @@ const Feedback360ReportPage = () => {
     { skip: !targetId || !activeCycleId || !canView },
   );
 
+  const [downloadReport, { isLoading: isDownloading }] = useDownloadReportMutation();
+
   if (!canView) {
     return (
       <div style={{ padding: 24 }}>
@@ -307,6 +312,48 @@ const Feedback360ReportPage = () => {
               Finalized{summary.finalizedAt ? ` · ${format(parseISO(summary.finalizedAt), 'dd MMM yyyy')}` : ''}
             </span>
           )}
+          <button
+            onClick={async () => {
+              try {
+                await downloadReport({
+                  endpoint: 'feedback-360',
+                  params: { targetUserId: targetId, cycleId: activeCycleId },
+                  fileName: `Feedback_360_Report_${summary?.targetUserName || 'Employee'}.pdf`
+                }).unwrap();
+              } catch (err) {
+                toast.error('Failed to download individual 360 feedback report PDF.');
+              }
+            }}
+            disabled={isDownloading}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '7px 14px',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#FFFFFF',
+              background: isDownloading ? '#9EA3B0' : '#1A56DB',
+              border: 'none',
+              borderRadius: 6,
+              cursor: isDownloading ? 'not-allowed' : 'pointer',
+              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              if (!isDownloading) e.currentTarget.style.background = '#1E429F';
+            }}
+            onMouseLeave={(e) => {
+              if (!isDownloading) e.currentTarget.style.background = '#1A56DB';
+            }}
+          >
+            {isDownloading ? (
+              <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+            ) : (
+              <FileText size={14} />
+            )}
+            {isDownloading ? 'Downloading...' : 'Download PDF Report'}
+          </button>
         </div>
       </div>
 
@@ -416,7 +463,7 @@ const Feedback360ReportPage = () => {
                 formatter={fmtScore}
               />
               <Bar dataKey="Overall" radius={[4, 4, 0, 0]} barSize={32}>
-                {barData.map((entry, i) => (
+                {barData.map((_, i) => (
                   <Cell key={i} fill="#1A56DB" />
                 ))}
               </Bar>

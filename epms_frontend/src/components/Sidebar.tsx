@@ -211,6 +211,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                 {(isAdmin || isHR) && (
                   <NavLink
                     to="/360-feedback/admin"
+                    end
                     style={{ padding: "7px 10px" }}
                     className={({ isActive }) => navCls(isActive)}
                     onClick={handleNavClick}

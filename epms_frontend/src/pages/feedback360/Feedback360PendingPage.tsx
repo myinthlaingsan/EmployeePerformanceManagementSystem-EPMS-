@@ -12,6 +12,7 @@ import {
   useSubmitFeedbackMutation,
   useSaveFeedbackDraftMutation,
   useGetFeedbackDraftQuery,
+  useGetSubmittedFeedbackByRequestQuery,
 } from '../../features/feedback360/feedback360Api';
 import type {
   FeedbackRequestResponse,
@@ -162,9 +163,12 @@ const SubmissionModal = ({ request, onClose }: SubmissionModalProps) => {
   const dirtyRef = useRef(false);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: form, isLoading: formLoading } = useGetFormQuestionsQuery(request.id);
+  const { data: form, isLoading: formLoading, error: formError } = useGetFormQuestionsQuery(request.id);
   const { data: draft, isLoading: draftLoading } = useGetFeedbackDraftQuery(request.id, {
     skip: request.status !== FeedbackStatus.IN_PROGRESS,
+  });
+  const { data: completedData, isLoading: completedLoading } = useGetSubmittedFeedbackByRequestQuery(request.id, {
+    skip: request.status !== FeedbackStatus.COMPLETED,
   });
   const [submitFeedback, { isLoading: submitting }] = useSubmitFeedbackMutation();
   const [saveDraft, { isLoading: saving }] = useSaveFeedbackDraftMutation();
@@ -178,6 +182,22 @@ const SubmissionModal = ({ request, onClose }: SubmissionModalProps) => {
     setOverallComment(draft.overallComment ?? '');
     dirtyRef.current = false;
   }, [draft]);
+
+  // Pre-populate from completed submission when loaded
+  useEffect(() => {
+    if (!completedData) return;
+    const map: Record<number, FeedbackResponseRequest> = {};
+    completedData.responses.forEach((r) => {
+      map[r.questionId] = {
+        questionId: r.questionId,
+        score: r.score,
+        comment: r.comment,
+      };
+    });
+    setAnswers(map);
+    setOverallComment(completedData.overallComment ?? '');
+    dirtyRef.current = false;
+  }, [completedData]);
 
   const doSaveDraft = useCallback(async (silent = false) => {
     if (!dirtyRef.current) return;
@@ -209,17 +229,19 @@ const SubmissionModal = ({ request, onClose }: SubmissionModalProps) => {
 
   const setAnswer = (questionId: number, patch: Partial<FeedbackResponseRequest>) => {
     dirtyRef.current = true;
-    setAnswers((prev) => ({ ...prev, [questionId]: { questionId, ...prev[questionId], ...patch } }));
+    setAnswers((prev) => ({ ...prev, [questionId]: { ...prev[questionId], ...patch, questionId } }));
   };
 
   const allRequiredAnswered = (): { ok: boolean; firstMissing: number | null } => {
     if (!form) return { ok: true, firstMissing: null };
     for (const cat of form.categories) {
       for (const q of cat.questions) {
-        if (q.isRequired && q.questionType === 'RATING') {
-          const a = answers[q.questionId];
-          if (!a?.score) return { ok: false, firstMissing: q.questionId };
-        }
+        if (!q.isRequired) continue;
+        const a = answers[q.questionId];
+        const needsRating  = q.questionType === 'RATING' || q.secondaryQuestionType === 'RATING';
+        const needsComment = q.questionType === 'TEXT'   || q.secondaryQuestionType === 'TEXT';
+        if (needsRating  && !a?.score)         return { ok: false, firstMissing: q.questionId };
+        if (needsComment && !a?.comment?.trim()) return { ok: false, firstMissing: q.questionId };
       }
     }
     return { ok: true, firstMissing: null };
@@ -230,8 +252,13 @@ const SubmissionModal = ({ request, onClose }: SubmissionModalProps) => {
     if (!ok) {
       setRequiredErrors(new Set(
         form?.categories.flatMap((c) =>
-          c.questions.filter((q) => q.isRequired && q.questionType === 'RATING' && !answers[q.questionId]?.score)
-            .map((q) => q.questionId),
+          c.questions.filter((q) => {
+            if (!q.isRequired) return false;
+            const a = answers[q.questionId];
+            const missingRating  = (q.questionType === 'RATING' || q.secondaryQuestionType === 'RATING') && !a?.score;
+            const missingComment = (q.questionType === 'TEXT'   || q.secondaryQuestionType === 'TEXT')   && !a?.comment?.trim();
+            return missingRating || missingComment;
+          }).map((q) => q.questionId),
         ) ?? [],
       ));
       if (firstMissing) {
@@ -253,6 +280,7 @@ const SubmissionModal = ({ request, onClose }: SubmissionModalProps) => {
   };
 
   const isResume = request.status === FeedbackStatus.IN_PROGRESS;
+  const isCompleted = request.status === FeedbackStatus.COMPLETED;
 
   return (
     <div
@@ -274,7 +302,7 @@ const SubmissionModal = ({ request, onClose }: SubmissionModalProps) => {
         }}>
           <div>
             <p style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>
-              {isResume ? 'Resume Draft' : 'Submit Feedback'}
+              {isCompleted ? 'View Submitted Feedback' : isResume ? 'Resume Draft' : 'Submit Feedback'}
             </p>
             <p style={{ fontSize: 12, color: '#9EA3B0', margin: '2px 0 0' }}>
               For <strong>{request.targetUserName}</strong> · <span style={{ textTransform: 'capitalize' }}>
@@ -299,13 +327,22 @@ const SubmissionModal = ({ request, onClose }: SubmissionModalProps) => {
 
         {/* Body */}
         <div style={{ padding: '20px 20px 0' }}>
-          {(formLoading || draftLoading) ? (
+          {(formLoading || draftLoading || completedLoading) ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', padding: '24px 0' }}>
               <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
               <span style={{ fontSize: 14 }}>Loading…</span>
             </div>
-          ) : !form ? (
-            <p style={{ fontSize: 14, color: '#791F1F' }}>Could not load form questions.</p>
+          ) : formError || !form ? (
+            <div style={{ padding: '12px 0' }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#791F1F', margin: '0 0 6px' }}>
+                Could not load form questions.
+              </p>
+              <p style={{ fontSize: 12, color: '#5A6070', margin: 0 }}>
+                {(formError as any)?.data?.message
+                  ?? (formError as any)?.error
+                  ?? 'No form is assigned to this request. Ask HR to create a FEEDBACK form for this cycle and regenerate requests.'}
+              </p>
+            </div>
           ) : (
             form.categories.map((cat: CategoryDTO) => (
               <div key={cat.categoryId} style={{ marginBottom: 24 }}>
@@ -337,17 +374,19 @@ const SubmissionModal = ({ request, onClose }: SubmissionModalProps) => {
                         <StarRating
                           questionId={q.questionId}
                           value={ans?.score ?? 0}
+                          disabled={isCompleted}
                           onChange={(v) => { setAnswer(q.questionId, { score: v }); setRequiredErrors((prev) => { const s = new Set(prev); s.delete(q.questionId); return s; }); }}
                         />
                       )}
                       {(q.questionType === 'TEXT' || q.secondaryQuestionType === 'TEXT') && (
                         <textarea
-                          placeholder="Your comment (optional)"
+                          placeholder={q.isRequired ? 'Your comment (required)' : 'Your comment (optional)'}
                           value={ans?.comment ?? ''}
+                          disabled={isCompleted}
                           onChange={(e) => setAnswer(q.questionId, { comment: e.target.value })}
                           rows={3}
                           style={{
-                            width: '100%', fontSize: 13, color: '#111827', background: '#FFFFFF',
+                            width: '100%', fontSize: 13, color: '#111827', background: isCompleted ? '#F5F6F8' : '#FFFFFF',
                             border: '0.5px solid #E4E6EC', borderRadius: 6, padding: '8px 10px',
                             outline: 'none', resize: 'vertical', marginTop: 6, boxSizing: 'border-box',
                           }}
@@ -366,11 +405,12 @@ const SubmissionModal = ({ request, onClose }: SubmissionModalProps) => {
               <p style={{ fontSize: 12, fontWeight: 500, color: '#5A6070', marginBottom: 6 }}>Overall Comment (optional)</p>
               <textarea
                 value={overallComment}
-                onChange={(e) => { setOverallComment(e.target.value); dirtyRef.current = true; }}
+                disabled={isCompleted}
+                onChange={(e) => { if (!isCompleted) { setOverallComment(e.target.value); dirtyRef.current = true; } }}
                 rows={3}
                 placeholder="Any additional thoughts…"
                 style={{
-                  width: '100%', fontSize: 13, color: '#111827', background: '#FAFBFC',
+                  width: '100%', fontSize: 13, color: '#111827', background: isCompleted ? '#F5F6F8' : '#FAFBFC',
                   border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '10px 12px',
                   outline: 'none', resize: 'vertical', boxSizing: 'border-box',
                 }}
@@ -384,32 +424,48 @@ const SubmissionModal = ({ request, onClose }: SubmissionModalProps) => {
           display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8,
           padding: '14px 20px', borderTop: '0.5px solid #E4E6EC',
         }}>
-          <button
-            onClick={() => doSaveDraft(false)}
-            disabled={saving}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontSize: 13, fontWeight: 500, color: '#1A56DB',
-              background: '#EEF3FD', border: '0.5px solid #BFCFFA',
-              borderRadius: 8, padding: '7px 14px', cursor: saving ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {saving ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={13} />}
-            Save Draft
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || formLoading}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontSize: 13, fontWeight: 500, color: '#FFFFFF',
-              background: submitting ? '#93A8E8' : '#1A56DB', border: 'none',
-              borderRadius: 8, padding: '7px 16px', cursor: submitting ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {submitting ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 size={13} />}
-            {submitting ? 'Submitting…' : 'Submit'}
-          </button>
+          {isCompleted ? (
+            <button
+              onClick={onClose}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontSize: 13, fontWeight: 500, color: '#FFFFFF',
+                background: '#1A56DB', border: 'none',
+                borderRadius: 8, padding: '7px 16px', cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => doSaveDraft(false)}
+                disabled={saving}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontSize: 13, fontWeight: 500, color: '#1A56DB',
+                  background: '#EEF3FD', border: '0.5px solid #BFCFFA',
+                  borderRadius: 8, padding: '7px 14px', cursor: saving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {saving ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={13} />}
+                Save Draft
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || formLoading}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontSize: 13, fontWeight: 500, color: '#FFFFFF',
+                  background: submitting ? '#93A8E8' : '#1A56DB', border: 'none',
+                  borderRadius: 8, padding: '7px 16px', cursor: submitting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {submitting ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 size={13} />}
+                {submitting ? 'Submitting…' : 'Submit'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -461,18 +517,18 @@ const RequestCard = ({ req, onOpen }: { req: FeedbackRequestResponse; onOpen: ()
       ) : (
         <button
           onClick={onOpen}
-          disabled={isCompleted}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             fontSize: 13, fontWeight: 500,
-            color: isCompleted ? '#9EA3B0' : '#FFFFFF',
-            background: isCompleted ? '#F5F6F8' : '#1A56DB',
-            border: 'none', borderRadius: 8, padding: '7px 14px',
-            cursor: isCompleted ? 'default' : 'pointer', alignSelf: 'flex-start',
+            color: isCompleted ? '#1A56DB' : '#FFFFFF',
+            background: isCompleted ? '#EEF3FD' : '#1A56DB',
+            border: isCompleted ? '0.5px solid #BFCFFA' : 'none',
+            borderRadius: 8, padding: '7px 14px',
+            cursor: 'pointer', alignSelf: 'flex-start',
           }}
         >
           {isCompleted ? <CheckCircle2 size={13} /> : <Clock size={13} />}
-          {isCompleted ? 'Submitted' : req.status === FeedbackStatus.IN_PROGRESS ? 'Resume Draft' : 'Submit Feedback'}
+          {isCompleted ? 'View Submission' : req.status === FeedbackStatus.IN_PROGRESS ? 'Resume Draft' : 'Submit Feedback'}
         </button>
       )}
     </div>

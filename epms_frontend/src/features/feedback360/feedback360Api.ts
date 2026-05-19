@@ -12,6 +12,7 @@ import type {
   Competency,
   EvaluatorNomination,
   FeedbackRelationship,
+  Feedback360CycleDashboardDTO,
 } from './feedback360Types';
 
 export const feedback360Api = api.injectEndpoints({
@@ -28,6 +29,7 @@ export const feedback360Api = api.injectEndpoints({
     getFormQuestions: builder.query<FullFormResponse, number>({
       query: (requestId) => `/360-feedback/feedbacks/request/${requestId}/questions`,
       transformResponse: (res: ApiResponse<FullFormResponse>) => res.data,
+      transformErrorResponse: (res) => res,
     }),
 
     // ── Evaluator: submit feedback ─────────────────────────────────────────
@@ -50,6 +52,11 @@ export const feedback360Api = api.injectEndpoints({
     getFeedbackDraft: builder.query<FeedbackDraftRequest | null, number>({
       query: (requestId) => `/feedback/draft/${requestId}`,
       transformResponse: (res: ApiResponse<FeedbackDraftRequest | null>) => res.data,
+    }),
+
+    // ── Evaluator: get completed feedback for viewing ─────────────────────
+    getSubmittedFeedbackByRequest: builder.query<FeedbackDetailsResponse, number>({
+      query: (requestId) => `/360-feedback/feedbacks/request/${requestId}`,
     }),
 
     // ── HR: cancel a request ──────────────────────────────────────────────
@@ -92,6 +99,13 @@ export const feedback360Api = api.injectEndpoints({
       query: (cycleId) => `/360-feedback/summary/cycle/${cycleId}`,
       transformResponse: (res: ApiResponse<FeedbackSummaryResponse[]>) => res.data,
       providesTags: ['Feedback360Summary' as any],
+    }),
+
+    // ── HR: persisted requests for a cycle (used post-generate for Reassign/Cancel) ──
+    listRequestsByCycle: builder.query<FeedbackRequestResponse[], number>({
+      query: (cycleId) => `/feedback/cycle/${cycleId}/requests`,
+      transformResponse: (res: ApiResponse<FeedbackRequestResponse[]>) => res.data,
+      providesTags: ['Feedback360Request' as any],
     }),
 
     // ── HR: preview generation ────────────────────────────────────────────
@@ -210,16 +224,24 @@ export const feedback360Api = api.injectEndpoints({
       query: (id) => ({ url: `/feedback/nomination/${id}/reject`, method: 'POST' }),
       invalidatesTags: ['Nomination' as any],
     }),
+
+    getFeedbackCycleDashboard: builder.query<Feedback360CycleDashboardDTO, number>({
+      query: (cycleId) => `/feedback/cycle/${cycleId}/dashboard`,
+      transformResponse: (res: ApiResponse<Feedback360CycleDashboardDTO>) => res.data,
+      providesTags: ['Feedback360Request' as any, 'Feedback360Summary' as any],
+    }),
   }),
   overrideExisting: false,
 });
 
 export const {
   useGetMyFeedbackRequestsQuery,
+  useListRequestsByCycleQuery,
   useGetFormQuestionsQuery,
   useSubmitFeedbackMutation,
   useSaveFeedbackDraftMutation,
   useGetFeedbackDraftQuery,
+  useGetSubmittedFeedbackByRequestQuery,
   useCancelFeedbackRequestMutation,
   useReassignFeedbackRequestMutation,
   useGetReceivedFeedbackQuery,
@@ -241,4 +263,5 @@ export const {
   useListMyNominationsQuery,
   useApproveNominationMutation,
   useRejectNominationMutation,
+  useGetFeedbackCycleDashboardQuery,
 } = feedback360Api;

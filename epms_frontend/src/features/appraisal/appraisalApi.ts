@@ -23,12 +23,15 @@ export interface FormField {
   weightage?: number;
 }
 
+export type FeedbackRelationship = 'DIRECT_MANAGER' | 'PEER' | 'SUBORDINATE' | 'SELF';
+
 export interface AppraisalForm {
   formId: number;
   formName: string;
   formType: string;
   cycleId?: number;
   cycleName?: string;
+  targetRelationship?: FeedbackRelationship;
   id?: string;
   title?: string;
   description?: string;
@@ -213,6 +216,12 @@ export const appraisalApi = api.injectEndpoints({
         method: 'DELETE',
       }),
       invalidatesTags: [{ type: 'Form' as const, id: 'LIST' }],
+    }),
+
+    getFeedbackFormsByCycle: builder.query<AppraisalForm[], number>({
+      query: (cycleId) => `/appraisal-forms/feedback-forms?cycleId=${cycleId}`,
+      transformResponse,
+      providesTags: [{ type: 'Form' as const, id: 'LIST' }],
     }),
 
     // Categories
@@ -498,4 +507,5 @@ export const {
   useApproveAppraisalMutation,
   useFinalizeAppraisalMutation,
   useGetScoreBreakdownQuery,
+  useGetFeedbackFormsByCycleQuery,
 } = appraisalApi;

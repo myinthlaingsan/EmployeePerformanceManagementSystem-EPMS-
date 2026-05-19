@@ -204,3 +204,26 @@ export interface EvaluatorNomination {
   nominatedById: number;
   approvedById?: number;
 }
+
+// ── Dashboard / Aggregations (Step 3) ─────────────────────────────────────────
+
+export interface Feedback360BottleneckDTO {
+  evaluatorId:    number;
+  evaluatorName:  string;
+  evaluatorEmail: string;
+  departmentName: string;
+  pendingCount:   number;
+}
+
+export interface Feedback360CycleDashboardDTO {
+  totalTargets:      number;
+  totalRequests:      number;
+  submittedRequests:  number;
+  pendingRequests:    number;
+  overdueRequests:    number;
+  cancelledRequests:  number;
+  submissionRate:     number;
+  relationshipRates:  Record<string, number>;
+  bottlenecks:        Feedback360BottleneckDTO[];
+  isFinalized:        boolean;
+}
