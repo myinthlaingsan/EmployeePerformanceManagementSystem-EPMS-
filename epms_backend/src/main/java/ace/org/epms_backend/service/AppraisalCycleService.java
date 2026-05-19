@@ -16,5 +16,6 @@ public interface AppraisalCycleService {
     AppraisalCycleResponse close(Long id);          // kept for ADMIN emergency override
     AppraisalCycleResponse getActiveCycle();
     void schedulerDrivenClose(Long cycleId);        // called by the scheduler only
+    void sendReminders(Long id);
 }
 

@@ -71,4 +71,11 @@ public class AppraisalCycleController {
     public ResponseEntity<ApiResponse<AppraisalCycleResponse>> getActiveCycle() {
         return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.getActiveCycle()));
     }
+
+    @PostMapping("/{id}/reminders")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    public ResponseEntity<ApiResponse<Void>> sendReminders(@PathVariable Long id) {
+        appraisalCycleService.sendReminders(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -11,9 +10,10 @@ import {
 import { format } from 'date-fns';
 import {
   ChevronLeft, Award, User, CheckCircle2, ShieldCheck, MessageSquare,
-  Image as ImageIcon, ArrowRight, Download, Target, Clock, Calculator
+  Download, Target, Clock, Calculator
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import SignaturePad from '../../components/appraisal/SignaturePad';
 
 const panelStyle: React.CSSProperties = {
   background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px',
@@ -29,11 +29,6 @@ const ResultPage: React.FC = () => {
   const [calculateScore, { isLoading: isCalculating }] = useCalculateScoreMutation();
   const [uploadEmployeeSignature, { isLoading: isSigningEmployee }] = useUploadEmployeeSignatureMutation();
   const [uploadManagerSignature, { isLoading: isSigningManager }] = useUploadManagerSignatureMutation();
-
-  const [employeeSigFile, setEmployeeSigFile] = useState<File | null>(null);
-  const [employeeSigPreview, setEmployeeSigPreview] = useState<string | null>(null);
-  const [managerSigFile, setManagerSigFile] = useState<File | null>(null);
-  const [managerSigPreview, setManagerSigPreview] = useState<string | null>(null);
 
   if (isLoading) return <div className="py-16 text-center" style={{ color: '#9EA3B0', fontSize: 13 }}>Loading…</div>;
   if (!appraisal) return (
@@ -51,14 +46,12 @@ const ResultPage: React.FC = () => {
     try { await calculateScore(id!).unwrap(); toast.success('Scores calculated!'); }
     catch (err: any) { toast.error(err?.data?.message || 'Calculation failed'); }
   };
-  const handleEmployeeSign = async () => {
-    if (!employeeSigFile) return;
-    try { await uploadEmployeeSignature({ id: id!, file: employeeSigFile }).unwrap(); toast.success('Sign-off successful!'); setEmployeeSigFile(null); setEmployeeSigPreview(null); }
+  const handleEmployeeSign = async (file: File) => {
+    try { await uploadEmployeeSignature({ id: id!, file }).unwrap(); toast.success('Sign-off successful!'); }
     catch (err: any) { toast.error(err?.data?.message || 'Upload failed'); }
   };
-  const handleManagerSign = async () => {
-    if (!managerSigFile) return;
-    try { await uploadManagerSignature({ id: id!, file: managerSigFile }).unwrap(); toast.success('Manager sign-off successful!'); setManagerSigFile(null); setManagerSigPreview(null); }
+  const handleManagerSign = async (file: File) => {
+    try { await uploadManagerSignature({ id: id!, file }).unwrap(); toast.success('Manager sign-off successful!'); }
     catch (err: any) { toast.error(err?.data?.message || 'Upload failed'); }
   };
 
@@ -222,29 +215,27 @@ const ResultPage: React.FC = () => {
                   </span>
                 )}
               </div>
-              <div style={{ height: 120, background: '#F5F6F8', border: '0.5px dashed #E0E2E8', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-                {appraisal.employeeSignComment ? (
-                  <img src={`http://localhost:8080${appraisal.employeeSignComment}`} alt="Employee Signature" style={{ maxHeight: 80, objectFit: 'contain' }} />
-                ) : employeeSigPreview ? (
-                  <img src={employeeSigPreview} alt="Preview" style={{ maxHeight: 80, objectFit: 'contain' }} />
+              <div>
+                {appraisal.employeeSignComment?.startsWith("/uploads/") ? (
+                  <div style={{ height: 120, background: "#F5F6F8", border: "0.5px dashed #E0E2E8", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    <img
+                      src={`http://localhost:8080${appraisal.employeeSignComment}`}
+                      alt="Employee Signature"
+                      style={{ maxHeight: 80, objectFit: "contain" }}
+                    />
+                  </div>
+                ) : isEmployee && !appraisal.employeeSignedAt ? (
+                  <SignaturePad
+                    onSave={handleEmployeeSign}
+                    isSaving={isSigningEmployee}
+                    saveLabel="I Acknowledge & Sign"
+                  />
                 ) : (
-                  <>
-                    <ImageIcon size={24} style={{ color: '#9EA3B0', marginBottom: 6 }} />
-                    <p style={{ fontSize: 12, color: '#9EA3B0' }}>Click to upload signature</p>
-                    {isEmployee && (
-                      <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) { setEmployeeSigFile(f); setEmployeeSigPreview(URL.createObjectURL(f)); } }} />
-                    )}
-                  </>
+                  <div style={{ height: 120, background: "#F5F6F8", border: "0.5px dashed #E0E2E8", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <p style={{ fontSize: 12, color: "#9EA3B0" }}>Awaiting employee signature</p>
+                  </div>
                 )}
               </div>
-              {isEmployee && !appraisal.employeeSignedAt && (
-                <button disabled={!employeeSigFile || isSigningEmployee} onClick={handleEmployeeSign}
-                  className="w-full inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50 mt-3"
-                  style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
-                  {isSigningEmployee ? 'Uploading…' : 'I Acknowledge & Sign'} <ArrowRight size={13} />
-                </button>
-              )}
               {appraisal.employeeSignedAt && (
                 <p style={{ fontSize: 11, color: '#9EA3B0', textAlign: 'center', marginTop: 6 }}>
                   Signed {format(new Date(appraisal.employeeSignedAt), 'dd/MM/yyyy HH:mm')}
@@ -265,36 +256,35 @@ const ResultPage: React.FC = () => {
                   </span>
                 )}
               </div>
-              <div style={{ height: 120, background: '#F5F6F8', border: '0.5px dashed #E0E2E8', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-                {appraisal.managerSignComment ? (
-                  <img src={`http://localhost:8080${appraisal.managerSignComment}`} alt="Manager Signature" style={{ maxHeight: 80, objectFit: 'contain' }} />
-                ) : managerSigPreview ? (
-                  <img src={managerSigPreview} alt="Preview" style={{ maxHeight: 80, objectFit: 'contain' }} />
-                ) : (
+              <div>
+                {appraisal.managerSignComment?.startsWith("/uploads/") ? (
+                  <div style={{ height: 120, background: "#F5F6F8", border: "0.5px dashed #E0E2E8", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    <img
+                      src={`http://localhost:8080${appraisal.managerSignComment}`}
+                      alt="Manager Signature"
+                      style={{ maxHeight: 80, objectFit: "contain" }}
+                    />
+                  </div>
+                ) : (isManager || isPrivileged) && !appraisal.managerSignedAt ? (
                   <>
-                    <ImageIcon size={24} style={{ color: '#9EA3B0', marginBottom: 6 }} />
-                    <p style={{ fontSize: 12, color: '#9EA3B0' }}>Click to upload signature</p>
-                    {isManager && (
-                      <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) { setManagerSigFile(f); setManagerSigPreview(URL.createObjectURL(f)); } }} />
+                    {!appraisal.employeeSignedAt ? (
+                      <div style={{ background: "#FAEEDA", border: "0.5px solid #F0D4A4", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#633806", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Target size={12} /> Awaiting employee signature first
+                      </div>
+                    ) : (
+                      <SignaturePad
+                        onSave={handleManagerSign}
+                        isSaving={isSigningManager}
+                        saveLabel="Authorize Final Record"
+                      />
                     )}
                   </>
+                ) : (
+                  <div style={{ height: 120, background: "#F5F6F8", border: "0.5px dashed #E0E2E8", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <p style={{ fontSize: 12, color: "#9EA3B0" }}>Awaiting manager signature</p>
+                  </div>
                 )}
               </div>
-              {(isManager || isPrivileged) && !appraisal.managerSignedAt && (
-                <div style={{ marginTop: 10 }}>
-                  {!appraisal.employeeSignedAt && (
-                    <div style={{ background: '#FAEEDA', border: '0.5px solid #F0D4A4', borderRadius: 8, padding: '8px 12px', fontSize: 11, color: '#633806', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Target size={12} /> Awaiting employee signature first
-                    </div>
-                  )}
-                  <button disabled={!managerSigFile || isSigningManager || !appraisal.employeeSignedAt} onClick={handleManagerSign}
-                    className="w-full inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                    style={{ background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
-                    {isSigningManager ? 'Processing…' : 'Authorize Final Record'} <ArrowRight size={13} />
-                  </button>
-                </div>
-              )}
               {appraisal.managerSignedAt && (
                 <p style={{ fontSize: 11, color: '#9EA3B0', textAlign: 'center', marginTop: 6 }}>
                   Signed {format(new Date(appraisal.managerSignedAt), 'dd/MM/yyyy HH:mm')}

@@ -365,7 +365,7 @@ public class AppraisalServiceImpl implements AppraisalService {
 
                 appraisal.setEmployeeSignedAt(Instant.now());
                 if (comment != null) {
-                        appraisal.setEmployeeSignComment(comment);
+                        appraisal.setEmployeeSignNote(comment);
                 }
 
                 Appraisal saved = appraisalRepo.save(appraisal);
@@ -398,7 +398,7 @@ public class AppraisalServiceImpl implements AppraisalService {
 
                 appraisal.setManagerSignedAt(Instant.now());
             if (comment != null) {
-                appraisal.setManagerSignComment(comment);
+                appraisal.setManagerSignNote(comment);
             }
 
                 Appraisal saved = appraisalRepo.save(appraisal);
