@@ -46,12 +46,9 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     @Override
     @Transactional(readOnly = true)
     public AppraisalCycleResponse getActiveCycle() {
-        List<AppraisalCycle> cycles = cycleRepository.findActiveCyclesByStatus(List.of(CycleStatus.PLANNING, CycleStatus.IN_PROGRESS));
-        
-        // Fallback: If status-specific search fails, return the first active cycle regardless of status
-        if (cycles.isEmpty()) {
-            cycles = cycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
-        }   
+        List<AppraisalCycle> cycles = cycleRepository.findActiveCyclesByStatus(List.of(
+            CycleStatus.PLANNING, CycleStatus.IN_PROGRESS, CycleStatus.EVALUATION
+        ));
 
         AppraisalCycle cycle = cycles.stream().findFirst()
                 .orElseThrow(() -> new NotFoundException("No active appraisal cycle found"));
