@@ -75,7 +75,7 @@ public class Feedback360Controller {
     public ResponseEntity<ApiResponse<List<FeedbackRequestResponse>>> getMyRequests(
             @AuthenticationPrincipal UserPrincipal principal) {
         List<FeedbackRequestResponse> requests =
-                feedbackRequestService.getMyPendingRequests(principal.getEmployee().getId());
+                feedbackRequestService.getMyRequests(principal.getEmployee().getId());
         return ResponseEntity.ok(ApiResponse.success(requests));
     }
 
@@ -93,6 +93,14 @@ public class Feedback360Controller {
             @PathVariable Long cycleId) {
         FeedbackSummaryResponse summary = feedbackReportService.getFeedbackSummary(targetUserId, cycleId);
         return ResponseEntity.ok(ApiResponse.success(summary));
+    }
+
+    @GetMapping("/cycle/{cycleId}/dashboard")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<ApiResponse<ace.org.epms_backend.dto.feedback360.Feedback360CycleDashboardDTO>> getCycleDashboard(
+            @PathVariable Long cycleId) {
+        ace.org.epms_backend.dto.feedback360.Feedback360CycleDashboardDTO data = feedbackReportService.getCycleDashboard(cycleId);
+        return ResponseEntity.ok(ApiResponse.success(data));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -133,6 +141,12 @@ public class Feedback360Controller {
             @RequestBody ReassignRequest body) {
         feedbackRequestService.reassignFeedbackRequest(requestId, body.getNewEvaluatorId());
         return ResponseEntity.ok(ApiResponse.success("Feedback request reassigned"));
+    }
+
+    @GetMapping("/cycle/{cycleId}/requests")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<ApiResponse<List<FeedbackRequestResponse>>> listByCycle(@PathVariable Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(feedbackRequestService.listByCycle(cycleId)));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

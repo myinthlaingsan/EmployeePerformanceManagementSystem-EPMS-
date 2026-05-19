@@ -21,6 +21,9 @@ import ace.org.epms_backend.enums.AuditAction;
 import ace.org.epms_backend.enums.AuditStatus;
 import ace.org.epms_backend.dto.AuditRequest;
 import ace.org.epms_backend.service.AuditService;
+import ace.org.epms_backend.model.appraisal.AppraisalForm;
+import ace.org.epms_backend.enums.FormType;
+import ace.org.epms_backend.repository.AppraisalFormRepository;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,6 +40,7 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
     private final ReportingLineRepository reportingLineRepository;
     private final EmployeeTeamRepository teamRepository;
     private final AuditService auditService;
+    private final AppraisalFormRepository formRepository;
 
     @Override
     public List<EmployeeEvaluationDTO> suggestEvaluators(Long employeeId) {
@@ -81,15 +85,29 @@ public class FeedbackSelectionServiceImpl implements FeedbackSelectionService {
         AppraisalCycle cycle = appraisalCycleRepository.findById(cycleId)
                 .orElseThrow(() -> new RuntimeException("Appraisal Cycle not found"));
 
+        List<AppraisalForm> forms = formRepository.findByCycleCycleIdAndFormType(cycle.getCycleId(), FormType.FEEDBACK);
+        if (forms.isEmpty()) {
+            throw new RuntimeException("No Feedback form configured for cycle: " + cycle.getCycleName() + ". Please design a Feedback form first.");
+        }
+
         for (EmployeeEvaluationDTO dto : selectedEvaluators) {
             Employee evaluator = employeeRepository.findById(dto.getEmployeeId())
                     .orElseThrow(() -> new RuntimeException("Evaluator not found"));
+
+            AppraisalForm matchedForm = forms.stream()
+                    .filter(f -> f.getTargetRelationship() == dto.getRelationship())
+                    .findFirst()
+                    .orElseGet(() -> forms.stream()
+                            .filter(f -> f.getTargetRelationship() == null)
+                            .findFirst()
+                            .orElse(forms.get(0)));
 
             FeedbackRequest request = FeedbackRequest.builder()
                     .targetUser(targetEmployee)
                     .evaluator(evaluator)
                     .cycle(cycle)
                     .relationship(dto.getRelationship())
+                    .form(matchedForm)
                     .status(FeedbackStatus.PENDING)
                     .isAnonymous(true)
                     .build();

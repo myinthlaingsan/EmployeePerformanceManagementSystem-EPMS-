@@ -1,6 +1,10 @@
 package ace.org.epms_backend.service.impl.report;
 
 import ace.org.epms_backend.dto.report.*;
+import ace.org.epms_backend.dto.feedback360.CategoryScore;
+import ace.org.epms_backend.dto.feedback360.DetailedComment;
+import ace.org.epms_backend.dto.feedback360.FeedbackSummaryResponse;
+import ace.org.epms_backend.service.feedback360.FeedbackReportService;
 import ace.org.epms_backend.model.AuditLog;
 import ace.org.epms_backend.model.appraisal.Appraisal;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
@@ -30,6 +34,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +62,7 @@ public class ReportServiceImpl implements ReportService {
     private final ReportingLineRepository reportingLineRepository;
     private final EmployeeTeamRepository employeeTeamRepository;
     private final JasperReportUtil jasperReportUtil;
+    private final FeedbackReportService feedbackReportService;
 
     @Override
     @Transactional(readOnly = true)
@@ -660,6 +667,182 @@ public class ReportServiceImpl implements ReportService {
         parameters.put("reportTitle", "Employee Master List");
         String jrxmlPath = "reports/employee_master_report.jrxml";
         return generateReport(jrxmlPath, parameters, data, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Feedback360IndividualReportDTO getIndividual360Report(Long targetUserId, Long cycleId) {
+        Employee employee = employeeRepository.findById(targetUserId)
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
+        
+        EmployeeDepartment ed = employeeDepartmentRepository
+                .findByEmployeeIdAndIsCurrentTrue(targetUserId)
+                .orElse(null);
+
+        FeedbackSummaryResponse summaryResponse = feedbackReportService.getFeedbackSummary(targetUserId, cycleId);
+
+        Map<String, FeedbackCategoryScoreDTO> catMap = new HashMap<>();
+        
+        if (summaryResponse.getSelfScores() != null) {
+            for (CategoryScore cs : summaryResponse.getSelfScores()) {
+                FeedbackCategoryScoreDTO dto = catMap.computeIfAbsent(cs.getCategoryName(), k -> new FeedbackCategoryScoreDTO());
+                dto.setCategoryName(cs.getCategoryName());
+                dto.setSelfScore(cs.getAverageScore());
+            }
+        }
+        if (summaryResponse.getManagerScores() != null) {
+            for (CategoryScore cs : summaryResponse.getManagerScores()) {
+                FeedbackCategoryScoreDTO dto = catMap.computeIfAbsent(cs.getCategoryName(), k -> new FeedbackCategoryScoreDTO());
+                dto.setCategoryName(cs.getCategoryName());
+                dto.setManagerScore(cs.getAverageScore());
+            }
+        }
+        if (summaryResponse.getPeerScores() != null) {
+            for (CategoryScore cs : summaryResponse.getPeerScores()) {
+                FeedbackCategoryScoreDTO dto = catMap.computeIfAbsent(cs.getCategoryName(), k -> new FeedbackCategoryScoreDTO());
+                dto.setCategoryName(cs.getCategoryName());
+                dto.setPeerScore(cs.getAverageScore());
+            }
+        }
+        if (summaryResponse.getSubordinateScores() != null) {
+            for (CategoryScore cs : summaryResponse.getSubordinateScores()) {
+                FeedbackCategoryScoreDTO dto = catMap.computeIfAbsent(cs.getCategoryName(), k -> new FeedbackCategoryScoreDTO());
+                dto.setCategoryName(cs.getCategoryName());
+                dto.setSubordinateScore(cs.getAverageScore());
+            }
+        }
+        if (summaryResponse.getScores() != null) {
+            for (CategoryScore cs : summaryResponse.getScores()) {
+                FeedbackCategoryScoreDTO dto = catMap.computeIfAbsent(cs.getCategoryName(), k -> new FeedbackCategoryScoreDTO());
+                dto.setCategoryName(cs.getCategoryName());
+                dto.setAverageScore(cs.getAverageScore());
+            }
+        }
+        
+        List<FeedbackCategoryScoreDTO> categoryScores = new ArrayList<>(catMap.values());
+
+        List<FeedbackCommentDTO> comments = new ArrayList<>();
+        if (summaryResponse.getDetailedComments() != null) {
+            for (DetailedComment dc : summaryResponse.getDetailedComments()) {
+                comments.add(FeedbackCommentDTO.builder()
+                        .categoryName(dc.getCategoryName())
+                        .relationship(dc.getEvaluatorRole())
+                        .comment(dc.getComment())
+                        .evaluatorName(dc.getEvaluatorName())
+                        .score(dc.getScore())
+                        .build());
+            }
+        }
+
+        Double selfScore = summaryResponse.getSelfScores() != null && !summaryResponse.getSelfScores().isEmpty()
+                ? summaryResponse.getSelfScores().stream().mapToDouble(CategoryScore::getAverageScore).average().orElse(0.0)
+                : null;
+        Double managerScore = summaryResponse.getManagerScores() != null && !summaryResponse.getManagerScores().isEmpty()
+                ? summaryResponse.getManagerScores().stream().mapToDouble(CategoryScore::getAverageScore).average().orElse(0.0)
+                : null;
+        Double peerScore = summaryResponse.getPeerScores() != null && !summaryResponse.getPeerScores().isEmpty()
+                ? summaryResponse.getPeerScores().stream().mapToDouble(CategoryScore::getAverageScore).average().orElse(0.0)
+                : null;
+        Double subordinateScore = summaryResponse.getSubordinateScores() != null && !summaryResponse.getSubordinateScores().isEmpty()
+                ? summaryResponse.getSubordinateScores().stream().mapToDouble(CategoryScore::getAverageScore).average().orElse(0.0)
+                : null;
+
+        // Round averages
+        if (selfScore != null) selfScore = Math.round(selfScore * 100.0) / 100.0;
+        if (managerScore != null) managerScore = Math.round(managerScore * 100.0) / 100.0;
+        if (peerScore != null) peerScore = Math.round(peerScore * 100.0) / 100.0;
+        if (subordinateScore != null) subordinateScore = Math.round(subordinateScore * 100.0) / 100.0;
+
+        FeedbackSummary summary = feedbackSummaryRepository
+                .findByEmployeeIdAndCycleCycleId(targetUserId, cycleId).orElse(null);
+
+        return Feedback360IndividualReportDTO.builder()
+                .targetUserId(targetUserId)
+                .targetUserName(employee.getStaffName())
+                .employeeCode(employee.getEmployeeCode())
+                .departmentName(ed != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                .positionName(employee.getPosition() != null ? employee.getPosition().getPositionName() : "N/A")
+                .cycleName(summaryResponse.getCycleName())
+                .selfScore(selfScore)
+                .managerScore(managerScore)
+                .peerScore(peerScore)
+                .subordinateScore(subordinateScore)
+                .finalScore(summaryResponse.getTotalAverageScore())
+                .managerComments(summary != null ? summary.getManagerSummary() : "")
+                .categoryScores(categoryScores)
+                .comments(comments)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportIndividual360Report(Long targetUserId, Long cycleId, String format) {
+        Feedback360IndividualReportDTO data = getIndividual360Report(targetUserId, cycleId);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "360° Feedback Individual Report");
+        String jrxmlPath = "reports/feedback_360_individual_report.jrxml";
+        return generateReport(jrxmlPath, parameters, List.of(data), format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Feedback360CycleSummaryReportDTO getCycle360SummaryReport(Long cycleId) {
+        AppraisalCycle cycle = appraisalCycleRepository.findById(cycleId).orElse(null);
+        String cycleName = cycle != null ? cycle.getCycleName() : "Cycle " + cycleId;
+
+        List<FeedbackRequest> requests = feedbackRequestRepository.findByCycleCycleId(cycleId);
+        long totalRequests = requests.size();
+        long submittedRequests = requests.stream().filter(r -> "COMPLETED".equals(r.getStatus().name())).count();
+        double submissionRate = totalRequests > 0 ? (double) submittedRequests / totalRequests * 100.0 : 0.0;
+        submissionRate = Math.round(submissionRate * 100.0) / 100.0;
+
+        List<FeedbackSummary> summaries = feedbackSummaryRepository.findByCycleCycleId(cycleId);
+        long totalTargets = summaries.size();
+
+        Map<String, List<Double>> deptScoresMap = new HashMap<>();
+        for (FeedbackSummary fs : summaries) {
+            if (fs.getEmployee() != null && fs.getFinalScore() != null) {
+                Employee emp = fs.getEmployee();
+                EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId()).orElse(null);
+                String deptName = (ed != null && ed.getCurrentDepartment() != null)
+                        ? ed.getCurrentDepartment().getDepartmentName()
+                        : "Unassigned";
+                deptScoresMap.computeIfAbsent(deptName, k -> new ArrayList<>()).add(fs.getFinalScore().doubleValue());
+            }
+        }
+
+        List<Feedback360DepartmentScoreDTO> deptScores = new ArrayList<>();
+        for (Map.Entry<String, List<Double>> entry : deptScoresMap.entrySet()) {
+            double avg = entry.getValue().stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+            avg = Math.round(avg * 100.0) / 100.0;
+            deptScores.add(Feedback360DepartmentScoreDTO.builder()
+                    .departmentName(entry.getKey())
+                    .targetCount((long) entry.getValue().size())
+                    .averageScore(avg)
+                    .build());
+        }
+
+        deptScores.sort((a, b) -> Double.compare(b.getAverageScore(), a.getAverageScore()));
+
+        return Feedback360CycleSummaryReportDTO.builder()
+                .cycleId(cycleId)
+                .cycleName(cycleName)
+                .totalTargets(totalTargets)
+                .totalRequests(totalRequests)
+                .submittedRequests(submittedRequests)
+                .submissionRate(submissionRate)
+                .departmentScores(deptScores)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportCycle360SummaryReport(Long cycleId, String format) {
+        Feedback360CycleSummaryReportDTO data = getCycle360SummaryReport(cycleId);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "360° Feedback Cycle Summary Report");
+        String jrxmlPath = "reports/feedback_360_cycle_summary.jrxml";
+        return generateReport(jrxmlPath, parameters, List.of(data), format);
     }
 
     private byte[] generateReport(String jrxmlPath, Map<String, Object> parameters, List<?> data, String format) {

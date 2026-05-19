@@ -1,5 +1,6 @@
 package ace.org.epms_backend.dto.appraisal;
 
+import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.enums.FormType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,7 @@ public class FullFormResponse {
     private FormType formType;
     private Long cycleId;
     private String cycleName;
+    private FeedbackRelationship targetRelationship;
     private List<CategoryDTO> categories;
     private Boolean isAssigned;
 }

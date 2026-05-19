@@ -27,7 +27,7 @@ public class FeedbackRequestController {
 
     @GetMapping("/my")
     public ResponseEntity<List<FeedbackRequestResponse>> getMyRequests(@RequestParam Long evaluatorId) {
-        return ResponseEntity.ok(requestService.getMyPendingRequests(evaluatorId));
+        return ResponseEntity.ok(requestService.getMyRequests(evaluatorId));
     }
 
     /*

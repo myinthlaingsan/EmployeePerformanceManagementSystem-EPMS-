@@ -76,6 +76,23 @@ public class ReportController {
         return createDownloadResponse(reportContent, "Feedback_Participation_Report", format);
     }
 
+    @GetMapping("/feedback-360/download")
+    public ResponseEntity<byte[]> downloadIndividual360Report(
+            @RequestParam Long targetUserId,
+            @RequestParam Long cycleId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportIndividual360Report(targetUserId, cycleId, format);
+        return createDownloadResponse(reportContent, "Feedback_360_Individual_Report", format);
+    }
+
+    @GetMapping("/feedback-360/cycle/download")
+    public ResponseEntity<byte[]> downloadCycle360SummaryReport(
+            @RequestParam Long cycleId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportCycle360SummaryReport(cycleId, format);
+        return createDownloadResponse(reportContent, "Feedback_360_Cycle_Summary_Report", format);
+    }
+
     // PIP Tracking
     @GetMapping("/pip-tracking")
     public ResponseEntity<ApiResponse<PipTrackingReportDTO>> getPipTrackingReport() {

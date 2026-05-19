@@ -16,10 +16,19 @@ import ace.org.epms_backend.repository.feedback360.FeedbackRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackResponseRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository;
 import ace.org.epms_backend.repository.feedback360.ScoringPolicyRepository;
+import ace.org.epms_backend.dto.feedback360.Feedback360BottleneckDTO;
+import ace.org.epms_backend.dto.feedback360.Feedback360CycleDashboardDTO;
+import ace.org.epms_backend.enums.FeedbackStatus;
+import ace.org.epms_backend.model.employee.EmployeeDepartment;
+import ace.org.epms_backend.model.feedback360.FeedbackRequest;
+import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
+import ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository;
 import ace.org.epms_backend.service.feedback360.FeedbackReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -35,6 +44,8 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
     private final AppraisalCycleRepository appraisalCycleRepository;
     private final FeedbackSummaryRepository feedbackSummaryRepository;
     private final ScoringPolicyRepository scoringPolicyRepository;
+    private final FeedbackRequestRepository feedbackRequestRepository;
+    private final EmployeeDepartmentRepository employeeDepartmentRepository;
 
     @Override
     public FeedbackSummaryResponse getFeedbackSummary(Long targetUserId, Long cycleId) {
@@ -58,22 +69,25 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                         f -> f.getRequest().getRelationship(),
                         Collectors.counting()));
 
-        Map<String, List<Integer>> selfScoresMap       = new HashMap<>();
-        Map<String, List<Integer>> managerScoresMap    = new HashMap<>();
-        Map<String, List<Integer>> peerScoresMap       = new HashMap<>();
+        Map<String, List<Integer>> selfScoresMap = new HashMap<>();
+        Map<String, List<Integer>> managerScoresMap = new HashMap<>();
+        Map<String, List<Integer>> peerScoresMap = new HashMap<>();
         Map<String, List<Integer>> subordinateScoresMap = new HashMap<>();
-        Map<String, List<Integer>> othersScoresMap     = new HashMap<>();
+        Map<String, List<Integer>> othersScoresMap = new HashMap<>();
 
         List<DetailedComment> allComments = new ArrayList<>();
-        int totalOthersPoints    = 0;
+        int totalOthersPoints = 0;
         int totalOthersQuestions = 0;
 
         for (Feedback feedback : allFeedbacks) {
-            List<FeedbackResponse> responses = feedbackResponseRepository.findByFeedbackId(feedback.getId());
+            List<FeedbackResponse> responses = feedbackResponseRepository
+                    .findByFeedbackId(feedback.getId());
             FeedbackRelationship relationship = feedback.getRequest().getRelationship();
 
             // Anonymity enforced on the read layer regardless of the isAnonymous flag value
-            boolean anonymous = Boolean.TRUE.equals(feedback.getRequest().getIsAnonymous());
+            boolean anonymous = Boolean.TRUE.equals(feedback.getRequest().getIsAnonymous())
+                    && relationship != FeedbackRelationship.SELF
+                    && relationship != FeedbackRelationship.DIRECT_MANAGER;
             String evaluatorName = anonymous
                     ? "Anonymous"
                     : feedback.getRequest().getEvaluator().getStaffName();
@@ -86,22 +100,32 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                 Integer score = response.getScore();
                 if (score != null) {
                     switch (relationship) {
-                        case SELF         -> selfScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                        case SELF -> selfScoresMap
+                                .computeIfAbsent(categoryName, k -> new ArrayList<>())
+                                .add(score);
                         case DIRECT_MANAGER -> {
-                            managerScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
-                            othersScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                            managerScoresMap.computeIfAbsent(categoryName,
+                                    k -> new ArrayList<>()).add(score);
+                            othersScoresMap.computeIfAbsent(categoryName,
+                                    k -> new ArrayList<>()).add(score);
                             totalOthersPoints += score;
                             totalOthersQuestions++;
                         }
                         case PEER -> {
-                            peerScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
-                            othersScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                            peerScoresMap.computeIfAbsent(categoryName,
+                                    k -> new ArrayList<>()).add(score);
+                            othersScoresMap.computeIfAbsent(categoryName,
+                                    k -> new ArrayList<>()).add(score);
                             totalOthersPoints += score;
                             totalOthersQuestions++;
                         }
                         case SUBORDINATE -> {
-                            subordinateScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
-                            othersScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>()).add(score);
+                            subordinateScoresMap
+                                    .computeIfAbsent(categoryName,
+                                            k -> new ArrayList<>())
+                                    .add(score);
+                            othersScoresMap.computeIfAbsent(categoryName,
+                                    k -> new ArrayList<>()).add(score);
                             totalOthersPoints += score;
                             totalOthersQuestions++;
                         }
@@ -120,12 +144,16 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
             }
         }
 
-        // Suppress comments from groups below the threshold and shuffle to prevent order-based identity leak
+        // Suppress comments from groups below the threshold and shuffle to prevent
+        // order-based identity leak
         List<DetailedComment> visibleComments = allComments.stream()
                 .filter(c -> {
                     FeedbackRelationship rel;
-                    try { rel = FeedbackRelationship.valueOf(c.getEvaluatorRole()); }
-                    catch (IllegalArgumentException e) { return true; }
+                    try {
+                        rel = FeedbackRelationship.valueOf(c.getEvaluatorRole());
+                    } catch (IllegalArgumentException e) {
+                        return true;
+                    }
                     long count = countByRelationship.getOrDefault(rel, 0L);
                     return rel == FeedbackRelationship.SELF
                             || rel == FeedbackRelationship.DIRECT_MANAGER
@@ -134,12 +162,20 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                 .collect(Collectors.toList());
         Collections.shuffle(visibleComments);
 
-        double totalAverageScore = totalOthersQuestions > 0
-                ? (totalOthersPoints / (double) (totalOthersQuestions * 5)) * 100.0
-                : 0.0;
-
         FeedbackSummary summary = feedbackSummaryRepository
                 .findByEmployeeIdAndCycleCycleId(targetUserId, cycleId).orElse(null);
+
+        double totalAverageScore;
+        if (summary != null) {
+            BigDecimal fs = summary.getCalibratedFinalScore() != null
+                    ? summary.getCalibratedFinalScore()
+                    : summary.getFinalScore();
+            totalAverageScore = fs != null ? fs.doubleValue() : 0.0;
+        } else {
+            totalAverageScore = totalOthersQuestions > 0
+                    ? (totalOthersPoints / (double) (totalOthersQuestions * 5)) * 100.0
+                    : 0.0;
+        }
 
         return FeedbackSummaryResponse.builder()
                 .summaryId(summary != null ? summary.getId() : null)
@@ -161,11 +197,96 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
         return scoresMap.entrySet().stream()
                 .map(entry -> {
                     List<Integer> scores = entry.getValue();
-                    int totalPoints   = scores.stream().mapToInt(Integer::intValue).sum();
+                    int totalPoints = scores.stream().mapToInt(Integer::intValue).sum();
                     int questionCount = scores.size();
                     double pct = (totalPoints / (double) (questionCount * 5)) * 100.0;
                     return new CategoryScore(entry.getKey(), Math.round(pct * 100.0) / 100.0);
                 })
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Feedback360CycleDashboardDTO getCycleDashboard(Long cycleId) {
+        AppraisalCycle cycle = appraisalCycleRepository.findById(cycleId)
+                .orElseThrow(() -> new RuntimeException("Appraisal cycle not found"));
+
+        List<FeedbackRequest> requests = feedbackRequestRepository.findByCycleCycleId(cycleId);
+
+        long totalTargets = requests.stream().map(r -> r.getTargetUser().getId()).distinct().count();
+        long totalRequests = requests.size();
+
+        long submittedRequests = 0;
+        long pendingRequests = 0;
+        long overdueRequests = 0;
+        long cancelledRequests = 0;
+
+        Instant now = Instant.now();
+        Map<String, long[]> relationshipStats = new HashMap<>(); // [total, submitted]
+
+        Map<Long, Long> evaluatorPendingCounts = new HashMap<>();
+        Map<Long, Employee> evaluatorMap = new HashMap<>();
+
+        for (FeedbackRequest r : requests) {
+            String rel = r.getRelationship().name();
+            relationshipStats.putIfAbsent(rel, new long[]{0, 0});
+            relationshipStats.get(rel)[0]++;
+
+            if (r.getStatus() == FeedbackStatus.COMPLETED) {
+                submittedRequests++;
+                relationshipStats.get(rel)[1]++;
+            } else if (r.getStatus() == FeedbackStatus.CANCELLED) {
+                cancelledRequests++;
+            } else {
+                if (r.getDueDate() != null && r.getDueDate().isBefore(now)) {
+                    overdueRequests++;
+                } else {
+                    pendingRequests++;
+                }
+
+                // Bottleneck tracking
+                Long evalId = r.getEvaluator().getId();
+                evaluatorPendingCounts.put(evalId, evaluatorPendingCounts.getOrDefault(evalId, 0L) + 1);
+                evaluatorMap.putIfAbsent(evalId, r.getEvaluator());
+            }
+        }
+
+        double overallSubmissionRate = totalRequests > 0 ? (submittedRequests / (double) totalRequests) * 100.0 : 0.0;
+        
+        Map<String, Double> relationshipRates = new HashMap<>();
+        for (Map.Entry<String, long[]> entry : relationshipStats.entrySet()) {
+            long total = entry.getValue()[0];
+            long submitted = entry.getValue()[1];
+            double rate = total > 0 ? (submitted / (double) total) * 100.0 : 0.0;
+            relationshipRates.put(entry.getKey(), Math.round(rate * 100.0) / 100.0);
+        }
+
+        List<Feedback360BottleneckDTO> bottlenecks = evaluatorPendingCounts.entrySet().stream()
+                .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
+                .limit(5)
+                .map(e -> {
+                    Employee eval = evaluatorMap.get(e.getKey());
+                    EmployeeDepartment ed = employeeDepartmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(e.getKey()).orElse(null);
+                    return Feedback360BottleneckDTO.builder()
+                            .evaluatorId(eval.getId())
+                            .evaluatorName(eval.getStaffName())
+                            .evaluatorEmail(eval.getEmail())
+                            .departmentName(ed != null && ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                            .pendingCount(e.getValue())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return Feedback360CycleDashboardDTO.builder()
+                .totalTargets(totalTargets)
+                .totalRequests(totalRequests)
+                .submittedRequests(submittedRequests)
+                .pendingRequests(pendingRequests)
+                .overdueRequests(overdueRequests)
+                .cancelledRequests(cancelledRequests)
+                .submissionRate(Math.round(overallSubmissionRate * 100.0) / 100.0)
+                .relationshipRates(relationshipRates)
+                .bottlenecks(bottlenecks)
+                .isFinalized(cycle.getStatus() != null && cycle.getStatus().name().equals("CLOSED"))
+                .build();
     }
 }

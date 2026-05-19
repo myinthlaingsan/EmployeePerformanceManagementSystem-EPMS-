@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -27,11 +28,30 @@ public class ScoringPolicyServiceImpl implements ScoringPolicyService {
     private final JobLevelRepository jobLevelRepository;
 
     @Override
+    @Transactional
     public List<ScoringPolicyResponse> getPoliciesByCycle(Long cycleId) {
         AppraisalCycle cycle = cycleRepository.findById(cycleId)
                 .orElseThrow(() -> new NotFoundException("Cycle not found: " + cycleId));
-        return policyRepository.findAll().stream()
+        
+        List<ScoringPolicy> policies = policyRepository.findAll().stream()
                 .filter(p -> p.getCycle().getCycleId().equals(cycleId))
+                .collect(Collectors.toList());
+
+        if (policies.isEmpty()) {
+            ScoringPolicy defaultPolicy = ScoringPolicy.builder()
+                    .cycle(cycle)
+                    .jobLevel(null)
+                    .managerWeight(BigDecimal.valueOf(0.50))
+                    .peerWeight(BigDecimal.valueOf(0.30))
+                    .subordinateWeight(BigDecimal.valueOf(0.20))
+                    .selfWeight(BigDecimal.valueOf(0.00))
+                    .includeSelfInFinal(false)
+                    .suppressionThreshold(3)
+                    .build();
+            policies.add(policyRepository.save(defaultPolicy));
+        }
+
+        return policies.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }

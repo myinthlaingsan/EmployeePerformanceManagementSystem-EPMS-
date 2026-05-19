@@ -11,9 +11,11 @@ public interface FeedbackRequestService {
 
     void regenerateUserFeedbackRequests(Long targetEmployeeId, Long cycleId, Long previousCycleId, int globalMaxLimit);
 
-    List<FeedbackRequestResponse> getMyPendingRequests(Long evaluatorId);
+    List<FeedbackRequestResponse> getMyRequests(Long evaluatorId);
 
     void cancelFeedbackRequest(Long requestId);
 
     void reassignFeedbackRequest(Long requestId, Long newEvaluatorId);
+
+    List<FeedbackRequestResponse> listByCycle(Long cycleId);
 }

@@ -45,4 +45,12 @@ public interface ReportService {
     byte[] exportPerformanceRankingReport(Long cycleId, String format);
 
     byte[] exportEmployeeMasterReport(Long departmentId, Long teamId, String format);
+
+    // Individual 360 Feedback PDF Report
+    Feedback360IndividualReportDTO getIndividual360Report(Long targetUserId, Long cycleId);
+    byte[] exportIndividual360Report(Long targetUserId, Long cycleId, String format);
+
+    // Cycle 360 Feedback Summary Report
+    Feedback360CycleSummaryReportDTO getCycle360SummaryReport(Long cycleId);
+    byte[] exportCycle360SummaryReport(Long cycleId, String format);
 }

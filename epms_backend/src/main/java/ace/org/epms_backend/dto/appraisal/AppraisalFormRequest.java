@@ -1,5 +1,6 @@
 package ace.org.epms_backend.dto.appraisal;
 
+import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.enums.FormType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,13 +16,16 @@ import jakarta.validation.constraints.NotNull;
 public class AppraisalFormRequest {
     @NotBlank(message = "Form name is required")
     private String formName;
-    
+
     @NotNull(message = "Form type is required")
     private FormType formType;
-    
+
     @NotNull(message = "Cycle ID is required")
     private Long cycleId;
-    
+
+    // Only meaningful when formType = FEEDBACK; identifies which evaluator relationship this form targets
+    private FeedbackRelationship targetRelationship;
+
     private Long formSetId;
     private Long createdBy;
 }

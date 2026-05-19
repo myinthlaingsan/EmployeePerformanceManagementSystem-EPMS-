@@ -1,6 +1,7 @@
 package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.appraisal.*;
+import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.enums.QuestionType;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.model.appraisal.*;
@@ -40,6 +41,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
             form.setCycle(cycle);
         }
 
+        form.setTargetRelationship(request.getTargetRelationship());
         form.setCreatedBy(authService.getCurrentUser().getId());
 
         if (request.getFormSetId() != null) {
@@ -126,6 +128,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
                 .formType(form.getFormType())
                 .cycleId(form.getCycle() != null ? form.getCycle().getCycleId() : null)
                 .cycleName(form.getCycle() != null ? form.getCycle().getCycleName() : null)
+                .targetRelationship(form.getTargetRelationship())
                 .categories(categoryDTOs)
                 .isAssigned(appraisalRepository.existsByFormIdInFormSet(formId))
                 .build();
@@ -190,6 +193,7 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
 
         form.setFormName(request.getFormName());
         form.setFormType(request.getFormType());
+        form.setTargetRelationship(request.getTargetRelationship());
         if (request.getCycleId() != null) {
             AppraisalCycle cycle = cycleRepository.findById(request.getCycleId())
                     .orElseThrow(() -> new NotFoundException("Cycle not found"));
@@ -278,16 +282,29 @@ public class AppraisalFormServiceImpl implements AppraisalFormService {
     @Transactional(readOnly = true)
     public List<AppraisalFormResponse> getAllForms() {
         return formRepository.findAll().stream()
-                .map(form -> AppraisalFormResponse.builder()
-                        .formId(form.getFormId())
-                        .formName(form.getFormName())
-                        .formType(form.getFormType() != null ? form.getFormType().name() : null)
-                        .cycleId(form.getCycle() != null ? form.getCycle().getCycleId() : null)
-                        .cycleName(form.getCycle() != null ? form.getCycle().getCycleName() : null)
-                        .createdBy(form.getCreatedBy())
-                        .createdAt(form.getCreatedAt())
-                        .updatedAt(form.getUpdatedAt())
-                        .build())
+                .map(this::toFormResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppraisalFormResponse> getFeedbackFormsByCycle(Long cycleId) {
+        return formRepository.findByCycleCycleIdAndFormType(cycleId, FormType.FEEDBACK).stream()
+                .map(this::toFormResponse)
+                .collect(Collectors.toList());
+    }
+
+    private AppraisalFormResponse toFormResponse(ace.org.epms_backend.model.appraisal.AppraisalForm form) {
+        return AppraisalFormResponse.builder()
+                .formId(form.getFormId())
+                .formName(form.getFormName())
+                .formType(form.getFormType() != null ? form.getFormType().name() : null)
+                .cycleId(form.getCycle() != null ? form.getCycle().getCycleId() : null)
+                .cycleName(form.getCycle() != null ? form.getCycle().getCycleName() : null)
+                .targetRelationship(form.getTargetRelationship())
+                .createdBy(form.getCreatedBy())
+                .createdAt(form.getCreatedAt())
+                .updatedAt(form.getUpdatedAt())
+                .build();
     }
 }

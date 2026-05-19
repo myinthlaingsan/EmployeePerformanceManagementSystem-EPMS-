@@ -52,6 +52,7 @@ public class FeedbackRequest extends BaseEntity {
     private Boolean isAnonymous;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 30)
     @Builder.Default
     private FeedbackStatus status = FeedbackStatus.PENDING;
 
