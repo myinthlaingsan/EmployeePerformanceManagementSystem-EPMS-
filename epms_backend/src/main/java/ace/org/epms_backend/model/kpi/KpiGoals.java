@@ -44,6 +44,7 @@ public class KpiGoals extends BaseEntity {
     private Boolean isCurrent = true;
 
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(50)")
     private KpiGoalStatus status;
 
     @OneToMany(mappedBy = "goalSet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

@@ -116,6 +116,8 @@ export interface GoalItemResponse {
   scorePercent?: number;
   weightedScore?: number;
   isCompliance?: boolean;
+  verifiedAt?: string;
+  verifiedBy?: string;
 }
 
 
@@ -140,6 +142,11 @@ export interface GoalSetResponse {
   appraisalCycleId: number;
   appraisalCycleName?: string;
   status: KpiGoalStatus;
+  version?: number;
+  createdAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  lockedAt?: string;
   items: GoalItemResponse[];
 }
 

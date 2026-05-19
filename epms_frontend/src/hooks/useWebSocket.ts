@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from "../hooks/reduxHooks";
 import { addNotification } from "../features/notification/notificationSlice";
 import type { NotificationResponse } from "../features/notification/notificationTypes";
 
-const WS_URL = "http://localhost:8080/ws";
+const WS_URL = "http://localhost:8083/ws";
 
 export const useWebSocket = () => {
   const dispatch = useAppDispatch();

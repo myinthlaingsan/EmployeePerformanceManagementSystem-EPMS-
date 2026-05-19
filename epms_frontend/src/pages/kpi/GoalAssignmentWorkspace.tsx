@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -21,8 +21,8 @@ import React from 'react';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
-  DRAFT:    { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
-  LOCKED:   { bg: '#111827', text: '#FFFFFF', border: '#111827' },
+  DRAFT: { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
+  LOCKED: { bg: '#111827', text: '#FFFFFF', border: '#111827' },
 };
 
 const GoalAssignmentWorkspace: React.FC = () => {
@@ -55,6 +55,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [tempIdCounter, setTempIdCounter] = useState(-1);
 
   React.useEffect(() => {
     if (goalSet?.items) {
@@ -62,6 +63,24 @@ const GoalAssignmentWorkspace: React.FC = () => {
       setIsModified(false);
     }
   }, [goalSet]);
+
+  // Warn on browser refresh / tab close
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isModified) { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isModified]);
+
+  const safeNavigate = useCallback((target: string | number) => {
+    if (isModified) {
+      const ok = window.confirm('You have unsaved changes. Are you sure you want to leave? Your changes will be lost.');
+      if (!ok) return;
+    }
+    if (typeof target === 'number') navigate(target);
+    else navigate(target);
+  }, [isModified, navigate]);
 
   const totalWeight = useMemo(() => localItems.reduce((sum, item) => sum + Number(item.weightPercent), 0), [localItems]);
   const overweightItems = useMemo(() => localItems.filter(item => Number(item.weightPercent) > 35), [localItems]);
@@ -90,19 +109,21 @@ const GoalAssignmentWorkspace: React.FC = () => {
     }
   };
 
-  const handleAddCustomGoal = async () => {
-    if (!activeCycleId) return;
-    try {
-      let currentGoalSetId = goalSet?.id;
-      if (!currentGoalSetId) {
-        const newGoalSet = await assignLibrary({ employeeId: Number(employeeId), appraisalCycleId: activeCycleId }).unwrap();
-        currentGoalSetId = newGoalSet.data.id;
-      }
-      await addGoalItem({ goalSetId: currentGoalSetId!, data: { title: 'New Custom KPI', unit: 'Percent', targetValue: 0, weightPercent: 0, categoryId: (categories as any)?.[0]?.id || 1 } }).unwrap();
-      refetchGoals();
-    } catch (err: any) {
-      toast.error(`Failed to add custom goal: ${err?.data?.message || err.message}`);
-    }
+  const handleAddCustomGoal = () => {
+    // Add a local-only placeholder row — nothing is saved until "Save Draft" is clicked
+    const tempId = tempIdCounter;
+    setTempIdCounter(prev => prev - 1);
+    setLocalItems(prev => [...prev, {
+      id: tempId,
+      title: 'New Custom KPI',
+      unit: 'Percent',
+      targetValue: 0,
+      weightPercent: 0,
+      categoryId: (categories as any)?.[0]?.id || 1,
+      categoryName: (categories as any)?.[0]?.name || '',
+      _isNew: true,
+    }]);
+    setIsModified(true);
   };
 
   const handleLocalUpdate = (itemId: number, updates: any) => {
@@ -111,18 +132,56 @@ const GoalAssignmentWorkspace: React.FC = () => {
   };
 
   const handleSaveDraft = async () => {
-    if (!goalSet) return;
+    if (!activeCycleId) return;
     setIsSubmitting(true);
     try {
-      const cleanedItems = localItems.map(item => ({
-        id: item.id,
-        title: item.title,
-        unit: item.unit,
-        targetValue: item.targetValue === '' ? 0 : Number(item.targetValue),
-        weightPercent: item.weightPercent === '' ? 0 : Number(item.weightPercent),
-        categoryId: item.categoryId
-      }));
-      await bulkUpdateItems({ goalSetId: goalSet.id, data: { items: cleanedItems } }).unwrap();
+      let currentGoalSetId = goalSet?.id;
+
+      // Step 1: If no goal set exists yet, create one first
+      if (!currentGoalSetId) {
+        const newGoalSet = await assignLibrary({
+          employeeId: Number(employeeId),
+          appraisalCycleId: activeCycleId,
+        }).unwrap();
+        currentGoalSetId = newGoalSet.data.id;
+      }
+
+      // Step 2: For each new (temp) item, create it via API
+      let savedItems = [...localItems];
+      for (let i = 0; i < savedItems.length; i++) {
+        const item = savedItems[i];
+        if (item._isNew) {
+          const created = await addGoalItem({
+            goalSetId: currentGoalSetId!,
+            data: {
+              title: item.title,
+              unit: item.unit,
+              targetValue: item.targetValue === '' ? 0 : Number(item.targetValue),
+              weightPercent: item.weightPercent === '' ? 0 : Number(item.weightPercent),
+              categoryId: item.categoryId,
+            }
+          }).unwrap();
+          // replace temp item with real one from API response
+          const realItem = created.data?.items?.find((it: any) => it.title === item.title) || item;
+          savedItems[i] = { ...realItem, _isNew: false };
+        }
+      }
+
+      // Step 3: Bulk update all existing (non-new) items
+      const existingItems = savedItems.filter(item => !item._isNew);
+      if (existingItems.length > 0) {
+        const cleanedItems = existingItems.map(item => ({
+          id: item.id,
+          title: item.title,
+          unit: item.unit,
+          targetValue: item.targetValue === '' ? 0 : Number(item.targetValue),
+          weightPercent: item.weightPercent === '' ? 0 : Number(item.weightPercent),
+          categoryId: item.categoryId,
+        }));
+        await bulkUpdateItems({ goalSetId: currentGoalSetId!, data: { items: cleanedItems } }).unwrap();
+      }
+
+      await refetchGoals();
       setIsModified(false);
       toast.success('Draft saved successfully!');
     } catch (err: any) {
@@ -142,9 +201,17 @@ const GoalAssignmentWorkspace: React.FC = () => {
   };
 
   const handleDeleteItem = async (itemId: number) => {
-    if (!window.confirm('Are you sure you want to delete this goal? This change is immediate.')) return;
+    const item = localItems.find(i => i.id === itemId);
+    // If the item is unsaved (temp), just remove it from local state — no API call needed
+    if (item?._isNew) {
+      setLocalItems(prev => prev.filter(i => i.id !== itemId));
+      // Removing a temp row is itself a local change; keep isModified true
+      setIsModified(true);
+      return;
+    }
+    if (!window.confirm('Are you sure you want to delete this goal? This cannot be undone if progress records exist.')) return;
     try { await deleteGoalItem(itemId).unwrap(); }
-    catch (err: any) { toast.error(err?.data?.message || 'Failed to delete goal bc of progress exists'); }
+    catch (err: any) { toast.error(err?.data?.message || 'Cannot delete: progress records exist for this goal.'); }
   };
 
   const handleApprove = async () => {
@@ -181,7 +248,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-8">
-      <button onClick={() => navigate(-1)}
+      <button onClick={() => safeNavigate(-1)}
         style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#5A6070', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
         className="hover:text-[#111827] transition-colors">
         <ChevronLeft size={14} /> Back
@@ -274,11 +341,10 @@ const GoalAssignmentWorkspace: React.FC = () => {
             ))}
           </div>
 
-          {!goalSet && (
-            <button onClick={async () => {
-              if (!activeCycleId) return;
-              try { await assignLibrary({ employeeId: Number(employeeId), appraisalCycleId: activeCycleId }).unwrap(); refetchGoals(); }
-              catch (err: any) { toast.error(`Failed to start blank session: ${err?.data?.message || err.message}`); }
+          {!goalSet && localItems.length === 0 && (
+            <button onClick={() => {
+              // Just show a local empty row — no API call until Save Draft
+              handleAddCustomGoal();
             }}
               style={{ width: '100%', marginTop: 16, padding: '9px', border: '0.5px dashed #E0E2E8', borderRadius: 8, fontSize: 11, fontWeight: 500, color: '#9EA3B0', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               className="hover:bg-[#F5F6F8] transition-colors">
