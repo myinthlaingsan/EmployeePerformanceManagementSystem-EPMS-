@@ -12,9 +12,7 @@ import lombok.experimental.SuperBuilder;
  * If a department/level combination has an entry here, these settings override the global ones.
  */
 @Entity
-@Table(name = "dept_feedback_config", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"department_id", "job_level_id"})
-})
+@Table(name = "dept_feedback_config")
 @Getter
 @Setter
 @NoArgsConstructor

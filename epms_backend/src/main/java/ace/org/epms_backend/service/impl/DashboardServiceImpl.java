@@ -165,7 +165,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .appraisalTimeline(List.of(
                     EmployeeDashboardResponse.UpcomingPhase.builder().phase("Self Assessment").status("In Progress").date("May 20").active(true).build()
                 ))
-                .tasks(notificationRepository.findByRecipientIdAndReadAtIsNullAndIsDeletedFalse(employeeId).stream()
+                .tasks(notificationRepository.findByRecipientIdAndReadAtIsNullAndIsDeletedFalseOrderByCreatedAtDesc(employeeId).stream()
                         .limit(5)
                         .map(n -> EmployeeDashboardResponse.DashboardTask.builder()
                                 .id(n.getId())

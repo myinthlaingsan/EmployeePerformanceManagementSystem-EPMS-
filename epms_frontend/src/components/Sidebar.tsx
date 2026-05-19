@@ -31,13 +31,15 @@ interface NavItem {
   end?: boolean;
   privilegedOnly?: boolean;
   hideForPrivileged?: boolean;
+  hideForAdmin?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "360 Feedback", to: "/appraisal/360", icon: Users },
   { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck, end: true },
-  { label: "Performance Pulse", to: "/performance-history", icon: History, privilegedOnly: true },
+  { label: "Performance Pulse", to: "/performance-history/admin", icon: History, adminOnly: true },
+  { label: "Team Pulse", to: "/performance-history/manager", icon: History, privilegedOnly: true, hideForAdmin: true },
   { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true },
   { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true },
   { label: "PIP", to: "/pip", icon: TrendingUp },
@@ -89,6 +91,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     if (item.adminOnly && !isAdmin && !isHR) return false;
     if (item.privilegedOnly && !isAdmin && !isHR && !isManager) return false;
     if (item.hideForPrivileged && (isAdmin || isHR) && !isManager) return false;
+    if (item.hideForAdmin && (isAdmin || isHR)) return false;
     return true;
   });
 

@@ -7,7 +7,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
-@Mapper(componentModel = "spring", uses = {FeedbackTagMapper.class})
+@Mapper(componentModel = "spring", uses = {FeedbackTagMapper.class}, nullValuePropertyMappingStrategy = org.mapstruct.NullValuePropertyMappingStrategy.IGNORE)
 public interface ContinuousFeedbackMapper {
 
     @Mapping(target = "employee", ignore = true)

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useGetCurrentUserQuery, useUpdateProfileMutation, useChangePasswordMutation, useGetManagerQuery, useGetDirectReportsQuery, useUploadProfileImageMutation } from "../features/employee/employeeapi";
 import { toast } from "react-toastify";
+import { validatePassword } from "../utils/validation";
 import type { UpdateProfileRequest, MaritalStatus } from "../features/employee/employeeTypes";
 import { User, Lock, Building2 } from "lucide-react";
 
@@ -84,6 +85,13 @@ const EditProfilePage = () => {
       toast.warning("Passwords do not match!");
       return;
     }
+    
+    const validationError = validatePassword(passwordData.newPassword);
+    if (validationError) {
+      toast.warning(validationError);
+      return;
+    }
+
     try {
       await changePassword({ id: profile.id, body: passwordData }).unwrap();
       setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });

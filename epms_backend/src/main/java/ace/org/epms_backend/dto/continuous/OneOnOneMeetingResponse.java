@@ -1,5 +1,6 @@
 package ace.org.epms_backend.dto.continuous;
 
+import ace.org.epms_backend.enums.ContinuousStatus;
 import lombok.Data;
 
 import java.time.Instant;
@@ -17,9 +18,12 @@ public class OneOnOneMeetingResponse {
     private LocalTime meetingTime;
     private String discussionPoints;
     private String keyIssues;
-    private String actionItems;
+    private java.util.List<MeetingActionItemResponse> actionItems;
     private LocalDate followUpDate;
-    private Boolean isPrivateNote;
+
+    private ContinuousStatus status;
     private Long createdBy;
+    private Integer commentCount;
     private Instant createdAt;
+    private java.time.LocalDateTime publishedAt;
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useResetPasswordMutation } from "../features/auth/authApi";
 import { Eye, EyeOff, CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react";
+import { validatePassword } from "../utils/validation";
 import React from "react";
 
 const ResetPasswordPage = () => {
@@ -19,6 +20,13 @@ const ResetPasswordPage = () => {
     e.preventDefault();
     if (!token) { setMessage({ type: 'error', text: "Invalid or missing token." }); return; }
     if (passwordData.password !== passwordData.confirmPassword) { setMessage({ type: 'error', text: "Passwords do not match." }); return; }
+    
+    const validationError = validatePassword(passwordData.password);
+    if (validationError) {
+      setMessage({ type: 'error', text: validationError });
+      return;
+    }
+
     try {
       await resetPassword({ token, newPassword: passwordData.password }).unwrap();
       setMessage({ type: 'success', text: "Password reset successfully! Redirecting to login…" });

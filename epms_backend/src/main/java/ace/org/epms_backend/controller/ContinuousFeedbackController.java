@@ -26,9 +26,10 @@ public class ContinuousFeedbackController {
     
     @GetMapping("/feedbacks")
     public ResponseEntity<ApiResponse<PagedResponse<ContinuousFeedbackResponse>>> getAllFeedbacks(
+            @RequestParam(required = false) ace.org.epms_backend.enums.ContinuousStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getAllFeedbacks(page, size);
+        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getAllFeedbacks(status, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -59,9 +60,10 @@ public class ContinuousFeedbackController {
     @GetMapping("/feedbacks/manager/{managerId}")
     public ResponseEntity<ApiResponse<PagedResponse<ContinuousFeedbackResponse>>> getFeedbacksByManager(
             @PathVariable Long managerId,
+            @RequestParam(required = false) ace.org.epms_backend.enums.ContinuousStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getFeedbacksByManager(managerId, page, size);
+        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getFeedbacksByManager(managerId, status, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -77,6 +79,26 @@ public class ContinuousFeedbackController {
     public ResponseEntity<ApiResponse<Void>> deleteFeedback(@PathVariable Long feedbackId) {
         feedbackService.deleteFeedback(feedbackId);
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PatchMapping("/feedbacks/{feedbackId}/publish")
+    public ResponseEntity<ApiResponse<ContinuousFeedbackResponse>> publishFeedback(@PathVariable Long feedbackId) {
+        ContinuousFeedbackResponse response = feedbackService.publishFeedback(feedbackId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/feedbacks/employee/{employeeId}/stats")
+    public ResponseEntity<ApiResponse<ace.org.epms_backend.dto.continuous.ContinuousStatsResponse>> getFeedbackStats(
+            @PathVariable Long employeeId) {
+        ace.org.epms_backend.dto.continuous.ContinuousStatsResponse response = feedbackService.getFeedbackStats(employeeId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/feedbacks/manager/{managerId}/stats")
+    public ResponseEntity<ApiResponse<ace.org.epms_backend.dto.continuous.ContinuousStatsResponse>> getFeedbackStatsForManager(
+            @PathVariable Long managerId) {
+        ace.org.epms_backend.dto.continuous.ContinuousStatsResponse response = feedbackService.getFeedbackStatsForManager(managerId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     // --- FEEDBACK REPLY APIs ---
