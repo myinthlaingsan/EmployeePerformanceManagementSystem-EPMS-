@@ -15,6 +15,8 @@ public class OneOnOneMeetingRequest {
     @NotNull(message = "Manager ID is required")
     private Long managerId;
 
+    private String meetingTitle;
+
     @NotNull(message = "Meeting date is required")
     private LocalDate meetingDate;
 

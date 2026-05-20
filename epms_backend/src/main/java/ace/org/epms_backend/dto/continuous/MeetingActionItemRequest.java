@@ -8,4 +8,6 @@ public class MeetingActionItemRequest {
     private Long id;
     private String content;
     private ActionItemStatus status;
+    private Long assignedToId;
+    private java.time.LocalDate dueDate;
 }

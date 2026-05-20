@@ -19,6 +19,7 @@ public interface ContinuousFeedbackMapper {
     @Mapping(source = "employee.staffName", target = "employeeName")
     @Mapping(source = "manager.id", target = "managerId")
     @Mapping(source = "manager.staffName", target = "managerName")
+    @Mapping(source = "manager.position.positionName", target = "managerPositionName")
     ContinuousFeedbackResponse toResponse(ContinuousFeedback feedback);
 
     @Mapping(target = "employee", ignore = true)
