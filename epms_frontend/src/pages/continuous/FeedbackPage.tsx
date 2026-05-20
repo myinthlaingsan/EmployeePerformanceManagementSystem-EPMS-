@@ -205,9 +205,13 @@ const FeedbackPage = () => {
   const [itemsPerPage] = useState(10);
   const [goToPage, setGoToPage] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+  const [filterFeedbackType, setFilterFeedbackType] = useState<string | undefined>(undefined);
+  const [filterTagId, setFilterTagId] = useState<number | undefined>(undefined);
+  const [filterCreatedAfter, setFilterCreatedAfter] = useState<string>('');
+  const [filterCreatedBefore, setFilterCreatedBefore] = useState<string>('');
 
   const { data: feedbackResponse, isLoading } = useGetAllFeedbacksQuery(
-    { page: currentPage - 1, size: itemsPerPage, status: filterStatus },
+    { page: currentPage - 1, size: itemsPerPage, status: filterStatus, feedbackType: filterFeedbackType, tagId: filterTagId, createdAfter: filterCreatedAfter || undefined, createdBefore: filterCreatedBefore || undefined },
     { skip: !user }
   );
   const feedbacks = feedbackResponse?.content || [];
@@ -240,7 +244,7 @@ const FeedbackPage = () => {
         emp.id !== user?.id
       );
 
-  const blankFeedback = { employeeId: 0, tagId: "" as number | "", feedbackType: FeedbackType.PRAISE, description: "", isPrivate: false };
+  const blankFeedback = { employeeId: 0, tagId: "" as number | "", feedbackType: FeedbackType.PRAISE, description: "" };
   const [showModal, setShowModal] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<ContinuousStatus>(ContinuousStatus.PUBLISHED);
   const [newFeedback, setNewFeedback] = useState<{
@@ -404,6 +408,45 @@ const FeedbackPage = () => {
           ))}
         </div>
       )}
+
+      {/* Filter Toolbar */}
+      <div style={{ ...panelStyle, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+        <div style={{ flex: '1 1 130px', minWidth: 0 }}>
+          <label style={labelStyle}>Type</label>
+          <select style={inputStyle} value={filterFeedbackType ?? ''}
+            onChange={e => { setFilterFeedbackType(e.target.value || undefined); setCurrentPage(1); }}>
+            <option value="">All Types</option>
+            <option value="PRAISE">Praise</option>
+            <option value="IMPROVEMENT">Improvement</option>
+            <option value="WARNING">Warning</option>
+          </select>
+        </div>
+        <div style={{ flex: '1 1 130px', minWidth: 0 }}>
+          <label style={labelStyle}>Tag</label>
+          <select style={inputStyle} value={filterTagId ?? ''}
+            onChange={e => { setFilterTagId(e.target.value ? Number(e.target.value) : undefined); setCurrentPage(1); }}>
+            <option value="">All Tags</option>
+            {(tags || []).map(t => <option key={t.tagId} value={t.tagId}>{t.tagName}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: '1 1 130px', minWidth: 0 }}>
+          <label style={labelStyle}>From</label>
+          <input type="date" style={inputStyle} value={filterCreatedAfter}
+            onChange={e => { setFilterCreatedAfter(e.target.value); setCurrentPage(1); }} />
+        </div>
+        <div style={{ flex: '1 1 130px', minWidth: 0 }}>
+          <label style={labelStyle}>To</label>
+          <input type="date" style={inputStyle} value={filterCreatedBefore}
+            onChange={e => { setFilterCreatedBefore(e.target.value); setCurrentPage(1); }} />
+        </div>
+        {(filterFeedbackType || filterTagId || filterCreatedAfter || filterCreatedBefore) && (
+          <button type="button"
+            onClick={() => { setFilterFeedbackType(undefined); setFilterTagId(undefined); setFilterCreatedAfter(''); setFilterCreatedBefore(''); setCurrentPage(1); }}
+            style={{ padding: '7px 12px', background: '#F5F6F8', color: '#9EA3B0', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            Clear Filters
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Main Feed */}
@@ -780,14 +823,34 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
 
   if (isLoading) return <div style={{ marginTop: 12, fontSize: 11, color: '#9EA3B0' }}>Loading discussion…</div>;
 
-  const sortedReplies = [...(replies || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const flattenReplies = (list: typeof replies): typeof replies => {
+    if (!list) return [];
+    return list.flatMap(r => [r, ...flattenReplies(r.children || [])]);
+  };
+  const allReplies = flattenReplies(replies);
+  const rootReplies = [...(replies || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  const renderReply = (reply: NonNullable<typeof replies>[0], depth = 0) => {
+    const children = [...(reply.children || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return (
+      <div key={reply.replyId} style={depth > 0 ? { marginLeft: 24, borderLeft: '2px solid #EEF3FD', paddingLeft: 8 } : {}}>
+        <ReplyItem reply={reply} allReplies={allReplies} user={user} authorId={authorId}
+          highlightedReplyId={highlightedReplyId} editingReplyId={editingReplyId}
+          editReplyText={editReplyText} setEditReplyText={setEditReplyText}
+          setEditingReplyId={setEditingReplyId} handleUpdateReply={handleUpdateReply}
+          handleScrollToParent={handleScrollToParent} onContextMenu={handleContextMenu}
+          isUpdatingReply={isUpdatingReply} />
+        {children.map(child => renderReply(child, depth + 1))}
+      </div>
+    );
+  };
 
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: '0.5px solid #E4E6EC' }} className="space-y-4">
       <div className="space-y-3">
-        {sortedReplies.map((reply, index) => {
+        {rootReplies.map((reply, index) => {
           const currentDate = reply.createdAt ? format(new Date(reply.createdAt), 'yyyy-MM-dd') : '';
-          const prevDate = index > 0 && sortedReplies[index - 1].createdAt ? format(new Date(sortedReplies[index - 1].createdAt), 'yyyy-MM-dd') : '';
+          const prevDate = index > 0 && rootReplies[index - 1].createdAt ? format(new Date(rootReplies[index - 1].createdAt), 'yyyy-MM-dd') : '';
           const isNewDay = currentDate !== prevDate;
           return (
             <React.Fragment key={reply.replyId}>
@@ -798,12 +861,7 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
                   </span>
                 </div>
               )}
-              <ReplyItem reply={reply} allReplies={sortedReplies} user={user} authorId={authorId}
-                highlightedReplyId={highlightedReplyId} editingReplyId={editingReplyId}
-                editReplyText={editReplyText} setEditReplyText={setEditReplyText}
-                setEditingReplyId={setEditingReplyId} handleUpdateReply={handleUpdateReply}
-                handleScrollToParent={handleScrollToParent} onContextMenu={handleContextMenu}
-                isUpdatingReply={isUpdatingReply} />
+              {renderReply(reply)}
             </React.Fragment>
           );
         })}

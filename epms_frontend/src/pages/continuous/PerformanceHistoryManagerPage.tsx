@@ -100,9 +100,9 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
 
   // Action Items analytics per month
   actionItems.forEach(ai => {
-    const assignedDate = ai.assignedAt ? new Date(ai.assignedAt) : null;
-    if (assignedDate) {
-      const monthData = chartData.find(m => m.month === assignedDate.getMonth() && m.year === assignedDate.getFullYear());
+    if (ai.dueDate) {
+      const dueDate = new Date(ai.dueDate);
+      const monthData = chartData.find(m => m.month === dueDate.getMonth() && m.year === dueDate.getFullYear());
       if (monthData) {
         monthData.totalActionItems++;
       }

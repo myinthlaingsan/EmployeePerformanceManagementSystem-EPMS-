@@ -19,11 +19,17 @@ import type { PagedResponse } from "../employee/employeeTypes";
 export const continuousApi = api.injectEndpoints({
   endpoints: (builder) => ({
     // Feedback Tags
-    getAllFeedbacks: builder.query<PagedResponse<ContinuousFeedbackResponse>, { page: number; size: number; status?: string }>({
-      query: ({ page, size, status }) => {
-        let url = `/feedbacks?page=${page}&size=${size}`;
-        if (status) url += `&status=${status}`;
-        return url;
+    getAllFeedbacks: builder.query<PagedResponse<ContinuousFeedbackResponse>, { page: number; size: number; status?: string; feedbackType?: string; tagId?: number; createdAfter?: string; createdBefore?: string }>({
+      query: ({ page, size, status, feedbackType, tagId, createdAfter, createdBefore }) => {
+        const params = new URLSearchParams();
+        params.append("page", String(page));
+        params.append("size", String(size));
+        if (status) params.append("status", status);
+        if (feedbackType) params.append("feedbackType", feedbackType);
+        if (tagId) params.append("tagId", String(tagId));
+        if (createdAfter) params.append("createdAfter", createdAfter);
+        if (createdBefore) params.append("createdBefore", createdBefore);
+        return `/feedbacks?${params.toString()}`;
       },
       transformResponse: (response: ApiResponse<PagedResponse<ContinuousFeedbackResponse>>) => response.data,
       providesTags: ["ContinuousFeedback" as any],
@@ -60,16 +66,31 @@ export const continuousApi = api.injectEndpoints({
     }),
 
     // Continuous Feedback
-    getFeedbacksByEmployee: builder.query<PagedResponse<ContinuousFeedbackResponse>, { employeeId: number; page: number; size: number }>({
-      query: ({ employeeId, page, size }) => `/feedbacks/employee/${employeeId}?page=${page}&size=${size}`,
+    getFeedbacksByEmployee: builder.query<PagedResponse<ContinuousFeedbackResponse>, { employeeId: number; page: number; size: number; feedbackType?: string; tagId?: number; createdAfter?: string; createdBefore?: string }>({
+      query: ({ employeeId, page, size, feedbackType, tagId, createdAfter, createdBefore }) => {
+        const params = new URLSearchParams();
+        params.append("page", String(page));
+        params.append("size", String(size));
+        if (feedbackType) params.append("feedbackType", feedbackType);
+        if (tagId) params.append("tagId", String(tagId));
+        if (createdAfter) params.append("createdAfter", createdAfter);
+        if (createdBefore) params.append("createdBefore", createdBefore);
+        return `/feedbacks/employee/${employeeId}?${params.toString()}`;
+      },
       transformResponse: (response: ApiResponse<PagedResponse<ContinuousFeedbackResponse>>) => response.data,
       providesTags: ["ContinuousFeedback" as any],
     }),
-    getFeedbacksByManager: builder.query<PagedResponse<ContinuousFeedbackResponse>, { managerId: number; status?: string; page: number; size: number }>({
-      query: ({ managerId, status, page, size }) => {
-        let url = `/feedbacks/manager/${managerId}?page=${page}&size=${size}`;
-        if (status) url += `&status=${status}`;
-        return url;
+    getFeedbacksByManager: builder.query<PagedResponse<ContinuousFeedbackResponse>, { managerId: number; status?: string; page: number; size: number; feedbackType?: string; tagId?: number; createdAfter?: string; createdBefore?: string }>({
+      query: ({ managerId, status, page, size, feedbackType, tagId, createdAfter, createdBefore }) => {
+        const params = new URLSearchParams();
+        params.append("page", String(page));
+        params.append("size", String(size));
+        if (status) params.append("status", status);
+        if (feedbackType) params.append("feedbackType", feedbackType);
+        if (tagId) params.append("tagId", String(tagId));
+        if (createdAfter) params.append("createdAfter", createdAfter);
+        if (createdBefore) params.append("createdBefore", createdBefore);
+        return `/feedbacks/manager/${managerId}?${params.toString()}`;
       },
       transformResponse: (response: ApiResponse<PagedResponse<ContinuousFeedbackResponse>>) => response.data,
       providesTags: ["ContinuousFeedback" as any],

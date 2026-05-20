@@ -172,35 +172,31 @@ const MeetingPage = () => {
 
   interface MeetingState {
     employeeId: number;
+    meetingTitle: string;
     meetingDate: string;
     meetingTime: string;
     discussionPoints: string;
     keyIssues: string;
-    actionItems: string | any[];
+    actionItems: { id?: number; content: string; status?: string; assignedToId?: number; dueDate?: string }[];
     followUpDate: string;
-
   }
 
   const [newMeeting, setNewMeeting] = useState<MeetingState>({
     employeeId: 0,
+    meetingTitle: "",
     meetingDate: "",
     meetingTime: "",
     discussionPoints: "",
     keyIssues: "",
-    actionItems: "",
+    actionItems: [],
     followUpDate: "",
-
   });
 
 
   const handleSchedule = async (e: React.FormEvent, status: ContinuousStatus = ContinuousStatus.PUBLISHED) => {
     if (e) e.preventDefault();
 
-    const actionItemsValid = Array.isArray(newMeeting.actionItems)
-      ? newMeeting.actionItems.length > 0
-      : newMeeting.actionItems.trim() !== '';
-
-    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || !actionItemsValid || !user) {
+    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || newMeeting.actionItems.length === 0 || !user) {
       alert("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
       return;
     }
@@ -213,24 +209,15 @@ const MeetingPage = () => {
         ...newMeeting,
         managerId: user.id,
         status: editingId ? undefined : status,
-        actionItems: Array.isArray(newMeeting.actionItems)
-          ? (newMeeting.actionItems as any[])
-              .map((item: any) => {
-                if (typeof item === 'string') {
-                  return { id: null, content: item.trim(), status: 'PENDING' };
-                }
-                return {
-                  id: item.id || null,
-                  content: (item.content ?? '').trim(),
-                  status: item.status || 'PENDING'
-                };
-              })
-              .filter((item: any) => item.content !== '')
-          : (newMeeting.actionItems as string)
-              .split('\n')
-              .map(s => s.trim())
-              .filter((item: string) => item !== '')
-              .map((s: string) => ({ id: null, content: s, status: 'PENDING' }))
+        actionItems: newMeeting.actionItems
+          .map(item => ({
+            id: item.id || undefined,
+            content: (item.content ?? '').trim(),
+            status: item.status || 'PENDING',
+            assignedToId: item.assignedToId,
+            dueDate: item.dueDate,
+          }))
+          .filter(item => item.content !== ''),
       };
       if (editingId) {
         await updateMeeting({ id: editingId, body }).unwrap();
@@ -241,11 +228,12 @@ const MeetingPage = () => {
       setEditingId(null);
       setNewMeeting({
         employeeId: 0,
+        meetingTitle: "",
         meetingDate: "",
         meetingTime: "",
         discussionPoints: "",
         keyIssues: "",
-        actionItems: "",
+        actionItems: [],
         followUpDate: "",
       });
     } catch (err: any) {
@@ -257,11 +245,12 @@ const MeetingPage = () => {
     setEditingId(m.meetingId);
     setNewMeeting({
       employeeId: m.employeeId,
+      meetingTitle: m.meetingTitle || "",
       meetingDate: m.meetingDate,
       meetingTime: m.meetingTime.substring(0, 5),
       discussionPoints: m.discussionPoints,
       keyIssues: m.keyIssues,
-      actionItems: m.actionItems,
+      actionItems: m.actionItems || [],
       followUpDate: m.followUpDate || "",
     });
     setShowModal(true);
@@ -409,6 +398,9 @@ const MeetingPage = () => {
                 </div>
                 <div>
                   <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{m.employeeName}</h3>
+                  {m.meetingTitle && (
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#5A6070', marginTop: 1 }}>{m.meetingTitle}</p>
+                  )}
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 2 }}>
                     <span style={{ fontSize: 12, color: '#5A6070', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <svg style={{ width: 13, height: 13, color: '#9EA3B0' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -501,6 +493,16 @@ const MeetingPage = () => {
                             <p className={`text-sm leading-relaxed transition-all duration-300 ${isDone ? 'text-green-600 line-through' : 'text-gray-700'}`}>
                               {item.content}
                             </p>
+                            {item.assignedToName && (
+                              <span style={{ fontSize: 9, fontWeight: 600, background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 4, padding: '1px 6px' }}>
+                                {item.assignedToName}
+                              </span>
+                            )}
+                            {item.dueDate && (
+                              <span style={{ fontSize: 9, fontWeight: 500, color: '#9EA3B0' }}>
+                                due {format(new Date(item.dueDate), 'dd/MM/yyyy')}
+                              </span>
+                            )}
 
                             {/* Re-opened badge: shown when PENDING but has a reopenReason */}
                             {!isDone && item.reopenReason && (
@@ -629,6 +631,12 @@ const MeetingPage = () => {
             </div>
             <div style={{ padding: 20, maxHeight: '75vh', overflowY: 'auto' }}>
               <form onSubmit={handleSchedule} className="space-y-4">
+                <div>
+                  <label style={labelStyle}>Meeting Title</label>
+                  <input type="text" style={inputStyle} placeholder="e.g. Sprint Review 1:1"
+                    value={newMeeting.meetingTitle}
+                    onChange={e => setNewMeeting({ ...newMeeting, meetingTitle: e.target.value })} />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label style={labelStyle}>Select Employee</label>
@@ -662,75 +670,74 @@ const MeetingPage = () => {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</label>
-                    {editingId ? (
-                      <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
-                        {Array.isArray(newMeeting.actionItems) && newMeeting.actionItems.map((item: any, index: number) => {
-                          const isDone = item.status === ActionItemStatus.DONE;
-                          return (
-                            <div key={index} className="flex items-center gap-2">
-                              <div className="flex-1 relative group/item">
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {newMeeting.actionItems.map((item, index) => {
+                        const isDone = item.status === ActionItemStatus.DONE;
+                        return (
+                          <div key={index} className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 relative">
                                 <input
                                   type="text"
                                   disabled={isDone}
-                                  className={`w-full px-4 py-2 rounded-xl text-sm transition border-none ${
-                                    isDone 
-                                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed italic' 
-                                      : 'bg-gray-50 focus:ring-2 focus:ring-indigo-500 text-gray-700'
-                                  }`}
+                                  className={`w-full px-3 py-1.5 rounded-lg text-sm transition border-none ${isDone ? 'bg-gray-100 text-gray-400 cursor-not-allowed italic' : 'bg-gray-50 focus:ring-2 focus:ring-indigo-500 text-gray-700'}`}
+                                  placeholder="Task description…"
                                   value={item.content}
-                                  onChange={(e) => {
+                                  onChange={e => {
                                     const updated = [...newMeeting.actionItems];
                                     updated[index] = { ...item, content: e.target.value };
                                     setNewMeeting({ ...newMeeting, actionItems: updated });
                                   }}
                                 />
-                                {isDone && (
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase tracking-widest text-green-500 bg-green-50 px-2 py-0.5 rounded-full">
-                                    Locked
-                                  </span>
-                                )}
+                                {isDone && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase tracking-widest text-green-500 bg-green-50 px-1.5 py-0.5 rounded-full">Locked</span>}
                               </div>
                               {!isDone && (
-                                <button
-                                  type="button"
-                                  title="Remove task"
-                                  onClick={() => {
-                                    const updated = (newMeeting.actionItems as any[]).filter((_, i) => i !== index);
-                                    setNewMeeting({ ...newMeeting, actionItems: updated });
-                                  }}
-                                  className="p-1.5 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition shrink-0"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
+                                <button type="button" onClick={() => setNewMeeting({ ...newMeeting, actionItems: newMeeting.actionItems.filter((_, i) => i !== index) })}
+                                  className="p-1.5 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition shrink-0">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                               )}
                             </div>
-                          );
-                        })}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewMeeting({
-                              ...newMeeting,
-                              actionItems: [...(newMeeting.actionItems as any[]), { content: "", status: ActionItemStatus.PENDING }]
-                            });
-                          }}
-                          className="w-full py-2 border-2 border-dashed border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:border-indigo-200 hover:text-indigo-600 transition flex items-center justify-center gap-2 mt-2"
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                          Add New Task
-                        </button>
-                      </div>
-                    ) : (
-                      <textarea 
-                        required
-                        className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-12 resize-none text-sm"
-                        placeholder="Enter tasks, one per line..."
-                        value={newMeeting.actionItems}
-                        onChange={e => setNewMeeting({ ...newMeeting, actionItems: e.target.value })}
-                      />
-                    )}
+                            {!isDone && (
+                              <div className="flex gap-2 pl-0">
+                                <select
+                                  style={{ ...inputStyle, fontSize: 11, padding: '4px 8px', flex: 1 }}
+                                  value={item.assignedToId ?? newMeeting.employeeId ?? ''}
+                                  onChange={e => {
+                                    const updated = [...newMeeting.actionItems];
+                                    updated[index] = { ...item, assignedToId: Number(e.target.value) || undefined };
+                                    setNewMeeting({ ...newMeeting, actionItems: updated });
+                                  }}
+                                >
+                                  <option value="">Assignee…</option>
+                                  {newMeeting.employeeId && filteredEmployees.find(e => e.id === newMeeting.employeeId) && (
+                                    <option value={newMeeting.employeeId}>{filteredEmployees.find(e => e.id === newMeeting.employeeId)?.staffName} (default)</option>
+                                  )}
+                                  {filteredEmployees.filter(e => e.id !== newMeeting.employeeId).map(emp => (
+                                    <option key={emp.id} value={emp.id}>{emp.staffName}</option>
+                                  ))}
+                                </select>
+                                <input type="date"
+                                  style={{ ...inputStyle, fontSize: 11, padding: '4px 8px', flex: 1 }}
+                                  value={item.dueDate ?? ''}
+                                  onChange={e => {
+                                    const updated = [...newMeeting.actionItems];
+                                    updated[index] = { ...item, dueDate: e.target.value || undefined };
+                                    setNewMeeting({ ...newMeeting, actionItems: updated });
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <button type="button"
+                        onClick={() => setNewMeeting({ ...newMeeting, actionItems: [...newMeeting.actionItems, { content: "", status: ActionItemStatus.PENDING }] })}
+                        className="w-full py-2 border-2 border-dashed border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:border-indigo-200 hover:text-indigo-600 transition flex items-center justify-center gap-2 mt-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                        Add Task
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -747,11 +754,12 @@ const MeetingPage = () => {
                       setEditingId(null);
                       setNewMeeting({
                         employeeId: 0,
+                        meetingTitle: "",
                         meetingDate: "",
                         meetingTime: "",
                         discussionPoints: "",
                         keyIssues: "",
-                        actionItems: "",
+                        actionItems: [],
                         followUpDate: ""
                       });
                     }}
@@ -880,7 +888,7 @@ const MeetingPage = () => {
 };
 
 const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManager: boolean }) => {
-  const { user } = useAuth();
+  const { user, isAdmin, isHR } = useAuth();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; comment: any } | null>(null);
 
   useEffect(() => {
@@ -1007,7 +1015,8 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
             </button>
           ))}
           {((isManager && contextMenu.comment.commentType === 'MANAGER' && contextMenu.comment.managerId === user?.id) ||
-            (!isManager && contextMenu.comment.commentType === 'EMPLOYEE' && contextMenu.comment.employeeId === user?.id)) && (
+            (!isManager && contextMenu.comment.commentType === 'EMPLOYEE' && contextMenu.comment.employeeId === user?.id) ||
+            isAdmin || isHR) && (
             <>
               <div style={{ height: '0.5px', background: '#E4E6EC', margin: '2px 0' }} />
               <button onClick={() => { setEditingCommentId(contextMenu.comment.id); setEditCommentText(contextMenu.comment.comment); setContextMenu(null); }}
