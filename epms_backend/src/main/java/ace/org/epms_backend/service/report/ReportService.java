@@ -53,4 +53,8 @@ public interface ReportService {
     // Cycle 360 Feedback Summary Report
     Feedback360CycleSummaryReportDTO getCycle360SummaryReport(Long cycleId);
     byte[] exportCycle360SummaryReport(Long cycleId, String format);
+
+    // Manager Review Pack and Printable Paper Form
+    byte[] exportManagerReviewPack(Long managerId, Long cycleId, String format);
+    byte[] exportPaperForm(Long requestId, String format);
 }

@@ -6,6 +6,7 @@
 		<field name="status" class="java.lang.String"/>
 		<field name="selfAssessmentDate" class="java.lang.String"/>
 		<field name="managerEvaluationDate" class="java.lang.String"/>
+		<field name="feedbackCompletionRate" class="java.lang.String"/>
 	</dataset>
 	<parameter name="logoStream" class="java.io.InputStream"/>
 	<field name="cycleName" class="java.lang.String"/>
@@ -54,20 +55,23 @@
 	</title>
 	<detail>
 		<band height="60">
-			<element kind="staticText" uuid="73accf36-49d9-4757-81db-32c3697056a5" mode="Opaque" x="0" y="10" width="140" height="25" backcolor="#E9ECEF" bold="true" vTextAlign="Middle">
+			<element kind="staticText" uuid="73accf36-49d9-4757-81db-32c3697056a5" mode="Opaque" x="0" y="10" width="100" height="25" backcolor="#E9ECEF" bold="true" vTextAlign="Middle">
 				<text><![CDATA[ Employee Name]]></text>
 			</element>
-			<element kind="staticText" uuid="acbdad7c-a122-4500-ae8e-677ebc9b10b7" mode="Opaque" x="140" y="10" width="100" height="25" backcolor="#E9ECEF" bold="true" vTextAlign="Middle">
+			<element kind="staticText" uuid="acbdad7c-a122-4500-ae8e-677ebc9b10b7" mode="Opaque" x="100" y="10" width="90" height="25" backcolor="#E9ECEF" bold="true" vTextAlign="Middle">
 				<text><![CDATA[ Department]]></text>
 			</element>
-			<element kind="staticText" uuid="e5ab73ea-0969-4922-9c95-d1e80f8a9b9b" mode="Opaque" x="240" y="10" width="85" height="25" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<element kind="staticText" uuid="e5ab73ea-0969-4922-9c95-d1e80f8a9b9b" mode="Opaque" x="190" y="10" width="75" height="25" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
 				<text><![CDATA[Status]]></text>
 			</element>
-			<element kind="staticText" uuid="74f63d13-b719-4a7f-9a36-7efebd7788b1" mode="Opaque" x="325" y="10" width="115" height="25" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<element kind="staticText" uuid="74f63d13-b719-4a7f-9a36-7efebd7788b1" mode="Opaque" x="265" y="10" width="95" height="25" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
 				<text><![CDATA[Self-Assessment]]></text>
 			</element>
-			<element kind="staticText" uuid="67e47d02-d127-42f3-9f30-4361a772f634" mode="Opaque" x="440" y="10" width="115" height="25" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
-				<text><![CDATA[Manager Evaluation]]></text>
+			<element kind="staticText" uuid="67e47d02-d127-42f3-9f30-4361a772f634" mode="Opaque" x="360" y="10" width="95" height="25" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+				<text><![CDATA[Manager Eval]]></text>
+			</element>
+			<element kind="staticText" uuid="77e47d02-d127-42f3-9f30-4361a772f635" mode="Opaque" x="455" y="10" width="100" height="25" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+				<text><![CDATA[360 Feedback %]]></text>
 			</element>
 			<element kind="component" uuid="c63e810c-42db-44ce-ab64-383b16e27b12" x="0" y="35" width="555" height="25">
 				<component kind="list" printOrder="Vertical">
@@ -75,32 +79,38 @@
 						<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{employeeStatuses})]]></dataSourceExpression>
 					</datasetRun>
 					<contents height="25" width="555">
-						<element kind="textField" uuid="08fb3439-c9cd-4559-ba85-3fad6bc2b0ae" x="0" y="0" width="140" height="25" textAdjust="StretchHeight" vTextAlign="Middle">
+						<element kind="textField" uuid="08fb3439-c9cd-4559-ba85-3fad6bc2b0ae" x="0" y="0" width="100" height="25" textAdjust="StretchHeight" vTextAlign="Middle">
 							<expression><![CDATA[$F{employeeName}]]></expression>
 							<box leftPadding="5">
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
 							</box>
 						</element>
-						<element kind="textField" uuid="37853798-3baa-4c0f-848a-839958e1f82f" x="140" y="0" width="100" height="25" vTextAlign="Middle">
+						<element kind="textField" uuid="37853798-3baa-4c0f-848a-839958e1f82f" x="100" y="0" width="90" height="25" vTextAlign="Middle">
 							<expression><![CDATA[$F{departmentName}]]></expression>
 							<box leftPadding="5">
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
 							</box>
 						</element>
-						<element kind="textField" uuid="55913d65-bdf4-4e53-898b-4e6f9f631415" x="240" y="0" width="85" height="25" bold="true" hTextAlign="Center" vTextAlign="Middle">
+						<element kind="textField" uuid="55913d65-bdf4-4e53-898b-4e6f9f631415" x="190" y="0" width="75" height="25" bold="true" hTextAlign="Center" vTextAlign="Middle">
 							<expression><![CDATA[$F{status}]]></expression>
 							<box>
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
 							</box>
 						</element>
-						<element kind="textField" uuid="6eb511db-4591-4813-9122-67a9868ff596" x="325" y="0" width="115" height="25" hTextAlign="Center" vTextAlign="Middle">
+						<element kind="textField" uuid="6eb511db-4591-4813-9122-67a9868ff596" x="265" y="0" width="95" height="25" hTextAlign="Center" vTextAlign="Middle">
 							<expression><![CDATA[$F{selfAssessmentDate} != null ? $F{selfAssessmentDate} : "-"]]></expression>
 							<box>
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
 							</box>
 						</element>
-						<element kind="textField" uuid="d693ded3-a71f-4f6b-81bd-baf169b4be6e" x="440" y="0" width="115" height="25" hTextAlign="Center" vTextAlign="Middle">
+						<element kind="textField" uuid="d693ded3-a71f-4f6b-81bd-baf169b4be6e" x="360" y="0" width="95" height="25" hTextAlign="Center" vTextAlign="Middle">
 							<expression><![CDATA[$F{managerEvaluationDate} != null ? $F{managerEvaluationDate} : "-"]]></expression>
+							<box>
+								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
+							</box>
+						</element>
+						<element kind="textField" uuid="d793ded3-a71f-4f6b-81bd-baf169b4be6f" x="455" y="0" width="100" height="25" hTextAlign="Center" vTextAlign="Middle">
+							<expression><![CDATA[$F{feedbackCompletionRate} != null ? $F{feedbackCompletionRate} : "-"]]></expression>
 							<box>
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
 							</box>

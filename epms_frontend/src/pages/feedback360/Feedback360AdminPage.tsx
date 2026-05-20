@@ -35,6 +35,7 @@ import type {
 import { FeedbackStatus } from '../../features/feedback360/feedback360Types';
 import RelBadge from '../../components/feedback360/RelBadge';
 import StatusBadge from '../../components/feedback360/StatusBadge';
+import { useGetAllEmployeesQuery } from '../../features/employee/employeeapi';
 
 // ── Style constants ────────────────────────────────────────────────────────────
 
@@ -78,7 +79,7 @@ const secondaryBtn: React.CSSProperties = {
 
 const smBtn = (variant: 'danger' | 'neutral' | 'success'): React.CSSProperties => {
   const map = {
-    danger:  { bg: '#FCEBEB', text: '#791F1F', border: '#F5C6C6' },
+    danger: { bg: '#FCEBEB', text: '#791F1F', border: '#F5C6C6' },
     neutral: { bg: '#F5F6F8', text: '#5A6070', border: '#E4E6EC' },
     success: { bg: '#EAF3DE', text: '#27500A', border: '#B7E0A0' },
   };
@@ -122,11 +123,11 @@ const ScoringPolicyEditor = ({ cycleId }: { cycleId: number }) => {
     setRows(policies.map((p) => ({
       jobLevelId: p.jobLevelId,
       label: p.jobLevelId ? `Job Level ${p.jobLevelId}` : 'Default (all levels)',
-      managerWeight:        p.managerWeight,
-      peerWeight:           p.peerWeight,
-      subordinateWeight:    p.subordinateWeight,
-      selfWeight:           p.selfWeight,
-      includeSelfInFinal:   p.includeSelfInFinal,
+      managerWeight: p.managerWeight,
+      peerWeight: p.peerWeight,
+      subordinateWeight: p.subordinateWeight,
+      selfWeight: p.selfWeight,
+      includeSelfInFinal: p.includeSelfInFinal,
       suppressionThreshold: p.suppressionThreshold,
     })));
   }, [policies]);
@@ -325,24 +326,40 @@ const ScorePill = ({ score }: { score: number }) => (
   <span style={{
     fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 20,
     background: score >= 4 ? '#EAF3DE' : score >= 3 ? '#FAEEDA' : '#FCEBEB',
-    color:      score >= 4 ? '#27500A' : score >= 3 ? '#633806' : '#791F1F',
+    color: score >= 4 ? '#27500A' : score >= 3 ? '#633806' : '#791F1F',
   }}>
     {score.toFixed(2)}
   </span>
 );
 
 interface SummaryRowProps {
-  summary:     FeedbackSummaryResponse;
-  isExpanded:  boolean;
+  summary: FeedbackSummaryResponse;
+  isExpanded: boolean;
   cycleLocked: boolean;
-  onToggle:    () => void;
-  onFinalize:  () => void;
+  onToggle: () => void;
+  onFinalize: () => void;
   onCalibrate: () => void;
   isFinalizing: boolean;
+  cycleId: number;
 }
 
-const SummaryRow = ({ summary, isExpanded, cycleLocked, onToggle, onFinalize, onCalibrate, isFinalizing }: SummaryRowProps) => {
+const SummaryRow = ({ summary, isExpanded, cycleLocked, onToggle, onFinalize, onCalibrate, isFinalizing, cycleId }: SummaryRowProps) => {
   const displayScore = summary.calibratedFinalScore ?? summary.totalAverageScore;
+  const [downloadReport, { isLoading: isDownloading }] = useDownloadReportMutation();
+
+  const handleDownloadPDF = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await downloadReport({
+        endpoint: 'feedback-360',
+        params: { targetUserId: summary.targetUserId, cycleId },
+        fileName: `Feedback_360_Report_${summary.targetUserName}.pdf`,
+      }).unwrap();
+      toast.success('Feedback report downloaded successfully.');
+    } catch {
+      toast.error('Failed to download individual feedback report.');
+    }
+  };
 
   return (
     <div style={{ border: '0.5px solid #E4E6EC', borderRadius: 10, overflow: 'hidden' }}>
@@ -364,6 +381,21 @@ const SummaryRow = ({ summary, isExpanded, cycleLocked, onToggle, onFinalize, on
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: '#EEF3FD', color: '#1A56DB' }}>
               Calibrated
             </span>
+          )}
+          {summary.summaryId && (
+            <button
+              style={{ ...smBtn('neutral'), display: 'flex', alignItems: 'center', gap: 4 }}
+              onClick={handleDownloadPDF}
+              disabled={isDownloading}
+              title="Download Individual 360 PDF Report"
+            >
+              {isDownloading ? (
+                <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />
+              ) : (
+                <FileDown size={11} />
+              )}
+              Report PDF
+            </button>
           )}
           {!cycleLocked && (
             <button
@@ -405,10 +437,10 @@ const SummaryRow = ({ summary, isExpanded, cycleLocked, onToggle, onFinalize, on
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginBottom: 12 }}>
             {[
-              { label: 'Manager',     scores: summary.managerScores,     color: '#1A56DB' },
-              { label: 'Peer',        scores: summary.peerScores,        color: '#7C3AED' },
+              { label: 'Manager', scores: summary.managerScores, color: '#1A56DB' },
+              { label: 'Peer', scores: summary.peerScores, color: '#7C3AED' },
               { label: 'Subordinate', scores: summary.subordinateScores, color: '#059669' },
-              { label: 'Self',        scores: summary.selfScores,        color: '#D97706' },
+              { label: 'Self', scores: summary.selfScores, color: '#D97706' },
             ].map((group) => {
               const a = group.scores?.length
                 ? group.scores.reduce((s, c) => s + c.averageScore, 0) / group.scores.length
@@ -461,6 +493,22 @@ interface PreviewRowProps {
 
 const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign }: PreviewRowProps) => {
   const isDone = req.status === FeedbackStatus.COMPLETED;
+  const [downloadReport, { isLoading: isPrinting }] = useDownloadReportMutation();
+
+  const handlePrint = async () => {
+    if (!req.id) return;
+    try {
+      await downloadReport({
+        endpoint: 'feedback-360/print-form',
+        params: { requestId: req.id },
+        fileName: `Feedback_360_Form_${req.id}.pdf`,
+      }).unwrap();
+      toast.success('Paper form downloaded successfully.');
+    } catch {
+      toast.error('Failed to download paper form.');
+    }
+  };
+
   return (
     <tr style={{
       borderBottom: '0.5px solid #F0F2F8',
@@ -506,6 +554,16 @@ const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign }: Pr
                   <X size={10} /> Cancel
                 </button>
               </>
+            )}
+            {req.id && (
+              <button
+                style={{ ...smBtn('neutral'), background: '#ECFDF5', color: '#065F46', borderColor: '#A7F3D0' }}
+                onClick={handlePrint}
+                disabled={isPrinting}
+              >
+                {isPrinting ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} /> : <FileDown size={10} />}
+                Print Form
+              </button>
             )}
           </div>
         )}
@@ -571,10 +629,10 @@ const ReassignModal = ({ requestId, onClose }: ReassignModalProps) => {
 // ── Form slots ─────────────────────────────────────────────────────────────────
 
 const REL_SLOTS: Array<{ rel: string; label: string; color: string }> = [
-  { rel: 'DIRECT_MANAGER', label: 'Manager → Target',    color: '#1A56DB' },
-  { rel: 'PEER',           label: 'Peer → Target',       color: '#7C3AED' },
-  { rel: 'SUBORDINATE',    label: 'Subordinate → Target', color: '#059669' },
-  { rel: 'SELF',           label: 'Self-Assessment',      color: '#D97706' },
+  { rel: 'DIRECT_MANAGER', label: 'Manager → Target', color: '#1A56DB' },
+  { rel: 'PEER', label: 'Peer → Target', color: '#7C3AED' },
+  { rel: 'SUBORDINATE', label: 'Subordinate → Target', color: '#059669' },
+  { rel: 'SELF', label: 'Self-Assessment', color: '#D97706' },
 ];
 
 interface FeedbackFormSlotsProps { cycleId: number; }
@@ -859,14 +917,14 @@ const Feedback360AdminPage = () => {
   const { activeCycleId } = useAuth();
   const { data: cycles = [], isLoading: cyclesLoading } = useGetCyclesQuery();
 
-  const [cycleId, setCycleId]                         = useState<number>(activeCycleId ?? 0);
-  const [previousCycleId, setPreviousCycleId]         = useState<string>('');
-  const [globalMaxLimit, setGlobalMaxLimit]           = useState<number>(5);
+  const [cycleId, setCycleId] = useState<number>(activeCycleId ?? 0);
+  const [previousCycleId, setPreviousCycleId] = useState<string>('');
+  const [globalMaxLimit, setGlobalMaxLimit] = useState<number>(5);
   const [excludeLongTermLeave, setExcludeLongTermLeave] = useState<boolean>(true);
-  const [showPreview, setShowPreview]                 = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
-  const [expandedSummary, setExpandedSummary]   = useState<number | null>(null);
-  const [calibrateTarget, setCalibrateTarget]   = useState<FeedbackSummaryResponse | null>(null);
+  const [expandedSummary, setExpandedSummary] = useState<number | null>(null);
+  const [calibrateTarget, setCalibrateTarget] = useState<FeedbackSummaryResponse | null>(null);
   const [reassignRequestId, setReassignRequestId] = useState<number | null>(null);
 
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -879,17 +937,21 @@ const Feedback360AdminPage = () => {
   }, [savedRequests.length]);
 
   const [previewTrigger, { data: previewData, isFetching: isPreviewing }] = useLazyPreviewFeedbackRequestsQuery();
-  const [generate,         { isLoading: isGenerating }]       = useGenerateFeedbackRequestsMutation();
+  const [generate, { isLoading: isGenerating }] = useGenerateFeedbackRequestsMutation();
   const [generateSummaries, { isLoading: isGeneratingSummaries }] = useGenerateAllSummariesMutation();
-  const [finalizeSummary,  { isLoading: isFinalizing }]       = useFinalizeSummaryMutation();
-  const [regenerateUser]                                      = useRegenerateUserRequestsMutation();
-  const [cancelRequest]                                       = useCancelFeedbackRequestMutation();
+  const [finalizeSummary, { isLoading: isFinalizing }] = useFinalizeSummaryMutation();
+  const [regenerateUser] = useRegenerateUserRequestsMutation();
+  const [cancelRequest] = useCancelFeedbackRequestMutation();
 
   const { data: summaries, isLoading: summariesLoading } = useGetAllSummariesByCycleQuery(
     cycleId, { skip: !cycleId },
   );
 
   const [downloadReport, { isLoading: isDownloadingReport }] = useDownloadReportMutation();
+  const [downloadManagerPack, { isLoading: isDownloadingPack }] = useDownloadReportMutation();
+
+  const { data: allEmployees = [] } = useGetAllEmployeesQuery();
+  const [selectedManagerId, setSelectedManagerId] = useState<string>('');
 
   const handleDownloadSummaryReport = async () => {
     if (!cycleId) return toast.error('Please select a cycle.');
@@ -902,6 +964,21 @@ const Feedback360AdminPage = () => {
       toast.success('Summary report downloaded successfully.');
     } catch {
       toast.error('Failed to download summary report.');
+    }
+  };
+
+  const handleDownloadManagerPack = async () => {
+    if (!cycleId) return toast.error('Please select a cycle.');
+    if (!selectedManagerId) return toast.error('Please select a manager.');
+    try {
+      await downloadManagerPack({
+        endpoint: 'feedback-360/manager',
+        params: { managerId: Number(selectedManagerId), cycleId },
+        fileName: `Feedback_360_Manager_Pack_Cycle_${cycleId}_Manager_${selectedManagerId}.pdf`,
+      }).unwrap();
+      toast.success('Manager Review Pack downloaded successfully.');
+    } catch {
+      toast.error('Failed to download Manager Review Pack.');
     }
   };
 
@@ -1224,7 +1301,72 @@ const Feedback360AdminPage = () => {
       {activeTab === 'summaries' && (
         /* Summaries */
         <div style={panel}>
-          <p style={sectionTitle}>Cycle Summaries</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+            <p style={{ ...sectionTitle, margin: 0 }}>Cycle Summaries</p>
+            {cycleId > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <button
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 14px',
+                    background: '#FFFFFF',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#1A56DB',
+                    cursor: isDownloadingReport ? 'not-allowed' : 'pointer',
+                    opacity: isDownloadingReport ? 0.7 : 1,
+                    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
+                  }}
+                  disabled={isDownloadingReport}
+                  onClick={handleDownloadSummaryReport}
+                >
+                  <FileDown size={14} />
+                  {isDownloadingReport ? 'Downloading Cycle PDF...' : 'Download Cycle PDF'}
+                </button>
+
+                <div style={{ width: '1px', height: '24px', background: '#E4E6EC' }} />
+
+                <select
+                  style={{ ...inputStyle, width: 220 }}
+                  value={selectedManagerId}
+                  onChange={(e) => setSelectedManagerId(e.target.value)}
+                >
+                  <option value="">-- Select Manager for Pack --</option>
+                  {allEmployees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.staffName} (ID: {emp.id})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 14px',
+                    background: '#FFFFFF',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#374151',
+                    cursor: isDownloadingPack || !selectedManagerId ? 'not-allowed' : 'pointer',
+                    opacity: isDownloadingPack || !selectedManagerId ? 0.7 : 1,
+                    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
+                  }}
+                  disabled={isDownloadingPack || !selectedManagerId}
+                  onClick={handleDownloadManagerPack}
+                >
+                  <FileDown size={14} />
+                  {isDownloadingPack ? 'Downloading Pack...' : 'Download Manager Pack'}
+                </button>
+              </div>
+            )}
+          </div>
           {!cycleId ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', fontSize: 13 }}>
               <AlertCircle size={15} /> Enter a Cycle ID above to view summaries.
@@ -1250,6 +1392,7 @@ const Feedback360AdminPage = () => {
                     onFinalize={() => s.summaryId && handleFinalize(s.summaryId)}
                     onCalibrate={() => setCalibrateTarget(s)}
                     isFinalizing={isFinalizing}
+                    cycleId={cycleId}
                   />
                 );
               })}

@@ -12,6 +12,8 @@ import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.employee.EmployeeDepartment;
 import ace.org.epms_backend.model.employee.EmployeeTeam;
 import ace.org.epms_backend.model.employee.ReportingLine;
+import ace.org.epms_backend.model.feedback360.Feedback;
+import ace.org.epms_backend.model.feedback360.FeedbackResponse;
 import ace.org.epms_backend.model.feedback360.FeedbackRequest;
 import ace.org.epms_backend.model.feedback360.FeedbackSummary;
 import ace.org.epms_backend.model.appraisal.AppraisalSummary;
@@ -22,6 +24,7 @@ import ace.org.epms_backend.model.pip.PipRecord;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.repository.employee.EmployeeTeamRepository;
 import ace.org.epms_backend.repository.employee.ReportingLineRepository;
+import ace.org.epms_backend.repository.feedback360.FeedbackRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository;
 import ace.org.epms_backend.repository.feedback360.FeedbackSummaryRepository;
 import ace.org.epms_backend.service.report.ReportService;
@@ -29,6 +32,9 @@ import ace.org.epms_backend.util.JasperReportUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Optional;
+import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.model.appraisal.Question;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -63,6 +69,8 @@ public class ReportServiceImpl implements ReportService {
     private final EmployeeTeamRepository employeeTeamRepository;
     private final JasperReportUtil jasperReportUtil;
     private final FeedbackReportService feedbackReportService;
+    private final QuestionRepository questionRepository;
+    private final FeedbackRepository feedbackRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -117,6 +125,17 @@ public class ReportServiceImpl implements ReportService {
         List<EmployeeStatusDTO> details = appraisals.stream().map(a -> {
             EmployeeDepartment ed = employeeDepartmentRepository
                     .findByEmployeeIdAndIsCurrentTrue(a.getEmployee().getId()).orElse(null);
+            
+            List<FeedbackRequest> requests = feedbackRequestRepository.findByTargetUserIdAndCycleCycleId(a.getEmployee().getId(), cycleId);
+            String completionRateStr = "-";
+            if (!requests.isEmpty()) {
+                long completedRequests = requests.stream()
+                        .filter(r -> "COMPLETED".equals(r.getStatus().name()))
+                        .count();
+                double rate = (completedRequests * 100.0) / requests.size();
+                completionRateStr = String.format("%.2f%%", rate);
+            }
+
             return EmployeeStatusDTO.builder()
                     .employeeName(a.getEmployee().getStaffName())
                     .departmentName(ed != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
@@ -124,6 +143,7 @@ public class ReportServiceImpl implements ReportService {
                     .selfAssessmentDate(a.getSelfSubmittedAt() != null ? a.getSelfSubmittedAt().toString() : null)
                     .managerEvaluationDate(
                             a.getManagerSubmittedAt() != null ? a.getManagerSubmittedAt().toString() : null)
+                    .feedbackCompletionRate(completionRateStr)
                     .build();
         }).collect(Collectors.toList());
 
@@ -320,10 +340,23 @@ public class ReportServiceImpl implements ReportService {
                                             && a.getPerformanceCategory().getRatingValue() <= 2)))
                     .count();
 
+            double avg360 = deptAppraisals.stream()
+                    .mapToDouble(a -> {
+                        Optional<FeedbackSummary> fsOpt = feedbackSummaryRepository
+                                .findByEmployeeIdAndCycleCycleId(a.getEmployee().getId(), cycleId);
+                        if (fsOpt.isPresent() && fsOpt.get().getFinalScore() != null) {
+                            return fsOpt.get().getFinalScore().doubleValue();
+                        }
+                        return 0.0;
+                    })
+                    .filter(val -> val > 0.0)
+                    .average().orElse(0.0);
+
             return DeptPerformanceReportDTO.builder()
                     .departmentName(deptName)
                     .averageKpiScore(BigDecimal.valueOf(avgKpi).setScale(2, BigDecimal.ROUND_HALF_UP))
                     .averageAppraisalScore(BigDecimal.valueOf(avgAppraisal).setScale(2, BigDecimal.ROUND_HALF_UP))
+                    .average360Score(BigDecimal.valueOf(avg360).setScale(2, BigDecimal.ROUND_HALF_UP))
                     .employeeCount(deptAppraisals.size())
                     .topPerformersCount((int) topPerformers)
                     .lowPerformersCount((int) lowPerformers)
@@ -843,6 +876,107 @@ public class ReportServiceImpl implements ReportService {
         parameters.put("reportTitle", "360° Feedback Cycle Summary Report");
         String jrxmlPath = "reports/feedback_360_cycle_summary.jrxml";
         return generateReport(jrxmlPath, parameters, List.of(data), format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportManagerReviewPack(Long managerId, Long cycleId, String format) {
+        Employee manager = employeeRepository.findById(managerId)
+                .orElseThrow(() -> new NotFoundException("Manager not found"));
+        AppraisalCycle cycle = appraisalCycleRepository.findById(cycleId)
+                .orElseThrow(() -> new NotFoundException("Cycle not found"));
+
+        List<ReportingLine> subordinates = reportingLineRepository.findAllByManagerAndIsActiveTrue(manager);
+        List<Feedback360ManagerPackItemDTO> items = new ArrayList<>();
+
+        for (ReportingLine rl : subordinates) {
+            Employee emp = rl.getEmployee();
+            EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId()).orElse(null);
+            String deptName = (ed != null && ed.getCurrentDepartment() != null)
+                    ? ed.getCurrentDepartment().getDepartmentName()
+                    : "Unassigned";
+            String posName = emp.getPosition() != null ? emp.getPosition().getPositionName() : "N/A";
+
+            FeedbackSummary fs = feedbackSummaryRepository.findByEmployeeIdAndCycleCycleId(emp.getId(), cycleId).orElse(null);
+
+            items.add(Feedback360ManagerPackItemDTO.builder()
+                    .targetEmployeeName(emp.getStaffName())
+                    .targetEmployeeCode(emp.getEmployeeCode())
+                    .targetDepartmentName(deptName)
+                    .targetPositionName(posName)
+                    .selfScore(fs != null ? fs.getSelfScore() : null)
+                    .managerScore(fs != null ? fs.getManagerScore() : null)
+                    .peerScore(fs != null ? fs.getPeerScore() : null)
+                    .subordinateScore(fs != null ? fs.getSubordinateScore() : null)
+                    .finalScore(fs != null ? fs.getFinalScore() : null)
+                    .calibratedFinalScore(fs != null ? fs.getCalibratedFinalScore() : null)
+                    .managerSummary(fs != null ? fs.getManagerSummary() : null)
+                    .build());
+        }
+
+        Feedback360ManagerPackDTO pack = Feedback360ManagerPackDTO.builder()
+                .managerName(manager.getStaffName())
+                .cycleName(cycle.getCycleName())
+                .items(items)
+                .build();
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "360° Feedback Manager Review Pack");
+        return generateReport("reports/feedback_360_manager_pack.jrxml", parameters, List.of(pack), format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportPaperForm(Long requestId, String format) {
+        FeedbackRequest req = feedbackRequestRepository.findById(requestId)
+                .orElseThrow(() -> new NotFoundException("Feedback request not found"));
+
+        if (req.getForm() == null) {
+            throw new RuntimeException("No form is assigned to this feedback request.");
+        }
+
+        Employee target = req.getTargetUser();
+        EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(target.getId()).orElse(null);
+        String deptName = (ed != null && ed.getCurrentDepartment() != null)
+                ? ed.getCurrentDepartment().getDepartmentName()
+                : "Unassigned";
+        String posName = target.getPosition() != null ? target.getPosition().getPositionName() : "N/A";
+
+        Optional<Feedback> feedbackOpt = feedbackRepository.findByRequestId(requestId);
+        List<FeedbackResponse> responses = feedbackOpt.isPresent() ? feedbackOpt.get().getResponses() : new ArrayList<>();
+
+        List<Question> questions = questionRepository.findByCategory_Form_FormId(req.getForm().getFormId());
+        List<Feedback360PaperFormQuestionDTO> questionDTOs = new ArrayList<>();
+        for (Question q : questions) {
+            FeedbackResponse resp = responses.stream()
+                    .filter(r -> r.getQuestion().getQuestionId().equals(q.getQuestionId()))
+                    .findFirst()
+                    .orElse(null);
+
+            questionDTOs.add(Feedback360PaperFormQuestionDTO.builder()
+                    .categoryName(q.getCategory() != null ? q.getCategory().getCategoryName() : "General")
+                    .questionText(q.getQuestionText())
+                    .isRequired(q.getIsRequired())
+                    .score(resp != null ? resp.getScore() : null)
+                    .comment(resp != null ? resp.getComment() : null)
+                    .build());
+        }
+
+        Feedback360PaperFormDTO formDTO = Feedback360PaperFormDTO.builder()
+                .requestId(req.getId())
+                .targetEmployeeName(target.getStaffName())
+                .targetEmployeeCode(target.getEmployeeCode())
+                .targetDepartmentName(deptName)
+                .targetPositionName(posName)
+                .evaluatorEmployeeName(req.getEvaluator().getStaffName())
+                .relationshipType(req.getRelationship().name())
+                .cycleName(req.getCycle().getCycleName())
+                .questions(questionDTOs)
+                .build();
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "360° Feedback Paper Form");
+        return generateReport("reports/feedback_360_paper_form.jrxml", parameters, List.of(formDTO), format);
     }
 
     private byte[] generateReport(String jrxmlPath, Map<String, Object> parameters, List<?> data, String format) {
