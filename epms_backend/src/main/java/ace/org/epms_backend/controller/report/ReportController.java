@@ -93,6 +93,23 @@ public class ReportController {
         return createDownloadResponse(reportContent, "Feedback_360_Cycle_Summary_Report", format);
     }
 
+    @GetMapping("/feedback-360/manager/download")
+    public ResponseEntity<byte[]> downloadManagerReviewPack(
+            @RequestParam Long managerId,
+            @RequestParam Long cycleId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportManagerReviewPack(managerId, cycleId, format);
+        return createDownloadResponse(reportContent, "Feedback_360_Manager_Pack", format);
+    }
+
+    @GetMapping("/feedback-360/print-form/download")
+    public ResponseEntity<byte[]> downloadPaperForm(
+            @RequestParam Long requestId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportPaperForm(requestId, format);
+        return createDownloadResponse(reportContent, "Feedback_360_Paper_Form", format);
+    }
+
     // PIP Tracking
     @GetMapping("/pip-tracking")
     public ResponseEntity<ApiResponse<PipTrackingReportDTO>> getPipTrackingReport() {
