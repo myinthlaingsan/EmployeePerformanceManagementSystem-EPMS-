@@ -1,5 +1,6 @@
 package ace.org.epms_backend.dto.appraisal;
 
+import ace.org.epms_backend.enums.FeedbackRelationship;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class AppraisalFormResponse {
     private Long cycleId;
     private String cycleName;
     private Long createdBy;
+    private FeedbackRelationship targetRelationship;
     private Instant createdAt;
     private Instant updatedAt;
 }

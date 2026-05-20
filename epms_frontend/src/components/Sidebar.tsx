@@ -20,6 +20,7 @@ import {
   Calendar,
   Layers,
   X,
+  Repeat2,
 } from "lucide-react";
 
 interface NavItem {
@@ -36,7 +37,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-  { label: "360 Feedback", to: "/appraisal/360", icon: Users },
   { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck, end: true },
   { label: "Performance Pulse", to: "/performance-history/admin", icon: History, adminOnly: true },
   { label: "Team Pulse", to: "/performance-history/manager", icon: History, privilegedOnly: true, hideForAdmin: true },
@@ -86,6 +86,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
   const navigate = useNavigate();
   const [mgmtOpen, setMgmtOpen] = useState(false);
   const [perfOpen, setPerfOpen] = useState(false);
+  const [feedback360Open, setFeedback360Open] = useState(false);
 
   const filteredNav = NAV_ITEMS.filter((item) => {
     if (item.adminOnly && !isAdmin && !isHR) return false;
@@ -163,6 +164,74 @@ const Sidebar = ({ onClose }: SidebarProps) => {
               {item.label}
             </NavLink>
           ))}
+
+          {/* 360 Feedback accordion */}
+          <div>
+            <button
+              onClick={() => setFeedback360Open(!feedback360Open)}
+              style={{ padding: "8px 10px" }}
+              className="w-full flex items-center justify-between rounded-[8px] text-[13px] font-normal text-[#5A6070] hover:bg-[#F0F2F8] hover:text-[#111827] transition-colors"
+            >
+              <span className="flex items-center gap-[9px]">
+                <Repeat2 size={16} aria-hidden="true" />
+                360° Feedback
+              </span>
+              <ChevronDown
+                size={14}
+                className={`transition-transform duration-200 ${feedback360Open ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {feedback360Open && (
+              <div style={{ paddingLeft: 8, marginTop: 1 }}>
+                <NavLink
+                  to="/360-feedback/pending"
+                  style={{ padding: "7px 10px" }}
+                  className={({ isActive }) => navCls(isActive)}
+                  onClick={handleNavClick}
+                >
+                  My Pending
+                </NavLink>
+                <NavLink
+                  to="/360-feedback/my-report"
+                  style={{ padding: "7px 10px" }}
+                  className={({ isActive }) => navCls(isActive)}
+                  onClick={handleNavClick}
+                >
+                  My Report
+                </NavLink>
+                <NavLink
+                  to="/360-feedback/nominations"
+                  style={{ padding: "7px 10px" }}
+                  className={({ isActive }) => navCls(isActive)}
+                  onClick={handleNavClick}
+                >
+                  Nominations
+                </NavLink>
+                {(isAdmin || isHR) && (
+                  <NavLink
+                    to="/360-feedback/admin"
+                    end
+                    style={{ padding: "7px 10px" }}
+                    className={({ isActive }) => navCls(isActive)}
+                    onClick={handleNavClick}
+                  >
+                    Admin Panel
+                  </NavLink>
+                )}
+                {(isAdmin || isHR) && (
+                  <NavLink
+                    to="/360-feedback/admin/competencies"
+                    style={{ padding: "7px 10px" }}
+                    className={({ isActive }) => navCls(isActive)}
+                    onClick={handleNavClick}
+                  >
+                    Competencies
+                  </NavLink>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Performance Hub accordion */}
           <div>

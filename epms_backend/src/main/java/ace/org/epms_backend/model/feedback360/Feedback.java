@@ -8,6 +8,8 @@ import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "feedback")
@@ -36,4 +38,8 @@ public class Feedback extends BaseEntity {
     private String overallComment;
 
     private Instant submittedAt;
+
+    @OneToMany(mappedBy = "feedback", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<FeedbackResponse> responses = new ArrayList<>();
 }

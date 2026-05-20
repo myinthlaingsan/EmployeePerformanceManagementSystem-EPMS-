@@ -15,4 +15,5 @@ public class EmployeeStatusDTO {
     private String status;
     private String selfAssessmentDate;
     private String managerEvaluationDate;
+    private String feedbackCompletionRate;
 }

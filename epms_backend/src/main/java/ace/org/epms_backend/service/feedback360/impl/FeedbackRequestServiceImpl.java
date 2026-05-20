@@ -20,6 +20,8 @@ import ace.org.epms_backend.service.feedback360.FeedbackRequestService;
 import ace.org.epms_backend.service.feedback360.EvaluatorRotationService;
 import ace.org.epms_backend.model.feedback360.DepartmentFeedbackConfig;
 import ace.org.epms_backend.repository.feedback360.DepartmentFeedbackConfigRepository;
+import ace.org.epms_backend.enums.FeedbackRelationship;
+import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.model.appraisal.AppraisalForm;
 import ace.org.epms_backend.repository.AppraisalFormRepository;
 import ace.org.epms_backend.enums.FormType;
@@ -105,14 +107,11 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             });
         }
 
-        // 5. Resolve default form for the cycle
-        AppraisalForm defaultForm = cycle.getForms().stream()
-                .filter(f -> f.getFormType() == FormType.FEEDBACK)
-                .findFirst()
-                .orElse(null);
+        // 5. Resolve forms per relationship
+        java.util.Map<FeedbackRelationship, AppraisalForm> formByRel = resolveFeedbackForms(cycle);
 
         // 6. Regenerate for this one employee
-        generateRequestsForEmployee(cycle, target, cycleId, previousCycleId, globalMaxLimit, workloadMap, deptConfigs, true, new ArrayList<>(), excludedEvaluatorsMap, defaultForm);
+        generateRequestsForEmployee(cycle, target, cycleId, previousCycleId, globalMaxLimit, workloadMap, deptConfigs, true, new ArrayList<>(), excludedEvaluatorsMap, formByRel);
         log.info("Successfully regenerated 360 feedback requests for employee: {}", targetEmployeeId);
     }
 
@@ -156,16 +155,43 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             log.info("Loaded {} previous assignments to enforce rotation rules.", excludedEvaluatorsMap.size());
         }
 
-        // Resolve default form for the cycle (type = FEEDBACK)
-        AppraisalForm defaultForm = cycle.getForms().stream()
-                .filter(f -> f.getFormType() == FormType.FEEDBACK)
-                .findFirst()
-                .orElse(null);
+        // Resolve forms per relationship
+        java.util.Map<FeedbackRelationship, AppraisalForm> formByRel = resolveFeedbackForms(cycle);
 
         for (Employee target : allEmployees) {
-            generateRequestsForEmployee(cycle, target, cycleId, previousCycleId, globalMaxLimit, workloadMap, deptConfigs, persist, previewResults, excludedEvaluatorsMap, defaultForm);
+            generateRequestsForEmployee(cycle, target, cycleId, previousCycleId, globalMaxLimit, workloadMap, deptConfigs, persist, previewResults, excludedEvaluatorsMap, formByRel);
         }
         return previewResults;
+    }
+
+    private java.util.Map<FeedbackRelationship, AppraisalForm> resolveFeedbackForms(ace.org.epms_backend.model.appraisal.AppraisalCycle cycle) {
+        // Load all FEEDBACK forms for this cycle from the DB
+        List<ace.org.epms_backend.model.appraisal.AppraisalForm> feedbackForms =
+                formRepository.findByCycleCycleIdAndFormType(cycle.getCycleId(), FormType.FEEDBACK);
+
+        java.util.Map<FeedbackRelationship, AppraisalForm> byRel = new java.util.EnumMap<>(FeedbackRelationship.class);
+        AppraisalForm fallback = null;
+        for (AppraisalForm f : feedbackForms) {
+            if (f.getTargetRelationship() != null) {
+                byRel.put(f.getTargetRelationship(), f);
+            } else if (fallback == null) {
+                fallback = f;
+            }
+        }
+        // Fill missing slots with the generic fallback form (or the cycle's form list)
+        if (fallback == null) {
+            fallback = cycle.getForms().stream()
+                    .filter(f -> f.getFormType() == FormType.FEEDBACK)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(
+                        "Cycle " + cycle.getCycleId() + " has no FEEDBACK form. "
+                      + "Create a feedback form in the form designer before generating requests."));
+        }
+        final AppraisalForm fb = fallback;
+        for (FeedbackRelationship rel : FeedbackRelationship.values()) {
+            byRel.putIfAbsent(rel, fb);
+        }
+        return byRel;
     }
 
     private void generateRequestsForEmployee(AppraisalCycle cycle, Employee target, Long cycleId, Long previousCycleId,
@@ -173,7 +199,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                                              java.util.Map<String, DepartmentFeedbackConfig> deptConfigs,
                                              boolean persist, List<FeedbackRequestResponse> previewResults,
                                              java.util.Map<Long, java.util.Set<Long>> excludedEvaluatorsMap,
-                                             AppraisalForm form) {
+                                             java.util.Map<FeedbackRelationship, AppraisalForm> formByRel) {
         int rank = getLevelRank(target);
         if (rank < 4) return;
 
@@ -220,21 +246,26 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             }
         }
 
+        AppraisalForm selfForm    = formByRel.get(FeedbackRelationship.SELF);
+        AppraisalForm managerForm = formByRel.get(FeedbackRelationship.DIRECT_MANAGER);
+        AppraisalForm peerForm    = formByRel.get(FeedbackRelationship.PEER);
+        AppraisalForm subForm     = formByRel.get(FeedbackRelationship.SUBORDINATE);
+
         // 1. SELF
-        handleRequest(cycle, target, target, FeedbackRelationship.SELF, false, workloadMap, 999, persist, previewResults, true, form);
+        handleRequest(cycle, target, target, FeedbackRelationship.SELF, false, workloadMap, 999, persist, previewResults, true, selfForm);
 
         // 2. MANAGER / SUPERIOR
         if (rank == 4) {
             // L01-L03 evaluates L04 Head (Global Shuffle/Rotation)
             Employee rotationEval = evaluatorRotationService.assignTopManagementEvaluator(target.getId(), cycleId, previousCycleId);
             if (rotationEval != null) {
-                handleRequest(cycle, target, rotationEval, FeedbackRelationship.SUPERIOR, false, workloadMap, globalMaxLimit, persist, previewResults, true, form);
+                handleRequest(cycle, target, rotationEval, FeedbackRelationship.DIRECT_MANAGER, false, workloadMap, globalMaxLimit, persist, previewResults, true, managerForm);
             } else {
-                assignManager(cycle, target, workloadMap, globalMaxLimit, persist, previewResults, true, form); // Strict Dept
+                assignManager(cycle, target, workloadMap, globalMaxLimit, persist, previewResults, true, managerForm);
             }
         } else {
             // L05, L06, L07 Superiors must be in SAME DEPARTMENT
-            assignManager(cycle, target, workloadMap, globalMaxLimit, persist, previewResults, true, form); // Strict Dept
+            assignManager(cycle, target, workloadMap, globalMaxLimit, persist, previewResults, true, managerForm);
         }
 
         // 3. PEERS
@@ -278,7 +309,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         // PASS 1: Rotated & Non-Reciprocal (List A)
         for (Employee peer : rotatedPeerPool) {
             if (pCount >= maxPeers) break;
-            if (handleRequest(cycle, target, peer, FeedbackRelationship.PEER, true, workloadMap, globalMaxLimit, persist, previewResults, false, form)) {
+            if (handleRequest(cycle, target, peer, FeedbackRelationship.PEER, true, workloadMap, globalMaxLimit, persist, previewResults, false, peerForm)) {
                 pCount++;
             }
         }
@@ -287,7 +318,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         if (pCount < maxPeers) {
             for (Employee peer : rotatedPeerPool) {
                 if (pCount >= maxPeers) break;
-                if (handleRequest(cycle, target, peer, FeedbackRelationship.PEER, true, workloadMap, globalMaxLimit, persist, previewResults, true, form)) {
+                if (handleRequest(cycle, target, peer, FeedbackRelationship.PEER, true, workloadMap, globalMaxLimit, persist, previewResults, true, peerForm)) {
                     pCount++;
                 }
             }
@@ -297,18 +328,26 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         if (pCount < maxPeers) {
             for (Employee p : peerPool) {
                 if (pCount >= maxPeers) break;
-                if (handleRequest(cycle, target, p, FeedbackRelationship.PEER, true, workloadMap, globalMaxLimit, persist, previewResults, true, form)) {
+                if (handleRequest(cycle, target, p, FeedbackRelationship.PEER, true, workloadMap, globalMaxLimit, persist, previewResults, true, peerForm)) {
                     pCount++;
                 }
             }
         }
 
-        // 4. SUBORDINATES
+        // 4. SUBORDINATES — always use the authoritative direct-report relationship, with department fallback
         if (maxSubs > 0) {
-            // Subordinates (L04, L05, L06 must be SAME DEPARTMENT)
-            List<Employee> subPool = (rank == 6) ? findSubordinatesByTeam(target) : findSubordinatesByDepartment(target);
+            List<Employee> subPool = new ArrayList<>(findDirectReports(target));
 
-            // ROTATION: Filter out subordinates who evaluated this target in previous cycle
+            // Fallback to skip-level department junior employees if direct reports are insufficient
+            if (subPool.size() < maxSubs) {
+                List<Employee> deptSubs = findSubordinatesByDepartment(target);
+                for (Employee ds : deptSubs) {
+                    if (!subPool.contains(ds)) {
+                        subPool.add(ds);
+                    }
+                }
+            }
+
             List<Employee> rotatedSubPool = subPool.stream()
                     .filter(s -> !excludedForThisTarget.contains(s.getId()))
                     .collect(Collectors.toList());
@@ -325,7 +364,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             // PASS 1: Non-Reciprocal
             for (Employee sub : rotatedSubPool) {
                 if (sCount >= maxSubs) break;
-                if (handleRequest(cycle, target, sub, FeedbackRelationship.SUBORDINATE, true, workloadMap, globalMaxLimit, persist, previewResults, false, form)) {
+                if (handleRequest(cycle, target, sub, FeedbackRelationship.SUBORDINATE, true, workloadMap, globalMaxLimit, persist, previewResults, false, subForm)) {
                     sCount++;
                 }
             }
@@ -334,7 +373,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             if (sCount < maxSubs) {
                 for (Employee sub : rotatedSubPool) {
                     if (sCount >= maxSubs) break;
-                    if (handleRequest(cycle, target, sub, FeedbackRelationship.SUBORDINATE, true, workloadMap, globalMaxLimit, persist, previewResults, true, form)) {
+                    if (handleRequest(cycle, target, sub, FeedbackRelationship.SUBORDINATE, true, workloadMap, globalMaxLimit, persist, previewResults, true, subForm)) {
                         sCount++;
                     }
                 }
@@ -343,17 +382,25 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     }
 
 
+    private boolean isEligibleEvaluator(Employee e) {
+        if (e == null) return false;
+        return Boolean.TRUE.equals(e.getIsActive())
+                && e.getStatus() != ace.org.epms_backend.enums.EmployeeStatus.RESIGNED
+                && e.getStatus() != ace.org.epms_backend.enums.EmployeeStatus.LONG_TERM_LEAVE
+                && e.getStatus() != ace.org.epms_backend.enums.EmployeeStatus.TERMINATED;
+    }
+
     private List<Employee> findPeersGlobal(Employee target) {
         int targetRank = getLevelRank(target);
         return employeeRepository.findAll().stream()
-                .filter(e -> !e.getId().equals(target.getId()) && getLevelRank(e) == targetRank)
+                .filter(e -> !e.getId().equals(target.getId()) && getLevelRank(e) == targetRank && isEligibleEvaluator(e))
                 .collect(Collectors.toList());
     }
 
     private List<Employee> findSubordinatesGlobal(Employee target) {
         int targetRank = getLevelRank(target);
         return employeeRepository.findAll().stream()
-                .filter(e -> getLevelRank(e) > targetRank)
+                .filter(e -> getLevelRank(e) > targetRank && isEligibleEvaluator(e))
                 .collect(Collectors.toList());
     }
 
@@ -361,6 +408,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         reportingLineRepository.findByEmployeeAndIsActiveTrue(target)
                 .ifPresent(line -> {
                     Employee manager = line.getManager();
+                    if (!isEligibleEvaluator(manager)) return;
                     if (strictDept) {
                         // Check if manager is in the same department
                         Long targetDeptId = departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(target.getId())
@@ -375,7 +423,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                             return;
                         }
                     }
-                    handleRequest(cycle, target, manager, FeedbackRelationship.MANAGER, false, workloadMap, limit, persist, previewResults, true, form);
+                    handleRequest(cycle, target, manager, FeedbackRelationship.DIRECT_MANAGER, false, workloadMap, limit, persist, previewResults, true, form);
                 });
     }
 
@@ -387,6 +435,9 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
 
         // Skip if same person
         if (target.getId().equals(evaluator.getId()) && rel != FeedbackRelationship.SELF) return false;
+
+        // Ensure evaluator is active and eligible
+        if (!isEligibleEvaluator(evaluator)) return false;
 
         int currentWorkload = workloadMap.getOrDefault(evaluator.getId(), 0);
         if (currentWorkload >= limit) return false;
@@ -445,21 +496,27 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     return departmentRepository.findByCurrentDepartmentIdAndIsCurrentTrue(ed.getCurrentDepartment().getId())
                             .stream()
                             .map(ace.org.epms_backend.model.employee.EmployeeDepartment::getEmployee)
-                            .filter(e -> e != null && !e.getId().equals(employee.getId()) && getLevelRank(e) == targetRank)
+                            .filter(e -> e != null && !e.getId().equals(employee.getId()) && getLevelRank(e) == targetRank && isEligibleEvaluator(e))
                             .collect(Collectors.toList());
                 }).orElse(Collections.emptyList());
     }
 
+    private List<Employee> findDirectReports(Employee target) {
+        return reportingLineRepository.findAllByManagerAndIsActiveTrue(target).stream()
+                .map(ace.org.epms_backend.model.employee.ReportingLine::getEmployee)
+                .filter(e -> e != null && isEligibleEvaluator(e))
+                .collect(Collectors.toList());
+    }
+
     private List<Employee> findSubordinatesByDepartment(Employee target) {
-        // For L04-L05, subordinates can be anyone in their department who is at a lower level
-        int targetRank = getLevelRank(target);
         return departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(target.getId())
                 .map(ed -> {
                     if (ed.getCurrentDepartment() == null) return new java.util.ArrayList<Employee>();
+                    int targetRank = getLevelRank(target);
                     return departmentRepository.findByCurrentDepartmentIdAndIsCurrentTrue(ed.getCurrentDepartment().getId())
                             .stream()
                             .map(ace.org.epms_backend.model.employee.EmployeeDepartment::getEmployee)
-                            .filter(e -> e != null && getLevelRank(e) == (targetRank + 1))
+                            .filter(e -> e != null && !e.getId().equals(target.getId()) && getLevelRank(e) > targetRank && isEligibleEvaluator(e))
                             .collect(Collectors.toList());
                 }).orElse(Collections.emptyList());
     }
@@ -471,72 +528,10 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                 .ifPresent(et -> {
                     teamPeers.addAll(teamRepository.findByTeamTeamId(et.getTeam().getTeamId()).stream()
                             .map(ace.org.epms_backend.model.employee.EmployeeTeam::getEmployee)
-                            .filter(e -> e != null && !e.getId().equals(target.getId()) && getLevelRank(e) == targetRank)
+                            .filter(e -> e != null && !e.getId().equals(target.getId()) && getLevelRank(e) == targetRank && isEligibleEvaluator(e))
                             .collect(Collectors.toList()));
                 });
         return teamPeers;
-    }
-
-    private List<Employee> findSubordinatesByTeam(Employee target) {
-        List<Employee> teamMembers = new ArrayList<>();
-        teamRepository.findFirstByEmployeeIdAndIsPrimaryTrue(target.getId())
-                .ifPresent(et -> {
-                    teamMembers.addAll(teamRepository.findByTeamTeamId(et.getTeam().getTeamId()).stream()
-                            .map(ace.org.epms_backend.model.employee.EmployeeTeam::getEmployee)
-                            .filter(e -> e != null && getLevelRank(e) == (getLevelRank(target) + 1))
-                            .collect(Collectors.toList()));
-                });
-        return teamMembers;
-    }
-
-    @Override
-    @Transactional
-    public void generateRequests(FeedbackRequestGenerateDTO dto) {
-        AppraisalCycle cycle = cycleRepository.findById(dto.getCycleId())
-                .orElseThrow(() -> new NotFoundException("Cycle not found"));
-
-        AppraisalForm manualForm = null;
-        if (dto.getFormId() != null) {
-            manualForm = formRepository.findById(dto.getFormId())
-                    .orElseThrow(() -> new NotFoundException("Form not found: " + dto.getFormId()));
-        }
-
-        java.util.Map<Long, Integer> workloadMap = new java.util.HashMap<>();
-        int limit = 99; // Default high limit for manual generation
-
-        for (Long employeeId : dto.getEmployeeIds()) {
-            Employee target = employeeRepository.findById(employeeId)
-                    .orElseThrow(() -> new NotFoundException("Employee not found: " + employeeId));
-
-            // 1. SELF
-            createRequest(cycle, target, target, FeedbackRelationship.SELF, false, workloadMap, 999, false, manualForm);
-
-            // 2. MANAGER
-            final AppraisalForm finalForm = manualForm;
-            reportingLineRepository.findByEmployeeAndIsActiveTrue(target)
-                    .ifPresent(reportingLine -> {
-                        createRequest(cycle, target, reportingLine.getManager(), FeedbackRelationship.MANAGER, false, workloadMap, limit, false, finalForm);
-                    });
-
-            // 3. PEERS (DEPARTMENT BASED)
-            List<Employee> peers = findPeersByDepartment(target);
-            Collections.shuffle(peers);
-            int peerCount = 0;
-            for (Employee peer : peers) {
-                if (peerCount >= dto.getPeerLimit()) break;
-                if (createRequest(cycle, target, peer, FeedbackRelationship.PEER, true, workloadMap, limit, false, finalForm)) {
-                    peerCount++;
-                }
-            }
-
-            // 4. SUBORDINATES
-            if (Boolean.TRUE.equals(dto.getIncludeSubordinates())) {
-                List<ReportingLine> subLines = reportingLineRepository.findAllByManagerAndIsActiveTrue(target);
-                for (ReportingLine line : subLines) {
-                    createRequest(cycle, target, line.getEmployee(), FeedbackRelationship.SUBORDINATE, true, workloadMap, limit, false, finalForm);
-                }
-            }
-        }
     }
 
     private int getLevelRank(Employee employee) {
@@ -599,8 +594,39 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     }
 
     @Override
-    public List<FeedbackRequestResponse> getMyPendingRequests(Long evaluatorId) {
-        return requestRepository.findByEvaluatorIdAndStatus(evaluatorId, FeedbackStatus.PENDING).stream()
+    public List<FeedbackRequestResponse> getMyRequests(Long evaluatorId) {
+        return requestRepository.findByEvaluatorId(evaluatorId).stream()
+                .map(feedbackMapper::toRequestResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void cancelFeedbackRequest(Long requestId) {
+        FeedbackRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new NotFoundException("Feedback request not found: " + requestId));
+        if (request.getStatus() == FeedbackStatus.COMPLETED) {
+            throw new IllegalStateException("Cannot cancel a completed feedback request.");
+        }
+        request.setStatus(FeedbackStatus.CANCELLED);
+        requestRepository.save(request);
+    }
+
+    @Override
+    @Transactional
+    public void reassignFeedbackRequest(Long requestId, Long newEvaluatorId) {
+        FeedbackRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new NotFoundException("Feedback request not found: " + requestId));
+        Employee newEvaluator = employeeRepository.findById(newEvaluatorId)
+                .orElseThrow(() -> new NotFoundException("Employee not found: " + newEvaluatorId));
+        request.setEvaluator(newEvaluator);
+        request.setStatus(FeedbackStatus.PENDING);
+        requestRepository.save(request);
+    }
+
+    @Override
+    public List<FeedbackRequestResponse> listByCycle(Long cycleId) {
+        return requestRepository.findByCycleCycleId(cycleId).stream()
                 .map(feedbackMapper::toRequestResponse)
                 .collect(Collectors.toList());
     }

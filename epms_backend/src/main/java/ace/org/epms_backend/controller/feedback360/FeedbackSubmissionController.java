@@ -1,5 +1,6 @@
 package ace.org.epms_backend.controller.feedback360;
 
+import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.appraisal.FullFormResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackDetailsResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackSubmissionRequest;
@@ -23,7 +24,7 @@ public class FeedbackSubmissionController {
     private final FeedbackFormService feedbackFormService;
 
     @PostMapping
-    public ResponseEntity<Void> submitFeedback(@RequestBody FeedbackSubmissionRequest request, @RequestParam Long evaluatorId) {
+    public ResponseEntity<Void> submitFeedback(@jakarta.validation.Valid @RequestBody FeedbackSubmissionRequest request, @RequestParam Long evaluatorId) {
         feedbackService.submitFeedback(request, evaluatorId);
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
@@ -50,7 +51,7 @@ public class FeedbackSubmissionController {
     }
 
     @GetMapping("/request/{requestId}/questions")
-    public ResponseEntity<FullFormResponse> getQuestions(@PathVariable Long requestId) {
-        return ResponseEntity.ok(feedbackFormService.getQuestionsForRequest(requestId));
+    public ResponseEntity<ApiResponse<FullFormResponse>> getQuestions(@PathVariable Long requestId) {
+        return ResponseEntity.ok(ApiResponse.success(feedbackFormService.getQuestionsForRequest(requestId)));
     }
 }

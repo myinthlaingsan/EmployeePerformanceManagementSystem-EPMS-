@@ -1,23 +1,23 @@
 package ace.org.epms_backend.config;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 @Configuration
 public class JacksonConfig {
 
     @Bean
+    @Primary
     public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        // Register module for Java 8 time types (Instant, LocalDateTime, etc.)
-        mapper.registerModule(new JavaTimeModule());
-
-        // Optional: Disable writing dates as timestamps (use ISO-8601 strings instead)
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-
-        return mapper;
+        return JsonMapper.builder()
+                .findAndAddModules()
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .build();
     }
 }

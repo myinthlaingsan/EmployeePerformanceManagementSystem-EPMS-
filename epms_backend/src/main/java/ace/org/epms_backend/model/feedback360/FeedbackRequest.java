@@ -9,6 +9,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Instant;
+
 @Entity
 @Table(
         name = "feedback_request",
@@ -47,10 +49,22 @@ public class FeedbackRequest extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private FeedbackRelationship relationship;
 
-    @Builder.Default
-    private Boolean isAnonymous = true;
+    private Boolean isAnonymous;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 30)
     @Builder.Default
     private FeedbackStatus status = FeedbackStatus.PENDING;
+
+    private Instant dueDate;
+    private Instant startedAt;
+    private Instant lastReminderSentAt;
+
+    // Anonymity is derived from relationship; callers cannot override it.
+    @PrePersist
+    @PreUpdate
+    private void deriveAnonymity() {
+        this.isAnonymous = (relationship == FeedbackRelationship.PEER
+                || relationship == FeedbackRelationship.SUBORDINATE);
+    }
 }

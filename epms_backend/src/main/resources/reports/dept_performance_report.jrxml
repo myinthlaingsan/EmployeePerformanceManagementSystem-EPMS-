@@ -4,6 +4,7 @@
 	<field name="departmentName" class="java.lang.String"/>
 	<field name="averageKpiScore" class="java.math.BigDecimal"/>
 	<field name="averageAppraisalScore" class="java.math.BigDecimal"/>
+	<field name="average360Score" class="java.math.BigDecimal"/>
 	<field name="employeeCount" class="java.lang.Integer"/>
 	<field name="topPerformersCount" class="java.lang.Integer"/>
 	<field name="lowPerformersCount" class="java.lang.Integer"/>
@@ -23,20 +24,23 @@
 		<element kind="rectangle" uuid="93b074f6-12e4-430f-ad47-e8da45c9da25" x="0" y="0" width="802" height="35" backcolor="#34495E">
 			<pen lineWidth="0.0"/>
 		</element>
-		<element kind="staticText" uuid="8bfe4e8b-c7bf-45aa-9f2f-2fc38376b1f5" x="0" y="0" width="50" height="35" forecolor="#FFFFFF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+		<element kind="staticText" uuid="8bfe4e8b-c7bf-45aa-9f2f-2fc38376b1f5" x="0" y="0" width="40" height="35" forecolor="#FFFFFF" bold="true" hTextAlign="Center" vTextAlign="Middle">
 			<text><![CDATA[Rank]]></text>
 		</element>
-		<element kind="staticText" uuid="ccb201c9-07c4-4976-ab6b-c0b53c934b4f" x="50" y="0" width="200" height="35" forecolor="#FFFFFF" bold="true" vTextAlign="Middle">
+		<element kind="staticText" uuid="ccb201c9-07c4-4976-ab6b-c0b53c934b4f" x="40" y="0" width="180" height="35" forecolor="#FFFFFF" bold="true" vTextAlign="Middle">
 			<text><![CDATA[Department Name]]></text>
 			<box leftPadding="10"/>
 		</element>
-		<element kind="staticText" uuid="ff4cd549-a766-4f89-8cc5-6c18686a5928" x="250" y="0" width="110" height="35" forecolor="#FFFFFF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+		<element kind="staticText" uuid="ff4cd549-a766-4f89-8cc5-6c18686a5928" x="220" y="0" width="90" height="35" forecolor="#FFFFFF" bold="true" hTextAlign="Center" vTextAlign="Middle">
 			<text><![CDATA[Avg KPI %]]></text>
 		</element>
-		<element kind="staticText" uuid="80a75a18-bb85-4a44-9ac0-fd2c60c4467a" x="360" y="0" width="110" height="35" forecolor="#FFFFFF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+		<element kind="staticText" uuid="80a75a18-bb85-4a44-9ac0-fd2c60c4467a" x="310" y="0" width="90" height="35" forecolor="#FFFFFF" bold="true" hTextAlign="Center" vTextAlign="Middle">
 			<text><![CDATA[Avg Appraisal %]]></text>
 		</element>
-		<element kind="staticText" uuid="11a63095-74c2-49f5-8124-270373f22a8e" x="470" y="0" width="100" height="35" forecolor="#FFFFFF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+		<element kind="staticText" uuid="80a75a18-bb85-4a44-9ac0-fd2c60c4467b" x="400" y="0" width="90" height="35" forecolor="#FFFFFF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<text><![CDATA[Avg 360 %]]></text>
+		</element>
+		<element kind="staticText" uuid="11a63095-74c2-49f5-8124-270373f22a8e" x="490" y="0" width="80" height="35" forecolor="#FFFFFF" bold="true" hTextAlign="Center" vTextAlign="Middle">
 			<text><![CDATA[Employees]]></text>
 		</element>
 		<element kind="staticText" uuid="8b03591f-eae9-4f47-94ae-b897c2e30275" x="570" y="0" width="115" height="35" forecolor="#FFFFFF" bold="true" hTextAlign="Center" vTextAlign="Middle">
@@ -48,31 +52,37 @@
 	</columnHeader>
 	<detail>
 		<band height="35">
-			<element kind="textField" uuid="b5ca064a-66c6-4112-8496-333c6cc9d196" x="0" y="0" width="50" height="35" fontSize="11.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<element kind="textField" uuid="b5ca064a-66c6-4112-8496-333c6cc9d196" x="0" y="0" width="40" height="35" fontSize="11.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
 				<expression><![CDATA[$F{rank}]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="78143493-ad9d-4a41-a31a-f4ba8a5dc935" x="50" y="0" width="200" height="35" vTextAlign="Middle">
+			<element kind="textField" uuid="78143493-ad9d-4a41-a31a-f4ba8a5dc935" x="40" y="0" width="180" height="35" vTextAlign="Middle">
 				<expression><![CDATA[$F{departmentName}]]></expression>
 				<box leftPadding="10">
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="57838c6b-c921-4880-9875-ae78578ce9f3" x="250" y="0" width="110" height="35" hTextAlign="Center" vTextAlign="Middle">
+			<element kind="textField" uuid="57838c6b-c921-4880-9875-ae78578ce9f3" x="220" y="0" width="90" height="35" hTextAlign="Center" vTextAlign="Middle">
 				<expression><![CDATA[$F{averageKpiScore} + "%"]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="99044eb4-a14e-40d9-aee3-c03e25a2bfdf" x="360" y="0" width="110" height="35" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<element kind="textField" uuid="99044eb4-a14e-40d9-aee3-c03e25a2bfdf" x="310" y="0" width="90" height="35" bold="true" hTextAlign="Center" vTextAlign="Middle">
 				<expression><![CDATA[$F{averageAppraisalScore} + "%"]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="418a8acf-5df2-4216-ad44-7972d033b164" x="470" y="0" width="100" height="35" hTextAlign="Center" vTextAlign="Middle">
+			<element kind="textField" uuid="99044eb4-a14e-40d9-aee3-c03e25a2bfde" x="400" y="0" width="90" height="35" bold="true" hTextAlign="Center" vTextAlign="Middle">
+				<expression><![CDATA[($F{average360Score} != null ? $F{average360Score}.toString() : "0.00") + "%"]]></expression>
+				<box>
+					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
+				</box>
+			</element>
+			<element kind="textField" uuid="418a8acf-5df2-4216-ad44-7972d033b164" x="490" y="0" width="80" height="35" hTextAlign="Center" vTextAlign="Middle">
 				<expression><![CDATA[$F{employeeCount}]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>

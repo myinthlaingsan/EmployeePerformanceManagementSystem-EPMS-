@@ -45,6 +45,13 @@ public class EmployeeController {
         );
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse<List<EmployeeResponse>>> getAllEmployeesFlat() {
+        return ResponseEntity.ok(
+                ApiResponse.success(employeeService.getAll())
+        );
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<EmployeeResponse>>> getAll(
             @RequestParam(defaultValue = "0") int page,

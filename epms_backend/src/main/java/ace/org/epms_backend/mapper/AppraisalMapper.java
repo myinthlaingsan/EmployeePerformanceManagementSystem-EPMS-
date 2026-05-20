@@ -24,6 +24,8 @@ public interface AppraisalMapper {
     @Mapping(target = "formSetName", source = "formSet.name")
     @Mapping(target = "employeeSignComment", source = "employeeSignComment")
     @Mapping(target = "managerSignComment", source = "managerSignComment")
+    @Mapping(target = "employeeSignNote", source = "employeeSignNote")
+    @Mapping(target = "managerSignNote", source = "managerSignNote")
     AppraisalResponse toResponse(Appraisal appraisal);
 
     List<AppraisalResponse> toResponseList(List<Appraisal> appraisals);

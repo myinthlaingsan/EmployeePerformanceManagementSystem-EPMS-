@@ -68,6 +68,12 @@ public class Appraisal extends BaseEntity {
     @Column(name = "manager_sign_comment")
     private String managerSignComment;
 
+    @Column(name = "employee_sign_note", columnDefinition = "TEXT")
+    private String employeeSignNote;
+
+    @Column(name = "manager_sign_note", columnDefinition = "TEXT")
+    private String managerSignNote;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by")
     private Employee approvedBy;

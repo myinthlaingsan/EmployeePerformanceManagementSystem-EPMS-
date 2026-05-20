@@ -9,10 +9,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 
 @Repository
 public interface FeedbackRequestRepository extends JpaRepository<FeedbackRequest, Long> {
+    List<FeedbackRequest> findByEvaluatorId(Long evaluatorId);
     List<FeedbackRequest> findByEvaluatorIdAndStatus(Long evaluatorId, FeedbackStatus status);
     boolean existsByTargetUserIdAndEvaluatorIdAndCycleCycleId(Long targetUserId, Long evaluatorId, Long cycleId);
     List<FeedbackRequest> findByTargetUserIdAndCycleCycleId(Long targetUserId, Long cycleId);
@@ -49,4 +51,24 @@ public interface FeedbackRequestRepository extends JpaRepository<FeedbackRequest
     List<FeedbackRequest> findAllByTargetOrderedByOldestFirst(
             @Param("targetId") Long targetId,
             @Param("relationship") FeedbackRelationship relationship);
+
+    // --- Reminder and deadline queries ---
+
+    @Query("""
+            SELECT fr FROM FeedbackRequest fr
+            WHERE fr.status IN ('PENDING', 'IN_PROGRESS')
+              AND fr.dueDate IS NOT NULL
+              AND fr.dueDate BETWEEN :now AND :cutoff
+            """)
+    List<FeedbackRequest> findPendingDueWithin(
+            @Param("now") Instant now,
+            @Param("cutoff") Instant cutoff);
+
+    @Query("""
+            SELECT fr FROM FeedbackRequest fr
+            WHERE fr.status IN ('PENDING', 'IN_PROGRESS')
+              AND fr.dueDate IS NOT NULL
+              AND fr.dueDate < :cutoff
+            """)
+    List<FeedbackRequest> findOverdue(@Param("cutoff") Instant cutoff);
 }

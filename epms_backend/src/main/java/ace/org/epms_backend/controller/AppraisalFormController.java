@@ -47,6 +47,12 @@ public class AppraisalFormController {
     public ResponseEntity<ApiResponse<List<AppraisalFormResponse>>> getAllForms() {
         return ResponseEntity.ok(ApiResponse.success(formService.getAllForms()));
     }
+
+    @GetMapping("/feedback-forms")
+    public ResponseEntity<ApiResponse<List<AppraisalFormResponse>>> getFeedbackFormsByCycle(
+            @RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(formService.getFeedbackFormsByCycle(cycleId)));
+    }
  
     @PutMapping("/{formId}")
     public ResponseEntity<Void> updateForm(@PathVariable Long formId, @Valid @RequestBody AppraisalFormRequest request) {

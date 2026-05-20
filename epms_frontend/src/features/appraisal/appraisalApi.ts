@@ -23,12 +23,15 @@ export interface FormField {
   weightage?: number;
 }
 
+export type FeedbackRelationship = 'DIRECT_MANAGER' | 'PEER' | 'SUBORDINATE' | 'SELF';
+
 export interface AppraisalForm {
   formId: number;
   formName: string;
   formType: string;
   cycleId?: number;
   cycleName?: string;
+  targetRelationship?: FeedbackRelationship;
   id?: string;
   title?: string;
   description?: string;
@@ -215,6 +218,12 @@ export const appraisalApi = api.injectEndpoints({
       invalidatesTags: [{ type: 'Form' as const, id: 'LIST' }],
     }),
 
+    getFeedbackFormsByCycle: builder.query<AppraisalForm[], number>({
+      query: (cycleId) => `/appraisal-forms/feedback-forms?cycleId=${cycleId}`,
+      transformResponse,
+      providesTags: [{ type: 'Form' as const, id: 'LIST' }],
+    }),
+
     // Categories
     getCategories: builder.query<any[], string>({
       query: (formId) => `/categories?formId=${formId}`,
@@ -397,6 +406,13 @@ export const appraisalApi = api.injectEndpoints({
       invalidatesTags: ['Cycle'],
     }),
 
+    sendCycleReminders: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `/appraisal-cycles/${id}/reminders`,
+        method: 'POST',
+      }),
+    }),
+
     uploadEmployeeSignature: builder.mutation<void, { id: string, file: File }>({
       query: ({ id, file }) => {
         const formData = new FormData();
@@ -460,6 +476,7 @@ export const {
   useActivateCycleMutation,
   useCloseCycleMutation,
   useDeleteCycleMutation,
+  useSendCycleRemindersMutation,
   useGetAppraisalFormQuery,
   useLazyGetAppraisalFormQuery,
   useGetAppraisalFormsQuery,
@@ -498,4 +515,5 @@ export const {
   useApproveAppraisalMutation,
   useFinalizeAppraisalMutation,
   useGetScoreBreakdownQuery,
+  useGetFeedbackFormsByCycleQuery,
 } = appraisalApi;

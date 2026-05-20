@@ -16,8 +16,13 @@ public class GlobalExceptionHandlerAdvice {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleException(Exception ex) {
+        ex.printStackTrace();
+        String detailedMessage = ex.getClass().getName() + ": " + ex.getMessage();
+        if (ex.getCause() != null) {
+            detailedMessage += " | Cause: " + ex.getCause().getClass().getName() + ": " + ex.getCause().getMessage();
+        }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse<>(500, ex.getMessage(), null, LocalDateTime.now()));
+                .body(new ApiResponse<>(500, detailedMessage, null, LocalDateTime.now()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -111,6 +116,12 @@ public class GlobalExceptionHandlerAdvice {
                 .body(new ApiResponse<>(403, ex.getMessage(), null, LocalDateTime.now()));
     }
 
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiResponse<?>> handleSecurityException(SecurityException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiResponse<>(403, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
     @ExceptionHandler({NotFoundException.class, ResourceNotFoundException.class})
     public ResponseEntity<ApiResponse<?>> handleNotFound(Exception ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -127,6 +138,12 @@ public class GlobalExceptionHandlerAdvice {
     public ResponseEntity<ApiResponse<?>> handleUnauthorizedAction(UnauthorizedActionException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ApiResponse<>(403, ex.getMessage(), null, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
     }
 
     @ExceptionHandler({

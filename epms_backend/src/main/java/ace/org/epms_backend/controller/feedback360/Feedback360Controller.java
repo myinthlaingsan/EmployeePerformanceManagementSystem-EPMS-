@@ -2,12 +2,16 @@ package ace.org.epms_backend.controller.feedback360;
 
 import ace.org.epms_backend.dto.ApiResponse;
 import ace.org.epms_backend.dto.feedback360.EvaluatorAssignmentDTO;
+import ace.org.epms_backend.dto.feedback360.FeedbackDraftRequest;
+import ace.org.epms_backend.dto.feedback360.FeedbackDraftResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackRequestResponse;
 import ace.org.epms_backend.dto.feedback360.FeedbackSubmissionRequest;
 import ace.org.epms_backend.dto.feedback360.FeedbackSummaryResponse;
+import ace.org.epms_backend.dto.feedback360.ReassignRequest;
 import ace.org.epms_backend.model.UserPrincipal;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.service.feedback360.EvaluatorRotationService;
+import ace.org.epms_backend.service.feedback360.FeedbackDraftService;
 import ace.org.epms_backend.service.feedback360.FeedbackReportService;
 import ace.org.epms_backend.service.feedback360.FeedbackRequestService;
 import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
@@ -28,6 +32,7 @@ public class Feedback360Controller {
     private final FeedbackSubmissionService feedbackSubmissionService;
     private final FeedbackReportService     feedbackReportService;
     private final EvaluatorRotationService  evaluatorRotationService;
+    private final FeedbackDraftService      feedbackDraftService;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Existing Endpoints
@@ -70,7 +75,7 @@ public class Feedback360Controller {
     public ResponseEntity<ApiResponse<List<FeedbackRequestResponse>>> getMyRequests(
             @AuthenticationPrincipal UserPrincipal principal) {
         List<FeedbackRequestResponse> requests =
-                feedbackRequestService.getMyPendingRequests(principal.getEmployee().getId());
+                feedbackRequestService.getMyRequests(principal.getEmployee().getId());
         return ResponseEntity.ok(ApiResponse.success(requests));
     }
 
@@ -88,6 +93,60 @@ public class Feedback360Controller {
             @PathVariable Long cycleId) {
         FeedbackSummaryResponse summary = feedbackReportService.getFeedbackSummary(targetUserId, cycleId);
         return ResponseEntity.ok(ApiResponse.success(summary));
+    }
+
+    @GetMapping("/cycle/{cycleId}/dashboard")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<ApiResponse<ace.org.epms_backend.dto.feedback360.Feedback360CycleDashboardDTO>> getCycleDashboard(
+            @PathVariable Long cycleId) {
+        ace.org.epms_backend.dto.feedback360.Feedback360CycleDashboardDTO data = feedbackReportService.getCycleDashboard(cycleId);
+        return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Draft endpoints
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @PutMapping("/draft")
+    public ResponseEntity<ApiResponse<?>> saveDraft(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody FeedbackDraftRequest request) {
+        feedbackDraftService.saveDraft(principal.getEmployee().getId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Draft saved"));
+    }
+
+    @GetMapping("/draft/{requestId}")
+    public ResponseEntity<ApiResponse<FeedbackDraftResponse>> getDraft(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long requestId) {
+        FeedbackDraftResponse draft = feedbackDraftService.getDraft(principal.getEmployee().getId(), requestId);
+        return ResponseEntity.ok(ApiResponse.success(draft));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Cancel / Reassign endpoints  (HR only)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @PostMapping("/request/{requestId}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<ApiResponse<?>> cancelRequest(@PathVariable Long requestId) {
+        feedbackRequestService.cancelFeedbackRequest(requestId);
+        return ResponseEntity.ok(ApiResponse.success("Feedback request cancelled"));
+    }
+
+    @PostMapping("/request/{requestId}/reassign")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<ApiResponse<?>> reassignRequest(
+            @PathVariable Long requestId,
+            @RequestBody ReassignRequest body) {
+        feedbackRequestService.reassignFeedbackRequest(requestId, body.getNewEvaluatorId());
+        return ResponseEntity.ok(ApiResponse.success("Feedback request reassigned"));
+    }
+
+    @GetMapping("/cycle/{cycleId}/requests")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<ApiResponse<List<FeedbackRequestResponse>>> listByCycle(@PathVariable Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(feedbackRequestService.listByCycle(cycleId)));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

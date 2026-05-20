@@ -8,6 +8,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 @Entity
 @Table(name = "feedback_summary")
@@ -41,4 +42,12 @@ public class FeedbackSummary extends BaseEntity {
     private Integer totalEvaluators;
 
     private Boolean isFinalized;
+
+    // Post-calibration fields
+    @Column(columnDefinition = "TEXT")
+    private String managerSummary;
+
+    private BigDecimal calibratedFinalScore;
+    private Instant finalizedAt;
+    private Long finalizedBy;
 }
