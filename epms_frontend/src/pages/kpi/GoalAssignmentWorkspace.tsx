@@ -28,7 +28,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
   const urlCycleId = searchParams.get('cycleId');
   const resolvedCycleId = urlCycleId ? Number(urlCycleId) : activeCycleId;
-  const isHistoricalCycle = !!resolvedCycleId && resolvedCycleId !== activeCycleId;
+  const isHistoricalCycle = !!resolvedCycleId && activeCycleId !== undefined && resolvedCycleId !== activeCycleId;
 
   const { data: employee } = useGetEmployeeByIdQuery(Number(employeeId), { skip: !employeeId });
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
