@@ -13,6 +13,11 @@ import type {
   EvaluatorNomination,
   FeedbackRelationship,
   Feedback360CycleDashboardDTO,
+  AdjustScoreRequest,
+  CalibrationDeltaRow,
+  DistributionStats,
+  CreateSessionRequest,
+  CalibrationSessionResponse,
 } from './feedback360Types';
 
 export const feedback360Api = api.injectEndpoints({
@@ -248,6 +253,87 @@ export const feedback360Api = api.injectEndpoints({
       transformResponse: (res: ApiResponse<Feedback360CycleDashboardDTO>) => res.data,
       providesTags: ['Feedback360Request' as any, 'Feedback360Summary' as any],
     }),
+
+    // ── Calibration endpoints ─────────────────────────────────────────────────
+    flagSummaryForReview: builder.mutation<void, number>({
+      query: (summaryId) => ({ url: `/calibration/summaries/${summaryId}/flag`, method: 'POST' }),
+      invalidatesTags: ['Feedback360Summary' as any, 'Calibration' as any],
+    }),
+
+    adjustSummaryScore: builder.mutation<void, { summaryId: number } & AdjustScoreRequest>({
+      query: ({ summaryId, ...body }) => ({
+        url: `/calibration/summaries/${summaryId}/adjust`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Feedback360Summary' as any, 'Appraisal' as any, 'Calibration' as any],
+    }),
+
+    approveSummary: builder.mutation<void, { summaryId: number; approverComment?: string }>({
+      query: ({ summaryId, ...body }) => ({
+        url: `/calibration/summaries/${summaryId}/approve`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Feedback360Summary' as any, 'Calibration' as any],
+    }),
+
+    revertSummary: builder.mutation<void, number>({
+      query: (summaryId) => ({
+        url: `/calibration/summaries/${summaryId}/revert`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Feedback360Summary' as any, 'Calibration' as any],
+    }),
+
+    createCalibrationSession: builder.mutation<CalibrationSessionResponse, CreateSessionRequest>({
+      query: (body) => ({ url: '/calibration/sessions', method: 'POST', body }),
+      transformResponse: (res: ApiResponse<CalibrationSessionResponse>) => res.data,
+      invalidatesTags: ['CalibrationSession' as any],
+    }),
+
+    addSummariesToSession: builder.mutation<void, { sessionId: number; summaryIds: number[] }>({
+      query: ({ sessionId, summaryIds }) => ({
+        url: `/calibration/sessions/${sessionId}/summaries`,
+        method: 'POST',
+        body: { summaryIds },
+      }),
+      invalidatesTags: ['Feedback360Summary' as any, 'CalibrationSession' as any],
+    }),
+
+    startCalibrationSession: builder.mutation<void, number>({
+      query: (sessionId) => ({ url: `/calibration/sessions/${sessionId}/start`, method: 'POST' }),
+      invalidatesTags: ['CalibrationSession' as any],
+    }),
+
+    completeCalibrationSession: builder.mutation<void, number>({
+      query: (sessionId) => ({ url: `/calibration/sessions/${sessionId}/complete`, method: 'POST' }),
+      invalidatesTags: ['CalibrationSession' as any, 'Feedback360Summary' as any],
+    }),
+
+    listCalibrationSessions: builder.query<CalibrationSessionResponse[], number>({
+      query: (cycleId) => `/calibration/sessions?cycleId=${cycleId}`,
+      transformResponse: (res: ApiResponse<CalibrationSessionResponse[]>) => res.data,
+      providesTags: ['CalibrationSession' as any],
+    }),
+
+    getCalibrationDeltas: builder.query<CalibrationDeltaRow[], number>({
+      query: (cycleId) => `/calibration/cycle/${cycleId}/deltas`,
+      transformResponse: (res: ApiResponse<CalibrationDeltaRow[]>) => res.data,
+      providesTags: ['Calibration' as any, 'Feedback360Summary' as any],
+    }),
+
+    getScoreDistribution: builder.query<DistributionStats, { cycleId: number; calibrated?: boolean }>({
+      query: ({ cycleId, calibrated = false }) =>
+        `/calibration/cycle/${cycleId}/distribution?calibrated=${calibrated}`,
+      transformResponse: (res: ApiResponse<DistributionStats>) => res.data,
+      providesTags: ['Calibration' as any],
+    }),
+
+    lockCalibrationCycle: builder.mutation<void, number>({
+      query: (cycleId) => ({ url: `/calibration/cycle/${cycleId}/lock`, method: 'POST' }),
+      invalidatesTags: ['Feedback360Summary' as any, 'Calibration' as any],
+    }),
   }),
   overrideExisting: false,
 });
@@ -284,4 +370,16 @@ export const {
   useApproveNominationMutation,
   useRejectNominationMutation,
   useGetFeedbackCycleDashboardQuery,
+  useFlagSummaryForReviewMutation,
+  useAdjustSummaryScoreMutation,
+  useApproveSummaryMutation,
+  useRevertSummaryMutation,
+  useCreateCalibrationSessionMutation,
+  useAddSummariesToSessionMutation,
+  useStartCalibrationSessionMutation,
+  useCompleteCalibrationSessionMutation,
+  useListCalibrationSessionsQuery,
+  useGetCalibrationDeltasQuery,
+  useGetScoreDistributionQuery,
+  useLockCalibrationCycleMutation,
 } = feedback360Api;

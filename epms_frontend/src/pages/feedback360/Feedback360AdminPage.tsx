@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+// useNavigate imported above — ensure it is used inside the main component
 import { toast } from 'react-toastify';
 import {
   RefreshCw, Play, Eye, CheckCircle, Loader2, AlertCircle,
@@ -21,20 +22,21 @@ import {
   useSendFeedbackCycleRemindersMutation,
   useSendIndividualFeedbackReminderMutation,
   usePostManagerSummaryMutation,
+  useAdjustSummaryScoreMutation,
   useGetScoringPoliciesQuery,
   useUpsertScoringPolicyMutation,
   useListRequestsByCycleQuery,
   useGetFeedbackCycleDashboardQuery,
 } from '../../features/feedback360/feedback360Api';
 import {
-  Users, Mail, Clock, FileText, CheckCircle2, BarChart3, AlertTriangle,
+  Users, Mail, Clock, FileText, CheckCircle2, BarChart3, AlertTriangle, Sliders,
 } from 'lucide-react';
 import type {
   FeedbackSummaryResponse,
   FeedbackRequestResponse,
   ScoringPolicy,
 } from '../../features/feedback360/feedback360Types';
-import { FeedbackStatus } from '../../features/feedback360/feedback360Types';
+import { FeedbackStatus, CalibrationStatus } from '../../features/feedback360/feedback360Types';
 import RelBadge from '../../components/feedback360/RelBadge';
 import StatusBadge from '../../components/feedback360/StatusBadge';
 import { useGetAllEmployeesQuery } from '../../features/employee/employeeapi';
@@ -239,25 +241,55 @@ interface CalibrateModalProps {
   onClose: () => void;
 }
 
+const CAL_STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  NOT_STARTED:  { bg: '#F5F6F8', text: '#5A6070', border: '#E4E6EC' },
+  UNDER_REVIEW: { bg: '#FFF8E6', text: '#633806', border: '#F5D48A' },
+  ADJUSTED:     { bg: '#EEF3FD', text: '#0C447C', border: '#BFD4F5' },
+  APPROVED:     { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
+  LOCKED:       { bg: '#F0F1F5', text: '#9EA3B0', border: '#D0D3DC' },
+};
+
+const CalStatusBadge = ({ status }: { status?: CalibrationStatus | null }) => {
+  if (!status) return null;
+  const c = CAL_STATUS_COLORS[status] ?? CAL_STATUS_COLORS.NOT_STARTED;
+  return (
+    <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: c.bg, color: c.text, border: `0.5px solid ${c.border}`, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+      {status.replace('_', ' ')}
+    </span>
+  );
+};
+
 const CalibrateModal = ({ summary, onClose }: CalibrateModalProps) => {
   const [calibratedScore, setCalibratedScore] = useState<string>(
     summary.calibratedFinalScore != null ? String(summary.calibratedFinalScore) : '',
   );
   const [managerSummaryText, setManagerSummaryText] = useState(summary.managerSummary ?? '');
-  const [postManagerSummary, { isLoading }] = usePostManagerSummaryMutation();
+  const [reason, setReason] = useState(summary.calibrationReason ?? '');
+  const [postManagerSummary, { isLoading: isSavingManagerSummary }] = usePostManagerSummaryMutation();
+  const [adjustScore, { isLoading: isAdjusting }] = useAdjustSummaryScoreMutation();
+  const isLoading = isSavingManagerSummary || isAdjusting;
 
   const handleSave = async () => {
     if (!summary.summaryId) return;
+    const hasScore = calibratedScore !== '';
+    const parsed = hasScore ? parseFloat(calibratedScore) : NaN;
+    if (hasScore && (isNaN(parsed) || parsed < 0 || parsed > 100)) {
+      toast.error('Score must be between 0 and 100'); return;
+    }
+    if (hasScore && !reason.trim()) {
+      toast.error('Calibration reason is required when setting a score'); return;
+    }
     try {
-      await postManagerSummary({
-        summaryId: summary.summaryId,
-        managerSummary: managerSummaryText,
-        calibratedFinalScore: calibratedScore ? parseFloat(calibratedScore) : undefined,
-      }).unwrap();
+      if (hasScore) {
+        await adjustScore({ summaryId: summary.summaryId, calibratedFinalScore: parsed, calibrationReason: reason.trim() }).unwrap();
+      }
+      if (managerSummaryText !== (summary.managerSummary ?? '')) {
+        await postManagerSummary({ summaryId: summary.summaryId, managerSummary: managerSummaryText }).unwrap();
+      }
       toast.success('Calibration saved.');
       onClose();
-    } catch {
-      toast.error('Failed to save calibration.');
+    } catch (e: any) {
+      toast.error(e?.data?.message || 'Failed to save calibration.');
     }
   };
 
@@ -290,21 +322,33 @@ const CalibrateModal = ({ summary, onClose }: CalibrateModalProps) => {
             </p>
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Calibrated Final Score (optional)</label>
+            <label style={labelStyle}>Calibrated Final Score (0–100, optional)</label>
             <input
-              type="number" min={0} max={5} step={0.01}
+              type="number" min={0} max={100} step={0.01}
               value={calibratedScore}
               onChange={(e) => setCalibratedScore(e.target.value)}
-              placeholder="e.g. 4.25"
+              placeholder="e.g. 82.50"
               style={inputStyle}
             />
           </div>
+          {calibratedScore !== '' && (
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Calibration Reason *</label>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={2}
+                placeholder="Explain why the score is being adjusted…"
+                style={{ ...inputStyle, resize: 'vertical' }}
+              />
+            </div>
+          )}
           <div style={{ marginBottom: 20 }}>
             <label style={labelStyle}>Manager Summary</label>
             <textarea
               value={managerSummaryText}
               onChange={(e) => setManagerSummaryText(e.target.value)}
-              rows={5}
+              rows={4}
               placeholder="Overall narrative for this employee's 360° results…"
               style={{ ...inputStyle, resize: 'vertical' }}
             />
@@ -379,7 +423,8 @@ const SummaryRow = ({ summary, isExpanded, cycleLocked, onToggle, onFinalize, on
           <span style={{ fontSize: 13, fontWeight: 700, color: '#111827', background: '#F5F6F8', padding: '2px 8px', borderRadius: 6 }}>
             {displayScore.toFixed(2)}
           </span>
-          {summary.calibratedFinalScore != null && (
+          <CalStatusBadge status={summary.calibrationStatus} />
+          {summary.calibratedFinalScore != null && !summary.calibrationStatus && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: '#EEF3FD', color: '#1A56DB' }}>
               Calibrated
             </span>
@@ -496,8 +541,14 @@ interface PreviewRowProps {
 }
 
 const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign, onRemind, isReminding }: PreviewRowProps) => {
+  const { user } = useAuth();
   const isDone = req.status === FeedbackStatus.COMPLETED;
   const [downloadReport, { isLoading: isPrinting }] = useDownloadReportMutation();
+
+  const isMyRow = req.targetUserId === user?.id;
+  const shouldHide = isMyRow
+    && req.isAnonymous
+    && (req.relationship === 'PEER' || req.relationship === 'SUBORDINATE');
 
   const handlePrint = async () => {
     if (!req.id) return;
@@ -519,7 +570,9 @@ const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign, onRe
       background: req.isReciprocalFallback ? '#FFFBEB' : 'transparent',
     }}>
       <td style={{ padding: '8px 10px', fontWeight: 500, color: '#111827' }}>{req.targetUserName}</td>
-      <td style={{ padding: '8px 10px', color: '#374151' }}>{req.evaluatorName}</td>
+      <td style={{ padding: '8px 10px', color: shouldHide ? '#9EA3B0' : '#374151', fontStyle: shouldHide ? 'italic' : 'normal' }}>
+        {shouldHide ? 'Anonymous' : req.evaluatorName}
+      </td>
       <td style={{ padding: '8px 10px' }}><RelBadge rel={req.relationship} /></td>
       <td style={{ padding: '8px 10px' }}><StatusBadge status={req.status} /></td>
       <td style={{ padding: '8px 10px', color: '#9EA3B0', fontSize: 12 }}>
@@ -542,18 +595,18 @@ const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign, onRe
             {!isDone && (
               <>
                 <button
-                  style={{ ...smBtn('neutral'), opacity: req.id ? 1 : 0.45, cursor: req.id ? 'pointer' : 'not-allowed' }}
+                  style={{ ...smBtn('neutral'), opacity: (req.id && !shouldHide) ? 1 : 0.45, cursor: (req.id && !shouldHide) ? 'pointer' : 'not-allowed' }}
                   onClick={onReassign}
-                  disabled={!req.id}
-                  title={!req.id ? 'Click Generate to enable per-row actions' : undefined}
+                  disabled={!req.id || shouldHide}
+                  title={shouldHide ? 'Cannot reassign your own anonymous evaluator' : !req.id ? 'Click Generate to enable per-row actions' : undefined}
                 >
                   <Edit3 size={10} /> Reassign
                 </button>
                 <button
-                  style={{ ...smBtn('danger'), opacity: req.id ? 1 : 0.45, cursor: req.id ? 'pointer' : 'not-allowed' }}
+                  style={{ ...smBtn('danger'), opacity: (req.id && !shouldHide) ? 1 : 0.45, cursor: (req.id && !shouldHide) ? 'pointer' : 'not-allowed' }}
                   onClick={onCancel}
-                  disabled={!req.id}
-                  title={!req.id ? 'Click Generate to enable per-row actions' : undefined}
+                  disabled={!req.id || shouldHide}
+                  title={shouldHide ? 'Cannot cancel your own anonymous evaluator' : !req.id ? 'Click Generate to enable per-row actions' : undefined}
                 >
                   <X size={10} /> Cancel
                 </button>
@@ -929,6 +982,7 @@ const CycleDashboardTab = ({ cycleId }: CycleDashboardTabProps) => {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 const Feedback360AdminPage = () => {
+  const navigate = useNavigate();
   const { activeCycleId } = useAuth();
   const { data: cycles = [], isLoading: cyclesLoading } = useGetCyclesQuery();
 
@@ -1131,6 +1185,13 @@ const Feedback360AdminPage = () => {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {cycleId > 0 && (
+            <button
+              onClick={() => navigate(`/360-feedback/calibration?cycleId=${cycleId}`)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EEF3FD', border: '0.5px solid #BFD4F5', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#0C447C', cursor: 'pointer' }}>
+              <Sliders size={13} /> Calibration Workbench
+            </button>
+          )}
           {cycleId > 0 && (
             <button
               onClick={handleDownloadSummaryReport}
@@ -1516,7 +1577,7 @@ const Feedback360AdminPage = () => {
         <ReassignModal requestId={reassignRequestId} onClose={() => setReassignRequestId(null)} />
       )}
       {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
           <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '24px', maxWidth: 400, width: '100%' }}>
             <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

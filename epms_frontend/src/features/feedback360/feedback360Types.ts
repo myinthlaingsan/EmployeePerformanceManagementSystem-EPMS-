@@ -1,5 +1,21 @@
 // ── Enums ────────────────────────────────────────────────────────────────────
 
+export const CalibrationStatus = {
+  NOT_STARTED:  'NOT_STARTED',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  ADJUSTED:     'ADJUSTED',
+  APPROVED:     'APPROVED',
+  LOCKED:       'LOCKED',
+} as const;
+export type CalibrationStatus = typeof CalibrationStatus[keyof typeof CalibrationStatus];
+
+export const CalibrationSessionStatus = {
+  PLANNED:     'PLANNED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED:   'COMPLETED',
+} as const;
+export type CalibrationSessionStatus = typeof CalibrationSessionStatus[keyof typeof CalibrationSessionStatus];
+
 export const FeedbackRelationship = {
   DIRECT_MANAGER: 'DIRECT_MANAGER',
   PEER:           'PEER',
@@ -107,8 +123,12 @@ export interface FeedbackSummaryResponse {
   participation?:         ParticipationStat[];
   managerSummary?:        string;
   calibratedFinalScore?:  number | null;
-  finalizedAt?:           string;
-  finalizedBy?:           string;
+  calibrationStatus?:     CalibrationStatus | null;
+  calibrationReason?:     string | null;
+  calibrationDate?:       string | null;
+  calibratedBy?:          number | null;
+  finalizedAt?:           string | null;
+  finalizedBy?:           number | null;
 }
 
 // ── Received feedback detail ──────────────────────────────────────────────────
@@ -226,4 +246,57 @@ export interface Feedback360CycleDashboardDTO {
   relationshipRates:  Record<string, number>;
   bottlenecks:        Feedback360BottleneckDTO[];
   isFinalized:        boolean;
+}
+
+// ── Calibration ───────────────────────────────────────────────────────────────
+
+export interface AdjustScoreRequest {
+  calibratedFinalScore: number;
+  calibrationReason:    string;
+}
+
+export interface CalibrationDeltaRow {
+  summaryId:            number;
+  employeeId:           number;
+  employeeName:         string;
+  departmentName:       string;
+  rawFinalScore:        number | null;
+  calibratedFinalScore: number | null;
+  delta:                number | null;
+  calibrationStatus:    CalibrationStatus | null;
+  calibrationReason:    string | null;
+  calibrationDate:      string | null;
+}
+
+export interface DistributionStats {
+  rawBuckets:        Record<string, number>;
+  calibratedBuckets: Record<string, number>;
+  totalCount:        number;
+  calibratedCount:   number;
+  rawAverage:        number;
+  calibratedAverage: number;
+}
+
+export interface CreateSessionRequest {
+  cycleId:       number;
+  departmentId?: number;
+  name:          string;
+  facilitator?:  string;
+  scheduledAt?:  string;
+  notes?:        string;
+}
+
+export interface CalibrationSessionResponse {
+  id:             number;
+  cycleId:        number;
+  cycleName:      string;
+  departmentId?:  number;
+  departmentName?: string;
+  name:           string;
+  facilitator?:   string;
+  scheduledAt?:   string;
+  completedAt?:   string;
+  status:         CalibrationSessionStatus;
+  notes?:         string;
+  summaryIds:     number[];
 }
