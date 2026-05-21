@@ -18,13 +18,12 @@ import ace.org.epms_backend.dto.feedback360.FeedbackRequestGenerateDTO;
 import ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository;
 import ace.org.epms_backend.service.feedback360.FeedbackRequestService;
 import ace.org.epms_backend.service.feedback360.EvaluatorRotationService;
+import ace.org.epms_backend.service.feedback360.SecurityHelper;
 import ace.org.epms_backend.model.feedback360.DepartmentFeedbackConfig;
 import ace.org.epms_backend.repository.feedback360.DepartmentFeedbackConfigRepository;
-import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.model.appraisal.AppraisalForm;
 import ace.org.epms_backend.repository.AppraisalFormRepository;
-import ace.org.epms_backend.enums.FormType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import ace.org.epms_backend.enums.NotificationType;
@@ -55,6 +54,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     private final DepartmentFeedbackConfigRepository deptConfigRepository;
     private final AppraisalFormRepository formRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final SecurityHelper securityHelper;
 
     @Override
     @Transactional
@@ -459,22 +459,30 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         if (!persist) {
             // Check if already in preview to avoid duplicates
             boolean existsInPreview = previewResults.stream()
-                    .anyMatch(r -> r.getTargetUserId().equals(target.getId()) && r.getEvaluatorId().equals(evaluator.getId()));
+                    .anyMatch(r -> r.getTargetUserId().equals(target.getId())
+                            && (r.getEvaluatorId() != null && r.getEvaluatorId().equals(evaluator.getId())));
             if (existsInPreview) return false;
+
+            Long viewerId = securityHelper.currentUserId();
+            boolean mask = viewerId != null
+                    && viewerId.equals(target.getId())
+                    && anon
+                    && (rel == FeedbackRelationship.PEER || rel == FeedbackRelationship.SUBORDINATE);
 
             String targetDept = departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(target.getId())
                     .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
                     .orElse("N/A");
-            String evalDept = departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(evaluator.getId())
-                    .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
-                    .orElse("N/A");
+            String evalDept = mask ? null :
+                    departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(evaluator.getId())
+                            .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                            .orElse("N/A");
 
             previewResults.add(FeedbackRequestResponse.builder()
                     .targetUserId(target.getId())
                     .targetUserName(target.getStaffName())
                     .targetDepartmentName(targetDept)
-                    .evaluatorId(evaluator.getId())
-                    .evaluatorName(evaluator.getStaffName())
+                    .evaluatorId(mask ? null : evaluator.getId())
+                    .evaluatorName(mask ? "Anonymous" : evaluator.getStaffName())
                     .evaluatorDepartmentName(evalDept)
                     .relationship(rel)
                     .status(FeedbackStatus.PENDING)
@@ -618,6 +626,14 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         if (request.getStatus() == FeedbackStatus.COMPLETED) {
             throw new IllegalStateException("Cannot cancel a completed feedback request.");
         }
+        Long viewerId = securityHelper.currentUserId();
+        if (viewerId != null && viewerId.equals(request.getTargetUser().getId())
+                && Boolean.TRUE.equals(request.getIsAnonymous())
+                && (request.getRelationship() == FeedbackRelationship.PEER
+                    || request.getRelationship() == FeedbackRelationship.SUBORDINATE)) {
+            throw new IllegalStateException(
+                    "You cannot cancel your own anonymous evaluators. Ask another HR member or admin.");
+        }
         request.setStatus(FeedbackStatus.CANCELLED);
         requestRepository.save(request);
 
@@ -639,9 +655,17 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     public void reassignFeedbackRequest(Long requestId, Long newEvaluatorId) {
         FeedbackRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException("Feedback request not found: " + requestId));
+        Long viewerId = securityHelper.currentUserId();
+        if (viewerId != null && viewerId.equals(request.getTargetUser().getId())
+                && Boolean.TRUE.equals(request.getIsAnonymous())
+                && (request.getRelationship() == FeedbackRelationship.PEER
+                    || request.getRelationship() == FeedbackRelationship.SUBORDINATE)) {
+            throw new IllegalStateException(
+                    "You cannot reassign your own anonymous evaluators. Ask another HR member or admin.");
+        }
         Employee newEvaluator = employeeRepository.findById(newEvaluatorId)
                 .orElseThrow(() -> new NotFoundException("Employee not found: " + newEvaluatorId));
-        
+
         Long oldEvaluatorId = request.getEvaluator().getId();
         
         // Notify the old evaluator that their request is reassigned/cancelled
@@ -677,9 +701,42 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
 
     @Override
     public List<FeedbackRequestResponse> listByCycle(Long cycleId) {
+        Long viewerId = securityHelper.currentUserId();
         return requestRepository.findByCycleCycleId(cycleId).stream()
-                .map(feedbackMapper::toRequestResponse)
+                .map(req -> toMaskedRequestResponse(req, viewerId))
                 .collect(Collectors.toList());
+    }
+
+    private FeedbackRequestResponse toMaskedRequestResponse(FeedbackRequest req, Long viewerId) {
+        boolean mask = shouldMaskEvaluator(req, viewerId);
+        String targetDept = departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(req.getTargetUser().getId())
+                .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                .orElse("N/A");
+        String evalDept = mask ? null :
+                departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(req.getEvaluator().getId())
+                        .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                        .orElse("N/A");
+        return FeedbackRequestResponse.builder()
+                .id(req.getId())
+                .targetUserId(req.getTargetUser().getId())
+                .targetUserName(req.getTargetUser().getStaffName())
+                .targetDepartmentName(targetDept)
+                .evaluatorId(mask ? null : req.getEvaluator().getId())
+                .evaluatorName(mask ? "Anonymous" : req.getEvaluator().getStaffName())
+                .evaluatorDepartmentName(evalDept)
+                .cycleId(req.getCycle().getCycleId())
+                .relationship(req.getRelationship())
+                .status(req.getStatus())
+                .isAnonymous(req.getIsAnonymous())
+                .build();
+    }
+
+    private static boolean shouldMaskEvaluator(FeedbackRequest req, Long viewerId) {
+        if (viewerId == null) return false;
+        if (!viewerId.equals(req.getTargetUser().getId())) return false;
+        if (!Boolean.TRUE.equals(req.getIsAnonymous())) return false;
+        FeedbackRelationship rel = req.getRelationship();
+        return rel == FeedbackRelationship.PEER || rel == FeedbackRelationship.SUBORDINATE;
     }
 
     /*
