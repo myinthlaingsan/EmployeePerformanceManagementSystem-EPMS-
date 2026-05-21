@@ -10,13 +10,7 @@ import { Search, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
 import { useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import React from 'react';
-
-const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  DRAFT:    { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4', label: 'Drafting' },
-  APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0', label: 'Approved' },
-  LOCKED:   { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2', label: 'Locked (Active)' },
-  ARCHIVED: { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8', label: 'Archived' },
-};
+import { KPI_STATUS_STYLE, KPI_STATUS_FALLBACK } from '../../utils/kpiStatusStyles';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -231,7 +225,7 @@ const GoalManagement: React.FC = () => {
                     <td style={{ padding: '10px 16px' }}>
                       {status ? (
                         (() => {
-                          const safeSs = STATUS_STYLE[status] ?? { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8', label: status };
+                          const safeSs = KPI_STATUS_STYLE[status] ?? { ...KPI_STATUS_FALLBACK, label: status };
                           return (
                             <span style={{ fontSize: 10, fontWeight: 500, background: safeSs.bg, color: safeSs.text, border: `0.5px solid ${safeSs.border}`, borderRadius: 20, padding: '2px 8px' }}>
                               {safeSs.label}

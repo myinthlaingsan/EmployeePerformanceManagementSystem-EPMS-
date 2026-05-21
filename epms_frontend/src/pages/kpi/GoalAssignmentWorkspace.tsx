@@ -18,12 +18,7 @@ import {
   Search, Plus, Trash2, Lock, LayoutTemplate, Target, Save, Edit3, History, ChevronLeft
 } from 'lucide-react';
 import React from 'react';
-
-const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
-  APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
-  DRAFT: { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
-  LOCKED: { bg: '#111827', text: '#FFFFFF', border: '#111827' },
-};
+import { KPI_STATUS_STYLE, KPI_STATUS_FALLBACK } from '../../utils/kpiStatusStyles';
 
 const GoalAssignmentWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -250,7 +245,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
     </div>
   );
 
-  const ss = goalSet?.status ? (STATUS_STYLE[goalSet.status] || { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8' }) : null;
+  const ss = goalSet?.status ? (KPI_STATUS_STYLE[goalSet.status] || KPI_STATUS_FALLBACK) : null;
 
   return (
     <div className="space-y-4 pb-8">
