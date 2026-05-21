@@ -198,18 +198,15 @@ const GoalManagement: React.FC = () => {
                 const status = goalStatusMap.get(emp.id);
                 return (
                   <tr key={emp.id}
-                    style={{ borderBottom: idx < filteredEmployees.length - 1 ? '0.5px solid #F0F2F6' : 'none', background: !isHistorical && selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF', cursor: isHistorical && !(status === 'APPROVED' || status === 'LOCKED') ? 'default' : 'pointer' }}
+                    style={{ borderBottom: idx < filteredEmployees.length - 1 ? '0.5px solid #F0F2F6' : 'none', background: !isHistorical && selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF', cursor: status === 'ARCHIVED' ? 'default' : 'pointer' }}
                     className="hover:bg-[#FAFBFF] transition-colors"
                     onClick={() => {
-                      if (isHistorical) {
-                        if (status === 'APPROVED' || status === 'LOCKED') {
-                          navigate(`/kpi/goals/${emp.id}?cycleId=${effectiveCycleId}`);
-                        }
-                        return;
-                      }
                       if (status === 'ARCHIVED') return;
-                      if (status === 'APPROVED' || status === 'LOCKED') navigate(`/kpi/goals/${emp.id}?cycleId=${effectiveCycleId}`);
-                      else navigate(`/kpi/assign/${emp.id}`);
+                      if (status === 'APPROVED' || status === 'LOCKED') {
+                        navigate(`/kpi/goals/${emp.id}?cycleId=${effectiveCycleId}`);
+                      } else {
+                        navigate(`/kpi/assign/${emp.id}?cycleId=${effectiveCycleId}`);
+                      }
                     }}>
                     {!isHistorical && (
                       <td style={{ padding: '10px 16px' }} onClick={e => e.stopPropagation()}>
