@@ -543,18 +543,18 @@ const GoalAssignmentWorkspace: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '14px 20px', background: totalWeight > 100 || overweightItems.length > 0 ? '#1F0A0A' : '#111827', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div style={{ padding: '14px 20px', background: '#FFFFFF', borderTop: '0.5px solid #E4E6EC', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
               <div>
                 <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Aggregate Weight</p>
                 <div className="flex items-center gap-3">
-                  <div style={{ width: 160, height: 6, background: '#374151', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 3, transition: 'width 0.5s', width: `${Math.min(totalWeight, 100)}%`, background: totalWeight === 100 ? '#27500A' : totalWeight > 100 ? '#791F1F' : '#1A56DB' }} />
+                  <div style={{ width: 160, height: 6, background: '#EEF0F6', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 3, transition: 'width 0.5s', width: `${Math.min(totalWeight, 100)}%`, background: totalWeight === 100 ? '#27500A' : totalWeight > 100 ? '#F87171' : '#1A56DB' }} />
                   </div>
-                  <span style={{ fontSize: 22, fontWeight: 500, color: totalWeight > 100 ? '#F87171' : '#FFFFFF' }}>{totalWeight}%</span>
+                  <span style={{ fontSize: 22, fontWeight: 500, color: '#111827' }}>{totalWeight}%</span>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: 12, fontWeight: 500, color: totalWeight === 100 && overweightItems.length === 0 ? '#B8DCA0' : totalWeight > 100 || overweightItems.length > 0 ? '#F87171' : '#B5D4F4' }}>
+                <p style={{ fontSize: 12, fontWeight: 500, color: totalWeight === 100 && overweightItems.length === 0 ? '#B8DCA0' : totalWeight > 100 || overweightItems.length > 0 ? '#F87171' : '#111827' }}>
                   {totalWeight === 100 && overweightItems.length === 0 ? 'Verified' : totalWeight > 100 ? `Exceeded by ${totalWeight - 100}%` : `${100 - totalWeight}% Remaining`}
                 </p>
                 {overweightItems.length > 0 && (
