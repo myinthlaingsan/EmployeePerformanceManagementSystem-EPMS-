@@ -26,6 +26,7 @@ const ResultPage: React.FC = () => {
 
   const { data: appraisal, isLoading } = useGetEmployeeAssessmentQuery(id || '', { skip: !id });
   const { data: breakdown } = useGetScoreBreakdownQuery(id || '', { skip: !id });
+  console.log(breakdown?.feedbackRawScore);
   const [calculateScore, { isLoading: isCalculating }] = useCalculateScoreMutation();
   const [uploadEmployeeSignature, { isLoading: isSigningEmployee }] = useUploadEmployeeSignatureMutation();
   const [uploadManagerSignature, { isLoading: isSigningManager }] = useUploadManagerSignatureMutation();

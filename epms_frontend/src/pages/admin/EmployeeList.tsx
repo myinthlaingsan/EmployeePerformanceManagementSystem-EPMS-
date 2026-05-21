@@ -1,5 +1,5 @@
 import {
-  useSearchEmployeesQuery, useDeleteEmployeeMutation, useActivateEmployeeMutation
+  useSearchEmployeesQuery, useDeleteEmployeeMutation, useActivateEmployeeMutation, useDeactivateEmployeeMutation
 } from "../../features/employee/employeeapi";
 import {
   useGetRolesQuery, useAssignRoleToEmployeeMutation, useRemoveRoleFromEmployeeMutation
@@ -40,6 +40,7 @@ const EmployeeList = () => {
   const [downloadReport, { isLoading: isDownloading }] = useDownloadReportMutation();
   const [deleteEmployee] = useDeleteEmployeeMutation();
   const [activateEmployee] = useActivateEmployeeMutation();
+  const [deactivateEmployee] = useDeactivateEmployeeMutation();
   const [assignRole] = useAssignRoleToEmployeeMutation();
   const [removeRole] = useRemoveRoleFromEmployeeMutation();
 
@@ -201,24 +202,33 @@ const EmployeeList = () => {
                       <div className="flex justify-end items-center gap-1">
                         <Link to={`/employees/${emp.id}/departments`} title="Manage departments"
                           style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: "#9EA3B0", borderRadius: 6 }}
-                          className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
+                          className="hover:bg-info-fill hover:text-[#1A56DB] transition-colors">
                           <Building2 size={14} aria-hidden="true" />
                         </Link>
                         <Link to={`/employees/edit/${emp.id}`} title="Edit"
                           style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: "#9EA3B0", borderRadius: 6 }}
-                          className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
+                          className="hover:bg-info-fill hover:text-[#1A56DB] transition-colors">
                           <Pencil size={14} aria-hidden="true" />
                         </Link>
                         <button onClick={() => emp.id && deleteEmployee(emp.id)} title="Delete"
                           style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: "#9EA3B0", borderRadius: 6 }}
-                          className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
+                          className="hover:bg-danger-fill hover:text-danger-text transition-colors">
                           <Trash2 size={14} aria-hidden="true" />
                         </button>
                         <div style={{ width: 1, height: 14, background: "#E4E6EC", margin: "0 2px" }} />
-                        <button onClick={() => emp.id && activateEmployee(emp.id)}
-                          style={{ fontSize: 11, fontWeight: 500, color: "#27500A", background: "#EAF3DE", border: "0.5px solid #B8DCA0", borderRadius: 6, padding: "3px 8px" }}>
-                          Activate
-                        </button>
+                        {emp.status !== "ACTIVE" ? (
+                          <button
+                            onClick={async () => { try { await activateEmployee(emp.id).unwrap(); } catch (err) { console.error("Activate failed:", err); } }}
+                            style={{ fontSize: 11, fontWeight: 500, color: "#27500A", background: "#EAF3DE", border: "0.5px solid #B8DCA0", borderRadius: 6, padding: "3px 8px" }}>
+                            Activate
+                          </button>
+                        ) : (
+                          <button
+                            onClick={async () => { try { await deactivateEmployee(emp.id).unwrap(); } catch (err) { console.error("Deactivate failed:", err); } }}
+                            style={{ fontSize: 11, fontWeight: 500, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}>
+                            Deactivate
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

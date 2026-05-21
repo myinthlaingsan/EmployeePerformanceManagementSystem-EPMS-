@@ -78,6 +78,24 @@ export const feedback360Api = api.injectEndpoints({
       invalidatesTags: ['Feedback360Request' as any],
     }),
 
+    // ── HR: send cycle reminders ──────────────────────────────────────────
+    sendFeedbackCycleReminders: builder.mutation<void, number>({
+      query: (cycleId) => ({
+        url: `/feedback/cycle/${cycleId}/reminders`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Feedback360Request' as any],
+    }),
+
+    // ── HR: send individual request reminder ──────────────────────────────
+    sendIndividualFeedbackReminder: builder.mutation<void, number>({
+      query: (requestId) => ({
+        url: `/feedback/request/${requestId}/remind`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Feedback360Request' as any],
+    }),
+
     // ── Employee: received feedback details ───────────────────────────────
     getReceivedFeedback: builder.query<FeedbackDetailsResponse[], { employeeId: number; cycleId: number }>({
       query: ({ employeeId, cycleId }) =>
@@ -244,6 +262,8 @@ export const {
   useGetSubmittedFeedbackByRequestQuery,
   useCancelFeedbackRequestMutation,
   useReassignFeedbackRequestMutation,
+  useSendFeedbackCycleRemindersMutation,
+  useSendIndividualFeedbackReminderMutation,
   useGetReceivedFeedbackQuery,
   useGetFeedbackSummaryQuery,
   useGetAllSummariesByCycleQuery,
