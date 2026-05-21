@@ -256,7 +256,7 @@ export const kpiApi = api.injectEndpoints({
     // ==================== Appraisal Cycle ====================
     getActiveCycle: builder.query<ApiResponse<any>, void>({
       query: () => '/kpi/active-cycle',
-      providesTags: ['GoalSet'], // Can use a specific tag if needed
+      providesTags: ['Cycle', 'GoalSet'], // Can use a specific tag if needed
     }),
 
     // ==================== Score Calculation ====================
