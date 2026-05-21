@@ -8,7 +8,7 @@ import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
 import { Search, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
-import { useGetActiveCycleQuery, useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
+import { useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import React from 'react';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
@@ -20,8 +20,7 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; l
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAdmin, isHR, activeCycleId, activeCycleName: authCycleName } = useAuth();
-  const { error: cycleError } = useGetActiveCycleQuery(undefined);
+  const { user, isAdmin, isHR, activeCycleId, activeCycleName: authCycleName, cycleError } = useAuth();
   const hasActiveCycle = !!activeCycleId && !cycleError;
   const [page, setPage] = useState(0);
   const [size] = useState(10);
@@ -151,7 +150,6 @@ const GoalManagement: React.FC = () => {
               )}
               {!loadingEmployees && filteredEmployees.map((emp, idx) => {
                 const status = goalStatusMap.get(emp.id);
-                const ss = status ? STATUS_STYLE[status] : null;
                 return (
                   <tr key={emp.id}
                     style={{ borderBottom: idx < filteredEmployees.length - 1 ? '0.5px solid #F0F2F6' : 'none', background: selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF', cursor: 'pointer' }}
