@@ -23,6 +23,7 @@ export const KPI_STATUS_STYLE: Record<string, KpiStatusStyle> = {
   DRAFT:    { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4', label: 'Drafting'       },
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0', label: 'Approved'       },
   LOCKED:   { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2', label: 'Locked (Active)' },
+  SCORED:   { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0', label: 'Score Calculated' },
   ARCHIVED: { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8', label: 'Archived'       },
 };
 
