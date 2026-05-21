@@ -103,7 +103,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     { to: "/kpi", label: "KPI Intelligence Hub", end: true },
     { to: "/kpi/my", label: "My Goals" },
     ...(isManager ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
-    ...(user ? [{ to: `/kpi/history/${user.id}`, label: "KPI Journey" }] : []),
+    ...(user ? [{ to: `/kpi/history/${user.id}`, label: "My KPI Journey" }] : []),
     ...((isAdmin || isHR)
       ? [
           { to: "/kpi/manage", label: "Goal Management" },
