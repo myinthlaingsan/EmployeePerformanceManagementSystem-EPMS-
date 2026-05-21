@@ -561,6 +561,15 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
 
         if (!requestRepository.existsByTargetUserIdAndEvaluatorIdAndCycleCycleId(target.getId(), evaluator.getId(),
                 cycle.getCycleId())) {
+            java.time.Instant dueDate = null;
+            if (cycle.getSelfAssessmentDeadline() != null) {
+                dueDate = cycle.getSelfAssessmentDeadline().atTime(23, 59, 59)
+                        .atZone(java.time.ZoneId.systemDefault()).toInstant();
+            } else if (cycle.getEndDate() != null) {
+                dueDate = cycle.getEndDate().atTime(23, 59, 59)
+                        .atZone(java.time.ZoneId.systemDefault()).toInstant();
+            }
+
             FeedbackRequest request = FeedbackRequest.builder()
                     .targetUser(target)
                     .evaluator(evaluator)
@@ -569,8 +578,9 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     .form(form)
                     .isAnonymous(anon)
                     .status(FeedbackStatus.PENDING)
+                    .startedAt(java.time.Instant.now())
+                    .dueDate(dueDate)
                     .build();
-//            requestRepository.save(request);
             requestRepository.save(request);
             // Update workload map
             workloadMap.put(evaluator.getId(), currentWorkload + 1);
@@ -610,6 +620,18 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         }
         request.setStatus(FeedbackStatus.CANCELLED);
         requestRepository.save(request);
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(request.getEvaluator().getId())
+                .type(NotificationType.FEEDBACK_REQUESTED)
+                .title("Feedback Request Cancelled")
+                .message("The feedback request for "
+                        + (Boolean.TRUE.equals(request.getIsAnonymous()) ? "a colleague" : request.getTargetUser().getStaffName())
+                        + " has been cancelled.")
+                .referenceType(ReferenceType.FEEDBACK)
+                .referenceId(request.getId())
+                .actionUrl("/feedback/my-pending")
+                .build());
     }
 
     @Override
@@ -619,9 +641,38 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                 .orElseThrow(() -> new NotFoundException("Feedback request not found: " + requestId));
         Employee newEvaluator = employeeRepository.findById(newEvaluatorId)
                 .orElseThrow(() -> new NotFoundException("Employee not found: " + newEvaluatorId));
+        
+        Long oldEvaluatorId = request.getEvaluator().getId();
+        
+        // Notify the old evaluator that their request is reassigned/cancelled
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(oldEvaluatorId)
+                .type(NotificationType.FEEDBACK_REQUESTED)
+                .title("Feedback Request Reassigned")
+                .message("Your feedback request for "
+                        + (Boolean.TRUE.equals(request.getIsAnonymous()) ? "a colleague" : request.getTargetUser().getStaffName())
+                        + " has been reassigned to another employee.")
+                .referenceType(ReferenceType.FEEDBACK)
+                .referenceId(request.getId())
+                .actionUrl("/feedback/my-pending")
+                .build());
+
         request.setEvaluator(newEvaluator);
         request.setStatus(FeedbackStatus.PENDING);
         requestRepository.save(request);
+
+        // Notify the new evaluator
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(newEvaluator.getId())
+                .type(NotificationType.FEEDBACK_REQUESTED)
+                .title("Feedback Requested")
+                .message("You have been requested to provide 360 feedback for "
+                        + (Boolean.TRUE.equals(request.getIsAnonymous()) ? "a colleague" : request.getTargetUser().getStaffName())
+                        + ".")
+                .referenceType(ReferenceType.FEEDBACK)
+                .referenceId(request.getId())
+                .actionUrl("/feedback/my-pending")
+                .build());
     }
 
     @Override

@@ -13,6 +13,7 @@ import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.service.feedback360.EvaluatorRotationService;
 import ace.org.epms_backend.service.feedback360.FeedbackDraftService;
 import ace.org.epms_backend.service.feedback360.FeedbackReportService;
+import ace.org.epms_backend.service.feedback360.FeedbackReminderService;
 import ace.org.epms_backend.service.feedback360.FeedbackRequestService;
 import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class Feedback360Controller {
     private final FeedbackReportService     feedbackReportService;
     private final EvaluatorRotationService  evaluatorRotationService;
     private final FeedbackDraftService      feedbackDraftService;
+    private final FeedbackReminderService   feedbackReminderService;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Existing Endpoints
@@ -147,6 +149,20 @@ public class Feedback360Controller {
     @PreAuthorize("hasAnyRole('ADMIN','HR')")
     public ResponseEntity<ApiResponse<List<FeedbackRequestResponse>>> listByCycle(@PathVariable Long cycleId) {
         return ResponseEntity.ok(ApiResponse.success(feedbackRequestService.listByCycle(cycleId)));
+    }
+
+    @PostMapping("/cycle/{cycleId}/reminders")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<ApiResponse<Void>> sendFeedbackReminders(@PathVariable Long cycleId) {
+        feedbackReminderService.sendFeedbackReminders(cycleId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping("/request/{requestId}/remind")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<ApiResponse<Void>> sendIndividualReminder(@PathVariable Long requestId) {
+        feedbackReminderService.sendIndividualFeedbackReminder(requestId);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
