@@ -224,7 +224,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
       await approveGoalSet(goalSet.id).unwrap();
       toast.success('Goals approved and locked!');
       navigate(isAdmin || isHR ? '/kpi/manage' : '/kpi/team');
-    } catch { /* handled by RTK */ }
+    } catch (err: any) { toast.error(`Failed to approve: ${err?.data?.message || err.message}`); }
     finally { setIsSubmitting(false); }
   };
 
