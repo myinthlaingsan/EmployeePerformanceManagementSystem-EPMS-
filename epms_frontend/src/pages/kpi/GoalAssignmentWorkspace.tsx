@@ -46,14 +46,16 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const { data: cyclesData } = useGetCyclesQuery();
   const cycles = cyclesData || [];
 
-  // Memoized function to look up cycle name by ID
-  const getCycleName = useMemo(() => {
-    return (cycleId: number | undefined) => {
-      if (!cycleId) return undefined;
-      const cycle = cycles.find((c) => c.cycleId === cycleId);
-      return cycle?.cycleName;
-    };
-  }, [cycles]);
+  // goalSet must be declared before any hook or useMemo that references it
+  const goalSet = goalSetResponse?.data;
+
+  // Compute a friendly cycle name: goalSet label -> cycles lookup -> activeCycleName
+  const cycleName = useMemo(() => {
+    if (goalSet?.appraisalCycleName) return goalSet.appraisalCycleName;
+    const found = cycles.find((c: any) => (c.cycleId || c.id) === resolvedCycleId);
+    if (found?.cycleName) return found.cycleName;
+    return activeCycleName;
+  }, [goalSet?.appraisalCycleName, cycles, resolvedCycleId, activeCycleName]);
 
   const [addGoalItem] = useAddGoalItemMutation();
   const [deleteGoalItem] = useDeleteGoalItemMutation();
@@ -61,8 +63,6 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const [approveGoalSet] = useApproveGoalSetMutation();
   const [revertToDraft] = useRevertGoalSetMutation();
   const [assignLibrary] = useAssignKpiToEmployeeMutation();
-
-  const goalSet = goalSetResponse?.data;
   const isInputDisabled = isHistoricalCycle || goalSet?.status === 'APPROVED' || goalSet?.status === 'LOCKED';
   const [localItems, setLocalItems] = React.useState<any[]>([]);
   const [isModified, setIsModified] = useState(false);
@@ -289,7 +289,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                 <span style={{ fontSize: 10, fontWeight: 500, background: '#F5F6F8', color: '#9EA3B0', border: '0.5px solid #E0E2E8', borderRadius: 20, padding: '2px 8px' }}>Not Assigned</span>
               )}
             </div>
-            <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>{employee?.employeeCode} &bull; {employee?.positionName} &bull; Cycle: {goalSet?.appraisalCycleName || getCycleName(resolvedCycleId) || `Cycle ID: ${resolvedCycleId}`}</p>
+            <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>{employee?.employeeCode} &bull; {employee?.positionName} &bull; Cycle: {cycleName}</p>
           </div>
           <button onClick={() => navigate(`/kpi/history/${employeeId}`)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500 }}
