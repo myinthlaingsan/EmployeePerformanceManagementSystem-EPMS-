@@ -13,6 +13,7 @@ import {
   useAssignKpiToEmployeeMutation,
 } from '../../services/kpiApi';
 import { useGetEmployeeByIdQuery } from '../../features/employee/employeeapi';
+import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
 import {
   Search, Plus, Trash2, Lock, LayoutTemplate, Target, Save, Edit3, History, ChevronLeft
@@ -41,6 +42,18 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
   const { data: categoriesResponse } = useGetKpiCategoriesQuery();
   const categories = categoriesResponse?.data || [];
+
+  const { data: cyclesData } = useGetCyclesQuery();
+  const cycles = cyclesData || [];
+
+  // Memoized function to look up cycle name by ID
+  const getCycleName = useMemo(() => {
+    return (cycleId: number | undefined) => {
+      if (!cycleId) return undefined;
+      const cycle = cycles.find((c) => c.cycleId === cycleId);
+      return cycle?.cycleName;
+    };
+  }, [cycles]);
 
   const [addGoalItem] = useAddGoalItemMutation();
   const [deleteGoalItem] = useDeleteGoalItemMutation();
@@ -275,7 +288,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                 <span style={{ fontSize: 10, fontWeight: 500, background: '#F5F6F8', color: '#9EA3B0', border: '0.5px solid #E0E2E8', borderRadius: 20, padding: '2px 8px' }}>Not Assigned</span>
               )}
             </div>
-            <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>{employee?.employeeCode} &bull; {employee?.positionName} &bull; Cycle: {goalSet?.appraisalCycleName || (isHistoricalCycle ? `Cycle ID: ${resolvedCycleId}` : activeCycleName)}</p>
+            <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>{employee?.employeeCode} &bull; {employee?.positionName} &bull; Cycle: {goalSet?.appraisalCycleName || getCycleName(resolvedCycleId) || `Cycle ID: ${resolvedCycleId}`}</p>
           </div>
           <button onClick={() => navigate(`/kpi/history/${employeeId}`)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500 }}
