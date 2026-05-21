@@ -119,8 +119,11 @@ const GoalDetail: React.FC = () => {
           <div>
             <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{goalSet.employeeName}'s Performance Goals</h1>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>
-              Cycle: {goalSet.appraisalCycleId} &bull; Manager: {goalSet.managerName} (ID: {goalSet.managerId})
-              {goalSet.assignedByName && ` &bull; Assigned By: ${goalSet.assignedByName} (ID: ${goalSet.assignedBy})`}
+              Cycle: {goalSet.appraisalCycleId}
+              {goalSet.managerName
+                ? ` • Manager: ${goalSet.managerName} (ID: ${goalSet.managerId})`
+                : ' • Manager: Not Assigned'}
+              {goalSet.assignedByName && ` • Assigned By: ${goalSet.assignedByName} (ID: ${goalSet.assignedBy})`}
               {goalSet.assignedAt && ` on ${new Date(goalSet.assignedAt).toLocaleDateString()}`}
             </p>
           </div>

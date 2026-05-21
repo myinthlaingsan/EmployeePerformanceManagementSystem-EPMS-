@@ -310,7 +310,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
         <div style={{ background: '#F8FAFC', border: '0.5px solid #E2E8F0', borderRadius: 12, padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: '16px 24px', alignItems: 'center' }}>
           <div>
             <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned Manager</span>
-            <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>{goalSet.managerName} <span style={{ color: '#94A3B8', fontWeight: 400 }}>(ID: {goalSet.managerId})</span></p>
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>
+              {goalSet.managerName
+                ? <>{goalSet.managerName} <span style={{ color: '#94A3B8', fontWeight: 400 }}>(ID: {goalSet.managerId})</span></>
+                : <span style={{ color: '#94A3B8', fontWeight: 400 }}>Not Assigned</span>}
+            </p>
           </div>
           {goalSet.assignedByName && (
             <>

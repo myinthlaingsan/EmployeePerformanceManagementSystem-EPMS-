@@ -118,7 +118,9 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         if (rl != null) {
             employeeManager = rl.getManager();
         }
-        if (employeeManager == null) {
+        // Only fall back to the assigning user as manager when they are a MANAGER role.
+        // HR/Admin assigning on behalf should not overwrite the manager field with themselves.
+        if (employeeManager == null && isManager) {
             employeeManager = currentManager;
         }
 
@@ -207,6 +209,11 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         Employee currentManager = getCurrentEmployee();
 
+        var bulkAuthorities = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .collect(Collectors.toSet());
+        boolean bulkIsManager = bulkAuthorities.contains("ROLE_MANAGER");
+
         BulkAssignmentResponse response = new BulkAssignmentResponse();
         response.setResults(new java.util.ArrayList<>());
         response.setTotalProcessed(request.getEmployeeIds().size());
@@ -268,7 +275,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 if (rl != null) {
                     employeeManager = rl.getManager();
                 }
-                if (employeeManager == null) {
+                if (employeeManager == null && bulkIsManager) {
                     employeeManager = currentManager;
                 }
 
