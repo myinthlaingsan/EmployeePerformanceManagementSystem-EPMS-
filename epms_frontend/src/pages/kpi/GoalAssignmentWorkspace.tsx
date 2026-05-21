@@ -255,7 +255,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
         </div>
         <h2 style={{ fontSize: 16, fontWeight: 500, color: '#111827', marginBottom: 8 }}>No Cycle Specified</h2>
         <p style={{ fontSize: 13, color: '#9EA3B0', marginBottom: 20, lineHeight: 1.6 }}>An appraisal cycle is required to assign or view KPIs. Please contact your system administrator to open a new cycle or select a cycle to view.</p>
-        <button onClick={() => navigate(-1)} style={{ background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 20px', fontSize: 13, fontWeight: 500 }}>Go Back</button>
+        <button onClick={() => navigate(-1)} style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 20px', fontSize: 13, fontWeight: 500 }} className="hover:bg-[#1648C0] transition-colors">Go Back</button>
       </div>
     </div>
   );
@@ -308,8 +308,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
               // APPROVED: can revert to edit
               return (
                 <button onClick={handleEdit} disabled={isSubmitting}
-                  style={{ background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
-                  className="disabled:opacity-50">
+                  style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
+                  className="disabled:opacity-50 hover:bg-[#1648C0] transition-colors">
                   <Edit3 size={13} /> Edit Goals
                 </button>
               );
@@ -323,8 +323,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
                   <Save size={13} /> {isModified ? 'Save Draft' : 'Draft Saved'}
                 </button>
                 <button onClick={handleApprove} disabled={isSubmitting || totalWeight !== 100 || isModified}
-                  style={{ background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
-                  className="disabled:opacity-50 disabled:cursor-not-allowed">
+                  style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
+                  className="disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1648C0] transition-colors">
                   <Lock size={13} /> Approve Goal Set
                 </button>
               </>
