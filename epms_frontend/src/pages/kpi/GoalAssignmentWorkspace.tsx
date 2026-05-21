@@ -176,7 +176,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
             }
           }).unwrap();
           // replace temp item with real one from API response
-          const realItem = created.data?.items?.find((it: any) => it.title === item.title) || item;
+          // Use the last item returned by the API (newly appended) instead of matching by title
+          const realItem = created.data?.items?.at(-1) || item;
           savedItems[i] = { ...realItem, _isNew: false };
         }
       }
@@ -281,7 +282,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
               <h1 style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>{employee?.staffName}</h1>
               {ss && (
                 <span style={{ fontSize: 10, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '2px 8px' }}>
-                  {goalSet?.status}
+                  {ss?.label}
                 </span>
               )}
               {!goalSet && (
@@ -297,14 +298,24 @@ const GoalAssignmentWorkspace: React.FC = () => {
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {!isHistoricalCycle && (
-            goalSet?.status === 'APPROVED' ? (
-              <button onClick={handleEdit} disabled={isSubmitting}
-                style={{ background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
-                className="disabled:opacity-50">
-                <Edit3 size={13} /> Edit Goals
-              </button>
-            ) : (
+          {!isHistoricalCycle && (() => {
+            const readOnlyStatuses = ['LOCKED', 'SCORED', 'ARCHIVED'];
+            if (goalSet && readOnlyStatuses.includes(goalSet.status)) {
+              // Terminal/read-only states: no buttons
+              return null;
+            }
+            if (goalSet?.status === 'APPROVED') {
+              // APPROVED: can revert to edit
+              return (
+                <button onClick={handleEdit} disabled={isSubmitting}
+                  style={{ background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
+                  className="disabled:opacity-50">
+                  <Edit3 size={13} /> Edit Goals
+                </button>
+              );
+            }
+            // DRAFT or no goalSet: show save + approve
+            return (
               <>
                 <button onClick={handleSaveDraft} disabled={isSubmitting || !isModified}
                   style={{ background: isModified ? '#1A56DB' : '#F5F6F8', color: isModified ? '#FFFFFF' : '#9EA3B0', border: isModified ? 'none' : '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
@@ -317,8 +328,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
                   <Lock size={13} /> Approve Goal Set
                 </button>
               </>
-            )
-          )}
+            );
+          })()}
         </div>
       </div>
 
