@@ -16,13 +16,6 @@ import KpiAuditLogModal from '../../components/kpi/KpiAuditLogModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
 import { ChevronLeft, CheckCircle2, AlertCircle, Edit3, Lock, Award, ShieldCheck, History } from 'lucide-react';
 
-const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
-  APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
-  LOCKED: { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
-  DRAFT: { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
-  ARCHIVED: { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8' },
-};
-
 const STEPS = [
   { id: 'DRAFT', label: 'Draft', icon: Edit3 },
   { id: 'APPROVED', label: 'Approved', icon: CheckCircle2 },
@@ -108,7 +101,6 @@ const GoalDetail: React.FC = () => {
   );
 
   const totalWeight = items.reduce((sum, i) => sum + i.weightPercent, 0);
-  const ss = STATUS_STYLE[goalSet.status] || { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8' };
 
   const currentStepIndex = isScoredState
     ? 3
@@ -127,7 +119,9 @@ const GoalDetail: React.FC = () => {
           <div>
             <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{goalSet.employeeName}'s Performance Goals</h1>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>
-              Cycle: {goalSet.appraisalCycleId} &bull; Manager: {goalSet.managerName}
+              Cycle: {goalSet.appraisalCycleId} &bull; Manager: {goalSet.managerName} (ID: {goalSet.managerId})
+              {goalSet.assignedByName && ` &bull; Assigned By: ${goalSet.assignedByName} (ID: ${goalSet.assignedBy})`}
+              {goalSet.assignedAt && ` on ${new Date(goalSet.assignedAt).toLocaleDateString()}`}
             </p>
           </div>
         </div>
@@ -143,7 +137,7 @@ const GoalDetail: React.FC = () => {
             <>
               {(goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
                 <button
-                  onClick={() => navigate(`/kpi/assign/${employeeId}?cycleId=${effectiveCycleId}`)}
+                   onClick={() => navigate(`/kpi/assign/${employeeId}?cycleId=${effectiveCycleId}`)}
                   style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none' }}>
                   Modify Goals
                 </button>
@@ -157,7 +151,7 @@ const GoalDetail: React.FC = () => {
               )}
 
               {goalSet.status === 'APPROVED' && (
-                <button onClick={() => setShowRevertConfirm(true)}
+                <button onClick={handleRevert}
                   style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
                   Revert to Draft
                 </button>

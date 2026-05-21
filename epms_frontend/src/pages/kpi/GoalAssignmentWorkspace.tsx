@@ -305,6 +305,34 @@ const GoalAssignmentWorkspace: React.FC = () => {
         </div>
       </div>
 
+      {/* Assignment Info Callout */}
+      {goalSet && (
+        <div style={{ background: '#F8FAFC', border: '0.5px solid #E2E8F0', borderRadius: 12, padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: '16px 24px', alignItems: 'center' }}>
+          <div>
+            <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned Manager</span>
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>{goalSet.managerName} <span style={{ color: '#94A3B8', fontWeight: 400 }}>(ID: {goalSet.managerId})</span></p>
+          </div>
+          {goalSet.assignedByName && (
+            <>
+              <div style={{ width: 1, height: 24, background: '#E2E8F0', alignSelf: 'center' }} />
+              <div>
+                <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned By</span>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>{goalSet.assignedByName} <span style={{ color: '#94A3B8', fontWeight: 400 }}>(ID: {goalSet.assignedBy})</span></p>
+              </div>
+            </>
+          )}
+          {goalSet.assignedAt && (
+            <>
+              <div style={{ width: 1, height: 24, background: '#E2E8F0', alignSelf: 'center' }} />
+              <div>
+                <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned At</span>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>{new Date(goalSet.assignedAt).toLocaleString()}</p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Sidebar */}
         <aside style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px' }} className="w-full lg:w-72 shrink-0">

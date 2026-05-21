@@ -113,9 +113,21 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             }
         }
 
+        Employee employeeManager = null;
+        ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(employee).orElse(null);
+        if (rl != null) {
+            employeeManager = rl.getManager();
+        }
+        if (employeeManager == null) {
+            employeeManager = currentManager;
+        }
+
         KpiGoals goalSet = KpiGoals.builder()
                 .employee(employee)
-                .manager(currentManager)
+                .manager(employeeManager)
+                .assignedBy(currentManager.getId())
+                .assignedByName(currentManager.getStaffName())
+                .assignedAt(Instant.now())
                 .cycle(cycle)
                 .status(KpiGoalStatus.DRAFT)
                 .version(1)
@@ -251,10 +263,22 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     }
                 }
 
+                Employee employeeManager = null;
+                ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(employee).orElse(null);
+                if (rl != null) {
+                    employeeManager = rl.getManager();
+                }
+                if (employeeManager == null) {
+                    employeeManager = currentManager;
+                }
+
                 // Create Draft Goal Set
                 KpiGoals goalSet = KpiGoals.builder()
                         .employee(employee)
-                        .manager(currentManager)
+                        .manager(employeeManager)
+                        .assignedBy(currentManager.getId())
+                        .assignedByName(currentManager.getStaffName())
+                        .assignedAt(Instant.now())
                         .cycle(cycle)
                         .status(KpiGoalStatus.DRAFT)
                         .version(1)

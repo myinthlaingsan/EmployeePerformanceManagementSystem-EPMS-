@@ -14,5 +14,8 @@ public class GoalSetResponse {
     private Long appraisalCycleId;
     private String appraisalCycleName;
     private KpiGoalStatus status;
+    private Long assignedBy;
+    private String assignedByName;
+    private java.time.Instant assignedAt;
     private List<GoalItemResponse> items;
 }

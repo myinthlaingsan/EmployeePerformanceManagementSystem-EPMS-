@@ -71,30 +71,9 @@ const GoalManagement: React.FC = () => {
     setSelectedIds(e.target.checked ? filteredEmployees.map(m => m.id) : []);
   };
 
-  const handleToggleSelect = (id: number) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  };
-
   const selectStyle: React.CSSProperties = {
     background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
     padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', appearance: 'none' as any,
-  };
-
-  const getStatusBadge = (status?: string) => {
-    if (!status) {
-      return (
-        <div className="flex items-center gap-1.5">
-          <XCircle size={13} style={{ color: '#9EA3B0' }} />
-          <span style={{ fontSize: 10, color: '#9EA3B0' }}>Not Assigned</span>
-        </div>
-      );
-    }
-    const ss = STATUS_STYLE[status] ?? { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8', label: status };
-    return (
-      <span style={{ fontSize: 10, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '2px 8px' }}>
-        {ss.label}
-      </span>
-    );
   };
 
   return (<div className="space-y-4 pb-8">
