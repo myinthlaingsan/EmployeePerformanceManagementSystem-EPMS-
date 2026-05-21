@@ -8,10 +8,11 @@ interface BulkAssignModalProps {
   selectedEmployeeIds: number[];
   onClose: () => void;
   onSuccess: () => void;
+  effectiveCycleId?: number | null;
 }
 
-const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, onClose, onSuccess }) => {
-  const { activeCycleId } = useActiveCycle();
+const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, onClose, onSuccess, effectiveCycleId }) => {
+  const { activeCycleId, activeCycleName } = useActiveCycle();
   const { data: librariesResponse, isLoading: loadingLibraries } = useGetAllLibrariesQuery();
   const [bulkAssign, { isLoading: isAssigning }] = useBulkAssignKpiMutation();
   
@@ -115,8 +116,20 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
         ) : (
           <>
             <div className="p-8 space-y-6">
-          <div className="space-y-4">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select KPI Template</label>
+              {effectiveCycleId !== undefined && effectiveCycleId !== null && effectiveCycleId !== activeCycleId && (
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <span className="block text-[11px] font-black text-amber-900 uppercase tracking-widest">Historical Cycle Notice</span>
+                    <span className="block text-[11px] text-amber-700 mt-0.5 font-bold leading-normal">
+                      You are viewing a historical cycle. Assigning will target the current active cycle <strong className="underline font-black">{activeCycleName}</strong> instead.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select KPI Template</label>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input 

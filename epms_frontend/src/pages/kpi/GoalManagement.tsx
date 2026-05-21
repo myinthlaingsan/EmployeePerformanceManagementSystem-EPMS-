@@ -96,21 +96,21 @@ const GoalManagement: React.FC = () => {
               {activeCycleName}
             </div>
           )}
-          {!isHistorical && (
-            <button
-              onClick={() => { if (selectedIds.length === 0) { toast.warning('Select at least one employee'); return; } setIsBulkModalOpen(true); }}
-              className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
-              style={{
-                background: selectedIds.length > 0 ? '#1A56DB' : '#F5F6F8',
-                color: selectedIds.length > 0 ? '#FFFFFF' : '#9EA3B0',
-                border: `0.5px solid ${selectedIds.length > 0 ? '#1A56DB' : '#E0E2E8'}`,
-                borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500,
-                cursor: selectedIds.length > 0 ? 'pointer' : 'default',
-              }}>
-              <ClipboardList size={14} />
-              Bulk Assign Templates {selectedIds.length > 0 && `(${selectedIds.length})`}
-            </button>
-          )}
+          <button
+            disabled={isHistorical || selectedIds.length === 0}
+            onClick={() => { if (selectedIds.length === 0) { toast.warning('Select at least one employee'); return; } setIsBulkModalOpen(true); }}
+            className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+            style={{
+              background: !isHistorical && selectedIds.length > 0 ? '#1A56DB' : '#F5F6F8',
+              color: !isHistorical && selectedIds.length > 0 ? '#FFFFFF' : '#9EA3B0',
+              border: `0.5px solid ${!isHistorical && selectedIds.length > 0 ? '#1A56DB' : '#E0E2E8'}`,
+              borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500,
+              cursor: !isHistorical && selectedIds.length > 0 ? 'pointer' : 'not-allowed',
+              opacity: isHistorical || selectedIds.length === 0 ? 0.5 : 1,
+            }}>
+            <ClipboardList size={14} />
+            Bulk Assign Templates {selectedIds.length > 0 && `(${selectedIds.length})`}
+          </button>
         </div>
       </div>
 
@@ -278,6 +278,7 @@ const GoalManagement: React.FC = () => {
 
       {isBulkModalOpen && (
         <BulkAssignModal selectedEmployeeIds={selectedIds}
+          effectiveCycleId={effectiveCycleId}
           onClose={() => setIsBulkModalOpen(false)}
           onSuccess={() => { setIsBulkModalOpen(false); setSelectedIds([]); }} />
       )}
