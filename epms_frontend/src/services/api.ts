@@ -43,6 +43,8 @@ export const api = createApi({
     "ScoringPolicy",
     "Competency",
     "Nomination",
+    "CalibrationSession",
+    "Calibration",
   ],
   endpoints: () => ({}),
   // This adds more context to traces

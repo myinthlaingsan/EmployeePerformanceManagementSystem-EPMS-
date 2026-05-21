@@ -235,7 +235,7 @@ const PipListPage: React.FC = () => {
                       <button
                         onClick={() => navigate(`/pip/${pip.pipId}`)}
                         style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 6, color: "#5A6070" }}
-                        className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors"
+                        className="hover:bg-info-fill hover:text-[#1A56DB] transition-colors"
                       >
                         <ChevronRight size={14} aria-hidden="true" />
                       </button>
