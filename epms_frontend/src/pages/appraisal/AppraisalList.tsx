@@ -253,7 +253,7 @@ const AppraisalList: React.FC = () => {
                   <Trash2 className="w-4 h-4" /> Delete Cycle
                 </button>
               )}
-              {!cycle?.isActive ? (
+              {!cycle?.isActive && cycle?.status !== 'ARCHIVED' ? (
                 <button
                   onClick={async () => {
                     try {
@@ -269,7 +269,7 @@ const AppraisalList: React.FC = () => {
                 >
                   {isActivating ? 'Activating...' : 'Activate Cycle'}
                 </button>
-              ) : isAdmin && (
+              ) : isAdmin && cycle?.isActive ? (
                 <button
                   onClick={() => {
                     setConfirmModal({
@@ -287,7 +287,11 @@ const AppraisalList: React.FC = () => {
                 >
                   {isClosing ? 'Closing...' : 'Emergency Close'}
                 </button>
-              )}
+              ) : cycle?.status === 'ARCHIVED' ? (
+                <div className="px-4 py-2 bg-slate-100 text-slate-500 text-xs font-bold rounded-xl border border-slate-200 flex items-center gap-2 uppercase tracking-wide">
+                  Archived — closed permanently
+                </div>
+              ) : null}
             </div>
           </div>
 
