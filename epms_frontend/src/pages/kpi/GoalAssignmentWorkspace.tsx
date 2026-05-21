@@ -46,8 +46,14 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const { data: cyclesData } = useGetCyclesQuery();
   const cycles = cyclesData || [];
 
-  // goalSet must be declared before any hook or useMemo that references it
-  const goalSet = goalSetResponse?.data;
+  // goalSet must be declared before any hook or useMemo that references it.
+  // Guard against stale cache: if the returned goal-set belongs to a different cycle
+  // (e.g. RTK cache hasn't flushed yet after a cycle switch), treat it as undefined so
+  // the UI renders the "no goals assigned" empty state instead of showing old data.
+  const rawGoalSet = goalSetResponse?.data;
+  const goalSet = rawGoalSet && resolvedCycleId && rawGoalSet.appraisalCycleId !== resolvedCycleId
+    ? undefined
+    : rawGoalSet;
 
   // Compute a friendly cycle name: goalSet label -> cycles lookup -> activeCycleName
   const cycleName = useMemo(() => {

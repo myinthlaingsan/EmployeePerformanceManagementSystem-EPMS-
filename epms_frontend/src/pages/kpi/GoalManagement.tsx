@@ -29,8 +29,9 @@ const GoalManagement: React.FC = () => {
   const { data: positions = [] } = useGetPositionsQuery();
   const { data: cyclesResponse } = useGetCyclesQuery();
   const cycles = Array.isArray(cyclesResponse) ? cyclesResponse : ((cyclesResponse as any)?.data || []);
-  const activeCycles = cycles.filter((c: any) => (c.cycleId || c.id) === activeCycleId || c.status === 'ACTIVE' || c.isActive);
-  const inactiveCycles = cycles.filter((c: any) => !((c.cycleId || c.id) === activeCycleId || c.status === 'ACTIVE' || c.isActive));
+  // Use only activeCycleId as truth — never trust status/isActive flags, which can match stale cycles
+  const activeCycles = cycles.filter((c: any) => (c.cycleId || c.id) === activeCycleId);
+  const inactiveCycles = cycles.filter((c: any) => (c.cycleId || c.id) !== activeCycleId);
   const getCycleStatusLabel = (c: any) => {
     if (!c.status) return '';
     return ` (${c.status.charAt(0).toUpperCase() + c.status.slice(1).toLowerCase()})`;
