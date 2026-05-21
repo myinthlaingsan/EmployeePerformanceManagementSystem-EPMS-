@@ -20,8 +20,8 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; l
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAdmin, isHR, activeCycleId, activeCycleName: authCycleName, cycleError } = useAuth();
-  const hasActiveCycle = !!activeCycleId && !cycleError;
+  const { user, isAdmin, isHR, activeCycleId, activeCycleName: authCycleName, hasCycle: authHasCycle, cycleError } = useAuth();
+  const hasActiveCycle = authHasCycle && !cycleError;
   const [page, setPage] = useState(0);
   const [size] = useState(10);
   const isAdminOrHr = isAdmin || isHR;
@@ -50,7 +50,7 @@ const GoalManagement: React.FC = () => {
 
   const effectiveCycleId = selectedCycle === 'All' ? activeCycleId : Number(selectedCycle);
   // Use cycle name from the active-cycle API (via useAuth), not from cycle list lookup
-  const activeCycleName = authCycleName !== 'No Active Cycle' ? authCycleName : undefined;
+  const activeCycleName = hasActiveCycle ? authCycleName : undefined;
   const { data: deptGoalSetsResponse } = useGetDepartmentGoalSetsQuery(
     { cycleId: effectiveCycleId! }, { skip: !effectiveCycleId || !isAdminOrHr }
   );

@@ -68,6 +68,7 @@ export const useAuth = () => {
     // Cycle Info
     activeCycleId: cycleResponse?.data?.cycleId,
     activeCycleName: cycleResponse?.data?.cycleName || 'No Active Cycle',
+    hasCycle: !!cycleResponse?.data?.cycleId,
     isLoading: isLoadingUser || isLoadingCycle,
     isLoadingCycle,
     cycleError,
