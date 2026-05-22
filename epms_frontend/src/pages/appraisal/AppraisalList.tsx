@@ -32,7 +32,8 @@ import {
   Search,
   Mail,
   Share2,
-  Trash2
+  Trash2,
+  Calculator
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -126,10 +127,17 @@ const AppraisalList: React.FC = () => {
             </div>
             <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{appraisal.employeeName}</p>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 12 }}>Performance Assessment</p>
-            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
-              <div style={{ flex: 1, height: 4, background: '#F0F2F6', borderRadius: 4, marginRight: 10 }}>
-                <div style={{ height: '100%', borderRadius: 4, background: '#1A56DB', width: appraisal.status === 'FINALIZED' ? '100%' : appraisal.status === 'PENDING' ? '15%' : '60%' }} />
-              </div>
+            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6', marginTop: 10 }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/appraisal/${appraisal.appraisalId}/score`);
+                }}
+                style={{ fontSize: 12, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                className="hover:underline flex items-center gap-1 font-medium"
+              >
+                <Calculator size={12} /> Preview Score
+              </button>
               <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
             </div>
           </div>
@@ -157,10 +165,16 @@ const AppraisalList: React.FC = () => {
             <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{appraisal.employeeName}</p>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 12 }}>Team Performance Evaluation</p>
             <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
-              <span style={{ fontSize: 11, color: '#9EA3B0' }}>
-                <Clock size={11} style={{ display: 'inline', marginRight: 4 }} />
-                {appraisal.updatedAt ? safeFormatDate(appraisal.updatedAt) : 'Recently'}
-              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/appraisal/${appraisal.appraisalId}/score`);
+                }}
+                style={{ fontSize: 12, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                className="hover:underline flex items-center gap-1 font-medium"
+              >
+                <Calculator size={12} /> Preview Score
+              </button>
               <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
             </div>
           </div>
@@ -381,9 +395,11 @@ const AppraisalList: React.FC = () => {
                         <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 500, color: '#111827' }}>
                           {appraisal.finalScore != null ? `${Number(appraisal.finalScore).toFixed(1)}%` : '—'}
                         </td>
-                        <td style={{ padding: '10px 16px' }}>
+                        <td style={{ padding: '10px 16px', display: 'flex', gap: 12 }}>
                           <button onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}
-                            style={{ fontSize: 12, color: '#1A56DB' }}>View</button>
+                            style={{ fontSize: 12, color: '#1A56DB' }} className="hover:underline font-medium">Detail</button>
+                          <button onClick={() => navigate(`/appraisal/${appraisal.appraisalId}/score`)}
+                            style={{ fontSize: 12, color: '#0C447C' }} className="hover:underline font-medium">Preview</button>
                         </td>
                       </tr>
                     );
