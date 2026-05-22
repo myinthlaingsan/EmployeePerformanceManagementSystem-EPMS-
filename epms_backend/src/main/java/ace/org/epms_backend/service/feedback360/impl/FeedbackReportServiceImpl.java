@@ -89,7 +89,7 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
             // Mask evaluator identity when the viewer is the target (peer/subordinate anonymous rows).
             // HR viewing someone else's report sees real names for audit purposes.
             Long viewerId = securityHelper.currentUserId();
-            boolean viewerIsTarget = viewerId == null || viewerId.equals(targetUserId);
+            boolean viewerIsTarget = viewerId != null && viewerId.equals(targetUserId);
             boolean anonymous = Boolean.TRUE.equals(feedback.getRequest().getIsAnonymous())
                     && relationship != FeedbackRelationship.SELF
                     && relationship != FeedbackRelationship.DIRECT_MANAGER
