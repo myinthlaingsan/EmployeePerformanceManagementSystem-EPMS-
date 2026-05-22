@@ -268,10 +268,11 @@ export const continuousApi = api.injectEndpoints({
     }),
 
     // Performance History
-    getPerformanceHistoryByEmployee: builder.query<PagedResponse<PerformanceHistoryResponse>, { employeeId: number; sourceType?: string; page: number; size: number }>({
-      query: ({ employeeId, sourceType, page, size }) => {
+    getPerformanceHistoryByEmployee: builder.query<PagedResponse<PerformanceHistoryResponse>, { employeeId: number; sourceType?: string; onlyByManager?: boolean; page: number; size: number }>({
+      query: ({ employeeId, sourceType, onlyByManager, page, size }) => {
         let url = `/performance-history/employee/${employeeId}?page=${page}&size=${size}`;
         if (sourceType && sourceType !== 'ALL') url += `&sourceType=${sourceType}`;
+        if (onlyByManager !== undefined) url += `&onlyByManager=${onlyByManager}`;
         return url;
       },
       transformResponse: (response: ApiResponse<PagedResponse<PerformanceHistoryResponse>>) => response.data,
@@ -296,24 +297,26 @@ export const continuousApi = api.injectEndpoints({
       transformResponse: (response: ApiResponse<PerformanceHistoryResponse[]>) => response.data,
       providesTags: ["PerformanceHistory" as any],
     }),
-    getPerformancePulse: builder.query<PerformanceHistoryResponse[], { departmentId?: number; employeeId?: number }>({
-      query: ({ departmentId, employeeId }) => {
+    getPerformancePulse: builder.query<PerformanceHistoryResponse[], { departmentId?: number; employeeId?: number; onlyByManager?: boolean }>({
+      query: ({ departmentId, employeeId, onlyByManager }) => {
         let url = "/performance-history/pulse";
         const params = new URLSearchParams();
         if (departmentId) params.append("departmentId", departmentId.toString());
         if (employeeId) params.append("employeeId", employeeId.toString());
+        if (onlyByManager !== undefined) params.append("onlyByManager", onlyByManager.toString());
         const queryStr = params.toString();
         return queryStr ? `${url}?${queryStr}` : url;
       },
       transformResponse: (response: ApiResponse<PerformanceHistoryResponse[]>) => response.data,
       providesTags: ["PerformanceHistory" as any],
     }),
-    getMeetingPulse: builder.query<any, { departmentId?: number; employeeId?: number }>({
-      query: ({ departmentId, employeeId }) => {
+    getMeetingPulse: builder.query<any, { departmentId?: number; employeeId?: number; onlyByManager?: boolean }>({
+      query: ({ departmentId, employeeId, onlyByManager }) => {
         let url = "/performance-history/meeting-pulse";
         const params = new URLSearchParams();
         if (departmentId) params.append("departmentId", departmentId.toString());
         if (employeeId) params.append("employeeId", employeeId.toString());
+        if (onlyByManager !== undefined) params.append("onlyByManager", onlyByManager.toString());
         const queryStr = params.toString();
         return queryStr ? `${url}?${queryStr}` : url;
       },

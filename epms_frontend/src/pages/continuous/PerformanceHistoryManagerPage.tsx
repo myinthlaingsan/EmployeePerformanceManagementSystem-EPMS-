@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useGetActiveDepartmentsQuery } from '../../features/org/departmentApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { 
@@ -98,14 +98,25 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
     }
   });
 
-  // Action Items analytics per month
+  // Action Items analytics per month.
+  // Bucket by dueDate. If dueDate is missing or outside the chart window,
+  // fall back to the CURRENT month so the item is always counted somewhere visible.
+  const nowMonth = now.getMonth();
+  const nowYear = now.getFullYear();
   actionItems.forEach(ai => {
+    // Determine the month to credit this action item to
+    let targetMonth: { month: number; year: number } | undefined;
     if (ai.dueDate) {
       const dueDate = new Date(ai.dueDate);
-      const monthData = chartData.find(m => m.month === dueDate.getMonth() && m.year === dueDate.getFullYear());
-      if (monthData) {
-        monthData.totalActionItems++;
-      }
+      const slot = chartData.find(m => m.month === dueDate.getMonth() && m.year === dueDate.getFullYear());
+      if (slot) targetMonth = slot;
+    }
+    // Fallback: if no dueDate or dueDate out of range, use current month
+    if (!targetMonth) {
+      targetMonth = chartData.find(m => m.month === nowMonth && m.year === nowYear);
+    }
+    if (targetMonth) {
+      (targetMonth as any).totalActionItems++;
     }
 
     if (ai.status === 'DONE' && ai.completedAt) {
@@ -119,10 +130,18 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
 
   const isMeetingOnly = filterType === 'MEETING';
   // maxValue must be the highest COUNT of any single metric in any month.
-  // Using the cumulative SUM (old code) made the Y-axis scale too large and
-  // caused stacked lines to visually misrepresent individual values.
   const maxValue = isMeetingOnly
     ? Math.max(...chartData.map(m => Math.max(m.meetings, m.actionItemsCompleted)), 5)
+    : filterType === 'ALL'
+    ? Math.max(
+        ...chartData.flatMap(m => [
+          showPraise ? m.praise : 0,
+          showImprovement ? m.improvement : 0,
+          showCorrection ? m.warning : 0,
+          m.meetings
+        ]),
+        5
+      )
     : Math.max(
         ...chartData.flatMap(m => [
           showPraise ? m.praise : 0,
@@ -137,10 +156,10 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
       <div className="flex justify-between items-start">
         <div className="space-y-1">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            {isMeetingOnly ? 'Meeting Volume' : 'Sentiment Distribution'}
+            {isMeetingOnly ? 'Meeting Volume' : filterType === 'ALL' ? 'Activity Overview' : 'Sentiment Distribution'}
           </p>
           <h3 className="text-xl font-black text-gray-900">
-            {isMeetingOnly ? 'Meeting Frequency' : 'Historical Pulse'}{employeeName ? `: ${employeeName}` : ''}
+            {isMeetingOnly ? 'Meeting Frequency' : filterType === 'ALL' ? 'Unified Activity Pulse' : 'Historical Pulse'}{employeeName ? `: ${employeeName}` : ''}
           </h3>
         </div>
         
@@ -180,6 +199,12 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
                   <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-200" />
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Correction</span>
                 </button>
+                {filterType === 'ALL' && (
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-200" />
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Meetings</span>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -227,7 +252,7 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
             const width = 500;
             const height = 200;
             const points = chartData.length;
-            const dx = width / (points - 1);
+            const dx = width / (points - 1 || 1);
 
             // Build a smooth cubic-Bézier path for a single metric.
             const getPath = (getData: (m: MonthData) => number): string => {
@@ -295,9 +320,26 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
 
             return (
               <>
-                {showPraise && <path d={fillPath(praiseP)}      fill="url(#praiseGrad)" className="transition-all duration-500" />}
-                {showImprovement && <path d={fillPath(improvementP)} fill="url(#improveGrad)" className="transition-all duration-500" />}
-                {showCorrection && <path d={fillPath(correctionP)}  fill="url(#warningGrad)" className="transition-all duration-500" />}
+                {filterType === 'ALL' && chartData.map((m, i) => {
+                  const barWidth = 16;
+                  const val = m.meetings;
+                  const h = (val / maxValue) * height;
+                  const x = i * dx - barWidth / 2;
+                  const y = height - h;
+                  return (
+                    <rect 
+                      key={`bar-${i}`}
+                      x={x} y={y} width={barWidth} height={h}
+                      fill="url(#meetingGrad)"
+                      rx="3"
+                      className="transition-all duration-500 opacity-60 hover:opacity-100"
+                    />
+                  );
+                })}
+
+                {showPraise && <path d={fillPath(praiseP)}      fill="url(#praiseGrad)" className="transition-all duration-500 opacity-30" />}
+                {showImprovement && <path d={fillPath(improvementP)} fill="url(#improveGrad)" className="transition-all duration-500 opacity-30" />}
+                {showCorrection && <path d={fillPath(correctionP)}  fill="url(#warningGrad)" className="transition-all duration-500 opacity-30" />}
 
                 {showPraise && <path d={praiseP}      fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
                 {showImprovement && <path d={improvementP} fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" className="transition-all duration-500" />}
@@ -312,7 +354,7 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
           {chartData.map((m, i) => (
             <div key={i} className="flex flex-col items-center gap-2 group relative pointer-events-auto">
               <div className="w-px h-64 bg-transparent group-hover:bg-indigo-50 transition-colors relative">
-                <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-4 py-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-2xl z-20 space-y-1.5 border border-white/10">
+                <div className="absolute -top-36 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-4 py-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-2xl z-20 space-y-1.5 border border-white/10">
                   <p className="text-gray-400 mb-1">{m.name} {m.year}</p>
                   {!isMeetingOnly ? (
                     <>
@@ -332,6 +374,12 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
                         <div className="flex items-center gap-3 justify-between">
                           <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500" /> Correction</div>
                           <span className="font-black">{m.warning}</span>
+                        </div>
+                      )}
+                      {filterType === 'ALL' && (
+                        <div className="flex items-center gap-3 justify-between border-t border-white/10 pt-1.5 mt-1.5">
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" /> Meetings</div>
+                          <span className="font-black">{m.meetings}</span>
                         </div>
                       )}
                       {!showPraise && !showImprovement && !showCorrection && (
@@ -370,7 +418,7 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
 const MeetingStats = ({ total, completed, isManagerView, departmentName, employeeName }: { total: number, completed: number, isManagerView: boolean, departmentName?: string, employeeName?: string }) => {
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
   const radius = 36;
-  const circumference = 2 * Math.PI * radius; // Approx 226.19
+  const circumference = 2 * Math.PI * radius;
   
   const headerLabel = employeeName 
     ? `${employeeName}'s Action Items` 
@@ -382,8 +430,10 @@ const MeetingStats = ({ total, completed, isManagerView, departmentName, employe
     <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center justify-between">
       <div className="space-y-2">
         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{headerLabel}</p>
-        <h3 className="text-3xl font-black text-gray-900">{completionRate}% Done</h3>
-        <p className="text-xs text-gray-500 font-medium">Real-time action item completion rate.</p>
+        <h3 className="text-3xl font-black text-gray-900">{total} <span className="text-base font-bold text-gray-400">Tasks</span></h3>
+        <p className="text-xs text-gray-500 font-medium">
+          {completed} / {total} completed &nbsp;·&nbsp; {completionRate}% done
+        </p>
       </div>
       <div className="relative w-24 h-24">
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 96 96">
@@ -402,7 +452,10 @@ const MeetingStats = ({ total, completed, isManagerView, departmentName, employe
             className="text-blue-600 transition-all duration-1000 ease-out" 
           />
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-blue-600 uppercase tracking-tighter">Tasks</div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-sm font-black text-blue-600">{completionRate}%</span>
+          <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Done</span>
+        </div>
       </div>
     </div>
   );
@@ -611,6 +664,249 @@ const CombinedStats = ({
   );
 };
 
+// ─── Special Manager-Tracking Components ─────────────────────────────────────
+
+const ManagerialActivityChart = ({ history, managerName, managerId, timeRange, onTimeRangeChange, filterType }: { history: any[], managerName: string, managerId: number, timeRange: number, onTimeRangeChange: (val: number) => void, filterType: string }) => {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const now = new Date();
+  const chartData = [];
+  
+  for (let i = timeRange - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    chartData.push({ name: months[d.getMonth()], month: d.getMonth(), year: d.getFullYear(), praise: 0, improvement: 0, correction: 0, meetings: 0 });
+  }
+
+  // Use a Set to track unique entities per month to avoid double-counting life-cycle events
+  const uniqueMeetingsPerMonth = new Map<string, Set<number>>();
+  const uniqueFeedbacksPerMonth = new Map<string, Set<number>>();
+
+  history.forEach(h => {
+    if (h.performerId !== managerId) return;
+    const date = new Date(h.createdAt);
+    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+    const slot = chartData.find(m => m.month === date.getMonth() && m.year === date.getFullYear());
+    if (!slot) return;
+
+    if (h.sourceType === 'MEETING') {
+      if (!uniqueMeetingsPerMonth.has(monthKey)) uniqueMeetingsPerMonth.set(monthKey, new Set());
+      const meetingSet = uniqueMeetingsPerMonth.get(monthKey)!;
+      
+      if (!meetingSet.has(h.sourceId)) {
+        meetingSet.add(h.sourceId);
+        slot.meetings++;
+      }
+    } else if (h.sourceType === 'FEEDBACK') {
+      if (!uniqueFeedbacksPerMonth.has(monthKey)) uniqueFeedbacksPerMonth.set(monthKey, new Set());
+      const feedbackSet = uniqueFeedbacksPerMonth.get(monthKey)!;
+
+      if (!feedbackSet.has(h.sourceId)) {
+        feedbackSet.add(h.sourceId);
+        const type = h.feedbackType || 'PRAISE';
+        if (type === 'PRAISE') slot.praise++;
+        else if (type === 'IMPROVEMENT') slot.improvement++;
+        else if (type === 'WARNING') slot.correction++;
+      }
+    }
+  });
+
+  const isMeetingOnly = filterType === 'MEETING';
+  const isFeedbackOnly = filterType === 'FEEDBACK';
+
+  const maxValue = Math.max(
+    ...chartData.flatMap(m => {
+      if (isMeetingOnly) return [m.meetings];
+      if (isFeedbackOnly) return [m.praise, m.improvement, m.correction];
+      return [m.praise, m.improvement, m.correction, m.meetings];
+    }), 
+    5
+  );
+
+  const title = isMeetingOnly ? 'Meeting Frequency' : isFeedbackOnly ? 'Feedback Distribution' : 'Activity Distribution';
+
+  return (
+    <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-6 h-full">
+      <div className="flex justify-between items-start">
+        <div className="space-y-1">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Managerial Output</p>
+          <h3 className="text-xl font-black text-gray-900">{title}: {managerName}</h3>
+        </div>
+        <div className="flex items-center gap-4">
+          {/* Legend */}
+          <div className="hidden md:flex gap-4">
+            {(filterType === 'ALL' || isFeedbackOnly) && (
+              <>
+                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /><span className="text-[8px] font-black uppercase text-gray-400">Praise</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-400" /><span className="text-[8px] font-black uppercase text-gray-400">Improve</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-rose-500" /><span className="text-[8px] font-black uppercase text-gray-400">Correct</span></div>
+              </>
+            )}
+            {(filterType === 'ALL' || isMeetingOnly) && (
+              <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-blue-500" /><span className="text-[8px] font-black uppercase text-gray-400">Meetings</span></div>
+            )}
+          </div>
+          <select value={timeRange} onChange={(e) => onTimeRangeChange(Number(e.target.value))} className="px-4 py-2 bg-gray-50 border-none rounded-lg text-[11px] font-black outline-none">
+            <option value={3}>3 Months</option><option value={6}>6 Months</option><option value={12}>12 Months</option>
+          </select>
+        </div>
+      </div>
+      <div className="relative h-64 flex items-end justify-between gap-2 px-2">
+         {/* Y-Axis Grid Lines */}
+         {[0, 0.25, 0.5, 0.75, 1].map((p, i) => (
+          <div key={i} className="absolute w-full border-t border-gray-50 z-0" style={{ bottom: `${p * 100}%` }}>
+            <span className="absolute -left-6 -top-2 text-[8px] font-black text-gray-300">{Math.round(p * maxValue)}</span>
+          </div>
+        ))}
+
+        {chartData.map((m, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative z-10">
+            {/* Tooltip */}
+            <div className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 bg-gray-900 text-white p-3 rounded-2xl shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 min-w-[120px] scale-90 group-hover:scale-100">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 border-b border-white/10 pb-1">{m.name} {m.year}</p>
+              <div className="space-y-1.5">
+                {(filterType === 'ALL' || isFeedbackOnly) && (
+                  <>
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-[9px] font-bold text-emerald-400 uppercase">Praise</span>
+                      <span className="text-[10px] font-black">{m.praise}</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-[9px] font-bold text-amber-400 uppercase">Improve</span>
+                      <span className="text-[10px] font-black">{m.improvement}</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-[9px] font-bold text-rose-400 uppercase">Correct</span>
+                      <span className="text-[10px] font-black">{m.correction}</span>
+                    </div>
+                  </>
+                )}
+                {(filterType === 'ALL' || isMeetingOnly) && (
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-[9px] font-bold text-blue-400 uppercase">Meetings</span>
+                    <span className="text-[10px] font-black">{m.meetings}</span>
+                  </div>
+                )}
+              </div>
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />
+            </div>
+
+            {/* Grouped Bars Container */}
+            <div className="w-full h-48 flex items-end justify-center gap-0.5 px-1 pb-1 border-b border-gray-50">
+              {(filterType === 'ALL' || isFeedbackOnly) && (
+                <>
+                  <div 
+                    style={{ height: `${Math.max((m.praise/maxValue)*100, 2)}%` }} 
+                    className="flex-1 max-w-[8px] bg-emerald-500 rounded-t-sm transition-all duration-500 hover:brightness-110 shadow-sm" 
+                  />
+                  <div 
+                    style={{ height: `${Math.max((m.improvement/maxValue)*100, 2)}%` }} 
+                    className="flex-1 max-w-[8px] bg-amber-400 rounded-t-sm transition-all duration-500 hover:brightness-110 shadow-sm" 
+                  />
+                  <div 
+                    style={{ height: `${Math.max((m.correction/maxValue)*100, 2)}%` }} 
+                    className="flex-1 max-w-[8px] bg-rose-500 rounded-t-sm transition-all duration-500 hover:brightness-110 shadow-sm" 
+                  />
+                </>
+              )}
+              {(filterType === 'ALL' || isMeetingOnly) && (
+                <div 
+                  style={{ height: `${Math.max((m.meetings/maxValue)*100, 2)}%` }} 
+                  className="flex-1 max-w-[8px] bg-blue-500 rounded-t-sm transition-all duration-500 hover:brightness-110 shadow-sm" 
+                />
+              )}
+            </div>
+            <span className="text-[10px] font-black text-gray-400 uppercase transition-colors group-hover:text-indigo-600">{m.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const ManagerActionStats = ({ history, managerId, filterType }: { history: any[], managerId: number, filterType: string }) => {
+  const isFeedbackOnly = filterType === 'FEEDBACK';
+  const isMeetingOnly = filterType === 'MEETING';
+
+  if (isFeedbackOnly) {
+    // Deduplicate by sourceId — keep only ONE row per unique feedback (the most recent),
+    // so that edit/update events don't inflate the count.
+    const managerFeedbackRows = history.filter(h => h.performerId === managerId && h.sourceType === 'FEEDBACK');
+    const latestBySource = new Map<number, any>();
+    managerFeedbackRows.forEach(h => {
+      const existing = latestBySource.get(h.sourceId);
+      if (!existing || new Date(h.createdAt) > new Date(existing.createdAt)) {
+        latestBySource.set(h.sourceId, h);
+      }
+    });
+    const uniqueFeedbacks = Array.from(latestBySource.values());
+
+    const praise = uniqueFeedbacks.filter(h => h.feedbackType === 'PRAISE').length;
+    const improvement = uniqueFeedbacks.filter(h => h.feedbackType === 'IMPROVEMENT').length;
+    const correction = uniqueFeedbacks.filter(h => h.feedbackType === 'WARNING').length;
+    const total = praise + improvement + correction;
+
+    return (
+      <div className="bg-gray-900 p-8 rounded-[2.5rem] text-white flex flex-col justify-between h-full shadow-xl shadow-gray-200">
+        <div className="space-y-6">
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Feedback Output</p>
+            <h3 className="text-4xl font-black">{total}</h3>
+            <p className="text-xs text-gray-400 font-medium italic">Total feedback entries given.</p>
+          </div>
+          
+          <div className="space-y-3">
+            {[
+              { label: 'Praise', count: praise, color: 'bg-emerald-500', text: 'text-emerald-400' },
+              { label: 'Improvement', count: improvement, color: 'bg-amber-400', text: 'text-amber-400' },
+              { label: 'Correction', count: correction, color: 'bg-rose-500', text: 'text-rose-400' }
+            ].map(item => (
+              <div key={item.label} className="space-y-1">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tighter">
+                  <span className="text-gray-400">{item.label}</span>
+                  <span className={item.text}>{item.count}</span>
+                </div>
+                <div className="w-full bg-white/5 rounded-full h-1 overflow-hidden">
+                  <div className={`h-full rounded-full ${item.color}`} style={{ width: `${total > 0 ? (item.count / total) * 100 : 0}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="pt-6 mt-6 border-t border-white/10 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-emerald-400">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sentiment Balance</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Default / Meeting View (Quality Control) - Deduplicate re-opens per unique action item
+  const uniqueReopens = new Set<string>();
+  history.forEach(h => {
+    if (h.performerId === managerId && h.title.includes('Re-opened')) {
+      uniqueReopens.add(`${h.sourceId}-${h.description}`);
+    }
+  });
+  const reopens = uniqueReopens.size;
+
+  return (
+    <div className="bg-gray-900 p-8 rounded-[2.5rem] text-white flex flex-col justify-between h-full shadow-xl shadow-gray-200">
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Quality Control</p>
+        <h3 className="text-4xl font-black">{reopens}</h3>
+        <p className="text-xs text-gray-400 font-medium italic">Action items re-opened for revision.</p>
+      </div>
+      <div className="pt-6 mt-6 border-t border-white/10 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-rose-400">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Revision Frequency</p>
+      </div>
+    </div>
+  );
+};
+
 export const PerformanceHistoryManagerPage = () => {
   const { user } = useAuth();
   const isGovernanceMode = false; // Hardcoded for this page
@@ -621,6 +917,9 @@ export const PerformanceHistoryManagerPage = () => {
   const [selectedDeptId, setSelectedDeptId] = useState<number | ''>(user?.currentDepartmentId || '');
   const [selectedEmpId, setSelectedEmpId] = useState<number | ''>('');
   const [filterType, setFilterType] = useState<'ALL' | 'FEEDBACK' | 'MEETING'>('ALL');
+
+  const [managerPerspective, setManagerPerspective] = useState<'conducted' | 'received'>('conducted');
+  const [managerTimeRange, setManagerTimeRange] = useState(6);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -637,6 +936,7 @@ export const PerformanceHistoryManagerPage = () => {
     { 
       employeeId: Number(selectedEmpId), 
       sourceType: filterType,
+      onlyByManager: true,
       page: currentPage - 1, 
       size: itemsPerPage 
     }, 
@@ -656,22 +956,62 @@ export const PerformanceHistoryManagerPage = () => {
   // Always fetch both so both chart types are ready without waiting for filter change
   const { data: analyticsData } = useGetPerformancePulseQuery({
     departmentId: Number(selectedDeptId),
-    employeeId: selectedEmpId === '' ? undefined : Number(selectedEmpId)
+    employeeId: selectedEmpId === '' ? undefined : Number(selectedEmpId),
+    onlyByManager: selectedEmpId === '' ? undefined : true
   });
 
   const { data: meetingPulseData } = useGetMeetingPulseQuery({
     departmentId: Number(selectedDeptId),
-    employeeId: selectedEmpId === '' ? undefined : Number(selectedEmpId)
+    employeeId: selectedEmpId === '' ? undefined : Number(selectedEmpId),
+    onlyByManager: selectedEmpId === '' ? undefined : true
   });
 
-  const historyResponse = selectedEmpId ? employeeHistoryResponse : globalHistoryResponse;
-  const isHistoryLoading = selectedEmpId ? isEmpHistoryLoading : isGlobalHistoryLoading;
-  const history = historyResponse?.content || [];
-  
+  const selectedEmployee = employees?.find(e => e.id === selectedEmpId);
+  const isManagerSelected = selectedEmployee?.roles?.some(r => r.replace("ROLE_", "") === 'MANAGER');
+
+  const managerChartHistory = useMemo(() => {
+    if (!selectedEmpId) return [];
+    const baseHistory = meetingPulseData?.actionHistory || analyticsData || [];
+    return [...baseHistory].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [analyticsData, meetingPulseData, selectedEmpId]);
+
+  const receivedAnalyticsData = useMemo(() => {
+    if (!selectedEmpId || !analyticsData) return [];
+    return analyticsData.filter(h => h.employeeId === Number(selectedEmpId));
+  }, [analyticsData, selectedEmpId]);
+
+  // analyticsData comes from findLatestStateByEmployee which includes all roles
+  // (employee.id, manager.id, performer.id, createdBy). Filtering to sourceType MEETING
+  // and employeeId === selectedEmpId gives meetings WHERE the selected person is the
+  // EMPLOYEE (i.e. meetings they received). meetingPulseData.meetingHistory only has
+  // performer-side (conducted) history for managers, so it cannot be used here.
+  const receivedMeetingHistory = useMemo(() => {
+    if (!selectedEmpId || !analyticsData) return [];
+    return analyticsData.filter((h: any) =>
+      h.sourceType === 'MEETING' && h.employeeId === Number(selectedEmpId)
+    );
+  }, [analyticsData, selectedEmpId]);
+
+  const receivedActionItems = useMemo(() => {
+    if (!selectedEmpId || !meetingPulseData?.actionItems) return [];
+    return meetingPulseData.actionItems.filter((ai: any) => ai.assignedToId === Number(selectedEmpId));
+  }, [meetingPulseData, selectedEmpId]);
+
+  // Action items from meetings the selected manager CONDUCTED — assigned to their subordinates
+  const conductedActionItems = useMemo(() => {
+    if (!selectedEmpId || !meetingPulseData?.actionItems) return [];
+    return meetingPulseData.actionItems.filter((ai: any) => ai.assignedToId !== Number(selectedEmpId));
+  }, [meetingPulseData, selectedEmpId]);
+
   const selectedDeptName = departments?.find(d => d.id === selectedDeptId)?.departmentName;
   const filteredEmployees = employees?.filter(emp => 
     !selectedDeptName || emp.currentDepartmentName === selectedDeptName
   ) || [];
+
+
+  const historyResponse = selectedEmpId ? employeeHistoryResponse : globalHistoryResponse;
+  const isHistoryLoading = selectedEmpId ? isEmpHistoryLoading : isGlobalHistoryLoading;
+  const history = historyResponse?.content || [];
 
   const totalItems = historyResponse?.totalElements || 0;
   const totalPages = historyResponse?.totalPages || 0;
@@ -694,68 +1034,165 @@ export const PerformanceHistoryManagerPage = () => {
       </header>
 
       {(analyticsData || meetingPulseData) && (
-        <div className="space-y-8">
-          {filterType === 'ALL' ? (
-            /* Combined single row */
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="lg:col-span-1">
-                <CombinedStats
-                  history={analyticsData || []}
-                  meetingTotal={meetingPulseData?.totalActionItems || 0}
-                  meetingCompleted={meetingPulseData?.completedActionItems || 0}
-                  employeeName={selectedEmployeeName}
-                  departmentName={user?.currentDepartmentName}
-                />
+        <div className="space-y-6">
+          {isManagerSelected && selectedEmpId ? (
+            /* Manager-Specific Toggleable View */
+            <div className="space-y-4">
+              <div className="bg-white border border-gray-200/80 rounded-2xl p-1.5 flex gap-2 w-fit shadow-sm">
+                <button
+                  id="tab-conducted-activities"
+                  onClick={() => setManagerPerspective('conducted')}
+                  className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                    managerPerspective === 'conducted'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  Conducted Activities (Given)
+                </button>
+                <button
+                  id="tab-individual-performance"
+                  onClick={() => setManagerPerspective('received')}
+                  className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                    managerPerspective === 'received'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  Individual Performance (Received)
+                </button>
               </div>
-              <div className="lg:col-span-2">
-                <SentimentChart
-                  history={analyticsData || []}
-                  employeeName={selectedEmployeeName}
-                  filterType="ALL"
-                  actionItems={meetingPulseData?.actionItems || []}
-                />
-              </div>
-            </div>
-          ) : filterType === 'FEEDBACK' ? (
-            /* Feedback only */
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="lg:col-span-1">
-                <AdminStats
-                  history={(analyticsData || []).filter(h => h.sourceType === 'FEEDBACK')}
-                  isManagerView={true}
-                  departmentName={user?.currentDepartmentName}
-                  employeeName={selectedEmployeeName}
-                />
-              </div>
-              <div className="lg:col-span-2">
-                <SentimentChart
-                  history={(analyticsData || []).filter(h => h.sourceType === 'FEEDBACK')}
-                  employeeName={selectedEmployeeName}
-                  filterType="FEEDBACK"
-                  actionItems={[]}
-                />
-              </div>
+
+              {managerPerspective === 'conducted' ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-700">
+                  <div className="lg:col-span-2">
+                    <ManagerialActivityChart 
+                      history={managerChartHistory}
+                      managerName={selectedEmployeeName || ''}
+                      managerId={Number(selectedEmpId)}
+                      timeRange={managerTimeRange}
+                      onTimeRangeChange={setManagerTimeRange}
+                      filterType={filterType}
+                    />
+                  </div>
+                  <div className="lg:col-span-1 flex flex-col gap-4">
+                    <ManagerActionStats history={managerChartHistory} managerId={Number(selectedEmpId)} filterType={filterType} />
+                    {(filterType === 'ALL' || filterType === 'MEETING') && (
+                      <MeetingStats
+                        total={conductedActionItems.length}
+                        completed={conductedActionItems.filter((ai: any) => ai.status === 'DONE').length}
+                        isManagerView={true}
+                        employeeName={selectedEmployeeName}
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-700">
+                  <div className="lg:col-span-1">
+                    {filterType === 'ALL' ? (
+                      <CombinedStats
+                        history={receivedAnalyticsData}
+                        meetingTotal={receivedActionItems.length}
+                        meetingCompleted={receivedActionItems.filter((ai: any) => ai.status === 'DONE').length}
+                        employeeName={selectedEmployeeName}
+                      />
+                    ) : filterType === 'FEEDBACK' ? (
+                      <AdminStats history={receivedAnalyticsData} employeeName={selectedEmployeeName} />
+                    ) : (
+                      <MeetingStats
+                        total={receivedActionItems.length}
+                        completed={receivedActionItems.filter((ai: any) => ai.status === 'DONE').length}
+                        isManagerView={false}
+                        employeeName={selectedEmployeeName}
+                      />
+                    )}
+                  </div>
+                  <div className="lg:col-span-2">
+                    <SentimentChart 
+                      history={filterType === 'MEETING' ? receivedMeetingHistory : receivedAnalyticsData} 
+                      employeeName={selectedEmployeeName} 
+                      filterType={filterType}
+                      actionItems={receivedActionItems}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            /* Meeting only */
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="lg:col-span-1">
-                <MeetingStats
-                  total={meetingPulseData?.totalActionItems || 0}
-                  completed={meetingPulseData?.completedActionItems || 0}
-                  isManagerView={true}
-                  departmentName={user?.currentDepartmentName}
-                  employeeName={selectedEmployeeName}
-                />
-              </div>
-              <div className="lg:col-span-2">
-                <SentimentChart
-                  history={meetingPulseData?.meetingHistory || []}
-                  employeeName={selectedEmployeeName}
-                  filterType="MEETING"
-                  actionItems={meetingPulseData?.actionItems || []}
-                />
-              </div>
+            /* Standard Employee View / Department View */
+            <div className="space-y-8">
+              {filterType === 'ALL' ? (
+                /* Combined single row */
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <div className="lg:col-span-1">
+                    <CombinedStats
+                      history={analyticsData || []}
+                      meetingTotal={meetingPulseData?.totalActionItems || 0}
+                      meetingCompleted={meetingPulseData?.completedActionItems || 0}
+                      employeeName={selectedEmployeeName}
+                      departmentName={user?.currentDepartmentName}
+                    />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <SentimentChart
+                      history={
+                        selectedEmpId
+                          // When an employee is selected: analyticsData (feedback, deduplicated)
+                          // + meetingPulseData.meetingHistory (all meetings for that employee).
+                          // SentimentChart deduplicates by sourceId internally, so no double-count.
+                          ? [...(analyticsData || []), ...(meetingPulseData?.meetingHistory || [])]
+                          // Department view: analyticsData already includes all meetings for the dept.
+                          : (analyticsData || [])
+                      }
+                      employeeName={selectedEmployeeName}
+                      filterType="ALL"
+                      actionItems={meetingPulseData?.actionItems || []}
+                    />
+                  </div>
+                </div>
+              ) : filterType === 'FEEDBACK' ? (
+                /* Feedback only */
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <div className="lg:col-span-1">
+                    <AdminStats
+                      history={(analyticsData || []).filter(h => h.sourceType === 'FEEDBACK')}
+                      isManagerView={true}
+                      departmentName={user?.currentDepartmentName}
+                      employeeName={selectedEmployeeName}
+                    />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <SentimentChart
+                      history={(analyticsData || []).filter(h => h.sourceType === 'FEEDBACK')}
+                      employeeName={selectedEmployeeName}
+                      filterType="FEEDBACK"
+                      actionItems={[]}
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Meeting only */
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <div className="lg:col-span-1">
+                    <MeetingStats
+                      total={meetingPulseData?.totalActionItems || 0}
+                      completed={meetingPulseData?.completedActionItems || 0}
+                      isManagerView={true}
+                      departmentName={user?.currentDepartmentName}
+                      employeeName={selectedEmployeeName}
+                    />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <SentimentChart
+                      history={meetingPulseData?.meetingHistory || []}
+                      employeeName={selectedEmployeeName}
+                      filterType="MEETING"
+                      actionItems={meetingPulseData?.actionItems || []}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

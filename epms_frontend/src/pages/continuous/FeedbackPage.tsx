@@ -16,6 +16,8 @@ import {
   useUpdateReplyMutation,
   usePublishFeedbackMutation,
   useGetFeedbackStatsForManagerQuery,
+  useGetFeedbacksByEmployeeQuery,
+  useGetFeedbacksByManagerQuery,
 } from "../../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { FeedbackType, ContinuousStatus } from "../../features/continuous/continuousTypes";
@@ -201,6 +203,7 @@ const FeedbackPage = () => {
   const { user, isManager, isAdmin, isHR } = useAuth();
   const canCreate = isManager;
 
+  const [perspective, setPerspective] = useState<'all' | 'received' | 'given'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [goToPage, setGoToPage] = useState("");
@@ -210,10 +213,33 @@ const FeedbackPage = () => {
   const [filterCreatedAfter, setFilterCreatedAfter] = useState<string>('');
   const [filterCreatedBefore, setFilterCreatedBefore] = useState<string>('');
 
-  const { data: feedbackResponse, isLoading } = useGetAllFeedbacksQuery(
-    { page: currentPage - 1, size: itemsPerPage, status: filterStatus, feedbackType: filterFeedbackType, tagId: filterTagId, createdAfter: filterCreatedAfter || undefined, createdBefore: filterCreatedBefore || undefined },
-    { skip: !user }
+  const queryParams = {
+    page: currentPage - 1,
+    size: itemsPerPage,
+    feedbackType: filterFeedbackType,
+    tagId: filterTagId,
+    createdAfter: filterCreatedAfter || undefined,
+    createdBefore: filterCreatedBefore || undefined
+  };
+
+  const { data: allResponse, isLoading: isLoadingAll } = useGetAllFeedbacksQuery(
+    { ...queryParams, status: filterStatus },
+    { skip: !user || perspective !== 'all' }
   );
+
+  const { data: employeeResponse, isLoading: isLoadingEmp } = useGetFeedbacksByEmployeeQuery(
+    { employeeId: user?.id || 0, ...queryParams },
+    { skip: !user || perspective !== 'received' }
+  );
+
+  const { data: managerResponse, isLoading: isLoadingMgr } = useGetFeedbacksByManagerQuery(
+    { managerId: user?.id || 0, status: filterStatus, ...queryParams },
+    { skip: !user || perspective !== 'given' }
+  );
+
+  const feedbackResponse = perspective === 'all' ? allResponse : perspective === 'received' ? employeeResponse : managerResponse;
+  const isLoading = perspective === 'all' ? isLoadingAll : perspective === 'received' ? isLoadingEmp : isLoadingMgr;
+
   const feedbacks = feedbackResponse?.content || [];
   const { data: tags } = useGetFeedbackTagsQuery();
   const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000, excludeSelf: true });
@@ -236,12 +262,29 @@ const FeedbackPage = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<number | null>(null);
 
+  const deptEmployees = employees?.filter(emp =>
+    emp.currentDepartmentName && user?.currentDepartmentName &&
+    emp.currentDepartmentName === user?.currentDepartmentName
+  ) || [];
+  // Include the logged-in user's own rank since they are excluded from the
+  // employees list (excludeSelf=true). Without this, the next person below
+  // them becomes minRankInDept and gets incorrectly filtered out.
+  const allDeptRanks = [
+    ...deptEmployees.map(emp => emp.levelRank ?? 9999),
+    user?.levelRank ?? 9999
+  ];
+  const minRankInDept = allDeptRanks.length > 0
+    ? Math.min(...allDeptRanks)
+    : 9999;
+
   const filteredEmployees = (isAdmin || isHR)
     ? employees
     : employees?.filter(emp =>
         emp.currentDepartmentName && user?.currentDepartmentName &&
         emp.currentDepartmentName === user?.currentDepartmentName &&
-        emp.id !== user?.id
+        emp.id !== user?.id &&
+        (emp.levelRank === undefined || emp.levelRank === null || emp.levelRank !== minRankInDept) &&
+        (emp.levelRank === undefined || emp.levelRank === null || user?.levelRank === undefined || user?.levelRank === null || emp.levelRank >= user.levelRank)
       );
 
   const blankFeedback = { employeeId: 0, tagId: "" as number | "", feedbackType: FeedbackType.PRAISE, description: "" };
@@ -398,14 +441,56 @@ const FeedbackPage = () => {
       </div>
 
       {isManager && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {([{ label: 'All', value: undefined }, { label: 'Published', value: ContinuousStatus.PUBLISHED }, { label: 'Drafts', value: ContinuousStatus.DRAFT }] as const).map(({ label, value }) => (
-            <button key={label} type="button"
-              onClick={() => { setFilterStatus(value as string | undefined); setCurrentPage(1); }}
-              style={{ padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.15s', background: filterStatus === value ? '#111827' : '#F5F6F8', color: filterStatus === value ? '#FFFFFF' : '#5A6070' }}>
-              {label}
+        <div className="space-y-3">
+          {/* Perspective selector tabs */}
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-1.5 flex gap-2 w-fit shadow-sm">
+            <button
+              type="button"
+              onClick={() => { setPerspective('all'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                perspective === 'all'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              All Feedback
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => { setPerspective('received'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                perspective === 'received'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Feedback Received
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPerspective('given'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                perspective === 'given'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Feedback Given
+            </button>
+          </div>
+
+          {/* Draft/Published filter (only applicable for given or all) */}
+          {perspective !== 'received' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {([{ label: 'All Statuses', value: undefined }, { label: 'Published Only', value: ContinuousStatus.PUBLISHED }, { label: 'Drafts Only', value: ContinuousStatus.DRAFT }] as const).map(({ label, value }) => (
+                <button key={label} type="button"
+                  onClick={() => { setFilterStatus(value as string | undefined); setCurrentPage(1); }}
+                  style={{ padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.15s', background: filterStatus === value ? '#111827' : '#F5F6F8', color: filterStatus === value ? '#FFFFFF' : '#5A6070' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -570,11 +655,15 @@ const FeedbackPage = () => {
               <svg style={{ width: 18, height: 18 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
             </div>
             <div>
-              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>{isManager ? 'Total Published' : 'Total Received'}</p>
-              <p style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>{isManager ? (feedbackStats?.totalPublished || 0) : totalItems}</p>
+              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>
+                {perspective === 'received' ? 'Received Published' : perspective === 'given' ? 'Given Published' : isManager ? 'Total Published' : 'Total Received'}
+              </p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>
+                {perspective === 'received' ? (feedbackResponse?.totalElements || 0) : perspective === 'given' ? (feedbackStats?.totalPublished || 0) : isManager ? (feedbackStats?.totalPublished || 0) : totalItems}
+              </p>
             </div>
           </div>
-          {isManager && (
+          {isManager && perspective !== 'received' && (
             <button type="button"
               onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
               style={{ ...panelStyle, display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left', cursor: 'pointer' }}

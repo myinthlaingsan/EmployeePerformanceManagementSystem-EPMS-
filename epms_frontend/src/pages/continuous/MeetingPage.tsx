@@ -13,7 +13,9 @@ import {
   usePublishMeetingMutation,
   useGetMeetingStatsForManagerQuery,
   useUpdateActionItemStatusMutation,
-  useReopenActionItemMutation
+  useReopenActionItemMutation,
+  useGetMeetingsByEmployeeQuery,
+  useGetMeetingsByManagerQuery,
 } from "../../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { ContinuousStatus, ActionItemStatus } from "../../features/continuous/continuousTypes";
@@ -133,26 +135,59 @@ const CommentItem = ({
 const MeetingPage = () => {
   const { user, isManager, isAdmin, isHR } = useAuth();
   const canSchedule = isManager;
+  const todayStr = new Date().toISOString().split('T')[0];
 
+  const [perspective, setPerspective] = useState<'all' | 'received' | 'given'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [goToPage, setGoToPage] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
 
-  const { data: meetingResponse, isLoading } = useGetAllMeetingsQuery(
+  const { data: allResponse, isLoading: isLoadingAll } = useGetAllMeetingsQuery(
     { page: currentPage - 1, size: itemsPerPage, status: filterStatus },
-    { skip: !user }
+    { skip: !user || perspective !== 'all' }
   );
+
+  const { data: employeeResponse, isLoading: isLoadingEmp } = useGetMeetingsByEmployeeQuery(
+    { employeeId: user?.id || 0, page: currentPage - 1, size: itemsPerPage },
+    { skip: !user || perspective !== 'received' }
+  );
+
+  const { data: managerResponse, isLoading: isLoadingMgr } = useGetMeetingsByManagerQuery(
+    { managerId: user?.id || 0, status: filterStatus, page: currentPage - 1, size: itemsPerPage },
+    { skip: !user || perspective !== 'given' }
+  );
+
+  const meetingResponse = perspective === 'all' ? allResponse : perspective === 'received' ? employeeResponse : managerResponse;
+  const isLoading = perspective === 'all' ? isLoadingAll : perspective === 'received' ? isLoadingEmp : isLoadingMgr;
+
   const meetings = meetingResponse?.content || [];
   const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000, excludeSelf: true });
   const employees = employeeData?.content || [];
+
+  const deptEmployees = employees?.filter(emp =>
+    emp.currentDepartmentName && user?.currentDepartmentName &&
+    emp.currentDepartmentName === user?.currentDepartmentName
+  ) || [];
+  // Include the logged-in user's own rank since they are excluded from the
+  // employees list (excludeSelf=true). Without this, the next person below
+  // them becomes minRankInDept and gets incorrectly filtered out.
+  const allDeptRanks = [
+    ...deptEmployees.map(emp => emp.levelRank ?? 9999),
+    user?.levelRank ?? 9999
+  ];
+  const minRankInDept = allDeptRanks.length > 0
+    ? Math.min(...allDeptRanks)
+    : 9999;
 
   const filteredEmployees = (isAdmin || isHR)
     ? employees
     : employees?.filter(emp =>
         emp.currentDepartmentName && user?.currentDepartmentName &&
         emp.currentDepartmentName === user?.currentDepartmentName &&
-        emp.id !== user?.id
+        emp.id !== user?.id &&
+        (emp.levelRank === undefined || emp.levelRank === null || emp.levelRank !== minRankInDept) &&
+        (emp.levelRank === undefined || emp.levelRank === null || user?.levelRank === undefined || user?.levelRank === null || emp.levelRank >= user.levelRank)
       );
 
   const [scheduleMeeting, { isLoading: isScheduling }] = useScheduleMeetingMutation();
@@ -204,6 +239,23 @@ const MeetingPage = () => {
       toast.warning("Follow up date cannot be earlier than the meeting date.");
       return;
     }
+
+    for (const item of newMeeting.actionItems) {
+      if (item.content.trim() !== '') {
+        if (!item.dueDate) {
+          toast.warning("All active action items must have a due date.");
+          return;
+        }
+        if (item.dueDate < newMeeting.meetingDate) {
+          toast.warning(`Action Item due date (${item.dueDate}) cannot be earlier than the meeting date (${newMeeting.meetingDate}).`);
+          return;
+        }
+        if (newMeeting.followUpDate && item.dueDate > newMeeting.followUpDate) {
+          toast.warning(`Action Item due date (${item.dueDate}) cannot be later than the follow-up date (${newMeeting.followUpDate}).`);
+          return;
+        }
+      }
+    }
     try {
       const body = {
         ...newMeeting,
@@ -213,7 +265,7 @@ const MeetingPage = () => {
           .map(item => ({
             id: item.id || undefined,
             content: (item.content ?? '').trim(),
-            status: item.status || 'PENDING',
+            status: (item.status || 'PENDING') as ActionItemStatus,
             assignedToId: item.assignedToId,
             dueDate: item.dueDate,
           }))
@@ -323,25 +375,64 @@ const MeetingPage = () => {
       </div>
 
       {isManager && (
-        <div className="flex items-center gap-3 mb-2 overflow-x-auto pb-2 scrollbar-hide">
-          <button
-            onClick={() => { setFilterStatus(undefined); setCurrentPage(1); }}
-            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!filterStatus ? 'bg-gray-900 text-white shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
-          >
-            All Meetings
-          </button>
-          <button
-            onClick={() => { setFilterStatus(ContinuousStatus.PUBLISHED); setCurrentPage(1); }}
-            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.PUBLISHED ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
-          >
-            Published
-          </button>
-          <button
-            onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
-            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.DRAFT ? 'bg-amber-500 text-white shadow-lg shadow-amber-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
-          >
-            Drafts
-          </button>
+        <div className="space-y-3">
+          {/* Perspective selector tabs */}
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-1.5 flex gap-2 w-fit shadow-sm">
+            <button
+              onClick={() => { setPerspective('all'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                perspective === 'all'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              All Interactions
+            </button>
+            <button
+              onClick={() => { setPerspective('received'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                perspective === 'received'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Meetings Received
+            </button>
+            <button
+              onClick={() => { setPerspective('given'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                perspective === 'given'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Meetings Conducted (Given)
+            </button>
+          </div>
+
+          {/* Draft/Published filter (only applicable for given or all) */}
+          {perspective !== 'received' && (
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              <button
+                onClick={() => { setFilterStatus(undefined); setCurrentPage(1); }}
+                className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!filterStatus ? 'bg-gray-900 text-white shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+              >
+                All Statuses
+              </button>
+              <button
+                onClick={() => { setFilterStatus(ContinuousStatus.PUBLISHED); setCurrentPage(1); }}
+                className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.PUBLISHED ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+              >
+                Published Only
+              </button>
+              <button
+                onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
+                className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.DRAFT ? 'bg-amber-500 text-white shadow-lg shadow-amber-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
+              >
+                Drafts Only
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -351,8 +442,12 @@ const MeetingPage = () => {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isManager ? 'Total Published' : 'Total Received'}</p>
-            <h3 className="text-2xl font-bold text-gray-900">{isManager ? (meetingStats?.totalPublished || 0) : totalItems}</h3>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
+              {perspective === 'received' ? 'Received Published' : perspective === 'given' ? 'Given Published' : isManager ? 'Total Published' : 'Total Received'}
+            </p>
+            <h3 className="text-2xl font-bold text-gray-900">
+              {perspective === 'received' ? (meetingResponse?.totalElements || 0) : perspective === 'given' ? (meetingStats?.totalPublished || 0) : isManager ? (meetingStats?.totalPublished || 0) : totalItems}
+            </h3>
           </div>
         </div>
 
@@ -366,10 +461,10 @@ const MeetingPage = () => {
           </div>
         </div>
 
-        {isManager && (
+        {isManager && perspective !== 'received' && (
           <button 
             onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
-            className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group text-left"
+            className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group text-left w-full"
           >
             <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -394,10 +489,13 @@ const MeetingPage = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEF3FD', color: '#1A56DB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>
-                  {m.employeeName?.charAt(0)}
+                  {(m.employeeId === user?.id ? m.managerName : m.employeeName)?.charAt(0)}
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{m.employeeName}</h3>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
+                    {m.employeeId === user?.id ? `1-on-1 with ${m.managerName}` : m.employeeName}
+                    {m.employeeId === user?.id && <span style={{ color: '#9EA3B0', fontWeight: 400, marginLeft: 6, fontSize: 11 }}>(Received)</span>}
+                  </h3>
                   {m.meetingTitle && (
                     <p style={{ fontSize: 12, fontWeight: 500, color: '#5A6070', marginTop: 1 }}>{m.meetingTitle}</p>
                   )}
@@ -649,7 +747,7 @@ const MeetingPage = () => {
                   <div>
                     <label style={labelStyle}>Date &amp; Time</label>
                     <div className="grid grid-cols-2 gap-2">
-                      <input required type="date" style={inputStyle} value={newMeeting.meetingDate}
+                      <input required type="date" min={todayStr} style={inputStyle} value={newMeeting.meetingDate}
                         onChange={e => setNewMeeting({ ...newMeeting, meetingDate: e.target.value })} />
                       <input required type="time" style={inputStyle} value={newMeeting.meetingTime}
                         onChange={e => setNewMeeting({ ...newMeeting, meetingTime: e.target.value })} />
@@ -718,6 +816,8 @@ const MeetingPage = () => {
                                   ))}
                                 </select>
                                 <input type="date"
+                                  min={newMeeting.meetingDate || undefined}
+                                  max={newMeeting.followUpDate || undefined}
                                   style={{ ...inputStyle, fontSize: 11, padding: '4px 8px', flex: 1 }}
                                   value={item.dueDate ?? ''}
                                   onChange={e => {
