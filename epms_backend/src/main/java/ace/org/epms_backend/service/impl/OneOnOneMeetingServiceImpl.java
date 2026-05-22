@@ -20,6 +20,7 @@ import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.EmployeeRoleRepository;
+import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.repository.MeetingCommentRepository;
 import ace.org.epms_backend.repository.OneOnOneMeetingRepository;
 import ace.org.epms_backend.repository.PerformanceHistoryRepository;
@@ -52,6 +53,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     private final MeetingActionItemRepository actionItemRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ace.org.epms_backend.service.ReportingChainService reportingChainService;
+    private final EmployeeDepartmentRepository employeeDepartmentRepository;
 
     public OneOnOneMeetingServiceImpl(
             OneOnOneMeetingRepository meetingRepository,
@@ -64,7 +66,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
             EmployeeRoleRepository employeeRoleRepository,
             MeetingActionItemRepository actionItemRepository,
             ApplicationEventPublisher eventPublisher,
-            ace.org.epms_backend.service.ReportingChainService reportingChainService) {
+            ace.org.epms_backend.service.ReportingChainService reportingChainService,
+            EmployeeDepartmentRepository employeeDepartmentRepository) {
         this.meetingRepository = meetingRepository;
         this.commentRepository = commentRepository;
         this.employeeRepository = employeeRepository;
@@ -76,6 +79,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         this.actionItemRepository = actionItemRepository;
         this.eventPublisher = eventPublisher;
         this.reportingChainService = reportingChainService;
+        this.employeeDepartmentRepository = employeeDepartmentRepository;
     }
 
     @Override
@@ -86,15 +90,46 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         meeting.setEmployee(employee);
         meeting.setManager(manager);
 
-        // Validate manager is in employee's reporting chain
-        if (!reportingChainService.isInReportingChain(manager, employee)) {
-            throw new AccessDeniedException(
-                "You can only schedule meetings with employees in your reporting chain.");
+        // Validate manager and employee belong to the same department (unless manager is Admin/HR)
+        if (!isPrivileged(manager)) {
+            ace.org.epms_backend.model.employee.EmployeeDepartment managerDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(manager.getId()).orElse(null);
+            ace.org.epms_backend.model.employee.EmployeeDepartment employeeDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(employee.getId()).orElse(null);
+            if (managerDept == null || employeeDept == null || 
+                managerDept.getCurrentDepartment() == null || employeeDept.getCurrentDepartment() == null ||
+                !managerDept.getCurrentDepartment().getId().equals(employeeDept.getCurrentDepartment().getId())) {
+                throw new AccessDeniedException("You can only schedule meetings with employees in your same department.");
+            }
+            if (isHighestDepartmentManager(employee)) {
+                throw new AccessDeniedException("You cannot schedule meetings with the highest-level manager in this department.");
+            }
+            if (manager.getLevel() != null && employee.getLevel() != null) {
+                if (employee.getLevel().getLevelRank() < manager.getLevel().getLevelRank()) {
+                    throw new AccessDeniedException("You cannot schedule meetings with higher-level managers.");
+                }
+            }
         }
+
+
 
         if (request.getFollowUpDate() != null
                 && request.getFollowUpDate().isBefore(request.getMeetingDate())) {
             throw new IllegalArgumentException("Follow-up date cannot be before meeting date.");
+        }
+
+        if (request.getActionItems() != null) {
+            for (ace.org.epms_backend.dto.continuous.MeetingActionItemRequest item : request.getActionItems()) {
+                if (item.getContent() != null && !item.getContent().trim().isEmpty()) {
+                    if (item.getDueDate() == null) {
+                        throw new IllegalArgumentException("Action item due date is required.");
+                    }
+                    if (item.getDueDate().isBefore(request.getMeetingDate())) {
+                        throw new IllegalArgumentException("Action item due date cannot be earlier than the meeting date.");
+                    }
+                    if (request.getFollowUpDate() != null && item.getDueDate().isAfter(request.getFollowUpDate())) {
+                        throw new IllegalArgumentException("Action item due date cannot be later than the follow-up date.");
+                    }
+                }
+            }
         }
 
         // Save first to generate the meeting ID, then add action items
@@ -116,6 +151,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                     .sourceType(SourceType.MEETING)
                     .sourceId(savedMeeting.getMeetingId())
                     .title("New 1-on-1 Meeting Scheduled")
+                    .description("Manager " + savedMeeting.getManager().getStaffName() + " scheduled a meeting: " + savedMeeting.getMeetingTitle())
                     .createdBy(savedMeeting.getManager().getId())
                     .manager(savedMeeting.getManager())
                     .performer(savedMeeting.getManager())
@@ -208,10 +244,45 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
             throw new IllegalArgumentException("Follow-up date cannot be before meeting date.");
         }
 
+        if (request.getActionItems() != null) {
+            for (ace.org.epms_backend.dto.continuous.MeetingActionItemRequest item : request.getActionItems()) {
+                if (item.getContent() != null && !item.getContent().trim().isEmpty()) {
+                    if (item.getDueDate() == null) {
+                        throw new IllegalArgumentException("Action item due date is required.");
+                    }
+                    if (item.getDueDate().isBefore(request.getMeetingDate())) {
+                        throw new IllegalArgumentException("Action item due date cannot be earlier than the meeting date.");
+                    }
+                    if (request.getFollowUpDate() != null && item.getDueDate().isAfter(request.getFollowUpDate())) {
+                        throw new IllegalArgumentException("Action item due date cannot be later than the follow-up date.");
+                    }
+                }
+            }
+        }
+
         ContinuousStatus oldStatus = meeting.getStatus();
         meetingMapper.updateEntityFromRequest(request, meeting);
         meeting.setEmployee(fetchEmployee(request.getEmployeeId()));
         meeting.setManager(fetchEmployee(request.getManagerId()));
+
+        // Validate manager and employee belong to the same department (unless manager is Admin/HR)
+        if (!isPrivileged(meeting.getManager())) {
+            ace.org.epms_backend.model.employee.EmployeeDepartment managerDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(meeting.getManager().getId()).orElse(null);
+            ace.org.epms_backend.model.employee.EmployeeDepartment employeeDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(meeting.getEmployee().getId()).orElse(null);
+            if (managerDept == null || employeeDept == null || 
+                managerDept.getCurrentDepartment() == null || employeeDept.getCurrentDepartment() == null ||
+                !managerDept.getCurrentDepartment().getId().equals(employeeDept.getCurrentDepartment().getId())) {
+                throw new AccessDeniedException("You can only schedule meetings with employees in your same department.");
+            }
+            if (isHighestDepartmentManager(meeting.getEmployee())) {
+                throw new AccessDeniedException("You cannot schedule meetings with the highest-level manager in this department.");
+            }
+            if (meeting.getManager().getLevel() != null && meeting.getEmployee().getLevel() != null) {
+                if (meeting.getEmployee().getLevel().getLevelRank() < meeting.getManager().getLevel().getLevelRank()) {
+                    throw new AccessDeniedException("You cannot schedule meetings with higher-level managers.");
+                }
+            }
+        }
 
         if (oldStatus == ContinuousStatus.DRAFT
                 && meeting.getStatus() == ContinuousStatus.PUBLISHED
@@ -232,6 +303,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                     .sourceType(SourceType.MEETING)
                     .sourceId(updatedMeeting.getMeetingId())
                     .title("1-on-1 Meeting Updated")
+                    .description("Manager " + updatedMeeting.getManager().getStaffName() + " updated the meeting details: " + updatedMeeting.getMeetingTitle())
                     .createdBy(authService.getCurrentUser().getId())
                     .manager(updatedMeeting.getManager())
                     .performer(authService.getCurrentUser())
@@ -679,6 +751,31 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(employee.getId());
         return roles.stream()
                 .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
+    }
+
+    private boolean isHighestDepartmentManager(Employee employee) {
+        ace.org.epms_backend.model.employee.EmployeeDepartment employeeDept = employeeDepartmentRepository
+                .findByEmployeeIdAndIsCurrentTrue(employee.getId())
+                .orElse(null);
+
+        if (employeeDept == null || employeeDept.getCurrentDepartment() == null) {
+            return false;
+        }
+
+        Long departmentId = employeeDept.getCurrentDepartment().getId();
+
+        List<ace.org.epms_backend.model.employee.EmployeeDepartment> deptStaff = employeeDepartmentRepository
+                .findByCurrentDepartmentIdAndIsCurrentTrue(departmentId);
+
+        Integer highestRankInDept = deptStaff.stream()
+                .map(ace.org.epms_backend.model.employee.EmployeeDepartment::getEmployee)
+                .filter(emp -> emp.getIsActive() && emp.getLevel() != null)
+                .map(emp -> emp.getLevel().getLevelRank())
+                .min(Integer::compare)
+                .orElse(Integer.MAX_VALUE);
+
+        return employee.getLevel() != null && 
+               employee.getLevel().getLevelRank().equals(highestRankInDept);
     }
 
     private OneOnOneMeeting fetchMeeting(Long meetingId) {

@@ -18,6 +18,7 @@ import ace.org.epms_backend.repository.ContinuousFeedbackRepository;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.FeedbackReplyRepository;
 import ace.org.epms_backend.repository.FeedbackTagRepository;
+import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.repository.PerformanceHistoryRepository;
 import ace.org.epms_backend.service.ContinuousFeedbackService;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     private final EmployeeRoleRepository employeeRoleRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ace.org.epms_backend.service.ReportingChainService reportingChainService;
+    private final EmployeeDepartmentRepository employeeDepartmentRepository;
 
     @Override
     @Transactional
@@ -60,11 +62,26 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
         Employee manager = employeeRepository.findById(request.getManagerId())
                 .orElseThrow(() -> new NotFoundException("Manager not found"));
 
-        // Validate manager is in employee's reporting chain
-        if (!reportingChainService.isInReportingChain(manager, employee)) {
-            throw new AccessDeniedException(
-                "You can only give feedback to employees in your reporting chain.");
+        // Validate manager and employee belong to the same department (unless manager is Admin/HR)
+        if (!isPrivileged(manager)) {
+            ace.org.epms_backend.model.employee.EmployeeDepartment managerDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(manager.getId()).orElse(null);
+            ace.org.epms_backend.model.employee.EmployeeDepartment employeeDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(employee.getId()).orElse(null);
+            if (managerDept == null || employeeDept == null || 
+                managerDept.getCurrentDepartment() == null || employeeDept.getCurrentDepartment() == null ||
+                !managerDept.getCurrentDepartment().getId().equals(employeeDept.getCurrentDepartment().getId())) {
+                throw new AccessDeniedException("You can only give feedback to employees in your same department.");
+            }
+            if (isHighestDepartmentManager(employee)) {
+                throw new AccessDeniedException("You cannot give feedback to the highest-level manager in this department.");
+            }
+            if (manager.getLevel() != null && employee.getLevel() != null) {
+                if (employee.getLevel().getLevelRank() < manager.getLevel().getLevelRank()) {
+                    throw new AccessDeniedException("You cannot submit feedback for higher-level managers.");
+                }
+            }
         }
+
+
 
         FeedbackTag tag = null;
         if (request.getTagId() != null) {
@@ -193,6 +210,31 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
     }
 
+    private boolean isHighestDepartmentManager(Employee employee) {
+        ace.org.epms_backend.model.employee.EmployeeDepartment employeeDept = employeeDepartmentRepository
+                .findByEmployeeIdAndIsCurrentTrue(employee.getId())
+                .orElse(null);
+
+        if (employeeDept == null || employeeDept.getCurrentDepartment() == null) {
+            return false;
+        }
+
+        Long departmentId = employeeDept.getCurrentDepartment().getId();
+
+        List<ace.org.epms_backend.model.employee.EmployeeDepartment> deptStaff = employeeDepartmentRepository
+                .findByCurrentDepartmentIdAndIsCurrentTrue(departmentId);
+
+        Integer highestRankInDept = deptStaff.stream()
+                .map(ace.org.epms_backend.model.employee.EmployeeDepartment::getEmployee)
+                .filter(emp -> emp.getIsActive() && emp.getLevel() != null)
+                .map(emp -> emp.getLevel().getLevelRank())
+                .min(Integer::compare)
+                .orElse(Integer.MAX_VALUE);
+
+        return employee.getLevel() != null && 
+               employee.getLevel().getLevelRank().equals(highestRankInDept);
+    }
+
     private void checkNotPurePrivileged() {
         Employee currentUser = authService.getCurrentUser();
         List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(currentUser.getId());
@@ -222,6 +264,25 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
             Employee manager = employeeRepository.findById(request.getManagerId())
                     .orElseThrow(() -> new NotFoundException("Manager not found"));
             feedback.setManager(manager);
+        }
+
+        // Validate manager and employee belong to the same department (unless manager is Admin/HR)
+        if (!isPrivileged(feedback.getManager())) {
+            ace.org.epms_backend.model.employee.EmployeeDepartment managerDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(feedback.getManager().getId()).orElse(null);
+            ace.org.epms_backend.model.employee.EmployeeDepartment employeeDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(feedback.getEmployee().getId()).orElse(null);
+            if (managerDept == null || employeeDept == null || 
+                managerDept.getCurrentDepartment() == null || employeeDept.getCurrentDepartment() == null ||
+                !managerDept.getCurrentDepartment().getId().equals(employeeDept.getCurrentDepartment().getId())) {
+                throw new AccessDeniedException("You can only give feedback to employees in your same department.");
+            }
+            if (isHighestDepartmentManager(feedback.getEmployee())) {
+                throw new AccessDeniedException("You cannot give feedback to the highest-level manager in this department.");
+            }
+            if (feedback.getManager().getLevel() != null && feedback.getEmployee().getLevel() != null) {
+                if (feedback.getEmployee().getLevel().getLevelRank() < feedback.getManager().getLevel().getLevelRank()) {
+                    throw new AccessDeniedException("You cannot submit feedback for higher-level managers.");
+                }
+            }
         }
 
         if (request.getTagId() != null && (feedback.getTag() == null || !feedback.getTag().getTagId().equals(request.getTagId()))) {

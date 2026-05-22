@@ -7,12 +7,13 @@ import ace.org.epms_backend.enums.SourceType;
 import java.util.List;
 
 public interface PerformanceHistoryService {
-    PagedResponse<PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId, SourceType sourceType, int page, int size);
+    PagedResponse<PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId, SourceType sourceType, Boolean onlyByManager, int page, int size);
     PagedResponse<PerformanceHistoryResponse> getHistoryBySource(SourceType sourceType, Long sourceId, int page, int size);
     PerformanceHistoryResponse getHistoryById(Long historyId);
     PagedResponse<PerformanceHistoryResponse> getAllHistory(SourceType sourceType, Long departmentId, int page, int size);
     List<PerformanceHistoryResponse> getHistoryByEmployeeRaw(Long employeeId);
+    List<PerformanceHistoryResponse> getHistoryByEmployeeRaw(Long employeeId, Boolean onlyByManager);
     List<PerformanceHistoryResponse> getAllHistoryRaw(Long departmentId);
-    List<PerformanceHistoryResponse> getPerformancePulse(Long departmentId, Long employeeId);
-    ace.org.epms_backend.dto.continuous.MeetingPulseResponse getMeetingPulse(Long departmentId, Long employeeId);
+    List<PerformanceHistoryResponse> getPerformancePulse(Long departmentId, Long employeeId, Boolean onlyByManager);
+    ace.org.epms_backend.dto.continuous.MeetingPulseResponse getMeetingPulse(Long departmentId, Long employeeId, Boolean onlyByManager);
 }
