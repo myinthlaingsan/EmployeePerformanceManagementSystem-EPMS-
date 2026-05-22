@@ -57,4 +57,7 @@ public interface ReportService {
     // Manager Review Pack and Printable Paper Form
     byte[] exportManagerReviewPack(Long managerId, Long cycleId, String format);
     byte[] exportPaperForm(Long requestId, String format);
+
+    byte[] exportSelfAssessmentForm(Long appraisalId, String format);
+    byte[] exportManagerEvaluationForm(Long appraisalId, String format);
 }
