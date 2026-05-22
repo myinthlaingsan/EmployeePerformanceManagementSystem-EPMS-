@@ -70,20 +70,33 @@ export const reportApi = api.injectEndpoints({
       }),
     }),
     downloadReport: builder.mutation<void, { endpoint: string; params?: any; fileName: string }>({
-      query: ({ endpoint, params, fileName }) => ({
-        url: `/reports/${endpoint}/download`,
-        params,
-        responseHandler: async (response: Response) => {
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = url;
-          link.setAttribute("download", fileName || "report.pdf");
-          document.body.appendChild(link);
-          link.click();
+      queryFn: async ({ endpoint, params, fileName }, _api, _extra, fetchWithBQ) => {
+        const result = await fetchWithBQ({
+          url: `/reports/${endpoint}/download`,
+          params,
+          responseHandler: (response) => response.blob(),
+        });
+
+        if (result.error) {
+          return { error: result.error };
+        }
+
+        const blob = result.data as Blob;
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", fileName || "report.pdf");
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+
+        setTimeout(() => {
           link.remove();
-        },
-      }),
+          window.URL.revokeObjectURL(url);
+        }, 100);
+
+        return { data: undefined };
+      },
     }),
   }),
 });

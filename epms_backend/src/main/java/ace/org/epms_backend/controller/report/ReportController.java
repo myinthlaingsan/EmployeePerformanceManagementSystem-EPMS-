@@ -206,6 +206,22 @@ public class ReportController {
         return createDownloadResponse(reportContent, "Employee_Master_Report", format);
     }
 
+    @GetMapping("/self-assessment/download")
+    public ResponseEntity<byte[]> downloadSelfAssessmentForm(
+            @RequestParam Long appraisalId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] content = reportService.exportSelfAssessmentForm(appraisalId, format);
+        return createDownloadResponse(content, "Self_Assessment_Form", format);
+    }
+
+    @GetMapping("/manager-evaluation/download")
+    public ResponseEntity<byte[]> downloadManagerEvaluationForm(
+            @RequestParam Long appraisalId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] content = reportService.exportManagerEvaluationForm(appraisalId, format);
+        return createDownloadResponse(content, "Manager_Evaluation_Form", format);
+    }
+
     private ResponseEntity<byte[]> createDownloadResponse(byte[] content, String baseName, String format) {
         String fileName = baseName + "." + format.toLowerCase();
         MediaType mediaType = "pdf".equalsIgnoreCase(format) ? MediaType.APPLICATION_PDF

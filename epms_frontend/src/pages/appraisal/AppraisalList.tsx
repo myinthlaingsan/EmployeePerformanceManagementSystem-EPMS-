@@ -31,8 +31,8 @@ import {
   Circle,
   Search,
   Mail,
-  Share2,
-  Trash2
+  Trash2,
+  Calculator
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -126,10 +126,17 @@ const AppraisalList: React.FC = () => {
             </div>
             <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{appraisal.employeeName}</p>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 12 }}>Performance Assessment</p>
-            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
-              <div style={{ flex: 1, height: 4, background: '#F0F2F6', borderRadius: 4, marginRight: 10 }}>
-                <div style={{ height: '100%', borderRadius: 4, background: '#1A56DB', width: appraisal.status === 'FINALIZED' ? '100%' : appraisal.status === 'PENDING' ? '15%' : '60%' }} />
-              </div>
+            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6', marginTop: 10 }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/appraisal/${appraisal.appraisalId}/score`);
+                }}
+                style={{ fontSize: 12, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                className="hover:underline flex items-center gap-1 font-medium"
+              >
+                <Calculator size={12} /> Preview Score
+              </button>
               <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
             </div>
           </div>
@@ -157,10 +164,16 @@ const AppraisalList: React.FC = () => {
             <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{appraisal.employeeName}</p>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 12 }}>Team Performance Evaluation</p>
             <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
-              <span style={{ fontSize: 11, color: '#9EA3B0' }}>
-                <Clock size={11} style={{ display: 'inline', marginRight: 4 }} />
-                {appraisal.updatedAt ? safeFormatDate(appraisal.updatedAt) : 'Recently'}
-              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/appraisal/${appraisal.appraisalId}/score`);
+                }}
+                style={{ fontSize: 12, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                className="hover:underline flex items-center gap-1 font-medium"
+              >
+                <Calculator size={12} /> Preview Score
+              </button>
               <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
             </div>
           </div>
@@ -209,9 +222,6 @@ const AppraisalList: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="px-6 py-3 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-slate-400" /> Export Status
-              </button>
               <button
                 onClick={async () => {
                   if (selectedCycleId) {
@@ -253,7 +263,7 @@ const AppraisalList: React.FC = () => {
                   <Trash2 className="w-4 h-4" /> Delete Cycle
                 </button>
               )}
-              {!cycle?.isActive ? (
+              {!cycle?.isActive && cycle?.status !== 'ARCHIVED' ? (
                 <button
                   onClick={async () => {
                     try {
@@ -269,7 +279,7 @@ const AppraisalList: React.FC = () => {
                 >
                   {isActivating ? 'Activating...' : 'Activate Cycle'}
                 </button>
-              ) : isAdmin && (
+              ) : isAdmin && cycle?.isActive ? (
                 <button
                   onClick={() => {
                     setConfirmModal({
@@ -287,7 +297,11 @@ const AppraisalList: React.FC = () => {
                 >
                   {isClosing ? 'Closing...' : 'Emergency Close'}
                 </button>
-              )}
+              ) : cycle?.status === 'ARCHIVED' ? (
+                <div className="px-4 py-2 bg-slate-100 text-slate-500 text-xs font-bold rounded-xl border border-slate-200 flex items-center gap-2 uppercase tracking-wide">
+                  Archived — closed permanently
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -377,9 +391,11 @@ const AppraisalList: React.FC = () => {
                         <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 500, color: '#111827' }}>
                           {appraisal.finalScore != null ? `${Number(appraisal.finalScore).toFixed(1)}%` : '—'}
                         </td>
-                        <td style={{ padding: '10px 16px' }}>
+                        <td style={{ padding: '10px 16px', display: 'flex', gap: 12 }}>
                           <button onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}
-                            style={{ fontSize: 12, color: '#1A56DB' }}>View</button>
+                            style={{ fontSize: 12, color: '#1A56DB' }} className="hover:underline font-medium">Detail</button>
+                          <button onClick={() => navigate(`/appraisal/${appraisal.appraisalId}/score`)}
+                            style={{ fontSize: 12, color: '#0C447C' }} className="hover:underline font-medium">Preview</button>
                         </td>
                       </tr>
                     );

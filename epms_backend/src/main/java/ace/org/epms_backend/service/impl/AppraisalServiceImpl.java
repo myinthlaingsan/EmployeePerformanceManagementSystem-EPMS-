@@ -256,8 +256,22 @@ public class AppraisalServiceImpl implements AppraisalService {
         @Override
         @Transactional(readOnly = true)
         public ScoreBreakdownResponse getScoreBreakdown(Long id) {
+                Appraisal appraisal = appraisalRepo.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+
+                Long currentUserId = getCurrentUserId();
+                boolean isOwner = appraisal.getEmployee().getId().equals(currentUserId);
+                boolean isManager = appraisal.getManager() != null && appraisal.getManager().getId().equals(currentUserId);
+                boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_HR") || a.getAuthority().equals("ROLE_ADMIN"));
+
+                if (!isOwner && !isManager && !isHrOrAdmin) {
+                        throw new org.springframework.security.access.AccessDeniedException("Not allowed to view this score breakdown.");
+                }
+
                 return calculationService.getScoreBreakdown(id);
         }
+
 
         @Override
         @Transactional

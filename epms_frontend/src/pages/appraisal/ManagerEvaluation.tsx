@@ -7,7 +7,8 @@ import {
   useSaveManagerEvaluationAnswersMutation,
   useSubmitManagerEvaluationMutation,
 } from '../../features/appraisal/appraisalApi';
-import { UserCheck, ChevronLeft, Target, CheckCircle2 } from 'lucide-react';
+import { useDownloadReportMutation } from '../../features/report/reportApi';
+import { UserCheck, ChevronLeft, Target, CheckCircle2, Download } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 const RATING_SCALE = [
@@ -52,6 +53,7 @@ const ManagerEvaluation = () => {
   const [saveAnswers, { isLoading: isSaving }] = useSaveManagerEvaluationAnswersMutation();
   const [saveManagerDraft, { isLoading: isDrafting }] = useSaveManagerDraftMutation();
   const [submitEvaluation, { isLoading: isSubmitting }] = useSubmitManagerEvaluationMutation();
+  const [downloadReport, { isLoading: isExporting }] = useDownloadReportMutation();
 
   const [managerRatings, setManagerRatings] = useState<Record<string, number>>({});
   const [managerComment, setManagerComment] = useState('');
@@ -143,30 +145,51 @@ const ManagerEvaluation = () => {
           </div>
         </div>
 
-        {!isReadOnly && (
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <button onClick={handleSaveDraft} disabled={isSaving || isDrafting}
-              className="transition-colors disabled:opacity-50"
-              style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
-              {isDrafting ? 'Saving…' : 'Save Draft'}
-            </button>
-            <button onClick={handleSubmit}
-              disabled={isSubmitting || isSaving || completedCount < totalQuestions || !formData.isSelfSubmitted}
-              title={!formData.isSelfSubmitted ? 'Employee must submit self-assessment first' : ''}
-              className="inline-flex items-center gap-2 transition-colors disabled:opacity-50"
-              style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, border: 'none' }}>
-              {!formData.isSelfSubmitted ? 'Awaiting Employee' : isSubmitting ? 'Submitting…' : formData.submitted ? 'Update Evaluation' : 'Submit Evaluation'}
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          {/* Export PDF button — always visible, disabled until FINALIZED */}
+          <button
+            onClick={async () => {
+              try {
+                await downloadReport({
+                  endpoint: 'manager-evaluation',
+                  params: { appraisalId: Number(id), format: 'pdf' },
+                  fileName: `Manager_Evaluation_${formData.employeeName ?? 'Form'}.pdf`,
+                }).unwrap();
+              } catch (err: any) {
+                toast.error(err?.data?.message || 'Export failed');
+              }
+            }}
+            disabled={(formData.appraisalStatus !== 'HR_APPROVED' && formData.appraisalStatus !== 'FINALIZED' && formData.appraisalStatus !== 'ARCHIVED') || isExporting}
+            title={(formData.appraisalStatus === 'HR_APPROVED' || formData.appraisalStatus === 'FINALIZED' || formData.appraisalStatus === 'ARCHIVED') ? 'Export this form as PDF' : 'Available after the appraisal is approved'}
+            className="inline-flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none', cursor: (formData.appraisalStatus === 'HR_APPROVED' || formData.appraisalStatus === 'FINALIZED' || formData.appraisalStatus === 'ARCHIVED') ? 'pointer' : 'not-allowed' }}
+          >
+            <Download size={13} /> {isExporting ? 'Exporting…' : 'Export PDF'}
+          </button>
 
-        {isReadOnly && (
-          <div className="inline-flex items-center gap-2 self-start sm:self-auto"
-            style={{ background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
-            <CheckCircle2 size={14} />
-            {formData.appraisalStatus === 'FINALIZED' ? 'Finalized' : 'Read-only'}
-          </div>
-        )}
+          {!isReadOnly ? (
+            <>
+              <button onClick={handleSaveDraft} disabled={isSaving || isDrafting}
+                className="transition-colors disabled:opacity-50"
+                style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
+                {isDrafting ? 'Saving…' : 'Save Draft'}
+              </button>
+              <button onClick={handleSubmit}
+                disabled={isSubmitting || isSaving || completedCount < totalQuestions || !formData.isSelfSubmitted}
+                title={!formData.isSelfSubmitted ? 'Employee must submit self-assessment first' : ''}
+                className="inline-flex items-center gap-2 transition-colors disabled:opacity-50"
+                style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+                {!formData.isSelfSubmitted ? 'Awaiting Employee' : isSubmitting ? 'Submitting…' : formData.submitted ? 'Update Evaluation' : 'Submit Evaluation'}
+              </button>
+            </>
+          ) : (
+            <div className="inline-flex items-center gap-2"
+              style={{ background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
+              <CheckCircle2 size={14} />
+              {formData.appraisalStatus === 'FINALIZED' ? 'Finalized' : 'Read-only'}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Progress bar */}

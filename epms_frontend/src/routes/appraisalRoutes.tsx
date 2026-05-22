@@ -3,6 +3,7 @@ import AppraisalDetail from "../pages/appraisal/AppraisalDetail";
 import SelfAssessment from "../pages/appraisal/SelfAssessment";
 import ManagerEvaluation from "../pages/appraisal/ManagerEvaluation";
 import ResultPage from "../pages/appraisal/ResultPage";
+import ScorePreviewPage from "../pages/appraisal/ScorePreviewPage";
 import DiagnosticPage from "../pages/appraisal/DiagnosticPage";
 import CreateCycle from "../pages/appraisal/CreateCycle";
 import AppraisalFormDesign from "../pages/appraisal/AppraisalFormDesign";
@@ -16,6 +17,7 @@ export const appraisalRoutes = [
   { path: "/appraisal/:id/self-assessment", element: <SelfAssessment /> },
   { path: "/appraisal/:id/manager-evaluation", element: <ManagerEvaluation /> },
   { path: "/appraisal/:id/results", element: <ResultPage /> },
+  { path: "/appraisal/:id/score", element: <ScorePreviewPage /> },
   { path: "/appraisal/diagnostic", element: <DiagnosticPage /> },
   { path: "/appraisal/create-cycle", element: <CreateCycle /> },
   { path: "/appraisal/design-form", element: <AppraisalFormDesign /> },
