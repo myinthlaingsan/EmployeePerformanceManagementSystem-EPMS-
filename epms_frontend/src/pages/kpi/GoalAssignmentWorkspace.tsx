@@ -72,7 +72,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const isInputDisabled = isHistoricalCycle || goalSet?.status === 'APPROVED' || goalSet?.status === 'LOCKED';
   const [localItems, setLocalItems] = React.useState<any[]>([]);
   const [isModified, setIsModified] = useState(false);
-  const [overwriteExisting, setOverwriteExisting] = useState(false);
+  const [assignmentMode, setAssignmentMode] = useState<'append'|'replace'>('append');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tempIdCounter, setTempIdCounter] = useState(-1);
@@ -113,15 +113,16 @@ const GoalAssignmentWorkspace: React.FC = () => {
     if (!resolvedCycleId) return;
     setIsSubmitting(true);
     try {
-      if (!goalSet || overwriteExisting) {
-        await assignLibrary({ employeeId: Number(employeeId), libraryId: library.id, appraisalCycleId: resolvedCycleId, overwriteExisting }).unwrap();
+      const overwrite = assignmentMode === 'replace';
+      if (!goalSet || overwrite) {
+        await assignLibrary({ employeeId: Number(employeeId), libraryId: library.id, appraisalCycleId: resolvedCycleId, overwriteExisting: overwrite }).unwrap();
       } else {
         for (const detail of library.details) {
           await addGoalItem({ goalSetId: goalSet.id, data: { title: detail.goalTitle, unit: detail.unit || 'Percent', targetValue: detail.targetValue, weightPercent: detail.weightPercent, categoryId: detail.categoryId } }).unwrap();
         }
       }
       refetchGoals();
-      toast.success(overwriteExisting ? 'Goals replaced successfully!' : 'Template items appended successfully!');
+      toast.success(overwrite ? 'Goals replaced successfully!' : 'Template items appended successfully!');
     } catch (err: any) {
       toast.error(`Failed to apply template: ${err?.data?.message || err?.message || 'Check network/permissions'}`);
     } finally {
@@ -399,10 +400,50 @@ const GoalAssignmentWorkspace: React.FC = () => {
             </div>
 
             {goalSet && (
-              <div style={{ background: '#FAEEDA', border: '0.5px solid #F0D4A4', borderRadius: 8, padding: '8px 10px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" id="overwriteToggle" style={{ accentColor: '#633806', width: 13, height: 13 }}
-                  checked={overwriteExisting} onChange={e => setOverwriteExisting(e.target.checked)} />
-                <label htmlFor="overwriteToggle" style={{ fontSize: 10, fontWeight: 500, color: '#633806', textTransform: 'uppercase', letterSpacing: '0.5px', cursor: 'pointer' }}>Replace Existing Goals</label>
+              <div style={{ marginBottom: 12, width: '100%' }}>
+                <div style={{ display: 'flex', width: '100%', background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: 4 }} role="tablist" aria-label="Assignment mode">
+                  <button
+                    type="button"
+                    onClick={() => setAssignmentMode('append')}
+                    aria-pressed={assignmentMode === 'append'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 14px',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      background: assignmentMode === 'append' ? '#EAF3DE' : '#FFFFFF',
+                      color: assignmentMode === 'append' ? '#27500A' : '#111827',
+                      border: assignmentMode === 'append' ? 'none' : '0.5px solid #E4E6EC',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Append
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAssignmentMode('replace')}
+                    aria-pressed={assignmentMode === 'replace'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 14px',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      background: assignmentMode === 'replace' ? '#FAEEDA' : '#FFFFFF',
+                      color: assignmentMode === 'replace' ? '#633806' : '#111827',
+                      border: assignmentMode === 'replace' ? 'none' : '0.5px solid #E4E6EC',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Replace
+                  </button>
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <p style={{ fontSize: 11, color: '#9EA3B0', margin: 0 }}>
+                    {assignmentMode === 'replace' ? 'Replace will archive existing draft goals and create a new set.' : 'Append will add template items to the current draft without overwriting.'}
+                  </p>
+                </div>
               </div>
             )}
 

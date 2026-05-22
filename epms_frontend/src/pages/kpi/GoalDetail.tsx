@@ -14,10 +14,10 @@ import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
 import KpiRevisionModal from '../../components/kpi/KpiRevisionModal';
 import KpiAuditLogModal from '../../components/kpi/KpiAuditLogModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
-import { ChevronLeft, CheckCircle2, AlertCircle, Edit3, Lock, Award, ShieldCheck, History } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, AlertCircle, Lock, Award, ShieldCheck, History } from 'lucide-react';
 
 const STEPS = [
-  { id: 'DRAFT', label: 'Draft', icon: Edit3 },
+  { id: 'DRAFT', label: 'Draft', icon: CheckCircle2 },
   { id: 'APPROVED', label: 'Approved', icon: CheckCircle2 },
   { id: 'LOCKED', label: 'Locked', icon: Lock },
   { id: 'SCORED', label: 'Scored', icon: Award },
@@ -93,6 +93,16 @@ const GoalDetail: React.FC = () => {
     }
   };
 
+  // Helper: human-friendly age (days/weeks/months/years)
+  const getTimeAgo = (dateStr: string): string => {
+    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000);
+    if (days < 1) return 'today';
+    if (days < 7) return `${days}d ago`;
+    if (days < 30) return `${Math.floor(days / 7)}w ago`;
+    if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+    return `${Math.floor(days / 365)}y ago`;
+  };
+
   if (isLoading) return (
     <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading goal details…</div>
   );
@@ -118,14 +128,37 @@ const GoalDetail: React.FC = () => {
           </button>
           <div>
             <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{goalSet.employeeName}'s Performance Goals</h1>
-            <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>
-              Cycle: {goalSet.appraisalCycleId}
-              {goalSet.managerName
-                ? ` • Manager: ${goalSet.managerName} (ID: ${goalSet.managerId})`
-                : ' • Manager: Not Assigned'}
-              {goalSet.assignedByName && ` • Assigned By: ${goalSet.assignedByName} (ID: ${goalSet.assignedBy})`}
-              {goalSet.assignedAt && ` on ${new Date(goalSet.assignedAt).toLocaleDateString()}`}
-            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px 40px', marginTop: 10 }}>
+              {[
+                {
+                  label: 'Cycle',
+                  value: goalSet.appraisalCycleName || `Cycle ${goalSet.appraisalCycleId}`
+                },
+                {
+                  label: 'Manager',
+                  value: goalSet.managerName || 'Not Assigned'
+                },
+                {
+                  label: 'Assigned By',
+                  value: goalSet.assignedByName || '—'
+                },
+                {
+                  label: 'Assigned',
+                  value: goalSet.assignedAt
+                    ? `${new Date(goalSet.assignedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${getTimeAgo(goalSet.assignedAt)}`
+                    : '—'
+                },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
+                    {label}
+                  </p>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginTop: 3 }}>
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
