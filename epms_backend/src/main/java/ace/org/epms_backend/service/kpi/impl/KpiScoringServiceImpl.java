@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 
@@ -56,7 +57,9 @@ public class KpiScoringServiceImpl implements KpiScoringService {
 
                 if (!isHrOrAdmin) {
                         // If Manager, must be the assigned manager for this goal set
-                        if (!goalSet.getManager().getId().equals(currentUser.getId())) {
+                        // Guard against null manager (HR/Admin-assigned goals with no reporting line)
+                        if (goalSet.getManager() == null
+                                        || !goalSet.getManager().getId().equals(currentUser.getId())) {
                                 throw new SecurityException(
                                                 "You are not authorized to calculate or view scores for this employee");
                         }
@@ -104,12 +107,22 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                                                 : BigDecimal.ZERO)
                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+                // Unweighted average: sum of individual scorePercents / item count
+                // Represents raw completion rate regardless of weight distribution
+                BigDecimal totalAchievementPercent = items.isEmpty() ? BigDecimal.ZERO
+                                : items.stream()
+                                                .map(item -> item.getScorePercent() != null
+                                                                ? item.getScorePercent().min(new BigDecimal("100"))
+                                                                : BigDecimal.ZERO)
+                                                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                                                .divide(new BigDecimal(items.size()), 2, RoundingMode.HALF_UP);
+
                 KpiFinalScore finalScore = new KpiFinalScore();
 
                 finalScore.setEmployee(goalSet.getEmployee());
                 finalScore.setGoalSet(goalSet);
                 finalScore.setWeightedScore(totalWeightedScore);
-                finalScore.setTotalAchievementPercent(totalWeightedScore);
+                finalScore.setTotalAchievementPercent(totalAchievementPercent);
                 finalScore.setCalculatedAt(Instant.now());
                 finalScore.setFinalizedBy(getCurrentEmployee().getId());
 
@@ -139,7 +152,7 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                 auditService.log(AuditRequest.builder()
                                 .tableName("kpi_final_score")
                                 .recordId(savedScore.getId())
-                                .action(savedScore.getId() == null ? AuditAction.INSERT : AuditAction.UPDATE)
+                                .action(AuditAction.INSERT)
                                 .newState(savedScore)
                                 .status(AuditStatus.SUCCESS)
                                 .build());

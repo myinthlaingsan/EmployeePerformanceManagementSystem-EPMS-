@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -742,6 +743,32 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         if (changes.length() == 0) {
             throw new IllegalArgumentException("No changes detected in the revision request.");
+        }
+
+        // Recalculate scorePercent and weightedScore when targetValue or weightPercent changed.
+        // Keeps stored scores consistent with the revised values so KpiScoringServiceImpl
+        // sums the correct weightedScore at finalization time.
+        if (item.getActualValue() != null) {
+            BigDecimal scorePercent = BigDecimal.ZERO;
+            if (item.getTargetValue() != null) {
+                if (item.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
+                    // Zero-tolerance: actual=0 → 100%, actual>0 → 0%
+                    scorePercent = item.getActualValue().compareTo(BigDecimal.ZERO) == 0
+                            ? new BigDecimal("100") : BigDecimal.ZERO;
+                } else {
+                    scorePercent = item.getActualValue()
+                            .divide(item.getTargetValue(), 4, RoundingMode.HALF_UP)
+                            .multiply(new BigDecimal("100"));
+                }
+            }
+            item.setScorePercent(scorePercent);
+
+            BigDecimal weightedScore = BigDecimal.ZERO;
+            if (item.getWeightPercent() != null) {
+                weightedScore = scorePercent.multiply(
+                        item.getWeightPercent().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+            }
+            item.setWeightedScore(weightedScore);
         }
 
         // Save the in-place updated item — progress history stays intact
