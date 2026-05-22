@@ -16,6 +16,7 @@ import java.util.List;
 public interface FeedbackRequestRepository extends JpaRepository<FeedbackRequest, Long> {
     List<FeedbackRequest> findByEvaluatorId(Long evaluatorId);
     List<FeedbackRequest> findByEvaluatorIdAndStatus(Long evaluatorId, FeedbackStatus status);
+    boolean existsByCycleCycleId(Long cycleId);
     boolean existsByTargetUserIdAndEvaluatorIdAndCycleCycleId(Long targetUserId, Long evaluatorId, Long cycleId);
     List<FeedbackRequest> findByTargetUserIdAndCycleCycleId(Long targetUserId, Long cycleId);
     List<FeedbackRequest> findByCycleCycleId(Long cycleId);

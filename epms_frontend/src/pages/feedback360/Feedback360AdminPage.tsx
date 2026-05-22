@@ -1065,6 +1065,8 @@ const Feedback360AdminPage = () => {
 
   const cycleLocked = !!(summaries && summaries.length > 0 && summaries.every((s) => s.isFinalized));
 
+  const selectedCycle = cycles.find(c => c.cycleId === cycleId);
+
   const buildParams = () => ({
     cycleId,
     previousCycleId: previousCycleId ? Number(previousCycleId) : undefined,
@@ -1074,8 +1076,15 @@ const Feedback360AdminPage = () => {
 
   const handlePreview = async () => {
     if (!cycleId) return toast.error('Please enter a cycle ID.');
+    if (!selectedCycle?.isActive) {
+      return toast.error('Only active cycles can be previewed.');
+    }
     setShowPreview(true);
-    try { await previewTrigger(buildParams()).unwrap(); } catch { toast.error('Preview failed.'); }
+    try {
+      await previewTrigger(buildParams()).unwrap();
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Preview failed.');
+    }
   };
 
   const handleGenerate = async () => {
@@ -1127,7 +1136,9 @@ const Feedback360AdminPage = () => {
     try {
       await regenerateUser({ targetEmployeeId: req.targetUserId, cycleId, globalMaxLimit, previousCycleId: previousCycleId ? Number(previousCycleId) : undefined }).unwrap();
       toast.success('Requests regenerated.');
-    } catch { toast.error('Regeneration failed.'); }
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Regeneration failed. Run Generate first.');
+    }
   };
 
   const handleCancel = async (requestId: number) => {

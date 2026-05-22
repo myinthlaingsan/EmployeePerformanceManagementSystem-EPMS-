@@ -101,10 +101,18 @@ export const feedback360Api = api.injectEndpoints({
       invalidatesTags: ['Feedback360Request' as any],
     }),
 
-    // ── Employee: received feedback details ───────────────────────────────
+    // ── Employee: received feedback details (target's view — SELF + DIRECT_MANAGER only) ──
     getReceivedFeedback: builder.query<FeedbackDetailsResponse[], { employeeId: number; cycleId: number }>({
       query: ({ employeeId, cycleId }) =>
         `/360-feedback/feedbacks/employee/${employeeId}?cycleId=${cycleId}`,
+      transformResponse: (res: ApiResponse<FeedbackDetailsResponse[]>) => res.data,
+      providesTags: ['Feedback360Summary' as any],
+    }),
+
+    // ── HR/ADMIN: audit view — all individual submissions with real names ──
+    getAuditFeedback: builder.query<FeedbackDetailsResponse[], { employeeId: number; cycleId: number }>({
+      query: ({ employeeId, cycleId }) =>
+        `/360-feedback/feedbacks/audit/employee/${employeeId}?cycleId=${cycleId}`,
       transformResponse: (res: ApiResponse<FeedbackDetailsResponse[]>) => res.data,
       providesTags: ['Feedback360Summary' as any],
     }),
@@ -351,6 +359,7 @@ export const {
   useSendFeedbackCycleRemindersMutation,
   useSendIndividualFeedbackReminderMutation,
   useGetReceivedFeedbackQuery,
+  useGetAuditFeedbackQuery,
   useGetFeedbackSummaryQuery,
   useGetAllSummariesByCycleQuery,
   useLazyPreviewFeedbackRequestsQuery,

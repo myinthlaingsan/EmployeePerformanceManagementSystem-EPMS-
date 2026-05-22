@@ -42,4 +42,9 @@ public class FeedbackSummaryResponse {
     private Long calibratedBy;
     private Instant finalizedAt;
     private Long finalizedBy;
+
+    // Target-view pooled sections
+    private PooledFeedbackSection pooledPeerFeedback;
+    private PooledFeedbackSection pooledSubordinateFeedback;
+    private Integer suppressionThreshold;
 }

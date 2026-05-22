@@ -63,6 +63,14 @@ export interface ParticipationStat {
   suppressed:   boolean; // true if below threshold
 }
 
+export interface PooledFeedbackSection {
+  submissionCount:    number;
+  averages?:          CategoryScore[];
+  shuffledComments?:  string[];
+  suppressed:         boolean;
+  suppressionMessage?: string;
+}
+
 // ── Pending Request ───────────────────────────────────────────────────────────
 
 export interface FeedbackRequestResponse {
@@ -107,28 +115,31 @@ export interface FeedbackDraftRequest {
 // ── Summary / Report ──────────────────────────────────────────────────────────
 
 export interface FeedbackSummaryResponse {
-  summaryId?:             number;
-  targetUserId:           number;
-  targetUserName:         string;
-  cycleName:              string;
-  selfScores:             CategoryScore[];
-  managerScores:          CategoryScore[];
-  peerScores:             CategoryScore[];
-  subordinateScores:      CategoryScore[];
-  scores:                 CategoryScore[];
-  detailedComments:       DetailedComment[];
-  totalAverageScore:      number;
-  isFinalized:            boolean;
-  selfVsOthersGap?:       CategoryGap[];
-  participation?:         ParticipationStat[];
-  managerSummary?:        string;
-  calibratedFinalScore?:  number | null;
-  calibrationStatus?:     CalibrationStatus | null;
-  calibrationReason?:     string | null;
-  calibrationDate?:       string | null;
-  calibratedBy?:          number | null;
-  finalizedAt?:           string | null;
-  finalizedBy?:           number | null;
+  summaryId?:                number;
+  targetUserId:              number;
+  targetUserName:            string;
+  cycleName:                 string;
+  selfScores:                CategoryScore[];
+  managerScores:             CategoryScore[];
+  peerScores:                CategoryScore[];
+  subordinateScores:         CategoryScore[];
+  scores:                    CategoryScore[];
+  detailedComments:          DetailedComment[];
+  totalAverageScore:         number;
+  isFinalized:               boolean;
+  selfVsOthersGap?:          CategoryGap[];
+  participation?:            ParticipationStat[];
+  managerSummary?:           string;
+  calibratedFinalScore?:     number | null;
+  calibrationStatus?:        CalibrationStatus | null;
+  calibrationReason?:        string | null;
+  calibrationDate?:          string | null;
+  calibratedBy?:             number | null;
+  finalizedAt?:              string | null;
+  finalizedBy?:              number | null;
+  pooledPeerFeedback?:       PooledFeedbackSection | null;
+  pooledSubordinateFeedback?: PooledFeedbackSection | null;
+  suppressionThreshold?:     number | null;
 }
 
 // ── Received feedback detail ──────────────────────────────────────────────────
@@ -144,6 +155,7 @@ export interface FeedbackDetailsResponse {
   feedbackId:      number;
   requestId:       number;
   relationship:    FeedbackRelationship;
+  evaluatorName?:  string;
   averageScore?:   number;
   overallComment?: string;
   submittedAt:     string;

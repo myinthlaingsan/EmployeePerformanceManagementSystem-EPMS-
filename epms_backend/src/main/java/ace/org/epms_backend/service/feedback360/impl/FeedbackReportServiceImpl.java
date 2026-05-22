@@ -3,6 +3,7 @@ package ace.org.epms_backend.service.feedback360.impl;
 import ace.org.epms_backend.dto.feedback360.CategoryScore;
 import ace.org.epms_backend.dto.feedback360.FeedbackSummaryResponse;
 import ace.org.epms_backend.dto.feedback360.DetailedComment;
+import ace.org.epms_backend.dto.feedback360.PooledFeedbackSection;
 import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
@@ -89,7 +90,7 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
             // Mask evaluator identity when the viewer is the target (peer/subordinate anonymous rows).
             // HR viewing someone else's report sees real names for audit purposes.
             Long viewerId = securityHelper.currentUserId();
-            boolean viewerIsTarget = viewerId == null || viewerId.equals(targetUserId);
+            boolean viewerIsTarget = viewerId != null && viewerId.equals(targetUserId);
             boolean anonymous = Boolean.TRUE.equals(feedback.getRequest().getIsAnonymous())
                     && relationship != FeedbackRelationship.SELF
                     && relationship != FeedbackRelationship.DIRECT_MANAGER
@@ -183,6 +184,9 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                     : 0.0;
         }
 
+        PooledFeedbackSection peerPool = buildPool(allFeedbacks, FeedbackRelationship.PEER, suppressionThreshold);
+        PooledFeedbackSection subPool = buildPool(allFeedbacks, FeedbackRelationship.SUBORDINATE, suppressionThreshold);
+
         return FeedbackSummaryResponse.builder()
                 .summaryId(summary != null ? summary.getId() : null)
                 .targetUserId(targetUserId)
@@ -204,6 +208,9 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                 .calibratedBy(summary != null ? summary.getCalibratedBy() : null)
                 .finalizedAt(summary != null ? summary.getFinalizedAt() : null)
                 .finalizedBy(summary != null ? summary.getFinalizedBy() : null)
+                .pooledPeerFeedback(peerPool)
+                .pooledSubordinateFeedback(subPool)
+                .suppressionThreshold(suppressionThreshold)
                 .build();
     }
 
@@ -217,6 +224,44 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                     return new CategoryScore(entry.getKey(), Math.round(pct * 100.0) / 100.0);
                 })
                 .collect(Collectors.toList());
+    }
+
+    private PooledFeedbackSection buildPool(List<Feedback> all, FeedbackRelationship rel, int threshold) {
+        List<Feedback> group = all.stream()
+                .filter(f -> f.getRelationship() == rel)
+                .collect(Collectors.toList());
+        int count = group.size();
+        if (count < threshold) {
+            return PooledFeedbackSection.builder()
+                    .submissionCount(count)
+                    .suppressed(true)
+                    .suppressionMessage(
+                            "Suppressed — fewer than " + threshold + " submissions to protect anonymity")
+                    .build();
+        }
+        Map<String, List<Integer>> categoryScoresMap = new HashMap<>();
+        List<String> comments = new ArrayList<>();
+        for (Feedback feedback : group) {
+            for (FeedbackResponse response : feedbackResponseRepository.findByFeedbackId(feedback.getId())) {
+                String categoryName = response.getQuestion().getCategory() != null
+                        ? response.getQuestion().getCategory().getCategoryName()
+                        : "General";
+                if (response.getScore() != null) {
+                    categoryScoresMap.computeIfAbsent(categoryName, k -> new ArrayList<>())
+                            .add(response.getScore());
+                }
+                if (response.getComment() != null && !response.getComment().isBlank()) {
+                    comments.add(response.getComment());
+                }
+            }
+        }
+        Collections.shuffle(comments);
+        return PooledFeedbackSection.builder()
+                .submissionCount(count)
+                .averages(calculateAverages(categoryScoresMap))
+                .shuffledComments(comments)
+                .suppressed(false)
+                .build();
     }
 
     @Override
