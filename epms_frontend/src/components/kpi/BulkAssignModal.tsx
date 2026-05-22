@@ -49,9 +49,9 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
           <div>
             <h2 className="text-xl font-black text-gray-900 tracking-tight">
               {assignmentResult ? 'Assignment Report' : 'Bulk Goal Assignment'}
@@ -69,7 +69,7 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
 
         {/* Content */}
         {assignmentResult ? (
-          <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+          <div className="p-8 space-y-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-green-50 p-4 rounded-xl border border-green-100">
                 <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Success</p>
@@ -115,7 +115,7 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
           </div>
         ) : (
           <>
-            <div className="p-8 space-y-6">
+            <div className="p-8 flex flex-col flex-1 min-h-0 gap-4">
               {effectiveCycleId !== undefined && effectiveCycleId !== null && effectiveCycleId !== activeCycleId && (
                 <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
                   <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -128,7 +128,7 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
                 </div>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-4 flex-shrink-0">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select KPI Template</label>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -142,7 +142,8 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {loadingLibraries ? (
               <div className="col-span-2 py-10 flex justify-center italic text-gray-400">Loading templates...</div>
             ) : filteredLibraries.length === 0 ? (
@@ -172,9 +173,10 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
                 </div>
               ))
             )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex-shrink-0">
             <input 
               type="checkbox" 
               id="overwriteExisting"
@@ -190,7 +192,7 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+        <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0">
           <button 
             onClick={onClose}
             className="px-6 py-3 text-xs font-black text-gray-500 uppercase tracking-widest hover:text-gray-700 transition-colors"
