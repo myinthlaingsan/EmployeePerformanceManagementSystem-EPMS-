@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -42,6 +43,13 @@ public class FeedbackSubmissionController {
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<FeedbackDetailsResponse>> getReceivedByEmployee(@PathVariable Long employeeId, @RequestParam Long cycleId) {
         return ResponseEntity.ok(feedbackService.getFeedbackReceivedByEmployee(employeeId, cycleId));
+    }
+
+    @GetMapping("/audit/employee/{employeeId}")
+    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    public ResponseEntity<List<FeedbackDetailsResponse>> auditByEmployee(
+            @PathVariable Long employeeId, @RequestParam Long cycleId) {
+        return ResponseEntity.ok(feedbackService.getAllFeedbackForAudit(employeeId, cycleId));
     }
 
     @DeleteMapping("/{feedbackId}")
