@@ -77,6 +77,18 @@ const GoalManagement: React.FC = () => {
     padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', appearance: 'none' as any,
   };
 
+  // --- Coverage stats (derived from existing data, no new API calls) ---
+  const totalEmployees = pagedData?.totalElements || 0;
+  const assignedCount = goalSets.length;
+  const awaitingApprovalCount = goalSets.filter(gs => gs.status === 'DRAFT').length;
+  const notAssignedCount = Math.max(0, totalEmployees - assignedCount);
+  const coveragePercent = totalEmployees > 0 ? Math.round((assignedCount / totalEmployees) * 100) : 0;
+  const coverageDisplay = loadingEmployees ? '—' : `${coveragePercent}%`;
+  const assignedDisplay = loadingEmployees ? '—' : `${assignedCount}/${totalEmployees}`;
+  const awaitingApprovalDisplay = loadingEmployees ? '—' : awaitingApprovalCount;
+  const notAssignedDisplay = loadingEmployees ? '—' : notAssignedCount;
+  const coverageBarWidth = loadingEmployees ? 0 : coveragePercent;
+
   return (<div className="space-y-4 pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -106,6 +118,27 @@ const GoalManagement: React.FC = () => {
             <ClipboardList size={14} />
             Bulk Assign Templates {selectedIds.length > 0 && `(${selectedIds.length})`}
           </button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px' }}>
+          <div style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Coverage</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
+            <span style={{ fontSize: 26, fontWeight: 600, color: '#111827' }}>{coverageDisplay}</span>
+            <span style={{ fontSize: 12, color: '#9EA3B0' }}>· {assignedDisplay}</span>
+          </div>
+          <div style={{ marginTop: 8, width: '100%', height: 6, borderRadius: 4, background: '#E4E6EC' }}>
+            <div style={{ width: `${coverageBarWidth}%`, height: '100%', borderRadius: 4, background: '#22C55E', transition: 'width 0.2s ease' }} />
+          </div>
+        </div>
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px' }}>
+          <div style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Awaiting Approval</div>
+          <div style={{ marginTop: 10, fontSize: 26, fontWeight: 600, color: '#B45309' }}>{awaitingApprovalDisplay}</div>
+        </div>
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px' }}>
+          <div style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Not Assigned</div>
+          <div style={{ marginTop: 10, fontSize: 26, fontWeight: 600, color: '#DC2626' }}>{notAssignedDisplay}</div>
         </div>
       </div>
 
