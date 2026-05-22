@@ -31,7 +31,6 @@ import {
   Circle,
   Search,
   Mail,
-  Share2,
   Trash2,
   Calculator
 } from 'lucide-react';
@@ -223,9 +222,6 @@ const AppraisalList: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="px-6 py-3 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-slate-400" /> Export Status
-              </button>
               <button
                 onClick={async () => {
                   if (selectedCycleId) {
