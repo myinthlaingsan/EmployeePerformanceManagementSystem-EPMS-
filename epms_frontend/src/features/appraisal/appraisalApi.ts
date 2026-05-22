@@ -386,7 +386,8 @@ export const appraisalApi = api.injectEndpoints({
         method: 'PUT',
       }),
       transformResponse,
-      invalidatesTags: ['Cycle'],
+      // Invalidate GoalSet so all cached goal queries flush immediately when a new cycle is activated
+      invalidatesTags: ['Cycle', 'GoalSet'],
     }),
 
     closeCycle: builder.mutation<AppraisalCycle, number>({
@@ -395,7 +396,8 @@ export const appraisalApi = api.injectEndpoints({
         method: 'PUT',
       }),
       transformResponse,
-      invalidatesTags: ['Cycle'],
+      // Invalidate GoalSet so stale goal data from the closed cycle is evicted from cache
+      invalidatesTags: ['Cycle', 'GoalSet'],
     }),
 
     deleteCycle: builder.mutation<any, number>({
@@ -403,7 +405,8 @@ export const appraisalApi = api.injectEndpoints({
         url: `/appraisal-cycles/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Cycle'],
+      // Invalidate GoalSet so any goal-set queries tied to the deleted cycle are flushed
+      invalidatesTags: ['Cycle', 'GoalSet'],
     }),
 
     sendCycleReminders: builder.mutation<void, number>({

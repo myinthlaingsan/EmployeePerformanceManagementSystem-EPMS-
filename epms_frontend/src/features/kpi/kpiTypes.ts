@@ -139,6 +139,9 @@ export interface GoalSetResponse {
   employeeName: string;
   managerId: number;
   managerName: string;
+  assignedBy?: number;
+  assignedByName?: string;
+  assignedAt?: string;
   appraisalCycleId: number;
   appraisalCycleName?: string;
   status: KpiGoalStatus;
@@ -148,6 +151,8 @@ export interface GoalSetResponse {
   approvedBy?: string;
   lockedAt?: string;
   items: GoalItemResponse[];
+  score?: number;
+  kpiItems?: GoalItemResponse[];
 }
 
 // ==================== Progress ====================

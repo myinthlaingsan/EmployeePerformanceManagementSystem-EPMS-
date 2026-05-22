@@ -4,6 +4,7 @@ import { useGetActiveCycleQuery } from '../services/kpiApi';
 interface ActiveCycleContextType {
   activeCycleId: number | undefined;
   activeCycleName: string;
+  hasCycle: boolean;
   isLoading: boolean;
   isError: boolean;
 }
@@ -16,6 +17,7 @@ export const ActiveCycleProvider: React.FC<{ children: ReactNode }> = ({ childre
   const value = useMemo(() => ({
     activeCycleId: cycleResponse?.data?.cycleId,
     activeCycleName: cycleResponse?.data?.cycleName || 'No Active Cycle Selected',
+    hasCycle: !!cycleResponse?.data?.cycleId,
     isLoading,
     isError
   }), [cycleResponse, isLoading, isError]);

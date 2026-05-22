@@ -113,9 +113,23 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             }
         }
 
+        Employee employeeManager = null;
+        ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(employee).orElse(null);
+        if (rl != null) {
+            employeeManager = rl.getManager();
+        }
+        // Only fall back to the assigning user as manager when they are a MANAGER role.
+        // HR/Admin assigning on behalf should not overwrite the manager field with themselves.
+        if (employeeManager == null && isManager) {
+            employeeManager = currentManager;
+        }
+
         KpiGoals goalSet = KpiGoals.builder()
                 .employee(employee)
-                .manager(currentManager)
+                .manager(employeeManager)
+                .assignedBy(currentManager.getId())
+                .assignedByName(currentManager.getStaffName())
+                .assignedAt(Instant.now())
                 .cycle(cycle)
                 .status(KpiGoalStatus.DRAFT)
                 .version(1)
@@ -195,6 +209,11 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         Employee currentManager = getCurrentEmployee();
 
+        var bulkAuthorities = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .collect(Collectors.toSet());
+        boolean bulkIsManager = bulkAuthorities.contains("ROLE_MANAGER");
+
         BulkAssignmentResponse response = new BulkAssignmentResponse();
         response.setResults(new java.util.ArrayList<>());
         response.setTotalProcessed(request.getEmployeeIds().size());
@@ -251,10 +270,22 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     }
                 }
 
+                Employee employeeManager = null;
+                ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(employee).orElse(null);
+                if (rl != null) {
+                    employeeManager = rl.getManager();
+                }
+                if (employeeManager == null && bulkIsManager) {
+                    employeeManager = currentManager;
+                }
+
                 // Create Draft Goal Set
                 KpiGoals goalSet = KpiGoals.builder()
                         .employee(employee)
-                        .manager(currentManager)
+                        .manager(employeeManager)
+                        .assignedBy(currentManager.getId())
+                        .assignedByName(currentManager.getStaffName())
+                        .assignedAt(Instant.now())
                         .cycle(cycle)
                         .status(KpiGoalStatus.DRAFT)
                         .version(1)

@@ -8,21 +8,14 @@ import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
 import { Search, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
-import { useGetActiveCycleQuery, useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
+import { useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import React from 'react';
-
-const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  DRAFT:    { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4', label: 'Drafting' },
-  APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0', label: 'Approved' },
-  LOCKED:   { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2', label: 'Locked (Active)' },
-  ARCHIVED: { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8', label: 'Archived' },
-};
+import { KPI_STATUS_STYLE, KPI_STATUS_FALLBACK } from '../../utils/kpiStatusStyles';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAdmin, isHR, activeCycleId, activeCycleName: authCycleName } = useAuth();
-  const { error: cycleError } = useGetActiveCycleQuery(undefined);
-  const hasActiveCycle = !!activeCycleId && !cycleError;
+  const { user, isAdmin, isHR, activeCycleId, activeCycleName: authCycleName, hasCycle: authHasCycle, cycleError } = useAuth();
+  const hasActiveCycle = authHasCycle && !cycleError;
   const [page, setPage] = useState(0);
   const [size] = useState(10);
   const isAdminOrHr = isAdmin || isHR;
@@ -36,15 +29,23 @@ const GoalManagement: React.FC = () => {
   const { data: positions = [] } = useGetPositionsQuery();
   const { data: cyclesResponse } = useGetCyclesQuery();
   const cycles = Array.isArray(cyclesResponse) ? cyclesResponse : ((cyclesResponse as any)?.data || []);
+  // Use only activeCycleId as truth — never trust status/isActive flags, which can match stale cycles
+  const activeCycles = cycles.filter((c: any) => (c.cycleId || c.id) === activeCycleId);
+  const inactiveCycles = cycles.filter((c: any) => (c.cycleId || c.id) !== activeCycleId);
+  const getCycleStatusLabel = (c: any) => {
+    if (!c.status) return '';
+    return ` (${c.status.charAt(0).toUpperCase() + c.status.slice(1).toLowerCase()})`;
+  };
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('All');
   const [selectedPosition, setSelectedPosition] = useState('All');
   const [selectedCycle, setSelectedCycle] = useState('All');
+  const isHistorical = !activeCycleId || (selectedCycle !== 'All' && Number(selectedCycle) !== activeCycleId);
 
   const effectiveCycleId = selectedCycle === 'All' ? activeCycleId : Number(selectedCycle);
   // Use cycle name from the active-cycle API (via useAuth), not from cycle list lookup
-  const activeCycleName = authCycleName !== 'No Active Cycle' ? authCycleName : undefined;
+  const activeCycleName = hasActiveCycle ? authCycleName : undefined;
   const { data: deptGoalSetsResponse } = useGetDepartmentGoalSetsQuery(
     { cycleId: effectiveCycleId! }, { skip: !effectiveCycleId || !isAdminOrHr }
   );
@@ -71,30 +72,9 @@ const GoalManagement: React.FC = () => {
     setSelectedIds(e.target.checked ? filteredEmployees.map(m => m.id) : []);
   };
 
-  const handleToggleSelect = (id: number) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  };
-
   const selectStyle: React.CSSProperties = {
     background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
     padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', appearance: 'none' as any,
-  };
-
-  const getStatusBadge = (status?: string) => {
-    if (!status) {
-      return (
-        <div className="flex items-center gap-1.5">
-          <XCircle size={13} style={{ color: '#9EA3B0' }} />
-          <span style={{ fontSize: 10, color: '#9EA3B0' }}>Not Assigned</span>
-        </div>
-      );
-    }
-    const ss = STATUS_STYLE[status] ?? { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8', label: status };
-    return (
-      <span style={{ fontSize: 10, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '2px 8px' }}>
-        {ss.label}
-      </span>
-    );
   };
 
   return (<div className="space-y-4 pb-8">
@@ -112,14 +92,16 @@ const GoalManagement: React.FC = () => {
             </div>
           )}
           <button
+            disabled={isHistorical || selectedIds.length === 0}
             onClick={() => { if (selectedIds.length === 0) { toast.warning('Select at least one employee'); return; } setIsBulkModalOpen(true); }}
             className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
             style={{
-              background: selectedIds.length > 0 ? '#1A56DB' : '#F5F6F8',
-              color: selectedIds.length > 0 ? '#FFFFFF' : '#9EA3B0',
-              border: `0.5px solid ${selectedIds.length > 0 ? '#1A56DB' : '#E0E2E8'}`,
+              background: !isHistorical && selectedIds.length > 0 ? '#1A56DB' : '#F5F6F8',
+              color: !isHistorical && selectedIds.length > 0 ? '#FFFFFF' : '#9EA3B0',
+              border: `0.5px solid ${!isHistorical && selectedIds.length > 0 ? '#1A56DB' : '#E0E2E8'}`,
               borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500,
-              cursor: selectedIds.length > 0 ? 'pointer' : 'default',
+              cursor: !isHistorical && selectedIds.length > 0 ? 'pointer' : 'not-allowed',
+              opacity: isHistorical || selectedIds.length === 0 ? 0.5 : 1,
             }}>
             <ClipboardList size={14} />
             Bulk Assign Templates {selectedIds.length > 0 && `(${selectedIds.length})`}
@@ -146,9 +128,44 @@ const GoalManagement: React.FC = () => {
         </select>
         <select style={selectStyle} value={selectedCycle} onChange={e => setSelectedCycle(e.target.value)}>
           <option value="All">Cycle: {hasActiveCycle ? 'Active' : 'All'}</option>
-          {cycles.map((c: any, i: number) => <option key={`${c.cycleId || c.id}-${i}`} value={c.cycleId || c.id}>{c.cycleName || c.name}</option>)}
+          {activeCycles.length > 0 && (
+            <optgroup label="Active Cycle">
+              {activeCycles.map((c: any, i: number) => (
+                <option key={`${c.cycleId || c.id}-${i}`} value={c.cycleId || c.id}>
+                  {(c.cycleName || c.name) + getCycleStatusLabel(c)}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {inactiveCycles.length > 0 && (
+            <optgroup label="Historical / Other Cycles">
+              {inactiveCycles.map((c: any, i: number) => (
+                <option key={`${c.cycleId || c.id}-${i}`} value={c.cycleId || c.id}>
+                  {(c.cycleName || c.name) + getCycleStatusLabel(c)}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </div>
+
+      {isHistorical && (
+        <div style={{
+          background: '#FFFBEB',
+          border: '0.5px solid #FCD34D',
+          borderRadius: 12,
+          padding: '10px 14px',
+          color: '#B45309',
+          fontSize: 13,
+          fontWeight: 500,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#B45309' }}></span>
+          Viewing historical cycle — no assignments can be made
+        </div>
+      )}
 
       {/* Table */}
       <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
@@ -156,11 +173,13 @@ const GoalManagement: React.FC = () => {
           <table className="w-full text-left" style={{ minWidth: 640 }}>
             <thead>
               <tr style={{ borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
-                <th style={{ padding: '10px 16px', width: 40 }}>
-                  <input type="checkbox" style={{ accentColor: '#1A56DB' }}
-                    checked={selectedIds.length === filteredEmployees.length && filteredEmployees.length > 0}
-                    onChange={handleSelectAll} />
-                </th>
+                {!isHistorical && (
+                  <th style={{ padding: '10px 16px', width: 40 }}>
+                    <input type="checkbox" style={{ accentColor: '#1A56DB' }}
+                      checked={selectedIds.length === filteredEmployees.length && filteredEmployees.length > 0}
+                      onChange={handleSelectAll} />
+                  </th>
+                )}
                 {['Employee','Department','Position','Goal Status'].map(h => (
                   <th key={h} style={{ padding: '10px 16px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
                 ))}
@@ -168,25 +187,29 @@ const GoalManagement: React.FC = () => {
             </thead>
             <tbody>
               {loadingEmployees && (
-                <tr><td colSpan={5} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading employees…</td></tr>
+                <tr><td colSpan={isHistorical ? 4 : 5} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading employees…</td></tr>
               )}
               {!loadingEmployees && filteredEmployees.map((emp, idx) => {
                 const status = goalStatusMap.get(emp.id);
-                const ss = status ? STATUS_STYLE[status] : null;
                 return (
                   <tr key={emp.id}
-                    style={{ borderBottom: idx < filteredEmployees.length - 1 ? '0.5px solid #F0F2F6' : 'none', background: selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF', cursor: 'pointer' }}
+                    style={{ borderBottom: idx < filteredEmployees.length - 1 ? '0.5px solid #F0F2F6' : 'none', background: !isHistorical && selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF', cursor: status === 'ARCHIVED' ? 'default' : 'pointer' }}
                     className="hover:bg-[#FAFBFF] transition-colors"
                     onClick={() => {
                       if (status === 'ARCHIVED') return;
-                      if (status === 'APPROVED' || status === 'LOCKED') navigate(`/kpi/goals/${emp.id}?cycleId=${effectiveCycleId}`);
-                      else navigate(`/kpi/assign/${emp.id}`);
+                      if (status === 'APPROVED' || status === 'LOCKED') {
+                        navigate(`/kpi/goals/${emp.id}?cycleId=${effectiveCycleId}`);
+                      } else {
+                        navigate(`/kpi/assign/${emp.id}?cycleId=${effectiveCycleId}`);
+                      }
                     }}>
-                    <td style={{ padding: '10px 16px' }} onClick={e => e.stopPropagation()}>
-                      <input type="checkbox" style={{ accentColor: '#1A56DB' }}
-                        checked={selectedIds.includes(emp.id)}
-                        onChange={() => setSelectedIds(prev => prev.includes(emp.id) ? prev.filter(i => i !== emp.id) : [...prev, emp.id])} />
-                    </td>
+                    {!isHistorical && (
+                      <td style={{ padding: '10px 16px' }} onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" style={{ accentColor: '#1A56DB' }}
+                          checked={selectedIds.includes(emp.id)}
+                          onChange={() => setSelectedIds(prev => prev.includes(emp.id) ? prev.filter(i => i !== emp.id) : [...prev, emp.id])} />
+                      </td>
+                    )}
                     <td style={{ padding: '10px 16px' }}>
                       <div className="flex items-center gap-3">
                         <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EEF3FD', color: '#1A56DB', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -203,7 +226,7 @@ const GoalManagement: React.FC = () => {
                     <td style={{ padding: '10px 16px' }}>
                       {status ? (
                         (() => {
-                          const safeSs = STATUS_STYLE[status] ?? { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8', label: status };
+                          const safeSs = KPI_STATUS_STYLE[status] ?? { ...KPI_STATUS_FALLBACK, label: status };
                           return (
                             <span style={{ fontSize: 10, fontWeight: 500, background: safeSs.bg, color: safeSs.text, border: `0.5px solid ${safeSs.border}`, borderRadius: 20, padding: '2px 8px' }}>
                               {safeSs.label}
@@ -221,7 +244,7 @@ const GoalManagement: React.FC = () => {
                 );
               })}
               {filteredEmployees.length === 0 && !loadingEmployees && (
-                <tr><td colSpan={5} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No employees found matching criteria.</td></tr>
+                <tr><td colSpan={isHistorical ? 4 : 5} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No employees found matching criteria.</td></tr>
               )}
             </tbody>
           </table>
@@ -250,6 +273,7 @@ const GoalManagement: React.FC = () => {
 
       {isBulkModalOpen && (
         <BulkAssignModal selectedEmployeeIds={selectedIds}
+          effectiveCycleId={effectiveCycleId}
           onClose={() => setIsBulkModalOpen(false)}
           onSuccess={() => { setIsBulkModalOpen(false); setSelectedIds([]); }} />
       )}

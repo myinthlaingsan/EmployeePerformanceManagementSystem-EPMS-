@@ -18,7 +18,7 @@ export const useAuth = () => {
     skip: !accessToken || !!user,
   });
 
-  const { data: cycleResponse, isLoading: isLoadingCycle } = useGetActiveCycleQuery(undefined, {
+  const { data: cycleResponse, isLoading: isLoadingCycle, error: cycleError } = useGetActiveCycleQuery(undefined, {
     skip: !isAuthenticated,
   });
 
@@ -68,7 +68,9 @@ export const useAuth = () => {
     // Cycle Info
     activeCycleId: cycleResponse?.data?.cycleId,
     activeCycleName: cycleResponse?.data?.cycleName || 'No Active Cycle',
+    hasCycle: !!cycleResponse?.data?.cycleId,
     isLoading: isLoadingUser || isLoadingCycle,
     isLoadingCycle,
+    cycleError,
   };
 };
