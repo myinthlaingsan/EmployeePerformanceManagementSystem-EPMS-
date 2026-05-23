@@ -55,6 +55,7 @@ const GoalDetail: React.FC = () => {
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [showRevertConfirm, setShowRevertConfirm] = useState(false);
+  const [showLockConfirm, setShowLockConfirm] = useState(false);
 
   const isOwner = user?.id === parseInt(employeeId!);
   const isPrivileged = _isManager || isAdmin || isHR;
@@ -78,18 +79,9 @@ const GoalDetail: React.FC = () => {
     setShowRevertConfirm(true);
   };
 
-  const handleLock = async () => {
+  const handleLock = () => {
     if (!goalSet) return;
-    const ok = window.confirm(
-      `Lock "${goalSet.employeeName}'s" goals for this cycle?\n\nOnce locked, no more progress updates can be submitted.`
-    );
-    if (!ok) return;
-    try {
-      await lockGoal(goalSet.id).unwrap();
-      toast.success('Goal set locked.');
-    } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to lock goal set');
-    }
+    setShowLockConfirm(true);
   };
 
   // Helper: human-friendly age (days/weeks/months/years)
@@ -499,6 +491,56 @@ const GoalDetail: React.FC = () => {
                 }}
                 style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>
                 Yes, Revert
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLockConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
+        }}>
+          <div style={{
+            background: '#FFFFFF', borderRadius: 16, padding: '28px 32px',
+            maxWidth: 420, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
+          }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 8 }}>
+              Lock Goal Set?
+            </h3>
+            <p style={{ fontSize: 13, color: '#5A6070', lineHeight: 1.6, marginBottom: 16 }}>
+              This will:
+            </p>
+            <ul style={{ fontSize: 13, color: '#5A6070', lineHeight: 2,
+                         paddingLeft: 20, marginBottom: 20 }}>
+              <li>Send a <strong>KPI_LOCKED</strong> notification to {goalSet?.employeeName}</li>
+              <li>Prevent any further progress updates</li>
+              <li>Allow final score calculation to proceed</li>
+              <li>Cannot be undone — goal set cannot be reverted from LOCKED</li>
+            </ul>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowLockConfirm(false)}
+                style={{ background: '#F5F6F8', color: '#5A6070',
+                         border: '0.5px solid #E0E2E8', borderRadius: 8,
+                         padding: '8px 16px', fontSize: 13 }}>
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowLockConfirm(false);
+                  try {
+                    await lockGoal(goalSet!.id).unwrap();
+                    toast.success('Goal set locked.');
+                  } catch (err: any) {
+                    toast.error(err?.data?.message || 'Failed to lock goal set');
+                  }
+                }}
+                style={{ background: '#F1EFE8', color: '#444441',
+                         border: '0.5px solid #DDDBD2', borderRadius: 8,
+                         padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>
+                Yes, Lock
               </button>
             </div>
           </div>
