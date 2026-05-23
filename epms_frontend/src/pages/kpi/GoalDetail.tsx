@@ -20,7 +20,6 @@ const STEPS = [
   { id: 'DRAFT', label: 'Draft', icon: CheckCircle2 },
   { id: 'APPROVED', label: 'Approved', icon: CheckCircle2 },
   { id: 'LOCKED', label: 'Locked', icon: Lock },
-  { id: 'SCORED', label: 'Scored', icon: Award },
 ];
 
 const GoalDetail: React.FC = () => {
@@ -112,9 +111,7 @@ const GoalDetail: React.FC = () => {
 
   const totalWeight = items.reduce((sum, i) => sum + i.weightPercent, 0);
 
-  const currentStepIndex = isScoredState
-    ? 3
-    : STEPS.findIndex(s => s.id === goalSet.status);
+  const currentStepIndex = STEPS.findIndex(s => s.id === goalSet.status);
 
   return (
     <div className="space-y-4 pb-8">
@@ -247,6 +244,30 @@ const GoalDetail: React.FC = () => {
               </div>
             );
           })}
+        </div>
+        {/* Score status indicator — independent of step position */}
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '0.5px solid #E4E6EC',
+                      display: 'flex', justifyContent: 'center', width: '100%' }}>
+          {isScoredState && finalScore ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6,
+                          background: '#EAF3DE', border: '0.5px solid #B8DCA0',
+                          borderRadius: 20, padding: '4px 14px',
+                          fontSize: 11, fontWeight: 500, color: '#27500A' }}>
+              <Award size={12} />
+              Score calculated — {finalScore.weightedScore.toFixed(1)} / 100
+              <span style={{ color: '#5A7A3A', fontWeight: 400 }}>
+                · {new Date(finalScore.calculatedAt).toLocaleDateString()}
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6,
+                          background: '#F5F6F8', border: '0.5px solid #E0E2E8',
+                          borderRadius: 20, padding: '4px 14px',
+                          fontSize: 11, color: '#9EA3B0' }}>
+              <Award size={12} />
+              Score not yet calculated
+            </div>
+          )}
         </div>
       </div>
       )}
