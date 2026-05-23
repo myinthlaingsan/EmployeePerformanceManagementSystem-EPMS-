@@ -4,6 +4,7 @@ import ace.org.epms_backend.dto.report.*;
 import ace.org.epms_backend.dto.feedback360.CategoryScore;
 import ace.org.epms_backend.dto.feedback360.DetailedComment;
 import ace.org.epms_backend.dto.feedback360.FeedbackSummaryResponse;
+import ace.org.epms_backend.exception.InvalidAppraisalStateException;
 import ace.org.epms_backend.service.feedback360.FeedbackReportService;
 import ace.org.epms_backend.model.AuditLog;
 import ace.org.epms_backend.model.appraisal.Appraisal;
@@ -21,6 +22,10 @@ import ace.org.epms_backend.model.appraisal.SelfAssessment;
 import ace.org.epms_backend.model.appraisal.ManagerEvaluation;
 import ace.org.epms_backend.model.kpi.*;
 import ace.org.epms_backend.model.pip.PipRecord;
+import ace.org.epms_backend.model.pip.PipObjective;
+import ace.org.epms_backend.enums.PipStatus;
+import ace.org.epms_backend.model.appraisal.SelfAssessmentAnswer;
+import ace.org.epms_backend.model.appraisal.ManagerEvaluationAnswer;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.repository.employee.EmployeeTeamRepository;
 import ace.org.epms_backend.repository.employee.ReportingLineRepository;
@@ -71,6 +76,8 @@ public class ReportServiceImpl implements ReportService {
     private final FeedbackReportService feedbackReportService;
     private final QuestionRepository questionRepository;
     private final FeedbackRepository feedbackRepository;
+    private final SelfAssessmentAnswerRepository selfAssessmentAnswerRepository;
+    private final ManagerEvaluationAnswerRepository managerEvaluationAnswerRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -985,5 +992,215 @@ public class ReportServiceImpl implements ReportService {
         } else {
             return jasperReportUtil.generateExcelReport(jrxmlPath, parameters, data);
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Self-Assessment Form Export
+    // -----------------------------------------------------------------------
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportSelfAssessmentForm(Long appraisalId, String format) {
+        Appraisal appraisal = appraisalRepository.findById(appraisalId)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found: " + appraisalId));
+
+        if (appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.HR_APPROVED &&
+            appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.FINALIZED &&
+            appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.ARCHIVED) {
+            throw new InvalidAppraisalStateException(
+                    "Self-assessment form can only be exported after the appraisal is approved or finalized.");
+        }
+
+        SelfAssessment self = selfAssessmentRepository.findByAppraisal_AppraisalId(appraisalId)
+                .orElseThrow(() -> new NotFoundException("Self assessment not found for appraisal: " + appraisalId));
+
+        EmployeeDepartment ed = employeeDepartmentRepository
+                .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId()).orElse(null);
+
+        ace.org.epms_backend.model.appraisal.AppraisalForm form = null;
+        if (appraisal.getFormSet() != null) form = appraisal.getFormSet().getSelfAssessmentForm();
+        if (form == null) {
+            form = appraisal.getCycle().getForms().stream()
+                    .filter(f -> f.getFormType() == ace.org.epms_backend.enums.FormType.SELF_ASSESSMENT)
+                    .findFirst().orElse(null);
+        }
+
+        List<ace.org.epms_backend.dto.report.SelfAssessmentReportQuestionDTO> questions = new ArrayList<>();
+        if (form != null) {
+            List<ace.org.epms_backend.model.appraisal.Question> formQuestions =
+                    questionRepository.findByCategory_Form_FormId(form.getFormId());
+            Map<Long, SelfAssessmentAnswer> answerMap =
+                    selfAssessmentAnswerRepository.findBySelfAssessment_SelfAssessmentId(self.getSelfAssessmentId())
+                            .stream().collect(Collectors.toMap(
+                                    a -> a.getQuestion().getQuestionId(), a -> a, (a, b) -> a));
+            for (ace.org.epms_backend.model.appraisal.Question q : formQuestions) {
+                SelfAssessmentAnswer ans = answerMap.get(q.getQuestionId());
+                questions.add(ace.org.epms_backend.dto.report.SelfAssessmentReportQuestionDTO.builder()
+                        .categoryName(q.getCategory() != null ? q.getCategory().getCategoryName() : "General")
+                        .questionText(q.getQuestionText())
+                        .ratingValue(ans != null && ans.getRatingValue() != null ? ans.getRatingValue().toString() : "-")
+                        .comment(ans != null ? ans.getComment() : null)
+                        .build());
+            }
+        }
+
+        String deptName = ed != null && ed.getCurrentDepartment() != null
+                ? ed.getCurrentDepartment().getDepartmentName() : "N/A";
+        String posName = appraisal.getEmployee().getPosition() != null
+                ? appraisal.getEmployee().getPosition().getPositionName() : "N/A";
+        String mgrName = appraisal.getManager() != null ? appraisal.getManager().getStaffName() : "N/A";
+        String totalScore = self.getTotalScore() != null ? self.getTotalScore().toPlainString() + "%" : "N/A";
+        String submittedAt = self.getSubmittedAt() != null ? self.getSubmittedAt().toString() : "N/A";
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("reportTitle", "Self-Assessment Form");
+        params.put("cycleName", appraisal.getCycle().getCycleName());
+        params.put("employeeName", appraisal.getEmployee().getStaffName());
+        params.put("employeeCode", appraisal.getEmployee().getEmployeeCode());
+        params.put("departmentName", deptName);
+        params.put("positionName", posName);
+        params.put("managerName", mgrName);
+        params.put("totalScore", totalScore);
+        params.put("overallReflection", self.getOverallReflection() != null ? self.getOverallReflection() : "");
+        params.put("submittedAt", submittedAt);
+
+        return generateReport("reports/self_assessment_form.jrxml", params, questions, format);
+    }
+
+    // -----------------------------------------------------------------------
+    // Manager Evaluation Form Export
+    // -----------------------------------------------------------------------
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportManagerEvaluationForm(Long appraisalId, String format) {
+        Appraisal appraisal = appraisalRepository.findById(appraisalId)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found: " + appraisalId));
+
+        if (appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.HR_APPROVED &&
+            appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.FINALIZED &&
+            appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.ARCHIVED) {
+            throw new InvalidAppraisalStateException(
+                    "Manager evaluation form can only be exported after the appraisal is approved or finalized.");
+        }
+
+        ManagerEvaluation eval = managerEvaluationRepository.findByAppraisal_AppraisalId(appraisalId)
+                .orElseThrow(() -> new NotFoundException("Manager evaluation not found for appraisal: " + appraisalId));
+
+        SelfAssessment self = selfAssessmentRepository.findByAppraisal_AppraisalId(appraisalId).orElse(null);
+
+        EmployeeDepartment ed = employeeDepartmentRepository
+                .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId()).orElse(null);
+
+        ace.org.epms_backend.model.appraisal.AppraisalForm form = null;
+        if (appraisal.getFormSet() != null) form = appraisal.getFormSet().getManagerEvaluationForm();
+        if (form == null) {
+            form = appraisal.getCycle().getForms().stream()
+                    .filter(f -> f.getFormType() == ace.org.epms_backend.enums.FormType.MANAGER_EVALUATION)
+                    .findFirst().orElse(null);
+        }
+
+        List<ace.org.epms_backend.dto.report.ManagerEvaluationReportQuestionDTO> questions = new ArrayList<>();
+        if (form != null) {
+            List<ace.org.epms_backend.model.appraisal.Question> formQuestions =
+                    questionRepository.findByCategory_Form_FormId(form.getFormId());
+            Map<Long, ManagerEvaluationAnswer> mgrMap =
+                    managerEvaluationAnswerRepository.findByEvaluation_EvaluationId(eval.getEvaluationId())
+                            .stream().collect(Collectors.toMap(
+                                    a -> a.getQuestion().getQuestionId(), a -> a, (a, b) -> a));
+            Map<Long, SelfAssessmentAnswer> selfMap = new HashMap<>();
+            if (self != null) {
+                selfAssessmentAnswerRepository.findBySelfAssessment_SelfAssessmentId(self.getSelfAssessmentId())
+                        .forEach(a -> selfMap.put(a.getQuestion().getQuestionId(), a));
+            }
+            for (ace.org.epms_backend.model.appraisal.Question q : formQuestions) {
+                ManagerEvaluationAnswer mgrAns = mgrMap.get(q.getQuestionId());
+                SelfAssessmentAnswer selfAns = selfMap.get(q.getQuestionId());
+                questions.add(ace.org.epms_backend.dto.report.ManagerEvaluationReportQuestionDTO.builder()
+                        .categoryName(q.getCategory() != null ? q.getCategory().getCategoryName() : "General")
+                        .questionText(q.getQuestionText())
+                        .employeeRating(selfAns != null && selfAns.getRatingValue() != null
+                                ? selfAns.getRatingValue().toString() : "-")
+                        .employeeComment(selfAns != null ? selfAns.getComment() : null)
+                        .managerRating(mgrAns != null && mgrAns.getRatingValue() != null
+                                ? mgrAns.getRatingValue().toString() : "-")
+                        .managerComment(mgrAns != null ? mgrAns.getComment() : null)
+                        .build());
+            }
+        }
+
+        String deptName = ed != null && ed.getCurrentDepartment() != null
+                ? ed.getCurrentDepartment().getDepartmentName() : "N/A";
+        String posName = appraisal.getEmployee().getPosition() != null
+                ? appraisal.getEmployee().getPosition().getPositionName() : "N/A";
+        String mgrName = appraisal.getManager() != null ? appraisal.getManager().getStaffName() : "N/A";
+        String totalScore = eval.getTotalScore() != null ? eval.getTotalScore().toPlainString() + "%" : "N/A";
+        String submittedAt = eval.getSubmittedAt() != null ? eval.getSubmittedAt().toString() : "N/A";
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("reportTitle", "Manager Evaluation Form");
+        params.put("cycleName", appraisal.getCycle().getCycleName());
+        params.put("employeeName", appraisal.getEmployee().getStaffName());
+        params.put("employeeCode", appraisal.getEmployee().getEmployeeCode());
+        params.put("departmentName", deptName);
+        params.put("positionName", posName);
+        params.put("managerName", mgrName);
+        params.put("totalScore", totalScore);
+        params.put("finalComment", eval.getFinalComment() != null ? eval.getFinalComment() : "");
+        params.put("submittedAt", submittedAt);
+
+        return generateReport("reports/manager_evaluation_form.jrxml", params, questions, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportPipDetailReport(Long pipId, String format) {
+        PipRecord pip = pipRecordRepository.findById(pipId)
+                .orElseThrow(() -> new NotFoundException("PIP not found: " + pipId));
+
+        // Guard: only export after the PIP is finalized
+        if (pip.getStatus() != PipStatus.COMPLETED && pip.getStatus() != PipStatus.CLOSED) {
+            throw new InvalidAppraisalStateException(
+                    "PIP can only be exported after it is finalized (COMPLETED or CLOSED).");
+        }
+
+        // Subject info
+        Employee employee = pip.getEmployee();
+        EmployeeDepartment ed = employeeDepartmentRepository
+                .findByEmployeeIdAndIsCurrentTrue(employee.getId()).orElse(null);
+
+        // Objective rows
+        List<PipObjective> objectives = pip.getObjectives();
+        List<PipDetailReportObjectiveDTO> rows = objectives.stream()
+                .map(o -> PipDetailReportObjectiveDTO.builder()
+                        .objectiveTitle(o.getTitle())
+                        .objectiveDescription(o.getDescription())
+                        .successCriteria(o.getSuccessCriteria())
+                        .progressPercent(pipProgressLogRepository
+                                .findFirstByObjective_ObjectiveIdOrderByCreatedAtDesc(o.getObjectiveId())
+                                .map(log -> log.getProgressPercent() != null ? log.getProgressPercent().toPlainString() + "%" : "0%")
+                                .orElse("0%"))
+                        .status(o.getStatus() != null ? o.getStatus().name() : "—")
+                        .build())
+                .toList();
+
+        // Header params
+        Map<String, Object> params = new HashMap<>();
+        params.put("reportTitle", "Performance Improvement Plan");
+        params.put("employeeName", employee.getStaffName());
+        params.put("employeeCode", employee.getEmployeeCode());
+        params.put("departmentName", ed != null && ed.getCurrentDepartment() != null
+                ? ed.getCurrentDepartment().getDepartmentName() : "N/A");
+        params.put("positionName", employee.getPosition() != null ? employee.getPosition().getPositionName() : "N/A");
+        params.put("managerName", pip.getManager() != null ? pip.getManager().getStaffName() : "N/A");
+        params.put("severity", pip.getSeverity() != null ? pip.getSeverity().name() : "—");
+        params.put("status", pip.getStatus().name());
+        params.put("outcome", pip.getFinalOutcome() != null ? pip.getFinalOutcome().name() : "—");
+        params.put("startDate", pip.getStartDate() != null ? pip.getStartDate().toString() : "—");
+        params.put("endDate", pip.getEndDate() != null ? pip.getEndDate().toString() : "—");
+        params.put("reason", pip.getReason() != null ? pip.getReason() : "");
+        params.put("overallComment", pip.getOverallComment() != null ? pip.getOverallComment() : "");
+
+        return generateReport("reports/pip_detail_report.jrxml", params, rows, format);
     }
 }

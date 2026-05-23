@@ -8,9 +8,10 @@ import {
 } from '../../services/pipApi';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { useAuth } from '../../hooks/useAuth';
+import { useDownloadReportMutation } from '../../features/report/reportApi';
 import {
   Plus, Lock, Calendar, ChevronRight, MessageSquare,
-  TrendingUp, FileText, CheckCircle2, AlertCircle, Play
+  TrendingUp, FileText, CheckCircle2, AlertCircle, Play, Download
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
@@ -68,6 +69,7 @@ const PipDetailsPage: React.FC = () => {
   const [updateObjectiveStatus] = useUpdateObjectiveStatusMutation();
   const [addProgress] = useAddProgressMutation();
   const [finalizePip] = useFinalizePipMutation();
+  const [downloadReport, { isLoading: isExporting }] = useDownloadReportMutation();
 
   const { data: employeesData } = useGetEmployeesQuery({ page: 0, size: 1000 });
   const allEmployees = employeesData?.content || [];
@@ -178,6 +180,19 @@ const PipDetailsPage: React.FC = () => {
     setExpandedObjectives(prev => prev.includes(id) ? prev.filter(oid => oid !== id) : [...prev, id]);
   };
 
+  const handleExportPdf = async () => {
+    try {
+      await downloadReport({
+        endpoint: 'pip-detail',
+        params: { pipId },
+        fileName: `PIP_${pipId}_Detail_Report.pdf`,
+      }).unwrap();
+      toast.success('PIP report exported successfully!');
+    } catch (err: any) {
+      toast.error('Export failed: ' + (err?.data?.message || 'PIP must be COMPLETED or CLOSED.'));
+    }
+  };
+
   return (
     <div className="space-y-4 pb-8">
       {/* Breadcrumb */}
@@ -236,6 +251,25 @@ const PipDetailsPage: React.FC = () => {
                 Delete PIP
               </button>
             )}
+            <button
+              id="export-pip-pdf-btn"
+              onClick={handleExportPdf}
+              disabled={isExporting || (pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED)}
+              title={pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED ? 'Only available when PIP is COMPLETED or CLOSED' : 'Export PIP as PDF'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: (pip.status === PipStatus.COMPLETED || pip.status === PipStatus.CLOSED) ? '#F0FDF4' : '#F5F6F8',
+                color: (pip.status === PipStatus.COMPLETED || pip.status === PipStatus.CLOSED) ? '#15803D' : '#9EA3B0',
+                border: `0.5px solid ${(pip.status === PipStatus.COMPLETED || pip.status === PipStatus.CLOSED) ? '#BBF7D0' : '#E0E2E8'}`,
+                borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 500,
+                cursor: (pip.status === PipStatus.COMPLETED || pip.status === PipStatus.CLOSED) ? 'pointer' : 'not-allowed',
+                opacity: isExporting ? 0.7 : 1,
+                transition: 'all 0.2s',
+              }}
+            >
+              <Download size={11} />
+              {isExporting ? 'Exporting…' : 'Export PDF'}
+            </button>
           </div>
         </div>
       </div>

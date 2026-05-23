@@ -163,7 +163,10 @@ const TeamList = () => {
                 <p style={{ fontSize: 12, fontWeight: 500, color: "#5A6070" }}>Assign member</p>
                 <select style={inputStyle} value={employeeToAssign} onChange={(e) => setEmployeeToAssign(e.target.value === "" ? "" : Number(e.target.value))}>
                   <option value="">Select employee</option>
-                  {employees?.map((emp) => (
+                  {employees?.filter(emp => 
+                    emp.currentDepartmentId === selectedTeam.departmentId && 
+                    !members?.some(m => m.employeeId === emp.id)
+                  ).map((emp) => (
                     <option key={emp.id} value={emp.id}>{emp.staffName} ({emp.employeeCode})</option>
                   ))}
                 </select>

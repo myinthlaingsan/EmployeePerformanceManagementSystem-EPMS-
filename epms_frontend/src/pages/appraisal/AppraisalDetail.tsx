@@ -193,6 +193,25 @@ const AppraisalDetail: React.FC = () => {
         </div>
       )}
 
+      {/* Score Preview Banner (when not finalized) */}
+      {appraisal.status !== 'FINALIZED' && (
+        <div onClick={() => navigate(`/appraisal/${id}/score`)} style={{ background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 12, padding: '16px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
+          className="hover:opacity-90 transition-opacity">
+          <div className="flex items-center gap-3">
+            <Calculator size={20} style={{ color: '#0C447C', flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#0C447C' }}>
+                View Score Preview
+              </p>
+              <p style={{ fontSize: 12, color: '#5A6070', marginTop: 2 }}>
+                See your provisional score breakdown based on currently submitted data.
+              </p>
+            </div>
+          </div>
+          <ArrowRight size={16} style={{ color: '#0C447C', flexShrink: 0 }} />
+        </div>
+      )}
+
       {/* Results banner */}
       {(appraisal.status === 'HR_APPROVED' || appraisal.status === 'FINALIZED') && (
         <div onClick={() => navigate(`/appraisal/${id}/results`)} style={{ background: '#1A56DB', border: 'none', borderRadius: 12, padding: '16px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
@@ -211,6 +230,23 @@ const AppraisalDetail: React.FC = () => {
           <ArrowRight size={16} style={{ color: '#FFFFFF', flexShrink: 0 }} />
         </div>
       )}
+
+      {/* When finalized, we also offer the live breakdown as a secondary preview */}
+      {appraisal.status === 'FINALIZED' && (
+        <div onClick={() => navigate(`/appraisal/${id}/score`)} style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 12, padding: '12px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
+          className="hover:bg-[#EEF0F4] transition-colors">
+          <div className="flex items-center gap-3">
+            <Calculator size={16} style={{ color: '#5A6070', flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 500, color: '#5A6070' }}>
+                Compare with Live Score Breakdown
+              </p>
+            </div>
+          </div>
+          <ArrowRight size={14} style={{ color: '#5A6070', flexShrink: 0 }} />
+        </div>
+      )}
+
 
       {/* Form cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
