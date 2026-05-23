@@ -94,7 +94,8 @@ public class KpiProgressServiceImpl implements KpiProgressService {
             } else {
                 scorePercent = request.getActualValue()
                         .divide(item.getTargetValue(), 4, java.math.RoundingMode.HALF_UP)
-                        .multiply(new BigDecimal("100"));
+                        .multiply(new BigDecimal("100"))
+                        .min(new BigDecimal("100"));
             }
         }
         item.setScorePercent(scorePercent);
@@ -106,10 +107,12 @@ public class KpiProgressServiceImpl implements KpiProgressService {
         }
         item.setWeightedScore(weightedScore);
 
-        if (request.getProgressPercent().compareTo(new BigDecimal("100")) >= 0) {
+        if (scorePercent.compareTo(new BigDecimal("100")) >= 0) {
             item.setStatus(KpiItemStatus.COMPLETED);
-        } else {
+        } else if (item.getActualValue().compareTo(BigDecimal.ZERO) > 0) {
             item.setStatus(KpiItemStatus.IN_PROGRESS);
+        } else {
+            item.setStatus(KpiItemStatus.NOT_STARTED);
         }
         goalItemRepository.save(item);
 
@@ -144,8 +147,8 @@ public class KpiProgressServiceImpl implements KpiProgressService {
 
     @Override
     public List<KpiProgressResponse> getRecentProgress(Long employeeId, int limit) {
-        return progressRepository.findByGoalItemGoalSetEmployeeIdOrderByIdDesc(employeeId).stream()
-                .limit(limit)
+        return progressRepository.findCurrentProgressByEmployeeId(
+                employeeId, org.springframework.data.domain.PageRequest.of(0, limit)).stream()
                 .map(p -> KpiProgressResponse.builder()
                         .id(p.getId())
                         .goalItemId(p.getGoalItem().getId())

@@ -426,6 +426,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .orElseThrow(() -> new NotFoundException("Category not found")));
         item.setIsCompliance(request.getIsCompliance());
 
+        recalculateItemScores(item);
+
         goalItemRepository.save(item);
         return kpiMapper.toGoalSetResponse(goalSet);
     }
@@ -483,6 +485,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             item.setWeightPercent(update.getWeightPercent());
             item.setCategory(categoryRepository.findById(update.getCategoryId())
                     .orElseThrow(() -> new NotFoundException("Category not found")));
+
+            recalculateItemScores(item);
 
             goalItemRepository.save(item);
         }
@@ -583,6 +587,14 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         if (goalSet.getStatus() == KpiGoalStatus.ARCHIVED) {
             throw new IllegalStateException("Cannot revert archived goals");
+        }
+
+        boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_HR")
+                        || a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (goalSet.getStatus() == KpiGoalStatus.LOCKED && !isHrOrAdmin) {
+            throw new IllegalStateException("Cannot revert a LOCKED goal set. Contact HR/Admin.");
         }
 
         goalSet.setStatus(KpiGoalStatus.DRAFT);
@@ -745,31 +757,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             throw new IllegalArgumentException("No changes detected in the revision request.");
         }
 
-        // Recalculate scorePercent and weightedScore when targetValue or weightPercent changed.
-        // Keeps stored scores consistent with the revised values so KpiScoringServiceImpl
-        // sums the correct weightedScore at finalization time.
-        if (item.getActualValue() != null) {
-            BigDecimal scorePercent = BigDecimal.ZERO;
-            if (item.getTargetValue() != null) {
-                if (item.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
-                    // Zero-tolerance: actual=0 → 100%, actual>0 → 0%
-                    scorePercent = item.getActualValue().compareTo(BigDecimal.ZERO) == 0
-                            ? new BigDecimal("100") : BigDecimal.ZERO;
-                } else {
-                    scorePercent = item.getActualValue()
-                            .divide(item.getTargetValue(), 4, RoundingMode.HALF_UP)
-                            .multiply(new BigDecimal("100"));
-                }
-            }
-            item.setScorePercent(scorePercent);
-
-            BigDecimal weightedScore = BigDecimal.ZERO;
-            if (item.getWeightPercent() != null) {
-                weightedScore = scorePercent.multiply(
-                        item.getWeightPercent().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
-            }
-            item.setWeightedScore(weightedScore);
-        }
+        recalculateItemScores(item);
 
         // Save the in-place updated item — progress history stays intact
         goalItemRepository.save(item);
@@ -878,5 +866,39 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Current user not found"));
+    }
+
+    private void recalculateItemScores(KpiGoalItem item) {
+        if (item.getActualValue() == null) return;
+
+        BigDecimal scorePercent = BigDecimal.ZERO;
+        if (item.getTargetValue() != null) {
+            if (item.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
+                scorePercent = item.getActualValue().compareTo(BigDecimal.ZERO) == 0
+                        ? new BigDecimal("100") : BigDecimal.ZERO;
+            } else {
+                scorePercent = item.getActualValue()
+                        .divide(item.getTargetValue(), 4, RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"))
+                        .min(new BigDecimal("100"));  // cap — also fixes Bug 2
+            }
+        }
+        item.setScorePercent(scorePercent);
+
+        BigDecimal weightedScore = BigDecimal.ZERO;
+        if (item.getWeightPercent() != null) {
+            weightedScore = scorePercent.multiply(
+                    item.getWeightPercent().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+        }
+        item.setWeightedScore(weightedScore);
+
+        // Fixes Bug 4: reset status from server-computed score
+        if (scorePercent.compareTo(new BigDecimal("100")) >= 0) {
+            item.setStatus(KpiItemStatus.COMPLETED);
+        } else if (item.getActualValue().compareTo(BigDecimal.ZERO) > 0) {
+            item.setStatus(KpiItemStatus.IN_PROGRESS);
+        } else {
+            item.setStatus(KpiItemStatus.NOT_STARTED);
+        }
     }
 }
