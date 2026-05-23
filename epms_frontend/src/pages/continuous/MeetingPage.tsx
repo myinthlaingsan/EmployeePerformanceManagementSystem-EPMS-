@@ -266,7 +266,7 @@ const MeetingPage = () => {
             id: item.id || undefined,
             content: (item.content ?? '').trim(),
             status: (item.status || 'PENDING') as ActionItemStatus,
-            assignedToId: item.assignedToId,
+            assignedToId: item.assignedToId || newMeeting.employeeId,
             dueDate: item.dueDate,
           }))
           .filter(item => item.content !== ''),
@@ -798,23 +798,6 @@ const MeetingPage = () => {
                             </div>
                             {!isDone && (
                               <div className="flex gap-2 pl-0">
-                                <select
-                                  style={{ ...inputStyle, fontSize: 11, padding: '4px 8px', flex: 1 }}
-                                  value={item.assignedToId ?? newMeeting.employeeId ?? ''}
-                                  onChange={e => {
-                                    const updated = [...newMeeting.actionItems];
-                                    updated[index] = { ...item, assignedToId: Number(e.target.value) || undefined };
-                                    setNewMeeting({ ...newMeeting, actionItems: updated });
-                                  }}
-                                >
-                                  <option value="">Assignee…</option>
-                                  {newMeeting.employeeId && filteredEmployees.find(e => e.id === newMeeting.employeeId) && (
-                                    <option value={newMeeting.employeeId}>{filteredEmployees.find(e => e.id === newMeeting.employeeId)?.staffName} (default)</option>
-                                  )}
-                                  {filteredEmployees.filter(e => e.id !== newMeeting.employeeId).map(emp => (
-                                    <option key={emp.id} value={emp.id}>{emp.staffName}</option>
-                                  ))}
-                                </select>
                                 <input type="date"
                                   min={newMeeting.meetingDate || undefined}
                                   max={newMeeting.followUpDate || undefined}

@@ -24,9 +24,10 @@ public class PerformanceHistoryController {
             @PathVariable Long employeeId,
             @RequestParam(required = false) SourceType sourceType,
             @RequestParam(required = false) Boolean onlyByManager,
+            @RequestParam(required = false) Boolean isConducted,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PagedResponse<PerformanceHistoryResponse> responses = historyService.getHistoryByEmployee(employeeId, sourceType, onlyByManager, page, size);
+        PagedResponse<PerformanceHistoryResponse> responses = historyService.getHistoryByEmployee(employeeId, sourceType, onlyByManager, isConducted, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 

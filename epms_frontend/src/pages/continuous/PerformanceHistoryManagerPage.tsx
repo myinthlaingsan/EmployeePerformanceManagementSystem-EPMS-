@@ -932,11 +932,19 @@ export const PerformanceHistoryManagerPage = () => {
     }
   }, [user?.currentDepartmentId]);
 
+  const selectedEmployee = employees?.find(e => e.id === selectedEmpId);
+  const isManagerSelected = selectedEmployee?.roles?.some(r => r.replace("ROLE_", "") === 'MANAGER');
+
   const { data: employeeHistoryResponse, isLoading: isEmpHistoryLoading } = useGetPerformanceHistoryByEmployeeQuery(
     { 
       employeeId: Number(selectedEmpId), 
       sourceType: filterType,
-      onlyByManager: true,
+      onlyByManager: selectedEmpId === '' 
+        ? undefined 
+        : (isManagerSelected && managerPerspective === 'conducted' ? false : true),
+      isConducted: selectedEmpId === ''
+        ? undefined
+        : (isManagerSelected && managerPerspective === 'conducted' ? true : false),
       page: currentPage - 1, 
       size: itemsPerPage 
     }, 
@@ -957,22 +965,30 @@ export const PerformanceHistoryManagerPage = () => {
   const { data: analyticsData } = useGetPerformancePulseQuery({
     departmentId: Number(selectedDeptId),
     employeeId: selectedEmpId === '' ? undefined : Number(selectedEmpId),
-    onlyByManager: selectedEmpId === '' ? undefined : true
+    onlyByManager: selectedEmpId === '' 
+      ? undefined 
+      : (isManagerSelected && managerPerspective === 'conducted' ? false : true)
   });
 
   const { data: meetingPulseData } = useGetMeetingPulseQuery({
     departmentId: Number(selectedDeptId),
     employeeId: selectedEmpId === '' ? undefined : Number(selectedEmpId),
-    onlyByManager: selectedEmpId === '' ? undefined : true
+    onlyByManager: selectedEmpId === '' 
+      ? undefined 
+      : (isManagerSelected && managerPerspective === 'conducted' ? false : true)
   });
-
-  const selectedEmployee = employees?.find(e => e.id === selectedEmpId);
-  const isManagerSelected = selectedEmployee?.roles?.some(r => r.replace("ROLE_", "") === 'MANAGER');
 
   const managerChartHistory = useMemo(() => {
     if (!selectedEmpId) return [];
-    const baseHistory = meetingPulseData?.actionHistory || analyticsData || [];
-    return [...baseHistory].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    if (meetingPulseData?.actionHistory) {
+      return [...meetingPulseData.actionHistory].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    if (analyticsData) {
+      return analyticsData
+        .filter(h => h.performerId === Number(selectedEmpId))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    return [];
   }, [analyticsData, meetingPulseData, selectedEmpId]);
 
   const receivedAnalyticsData = useMemo(() => {
@@ -1004,9 +1020,14 @@ export const PerformanceHistoryManagerPage = () => {
   }, [meetingPulseData, selectedEmpId]);
 
   const selectedDeptName = departments?.find(d => d.id === selectedDeptId)?.departmentName;
-  const filteredEmployees = employees?.filter(emp => 
-    !selectedDeptName || emp.currentDepartmentName === selectedDeptName
-  ) || [];
+  const userRank = user?.levelRank ?? 99;
+  const filteredEmployees = employees?.filter(emp => {
+    if (selectedDeptName && emp.currentDepartmentName !== selectedDeptName) {
+      return false;
+    }
+    const empRank = emp.levelRank ?? 99;
+    return empRank >= userRank;
+  }) || [];
 
 
   const historyResponse = selectedEmpId ? employeeHistoryResponse : globalHistoryResponse;
@@ -1215,6 +1236,7 @@ export const PerformanceHistoryManagerPage = () => {
             onChange={(e) => {
               setSelectedEmpId(e.target.value === '' ? '' : Number(e.target.value));
               setCurrentPage(1);
+              setManagerPerspective('conducted');
             }}
             disabled={isEmpsLoading || employees.length === 0}
           >

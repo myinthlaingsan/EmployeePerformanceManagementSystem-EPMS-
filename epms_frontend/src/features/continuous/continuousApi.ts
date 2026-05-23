@@ -268,11 +268,12 @@ export const continuousApi = api.injectEndpoints({
     }),
 
     // Performance History
-    getPerformanceHistoryByEmployee: builder.query<PagedResponse<PerformanceHistoryResponse>, { employeeId: number; sourceType?: string; onlyByManager?: boolean; page: number; size: number }>({
-      query: ({ employeeId, sourceType, onlyByManager, page, size }) => {
+    getPerformanceHistoryByEmployee: builder.query<PagedResponse<PerformanceHistoryResponse>, { employeeId: number; sourceType?: string; onlyByManager?: boolean; isConducted?: boolean; page: number; size: number }>({
+      query: ({ employeeId, sourceType, onlyByManager, isConducted, page, size }) => {
         let url = `/performance-history/employee/${employeeId}?page=${page}&size=${size}`;
         if (sourceType && sourceType !== 'ALL') url += `&sourceType=${sourceType}`;
         if (onlyByManager !== undefined) url += `&onlyByManager=${onlyByManager}`;
+        if (isConducted !== undefined) url += `&isConducted=${isConducted}`;
         return url;
       },
       transformResponse: (response: ApiResponse<PagedResponse<PerformanceHistoryResponse>>) => response.data,

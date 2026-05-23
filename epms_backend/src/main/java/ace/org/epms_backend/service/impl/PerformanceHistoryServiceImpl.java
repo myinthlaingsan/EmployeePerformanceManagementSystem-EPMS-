@@ -36,7 +36,7 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
     private final ace.org.epms_backend.mapper.continuous.MeetingActionItemMapper actionItemMapper;
 
     @Override
-    public ace.org.epms_backend.dto.PagedResponse<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId, SourceType sourceType, Boolean onlyByManager, int page, int size) {
+    public ace.org.epms_backend.dto.PagedResponse<ace.org.epms_backend.dto.continuous.PerformanceHistoryResponse> getHistoryByEmployee(Long employeeId, SourceType sourceType, Boolean onlyByManager, Boolean isConducted, int page, int size) {
         Employee currentUser = authService.getCurrentUser();
         if (!isAnyPrivileged(currentUser)) {
             throw new ace.org.epms_backend.exception.AccessDeniedException("Only Admin, HR, or Manager can view performance pulse.");
@@ -58,14 +58,14 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
                            (currentUser.getId().equals(h.getEmployee().getId()) || (h.getManager() != null && currentUser.getId().equals(h.getManager().getId())));
                 })
                 .filter(h -> {
-                    // Filter logic:
-                    // 1. If Mar is the employee (subject), she sees it (unless private and she's not creator).
-                    // 2. If Mar is NOT the employee, she only sees it if she was the performer/creator (manager action log).
-                    if (!h.getEmployee().getId().equals(employeeId)) {
+                    if (Boolean.TRUE.equals(isConducted)) {
+                        // Conducted perspective: selected employee is the creator or performer (given activities)
                         Long actualPerformerId = h.getPerformer() != null ? h.getPerformer().getId() : h.getCreatedBy();
                         return employeeId.equals(actualPerformerId);
+                    } else {
+                        // Received perspective: selected employee is the subject/recipient
+                        return employeeId.equals(h.getEmployee().getId());
                     }
-                    return true;
                 })
                 .map(this::mapToResponseWithFallback)
                 .collect(Collectors.toList());
@@ -274,7 +274,7 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
         if (employeeId != null) {
             boolean selectedUserIsManager = employeeRoleRepository.findRolesByEmployeeId(employeeId).stream()
                     .anyMatch(r -> r.getRoleName() == RoleType.MANAGER);
-            if (selectedUserIsManager) {
+            if (selectedUserIsManager && !Boolean.TRUE.equals(onlyByManager)) {
                 historyList = historyRepository.findActionHistoryByPerformer(employeeId).stream()
                         .map(this::mapToResponseWithFallback)
                         .collect(Collectors.toList());
