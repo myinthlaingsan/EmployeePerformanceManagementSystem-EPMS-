@@ -7,6 +7,17 @@ import KpiGoalCard from '../../components/kpi/KpiGoalCard';
 import KpiUpdateHistoryCard from '../../components/kpi/KpiUpdateHistoryCard';
 import { TrendingUp, Target } from 'lucide-react';
 
+const formatAssignedAt = (iso?: string): string => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const today = new Date();
+  const diffDays = Math.floor((today.getTime() - d.getTime()) / 86400000);
+  const base = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (diffDays === 0) return `${base} · today`;
+  if (diffDays === 1) return `${base} · yesterday`;
+  return base;
+};
+
 const MyKpiDashboard: React.FC = () => {
   const { user, activeCycleId, activeCycleName } = useAuth();
 
@@ -46,13 +57,32 @@ const MyKpiDashboard: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4" style={{ paddingBottom: 14, borderBottom: '0.5px solid #E4E6EC' }}>
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>My Assigned Goals</h1>
-          <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Cycle: {activeCycleName}</p>
+          
         </div>
         <div className="flex gap-3 self-start sm:self-auto">
           <KpiSummaryCard label="Overall Progress" value={`${overallProgress}%`} icon={TrendingUp} color="blue" />
           <KpiSummaryCard label="Active Goals" value={kpis.length} icon={Target} color="indigo" />
         </div>
       </div>
+
+      {goalSetResponse?.data && (
+        <div style={{
+          display: 'flex', gap: 32, padding: '10px 0',
+          borderBottom: '0.5px solid #E4E6EC', flexWrap: 'wrap'
+        }}>
+          {[
+            { label: 'CYCLE', value: goalSetResponse.data.appraisalCycleName ?? activeCycleName },
+            { label: 'MANAGER', value: goalSetResponse.data.managerName },
+            { label: 'ASSIGNED BY', value: goalSetResponse.data.assignedByName },
+            { label: 'ASSIGNED', value: formatAssignedAt(goalSetResponse.data.assignedAt) },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p style={{ fontSize: 10, fontWeight: 600, color: '#9EA3B0', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginTop: 2 }}>{value ?? '—'}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Goals */}
