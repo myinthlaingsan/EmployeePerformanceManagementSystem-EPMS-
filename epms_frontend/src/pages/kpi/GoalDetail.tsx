@@ -302,8 +302,8 @@ const GoalDetail: React.FC = () => {
               <table className="w-full text-left" style={{ minWidth: 600 }}>
             <thead>
               <tr style={{ borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
-                {['KPI Item', 'Weight', 'Target', 'Progress', 'Actions'].map((h, i) => (
-                  <th key={h} style={{ padding: '10px 18px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 4 ? 'right' : 'left' }}>{h}</th>
+                {['KPI Item', 'Weight', 'Target', 'Unit', 'Progress', 'Actions'].map((h, i) => (
+                  <th key={h} style={{ padding: '10px 18px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -329,7 +329,10 @@ const GoalDetail: React.FC = () => {
                     </td>
                     <td style={{ padding: '12px 18px', fontSize: 13, fontWeight: 500, color: '#111827', background: rowBg }}>{item.weightPercent}%</td>
                     <td style={{ padding: '12px 18px', fontSize: 12, color: '#5A6070', background: rowBg }}>
-                      {item.targetValue} <span style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase' }}>{item.unit}</span>
+                      {item.targetValue}
+                    </td>
+                    <td style={{ padding: '12px 18px', fontSize: 12, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', background: rowBg }}>
+                      {item.unit || '—'}
                     </td>
                     <td style={{ padding: '12px 18px', background: rowBg }}>
                       <div className="flex items-center gap-3">
