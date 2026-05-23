@@ -53,16 +53,15 @@ const MyKpiDashboard: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4" style={{ paddingBottom: 14, borderBottom: '0.5px solid #E4E6EC' }}>
-        <div>
-          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>My Assigned Goals</h1>
-          
-        </div>
-        <div className="flex gap-3 self-start sm:self-auto">
-          <KpiSummaryCard label="Overall Progress" value={`${overallProgress}%`} icon={TrendingUp} color="blue" />
-          <KpiSummaryCard label="Active Goals" value={kpis.length} icon={Target} color="indigo" />
-        </div>
+      {/* Header — title only */}
+      <div style={{ paddingBottom: 14, borderBottom: '0.5px solid #E4E6EC' }}>
+        <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827', margin: 0 }}>My Assigned Goals</h1>
+      </div>
+
+      {/* Stat cards row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <KpiSummaryCard label="Overall Progress" value={`${overallProgress}%`} icon={TrendingUp} color="blue" />
+        <KpiSummaryCard label="Active Goals" value={kpis.length} icon={Target} color="indigo" />
       </div>
 
       {goalSetResponse?.data && (
