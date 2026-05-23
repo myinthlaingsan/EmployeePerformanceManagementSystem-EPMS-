@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetEmployeeKpiHistoryQuery, useGetGoalSetAuditTrailQuery } from '../../services/kpiApi';
 import {
   ChevronLeft, Calendar, Target, TrendingUp, Clock, AlertCircle, MessageSquare
@@ -21,15 +21,29 @@ const AUDIT_ACTION_STYLE: Record<string, { bg: string; text: string }> = {
 const EmployeeKpiHistory: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
-  const [selectedGoalSetId, setSelectedGoalSetId] = useState<number | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedGoalSetId = Number(searchParams.get('cycle')) || null;
+  const parsedId = employeeId ? Number(employeeId) : undefined;
 
-  const { data: historyResponse, isLoading: historyLoading } = useGetEmployeeKpiHistoryQuery(Number(employeeId));
-  const { data: auditResponse, isLoading: auditLoading } = useGetGoalSetAuditTrailQuery(selectedGoalSetId || 0, { skip: !selectedGoalSetId });
+  const { data: historyResponse, isLoading: historyLoading } = useGetEmployeeKpiHistoryQuery(parsedId ?? 0, {
+    skip: !parsedId || isNaN(parsedId),
+  });
+  const { data: auditResponse, isLoading: auditLoading } = useGetGoalSetAuditTrailQuery(selectedGoalSetId || 0, {
+    skip: !selectedGoalSetId,
+  });
 
-  const goalSets = historyResponse?.data || [];
+  const goalSets = useMemo(() => historyResponse?.data || [], [historyResponse?.data]);
   const auditLogs = auditResponse?.data || [];
-  const selectedGoalSet = goalSets.find(gs => gs.id === selectedGoalSetId);
-  const metrics = selectedGoalSet ? calculateGoalSetMetrics(selectedGoalSet) : null;
+  const goalSetMetricsMap = useMemo(
+    () => new Map(goalSets.map(gs => [gs.id, calculateGoalSetMetrics(gs)])),
+    [goalSets]
+  );
+  const selectedGoalSet = selectedGoalSetId ? goalSets.find(gs => gs.id === selectedGoalSetId) : undefined;
+  const metrics = selectedGoalSet ? goalSetMetricsMap.get(selectedGoalSet.id) : null;
+
+  if (!parsedId || isNaN(parsedId)) {
+    return <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Invalid employee reference.</div>;
+  }
 
   if (historyLoading) return (
     <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading KPI history…</div>
@@ -60,12 +74,12 @@ const EmployeeKpiHistory: React.FC = () => {
         <div className="relative" style={{ minWidth: 260 }}>
           <Calendar size={13} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
           <select value={selectedGoalSetId || ''}
-            onChange={e => setSelectedGoalSetId(Number(e.target.value))}
-            style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 36px 8px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', appearance: 'none' as any }}>
+            onChange={e => setSearchParams({ cycle: String(e.target.value) })}
+            style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 36px 8px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', appearance: 'none' as const }}>
             <option value="" disabled>Choose a performance cycle…</option>
             {goalSets.map(gs => (
               <option key={gs.id} value={gs.id}>
-                {gs.appraisalCycleName || 'Annual Cycle'} ({gs.status}) — {calculateGoalSetMetrics(gs).finalScore.toFixed(0)}%
+                {gs.appraisalCycleName || 'Annual Cycle'} ({gs.status}) — {goalSetMetricsMap.get(gs.id)?.finalScore.toFixed(0)}%
               </option>
             ))}
           </select>
@@ -93,13 +107,15 @@ const EmployeeKpiHistory: React.FC = () => {
               <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Cycle Performance Score</p>
               <div className="flex items-baseline gap-2">
                 <span style={{ fontSize: 28, fontWeight: 500, color: '#111827' }}>{metrics.finalScore.toFixed(1)}%</span>
-                <span style={{ fontSize: 10, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 4, padding: '2px 6px' }}>Target Met</span>
+                {metrics.finalScore >= 100 && (
+                  <span style={{ fontSize: 10, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 4, padding: '2px 6px' }}>Target Met</span>
+                )}
               </div>
               <TrendingUp size={48} style={{ position: 'absolute', right: 12, bottom: 10, color: '#E4E6EC', opacity: 0.5 }} />
             </div>
 
             <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
-              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Goal Completion Rate</p>
+              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Avg. Goal Achievement</p>
               <div className="flex items-baseline gap-2">
                 <span style={{ fontSize: 28, fontWeight: 500, color: '#111827' }}>{metrics.completionRate.toFixed(1)}%</span>
                 <span style={{ fontSize: 12, color: '#9EA3B0' }}>/ 100%</span>
@@ -108,7 +124,7 @@ const EmployeeKpiHistory: React.FC = () => {
             </div>
 
             <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
-              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Cycle Status</p>
+              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Goal Status</p>
               {(() => {
                 const ss = STATUS_STYLE[selectedGoalSet.status] || { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8' };
                 return (
@@ -171,7 +187,7 @@ const EmployeeKpiHistory: React.FC = () => {
                         <div style={{ position: 'absolute', left: -5, top: 4, width: 10, height: 10, borderRadius: '50%', background: '#1A56DB', border: '2px solid #FFFFFF' }} />
                         <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 4 }}>
                           <span style={{ fontSize: 9, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', background: as.bg, color: as.text, borderRadius: 4, padding: '2px 6px' }}>
-                            {log.action.replace('_', ' ')}
+                            {log.action.replaceAll('_', ' ')}
                           </span>
                           <span style={{ fontSize: 10, color: '#9EA3B0' }}>
                             {format(new Date(log.createdAt), 'dd/MM/yyyy, h:mm a')}
@@ -183,19 +199,19 @@ const EmployeeKpiHistory: React.FC = () => {
                         {log.changeReason && (
                           <div style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 10px', display: 'flex', gap: 6 }}>
                             <MessageSquare size={12} style={{ color: '#9EA3B0', marginTop: 1, flexShrink: 0 }} />
-                            <p style={{ fontSize: 12, color: '#5A6070', fontStyle: 'italic' }}>"{log.changeReason}"</p>
+                            <p style={{ fontSize: 12, color: '#5A6070', fontStyle: 'italic' }}>&quot;{log.changeReason}&quot;</p>
                           </div>
                         )}
                       </div>
                     );
                   })}
-                  {auditLogs.length === 0 && !auditLoading && (
-                    <div style={{ paddingLeft: 22, textAlign: 'center', paddingTop: 16 }}>
-                      <Clock size={32} style={{ color: '#E0E2E8', margin: '0 auto 8px' }} />
-                      <p style={{ fontSize: 11, color: '#9EA3B0' }}>No history logs available</p>
-                    </div>
-                  )}
                 </div>
+                {!auditLogs.length && !auditLoading && (
+                  <div style={{ textAlign: 'center', paddingTop: 16 }}>
+                    <Clock size={32} style={{ color: '#E0E2E8', margin: '0 auto 8px' }} />
+                    <p style={{ fontSize: 11, color: '#9EA3B0' }}>No history logs available</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
