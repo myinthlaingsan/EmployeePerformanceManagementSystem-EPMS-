@@ -683,7 +683,7 @@ const MeetingPage = () => {
             </div>
 
             {expandedMeetingId === m.meetingId && (
-              <MeetingComments meetingId={m.meetingId} isManager={isManager} />
+              <MeetingComments meetingId={m.meetingId} isManager={m.managerId === user?.id} />
             )}
           </div>
         ))}
