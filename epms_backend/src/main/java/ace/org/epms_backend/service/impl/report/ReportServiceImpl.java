@@ -22,6 +22,8 @@ import ace.org.epms_backend.model.appraisal.SelfAssessment;
 import ace.org.epms_backend.model.appraisal.ManagerEvaluation;
 import ace.org.epms_backend.model.kpi.*;
 import ace.org.epms_backend.model.pip.PipRecord;
+import ace.org.epms_backend.model.pip.PipObjective;
+import ace.org.epms_backend.enums.PipStatus;
 import ace.org.epms_backend.model.appraisal.SelfAssessmentAnswer;
 import ace.org.epms_backend.model.appraisal.ManagerEvaluationAnswer;
 import ace.org.epms_backend.repository.*;
@@ -1148,5 +1150,57 @@ public class ReportServiceImpl implements ReportService {
         params.put("submittedAt", submittedAt);
 
         return generateReport("reports/manager_evaluation_form.jrxml", params, questions, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportPipDetailReport(Long pipId, String format) {
+        PipRecord pip = pipRecordRepository.findById(pipId)
+                .orElseThrow(() -> new NotFoundException("PIP not found: " + pipId));
+
+        // Guard: only export after the PIP is finalized
+        if (pip.getStatus() != PipStatus.COMPLETED && pip.getStatus() != PipStatus.CLOSED) {
+            throw new InvalidAppraisalStateException(
+                    "PIP can only be exported after it is finalized (COMPLETED or CLOSED).");
+        }
+
+        // Subject info
+        Employee employee = pip.getEmployee();
+        EmployeeDepartment ed = employeeDepartmentRepository
+                .findByEmployeeIdAndIsCurrentTrue(employee.getId()).orElse(null);
+
+        // Objective rows
+        List<PipObjective> objectives = pip.getObjectives();
+        List<PipDetailReportObjectiveDTO> rows = objectives.stream()
+                .map(o -> PipDetailReportObjectiveDTO.builder()
+                        .objectiveTitle(o.getTitle())
+                        .objectiveDescription(o.getDescription())
+                        .successCriteria(o.getSuccessCriteria())
+                        .progressPercent(pipProgressLogRepository
+                                .findFirstByObjective_ObjectiveIdOrderByCreatedAtDesc(o.getObjectiveId())
+                                .map(log -> log.getProgressPercent() != null ? log.getProgressPercent().toPlainString() + "%" : "0%")
+                                .orElse("0%"))
+                        .status(o.getStatus() != null ? o.getStatus().name() : "—")
+                        .build())
+                .toList();
+
+        // Header params
+        Map<String, Object> params = new HashMap<>();
+        params.put("reportTitle", "Performance Improvement Plan");
+        params.put("employeeName", employee.getStaffName());
+        params.put("employeeCode", employee.getEmployeeCode());
+        params.put("departmentName", ed != null && ed.getCurrentDepartment() != null
+                ? ed.getCurrentDepartment().getDepartmentName() : "N/A");
+        params.put("positionName", employee.getPosition() != null ? employee.getPosition().getPositionName() : "N/A");
+        params.put("managerName", pip.getManager() != null ? pip.getManager().getStaffName() : "N/A");
+        params.put("severity", pip.getSeverity() != null ? pip.getSeverity().name() : "—");
+        params.put("status", pip.getStatus().name());
+        params.put("outcome", pip.getFinalOutcome() != null ? pip.getFinalOutcome().name() : "—");
+        params.put("startDate", pip.getStartDate() != null ? pip.getStartDate().toString() : "—");
+        params.put("endDate", pip.getEndDate() != null ? pip.getEndDate().toString() : "—");
+        params.put("reason", pip.getReason() != null ? pip.getReason() : "");
+        params.put("overallComment", pip.getOverallComment() != null ? pip.getOverallComment() : "");
+
+        return generateReport("reports/pip_detail_report.jrxml", params, rows, format);
     }
 }
