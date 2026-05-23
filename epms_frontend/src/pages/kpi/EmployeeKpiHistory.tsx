@@ -2,24 +2,16 @@ import React, { useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetEmployeeKpiHistoryQuery, useGetGoalSetAuditTrailQuery } from '../../services/kpiApi';
 import {
-  ChevronLeft, Calendar, Target, TrendingUp, Clock, AlertCircle, MessageSquare
+  ChevronLeft, Calendar, Target, TrendingUp, Clock, AlertCircle
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { calculateGoalSetMetrics } from '../../utils/kpiTransformationService';
+import KpiAuditTable from '../../components/kpi/KpiAuditTable';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
   LOCKED:   { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
   DRAFT:    { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
   ARCHIVED: { bg: '#F0F0F0', text: '#6B7280', border: '#D1D5DB' },
-};
-
-const AUDIT_ACTION_STYLE: Record<string, { bg: string; text: string }> = {
-  PROGRESS_UPDATE: { bg: '#EAF3DE', text: '#27500A' },
-  ITEM:            { bg: '#EEF3FD', text: '#0C447C' },
-  STATUS_CHANGE:   { bg: '#FEF3C7', text: '#92400E' },
-  APPROVED:        { bg: '#EAF3DE', text: '#27500A' },
-  LOCKED:          { bg: '#F1EFE8', text: '#444441' },
 };
 
 const EmployeeKpiHistory: React.FC = () => {
@@ -156,7 +148,7 @@ const EmployeeKpiHistory: React.FC = () => {
           </div>
 
           {/* Objectives + Audit */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-4">
             {/* Objectives */}
             <div>
               <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Assigned Objectives</p>
@@ -195,62 +187,12 @@ const EmployeeKpiHistory: React.FC = () => {
               </div>
             </div>
 
-            {/* Audit Trail */}
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Goal Journey</p>
-              <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
-                <div style={{ borderLeft: '0.5px solid #E4E6EC', marginLeft: 8, paddingBottom: 8 }} className="space-y-6">
-                  {auditLoading ? (
-                    <div className="space-y-2 pl-6">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="space-y-2">
-                          <div style={{ height: 20, width: '40%', background: '#F5F6F8', borderRadius: 4 }} />
-                          <div style={{ height: 16, width: '80%', background: '#F5F6F8', borderRadius: 4 }} />
-                          <div style={{ height: 40, background: '#F5F6F8', borderRadius: 8 }} />
-                        </div>
-                      ))}
-                    </div>
-                  ) : auditLogs.length > 0 ? auditLogs.map(log => {
-                    const actionKey = log.action.includes('ITEM') ? 'ITEM' : log.action;
-                    const as = AUDIT_ACTION_STYLE[actionKey] || { bg: '#EEF3FD', text: '#0C447C' };
-                    return (
-                      <div key={log.id} className="relative" style={{ paddingLeft: 22 }}>
-                        <div style={{ position: 'absolute', left: -5, top: 4, width: 10, height: 10, borderRadius: '50%', background: '#1A56DB', border: '2px solid #FFFFFF' }} />
-                        <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 4 }}>
-                          <span style={{ fontSize: 9, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', background: as.bg, color: as.text, borderRadius: 4, padding: '2px 6px' }}>
-                            {log.action.replaceAll('_', ' ')}
-                          </span>
-                          <span style={{ fontSize: 10, color: '#9EA3B0' }}>
-                            {format(new Date(log.createdAt), 'dd/MM/yyyy, h:mm a')}
-                          </span>
-                        </div>
-                        {log.changeDetails && (
-                          <p style={{ fontSize: 12, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{log.changeDetails}</p>
-                        )}
-                        {log.changeReason && (
-                          <div style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 10px', display: 'flex', gap: 6 }}>
-                            <MessageSquare size={12} style={{ color: '#9EA3B0', marginTop: 1, flexShrink: 0 }} />
-                            <p style={{ fontSize: 12, color: '#5A6070', fontStyle: 'italic' }}>&quot;{log.changeReason}&quot;</p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }) : null}
-                </div>
-                {auditError && !auditLoading && (
-                  <div style={{ textAlign: 'center', paddingTop: 16 }}>
-                    <AlertCircle size={24} style={{ color: '#E53E3E', margin: '0 auto 8px' }} />
-                    <p style={{ fontSize: 11, color: '#E53E3E' }}>Failed to load audit logs.</p>
-                  </div>
-                )}
-                {!auditLogs.length && !auditLoading && !auditError && (
-                  <div style={{ textAlign: 'center', paddingTop: 16 }}>
-                    <Clock size={32} style={{ color: '#E0E2E8', margin: '0 auto 8px' }} />
-                    <p style={{ fontSize: 11, color: '#9EA3B0' }}>No history logs available</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Audit Trail Table */}
+            <KpiAuditTable
+              logs={auditLogs}
+              isLoading={auditLoading}
+              isError={auditError}
+            />
           </div>
         </div>
       ) : goalSets.length > 0 ? (
