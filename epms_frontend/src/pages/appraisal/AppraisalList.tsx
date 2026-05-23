@@ -239,7 +239,7 @@ const AppraisalList: React.FC = () => {
               >
                 <Mail className="w-4 h-4" /> {isSendingReminders ? 'Sending...' : 'Send Reminders'}
               </button>
-              {isPrivileged && !cycle?.isAssigned && (
+              {isPrivileged && !cycle?.isAssigned && !cycle?.isActive && cycle?.status !== 'ARCHIVED' && (
                 <button
                   onClick={() => {
                     setConfirmModal({
@@ -424,7 +424,7 @@ const AppraisalList: React.FC = () => {
                 {cycle.status?.replace('_', ' ') || (cycle.isActive ? 'ACTIVE' : 'INACTIVE')}
               </div>
               <div className="flex items-center gap-2">
-                {isPrivileged && !cycle.isAssigned && (
+                {isPrivileged && !cycle.isAssigned && !cycle.isActive && cycle.status !== 'ARCHIVED' && (
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();

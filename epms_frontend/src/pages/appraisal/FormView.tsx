@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGetAppraisalFormQuery } from '../../features/appraisal/appraisalApi';
-import { ChevronLeft, FileText, Calendar, Layers, CheckCircle2, Printer, Edit3 } from 'lucide-react';
+import { ChevronLeft, FileText, Calendar, Layers, CheckCircle2, Edit3 } from 'lucide-react';
 
 const FormView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -74,11 +74,6 @@ const FormView: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button title="Print"
-            style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.5px solid #E4E6EC', borderRadius: 8, background: '#FFFFFF', color: '#5A6070' }}
-            className="hover:bg-[#F5F6F8] transition-colors">
-            <Printer size={14} />
-          </button>
           {!form.isAssigned && (
             <button
               onClick={() => navigate(`/appraisal/design-form?cycleId=${form.cycleId}&type=${form.formType}&setName=${encodeURIComponent(getSetName(form.formName))}&formId=${form.formId}&edit=true`)}

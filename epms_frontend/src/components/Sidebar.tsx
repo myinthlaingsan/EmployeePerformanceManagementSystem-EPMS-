@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
 import {
@@ -42,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Team Pulse", to: "/performance-history/manager", icon: History, privilegedOnly: true, hideForAdmin: true },
   { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true },
   { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true },
-  { label: "PIP", to: "/pip", icon: TrendingUp },
+  { label: "PIP", to: "/pip", icon: TrendingUp, end: true },
   { label: "Analytics", to: "/analytics", icon: BarChart3, adminOnly: true },
 ];
 
@@ -84,6 +84,7 @@ interface SidebarProps {
 const Sidebar = ({ onClose }: SidebarProps) => {
   const { logout, isAdmin, isHR, isManager, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
   const [perfOpen, setPerfOpen] = useState(false);
   const [feedback360Open, setFeedback360Open] = useState(false);
@@ -151,19 +152,22 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       <nav className="flex-1 overflow-y-auto" style={{ padding: "20px 10px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
           {/* Main nav items */}
-          {filteredNav.map((item) => (
-            <NavLink
-              key={item.label}
-              to={item.to}
-              end={item.end}
-              style={{ padding: "8px 10px" }}
-              className={({ isActive }) => navCls(isActive)}
-              onClick={handleNavClick}
-            >
-              <item.icon size={16} aria-hidden="true" />
-              {item.label}
-            </NavLink>
-          ))}
+          {filteredNav.map((item) => {
+            const isActive = item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
+
+            return (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                style={{ padding: "8px 10px" }}
+                className={navCls(isActive)}
+                onClick={handleNavClick}
+              >
+                <item.icon size={16} aria-hidden="true" />
+                {item.label}
+              </NavLink>
+            );
+          })}
 
           {/* 360 Feedback accordion */}
           <div>
