@@ -222,6 +222,14 @@ public class ReportController {
         return createDownloadResponse(content, "Manager_Evaluation_Form", format);
     }
 
+    @GetMapping("/pip-detail/download")
+    public ResponseEntity<byte[]> downloadPipDetailReport(
+            @RequestParam Long pipId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] content = reportService.exportPipDetailReport(pipId, format);
+        return createDownloadResponse(content, "PIP_Detail_Report", format);
+    }
+
     private ResponseEntity<byte[]> createDownloadResponse(byte[] content, String baseName, String format) {
         String fileName = baseName + "." + format.toLowerCase();
         MediaType mediaType = "pdf".equalsIgnoreCase(format) ? MediaType.APPLICATION_PDF

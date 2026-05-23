@@ -60,4 +60,6 @@ public interface ReportService {
 
     byte[] exportSelfAssessmentForm(Long appraisalId, String format);
     byte[] exportManagerEvaluationForm(Long appraisalId, String format);
+
+    byte[] exportPipDetailReport(Long pipId, String format);
 }
