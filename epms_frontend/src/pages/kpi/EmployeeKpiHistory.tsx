@@ -11,11 +11,15 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }>
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
   LOCKED:   { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
   DRAFT:    { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
+  ARCHIVED: { bg: '#F0F0F0', text: '#6B7280', border: '#D1D5DB' },
 };
 
 const AUDIT_ACTION_STYLE: Record<string, { bg: string; text: string }> = {
   PROGRESS_UPDATE: { bg: '#EAF3DE', text: '#27500A' },
   ITEM:            { bg: '#EEF3FD', text: '#0C447C' },
+  STATUS_CHANGE:   { bg: '#FEF3C7', text: '#92400E' },
+  APPROVED:        { bg: '#EAF3DE', text: '#27500A' },
+  LOCKED:          { bg: '#F1EFE8', text: '#444441' },
 };
 
 const EmployeeKpiHistory: React.FC = () => {
@@ -25,14 +29,20 @@ const EmployeeKpiHistory: React.FC = () => {
   const selectedGoalSetId = Number(searchParams.get('cycle')) || null;
   const parsedId = employeeId ? Number(employeeId) : undefined;
 
-  const { data: historyResponse, isLoading: historyLoading } = useGetEmployeeKpiHistoryQuery(parsedId ?? 0, {
+  const { data: historyResponse, isLoading: historyLoading, isError: historyError } = useGetEmployeeKpiHistoryQuery(parsedId ?? 0, {
     skip: !parsedId || isNaN(parsedId),
   });
-  const { data: auditResponse, isLoading: auditLoading } = useGetGoalSetAuditTrailQuery(selectedGoalSetId || 0, {
+  const { data: auditResponse, isLoading: auditLoading, isError: auditError } = useGetGoalSetAuditTrailQuery(selectedGoalSetId || 0, {
     skip: !selectedGoalSetId,
   });
 
-  const goalSets = useMemo(() => historyResponse?.data || [], [historyResponse?.data]);
+  const goalSets = useMemo(() =>
+    [...(historyResponse?.data || [])].sort((a, b) =>
+      (b.appraisalCycleName ?? '').localeCompare(a.appraisalCycleName ?? '')
+    ),
+    [historyResponse?.data]
+  );
+  const employeeName = goalSets[0]?.employeeName;
   const auditLogs = auditResponse?.data || [];
   const goalSetMetricsMap = useMemo(
     () => new Map(goalSets.map(gs => [gs.id, calculateGoalSetMetrics(gs)])),
@@ -49,6 +59,12 @@ const EmployeeKpiHistory: React.FC = () => {
     <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading KPI history…</div>
   );
 
+  if (historyError) return (
+    <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#E53E3E' }}>
+      Failed to load KPI history. Please try again.
+    </div>
+  );
+
   return (
     <div className="space-y-4 pb-8">
       {/* Header */}
@@ -59,7 +75,9 @@ const EmployeeKpiHistory: React.FC = () => {
           <ChevronLeft size={16} />
         </button>
         <div>
-          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>KPI Performance History</h1>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>
+            {employeeName ? `${employeeName} — KPI History` : 'KPI Performance History'}
+          </h1>
           <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>Review past performance cycles and goal audit logs.</p>
         </div>
       </div>
@@ -143,7 +161,8 @@ const EmployeeKpiHistory: React.FC = () => {
             <div>
               <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Assigned Objectives</p>
               <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
-                {selectedGoalSet.items?.map((item, idx) => {
+                {(selectedGoalSet.items?.length ?? 0) > 0 ? (
+                selectedGoalSet.items?.map((item, idx) => {
                   const pct = Math.min(((item.currentProgress || 0) / (item.targetValue || 1)) * 100, 100);
                   return (
                     <div key={item.id} style={{ padding: '14px 16px', borderBottom: idx < (selectedGoalSet.items?.length || 0) - 1 ? '0.5px solid #F0F2F6' : 'none' }}
@@ -166,7 +185,13 @@ const EmployeeKpiHistory: React.FC = () => {
                       </div>
                     </div>
                   );
-                })}
+                })
+                ) : (
+                  <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+                    <Target size={24} style={{ color: '#E0E2E8', margin: '0 auto 8px' }} />
+                    <p style={{ fontSize: 12, color: '#9EA3B0' }}>No objectives assigned for this cycle.</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -176,10 +201,16 @@ const EmployeeKpiHistory: React.FC = () => {
               <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
                 <div style={{ borderLeft: '0.5px solid #E4E6EC', marginLeft: 8, paddingBottom: 8 }} className="space-y-6">
                   {auditLoading ? (
-                    <div className="space-y-3 pl-6">
-                      {[1, 2, 3].map(i => <div key={i} style={{ height: 56, background: '#F5F6F8', borderRadius: 8 }} />)}
+                    <div className="space-y-2 pl-6">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="space-y-2">
+                          <div style={{ height: 20, width: '40%', background: '#F5F6F8', borderRadius: 4 }} />
+                          <div style={{ height: 16, width: '80%', background: '#F5F6F8', borderRadius: 4 }} />
+                          <div style={{ height: 40, background: '#F5F6F8', borderRadius: 8 }} />
+                        </div>
+                      ))}
                     </div>
-                  ) : auditLogs.map(log => {
+                  ) : auditLogs.length > 0 ? auditLogs.map(log => {
                     const actionKey = log.action.includes('ITEM') ? 'ITEM' : log.action;
                     const as = AUDIT_ACTION_STYLE[actionKey] || { bg: '#EEF3FD', text: '#0C447C' };
                     return (
@@ -204,9 +235,15 @@ const EmployeeKpiHistory: React.FC = () => {
                         )}
                       </div>
                     );
-                  })}
+                  }) : null}
                 </div>
-                {!auditLogs.length && !auditLoading && (
+                {auditError && !auditLoading && (
+                  <div style={{ textAlign: 'center', paddingTop: 16 }}>
+                    <AlertCircle size={24} style={{ color: '#E53E3E', margin: '0 auto 8px' }} />
+                    <p style={{ fontSize: 11, color: '#E53E3E' }}>Failed to load audit logs.</p>
+                  </div>
+                )}
+                {!auditLogs.length && !auditLoading && !auditError && (
                   <div style={{ textAlign: 'center', paddingTop: 16 }}>
                     <Clock size={32} style={{ color: '#E0E2E8', margin: '0 auto 8px' }} />
                     <p style={{ fontSize: 11, color: '#9EA3B0' }}>No history logs available</p>
