@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGetPipsQuery, useGetPipsByInvolvedUserQuery } from '../../services/pipApi';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetActiveDepartmentsQuery } from '../../features/org/departmentApi';
 import { format, parseISO, isAfter, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { CheckCircle2, AlertCircle, Plus, ChevronRight, Activity, Target, User } from 'lucide-react';
 
@@ -40,6 +41,7 @@ const PipListPage: React.FC = () => {
 
   const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000 });
   const employees = employeeData?.content;
+  const { data: allDepartments = [] } = useGetActiveDepartmentsQuery();
 
   const [deptFilter, setDeptFilter] = useState('All Departments');
   const [statusFilter, setStatusFilter] = useState('All Status');
@@ -54,8 +56,13 @@ const PipListPage: React.FC = () => {
 
   const getEmployee = (id: number) => employees?.find(e => e.id === id);
 
-  const departmentsWithPips = allPips.map(pip => getEmployee(pip.employeeId)?.currentDepartmentName).filter(Boolean) as string[];
-  const departments = ['All Departments', ...new Set(departmentsWithPips)];
+  const departments = [
+    'All Departments',
+    ...allDepartments
+      .map(d => d.departmentName)
+      .filter((name): name is string => typeof name === 'string' && name.trim() !== '')
+      .sort((a, b) => a.localeCompare(b))
+  ];
 
   const pips = allPips.filter(pip => {
     const employee = getEmployee(pip.employeeId);
