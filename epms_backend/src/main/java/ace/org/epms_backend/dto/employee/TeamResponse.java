@@ -7,4 +7,5 @@ public class TeamResponse {
     private Long teamId;
     private String teamName;
     private String departmentName;
+    private Long departmentId;
 }
