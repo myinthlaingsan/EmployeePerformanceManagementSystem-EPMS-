@@ -6,7 +6,7 @@ import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
-import { Search, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
+import { Search, ClipboardList, CheckCircle2, XCircle, Eye, Pencil, UserPlus, Archive } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
 import { useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import React from 'react';
@@ -88,6 +88,35 @@ const GoalManagement: React.FC = () => {
   const awaitingApprovalDisplay = loadingEmployees ? '—' : awaitingApprovalCount;
   const notAssignedDisplay = loadingEmployees ? '—' : notAssignedCount;
   const coverageBarWidth = loadingEmployees ? 0 : coveragePercent;
+
+  const getActionIcon = (status: string | undefined, empId: number) => {
+    const base: React.CSSProperties = { cursor: 'pointer', padding: 6, borderRadius: 6 };
+    
+    if (!status) return (
+      <button title="Assign KPI" style={{ ...base, color: '#1A56DB', background: '#EEF3FD' }}
+        onClick={e => { e.stopPropagation(); navigate(`/kpi/assign/${empId}?cycleId=${effectiveCycleId}`); }}>
+        <UserPlus size={14} />
+      </button>
+    );
+    if (status === 'DRAFT') return (
+      <button title="Edit Goals" style={{ ...base, color: '#D97706', background: '#FEF3C7' }}
+        onClick={e => { e.stopPropagation(); navigate(`/kpi/assign/${empId}?cycleId=${effectiveCycleId}`); }}>
+        <Pencil size={14} />
+      </button>
+    );
+    if (['APPROVED','LOCKED','SCORED'].includes(status)) return (
+      <button title="View Goals" style={{ ...base, color: '#1A56DB', background: '#EEF3FD' }}
+        onClick={e => { e.stopPropagation(); navigate(`/kpi/goals/${empId}?cycleId=${effectiveCycleId}`); }}>
+        <Eye size={14} />
+      </button>
+    );
+    if (status === 'ARCHIVED') return (
+      <span title="Archived" style={{ ...base, color: '#9EA3B0', cursor: 'default', display: 'inline-flex' }}>
+        <Archive size={14} />
+      </span>
+    );
+    return null;
+  };
 
   return (<div className="space-y-4 pb-8">
       {/* Header */}
@@ -213,14 +242,14 @@ const GoalManagement: React.FC = () => {
                       onChange={handleSelectAll} />
                   </th>
                 )}
-                {['Employee','Department','Position','Goal Status'].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+              {['Employee','Department','Position','Goal Status','Actions'].map(h => (
+                  <th key={h} style={{ padding: '10px 16px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: h === 'Actions' ? 'center' : 'left', width: h === 'Actions' ? 80 : 'auto' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loadingEmployees && (
-                <tr><td colSpan={isHistorical ? 4 : 5} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading employees…</td></tr>
+                <tr><td colSpan={isHistorical ? 4 : 6} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading employees…</td></tr>
               )}
               {!loadingEmployees && filteredEmployees.map((emp, idx) => {
                 const status = goalStatusMap.get(emp.id);
@@ -273,11 +302,14 @@ const GoalManagement: React.FC = () => {
                         </div>
                       )}
                     </td>
+                    <td style={{ padding: '10px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                      {!isHistorical && getActionIcon(status, emp.id)}
+                    </td>
                   </tr>
                 );
               })}
               {filteredEmployees.length === 0 && !loadingEmployees && (
-                <tr><td colSpan={isHistorical ? 4 : 5} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No employees found matching criteria.</td></tr>
+                <tr><td colSpan={isHistorical ? 4 : 6} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No employees found matching criteria.</td></tr>
               )}
             </tbody>
           </table>
