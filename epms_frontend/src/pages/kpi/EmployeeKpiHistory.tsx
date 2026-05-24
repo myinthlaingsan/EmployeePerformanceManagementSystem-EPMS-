@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetEmployeeKpiHistoryQuery, useGetGoalSetAuditTrailQuery } from '../../services/kpiApi';
 import {
@@ -39,6 +39,13 @@ const EmployeeKpiHistory: React.FC = () => {
   const auditLogs = auditResponse?.data || [];
   const [objPage, setObjPage] = useState(1);
   const OBJ_PER_PAGE = 15;
+
+  // Auto-select the most recent cycle when the page first loads
+  useEffect(() => {
+    if (!selectedGoalSetId && goalSets.length > 0) {
+      setSearchParams({ cycle: String(goalSets[0].id) }, { replace: true });
+    }
+  }, [goalSets, selectedGoalSetId]);
 
   const goalSetMetricsMap = useMemo(
     () => new Map(goalSets.map(gs => [gs.id, calculateGoalSetMetrics(gs)])),
@@ -156,9 +163,9 @@ const EmployeeKpiHistory: React.FC = () => {
           </div>
 
           {/* Objectives + Audit */}
-          <div className="space-y-4">
+          <div className="flex flex-col lg:flex-row gap-4 items-start">
             {/* Objectives */}
-            <div>
+            <div className="w-full lg:w-1/2">
               <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Assigned Objectives</p>
               <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden', maxHeight: 520, overflowY: 'auto' }}>
                 {(selectedGoalSet.items?.length ?? 0) > 0 ? (
@@ -213,11 +220,13 @@ const EmployeeKpiHistory: React.FC = () => {
             </div>
 
             {/* Audit Trail Table */}
-            <KpiAuditTable
-              logs={auditLogs}
-              isLoading={auditLoading}
-              isError={auditError}
-            />
+            <div className="w-full lg:w-1/2" style={{ maxHeight: 520, overflowY: 'auto' }}>
+              <KpiAuditTable
+                logs={auditLogs}
+                isLoading={auditLoading}
+                isError={auditError}
+              />
+            </div>
           </div>
         </div>
       ) : goalSets.length > 0 ? (
