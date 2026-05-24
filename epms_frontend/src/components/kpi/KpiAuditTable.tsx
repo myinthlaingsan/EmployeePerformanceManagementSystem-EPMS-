@@ -21,6 +21,8 @@ const ACTION_GROUPS: Record<string, (a: string) => boolean> = {
 const KpiAuditTable: React.FC<KpiAuditTableProps> = ({ logs, isLoading, isError }) => {
   const [filterAction, setFilterAction] = useState<string>('ALL');
   const [filterDate, setFilterDate] = useState<'7d' | '30d' | 'all'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
   const [selectedLog, setSelectedLog] = useState<KpiHistoryLog | null>(null);
 
   const filteredLogs = useMemo(
@@ -40,6 +42,18 @@ const KpiAuditTable: React.FC<KpiAuditTableProps> = ({ logs, isLoading, isError 
     },
     [logs, filterAction, filterDate]
   );
+
+  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
+  const pagedLogs = filteredLogs.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const pageBtnStyle = (disabled: boolean) => ({
+    padding: '4px 10px',
+    fontSize: 12,
+    borderRadius: 6,
+    border: '0.5px solid #E0E2E8',
+    background: disabled ? '#F5F6F8' : '#FFFFFF',
+    color: disabled ? '#C0C4CC' : '#374151',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+  });
 
   const ACTION_COLORS: Record<string, { bg: string; text: string }> = {
     PROGRESS_UPDATE: { bg: '#EAF3DE', text: '#27500A' },
@@ -78,7 +92,7 @@ const KpiAuditTable: React.FC<KpiAuditTableProps> = ({ logs, isLoading, isError 
             {Object.keys(ACTION_GROUPS).map((key) => (
               <button
                 key={key}
-                onClick={() => setFilterAction(key)}
+                onClick={() => { setFilterAction(key); setCurrentPage(1); }}
                 style={{
                   padding: '6px 12px',
                   fontSize: 12,
@@ -109,7 +123,7 @@ const KpiAuditTable: React.FC<KpiAuditTableProps> = ({ logs, isLoading, isError 
               {(['7d', '30d', 'all'] as const).map((preset) => (
                 <button
                   key={preset}
-                  onClick={() => setFilterDate(preset)}
+                  onClick={() => { setFilterDate(preset); setCurrentPage(1); }}
                   style={{
                     padding: '4px 10px',
                     fontSize: 11,
@@ -140,26 +154,26 @@ const KpiAuditTable: React.FC<KpiAuditTableProps> = ({ logs, isLoading, isError 
           <p style={{ fontSize: 12, color: '#9EA3B0' }}>No events match the current filter.</p>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto', maxHeight: 480, overflowY: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F5F6F8', borderBottom: '0.5px solid #E4E6EC' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 1, background: '#F5F6F8' }}>
                   Action
                 </th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 1, background: '#F5F6F8' }}>
                   Date
                 </th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 1, background: '#F5F6F8' }}>
                   Summary
                 </th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#9EA3B0', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 1, background: '#F5F6F8' }}>
                   Note
                 </th>
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.map((log, idx) => {
+              {pagedLogs.map((log, idx) => {
                 const actionKey = log.action.includes('ITEM') ? 'ITEM' : log.action;
                 const ac = ACTION_COLORS[actionKey] || { bg: '#EEF3FD', text: '#0C447C' };
                 return (
@@ -203,6 +217,33 @@ const KpiAuditTable: React.FC<KpiAuditTableProps> = ({ logs, isLoading, isError 
               })}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div style={{ padding: '12px 16px', borderTop: '0.5px solid #E4E6EC', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, color: '#9EA3B0' }}>
+                {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredLogs.length)} of {filteredLogs.length}
+              </span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                  style={pageBtnStyle(currentPage === 1)}>
+                  ‹ Prev
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+                  const page = start + i;
+                  return (
+                    <button key={page} onClick={() => setCurrentPage(page)} disabled={page === currentPage}
+                      style={{ ...pageBtnStyle(page === currentPage), background: page === currentPage ? '#1A56DB' : '#FFFFFF', color: page === currentPage ? '#FFFFFF' : '#374151' }}>
+                      {page}
+                    </button>
+                  );
+                })}
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                  style={pageBtnStyle(currentPage === totalPages)}>
+                  Next ›
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

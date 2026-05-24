@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetEmployeeKpiHistoryQuery, useGetGoalSetAuditTrailQuery } from '../../services/kpiApi';
 import {
@@ -37,12 +37,19 @@ const EmployeeKpiHistory: React.FC = () => {
   );
   const employeeName = goalSets[0]?.employeeName;
   const auditLogs = auditResponse?.data || [];
+  const [objPage, setObjPage] = useState(1);
+  const OBJ_PER_PAGE = 15;
+
   const goalSetMetricsMap = useMemo(
     () => new Map(goalSets.map(gs => [gs.id, calculateGoalSetMetrics(gs)])),
     [goalSets]
   );
   const selectedGoalSet = selectedGoalSetId ? goalSets.find(gs => gs.id === selectedGoalSetId) : undefined;
   const metrics = selectedGoalSet ? goalSetMetricsMap.get(selectedGoalSet.id) : null;
+
+  const allItems = selectedGoalSet?.items ?? [];
+  const totalObjPages = Math.ceil(allItems.length / OBJ_PER_PAGE);
+  const pagedItems = allItems.slice((objPage - 1) * OBJ_PER_PAGE, objPage * OBJ_PER_PAGE);
 
   if (!parsedId || isNaN(parsedId)) {
     return <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Invalid employee reference.</div>;
@@ -85,7 +92,7 @@ const EmployeeKpiHistory: React.FC = () => {
         <div className="relative" style={{ minWidth: 260 }}>
           <Calendar size={13} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
           <select value={selectedGoalSetId || ''}
-            onChange={e => setSearchParams({ cycle: String(e.target.value) })}
+            onChange={e => { setSearchParams({ cycle: String(e.target.value) }); setObjPage(1); }}
             style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 36px 8px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', appearance: 'none' as const }}>
             <option value="" disabled>Choose a performance cycle…</option>
             {goalSets.map(gs => (
@@ -153,12 +160,12 @@ const EmployeeKpiHistory: React.FC = () => {
             {/* Objectives */}
             <div>
               <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Assigned Objectives</p>
-              <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden', maxHeight: 520, overflowY: 'auto' }}>
                 {(selectedGoalSet.items?.length ?? 0) > 0 ? (
-                selectedGoalSet.items?.map((item, idx) => {
+                pagedItems.map((item, idx) => {
                   const pct = Math.min(((item.currentProgress || 0) / (item.targetValue || 1)) * 100, 100);
                   return (
-                    <div key={item.id} style={{ padding: '14px 16px', borderBottom: idx < (selectedGoalSet.items?.length || 0) - 1 ? '0.5px solid #F0F2F6' : 'none' }}
+                    <div key={item.id} style={{ padding: '14px 16px', borderBottom: idx < pagedItems.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
                       className="hover:bg-[#FAFBFF] transition-colors">
                       <div className="flex justify-between items-start" style={{ marginBottom: 8 }}>
                         <div>
@@ -186,6 +193,23 @@ const EmployeeKpiHistory: React.FC = () => {
                   </div>
                 )}
               </div>
+              {totalObjPages > 1 && (
+                <div style={{ padding: '10px 16px', borderTop: '0.5px solid #E4E6EC', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, color: '#9EA3B0' }}>
+                    {(objPage - 1) * OBJ_PER_PAGE + 1}–{Math.min(objPage * OBJ_PER_PAGE, selectedGoalSet.items?.length ?? 0)} of {selectedGoalSet.items?.length ?? 0}
+                  </span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => setObjPage(p => Math.max(1, p - 1))} disabled={objPage === 1}
+                      style={{ padding: '4px 10px', fontSize: 12, borderRadius: 6, border: '0.5px solid #E0E2E8', background: objPage === 1 ? '#F5F6F8' : '#FFFFFF', color: objPage === 1 ? '#C0C4CC' : '#374151', cursor: objPage === 1 ? 'not-allowed' : 'pointer' }}>
+                      ‹
+                    </button>
+                    <button onClick={() => setObjPage(p => Math.min(totalObjPages, p + 1))} disabled={objPage === totalObjPages}
+                      style={{ padding: '4px 10px', fontSize: 12, borderRadius: 6, border: '0.5px solid #E0E2E8', background: objPage === totalObjPages ? '#F5F6F8' : '#FFFFFF', color: objPage === totalObjPages ? '#C0C4CC' : '#374151', cursor: objPage === totalObjPages ? 'not-allowed' : 'pointer' }}>
+                      ›
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Audit Trail Table */}
