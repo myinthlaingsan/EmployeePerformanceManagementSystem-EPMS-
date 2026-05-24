@@ -21,7 +21,6 @@ const STEPS = [
   { id: 'DRAFT', label: 'Draft', icon: CheckCircle2 },
   { id: 'APPROVED', label: 'Approved', icon: CheckCircle2 },
   { id: 'LOCKED', label: 'Locked', icon: Lock },
-  { id: 'SCORED', label: 'Scored', icon: Award },
 ];
 
 const GoalDetail: React.FC = () => {
@@ -42,7 +41,7 @@ const GoalDetail: React.FC = () => {
 
   const { data: finalScoreResponse } = useGetFinalScoreQuery(
     { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId },
-    { skip: !goalSet || (goalSet.status !== 'LOCKED') }
+    { skip: !goalSet }
   );
   const finalScore = finalScoreResponse?.data ?? null;
   const isScoredState = !!finalScore;
@@ -57,6 +56,7 @@ const GoalDetail: React.FC = () => {
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [showRevertConfirm, setShowRevertConfirm] = useState(false);
+  const [showLockConfirm, setShowLockConfirm] = useState(false);
 
   const isOwner = user?.id === parseInt(employeeId!);
   const isPrivileged = _isManager || isAdmin || isHR;
@@ -80,18 +80,9 @@ const GoalDetail: React.FC = () => {
     setShowRevertConfirm(true);
   };
 
-  const handleLock = async () => {
+  const handleLock = () => {
     if (!goalSet) return;
-    const ok = window.confirm(
-      `Lock "${goalSet.employeeName}'s" goals for this cycle?\n\nOnce locked, no more progress updates can be submitted.`
-    );
-    if (!ok) return;
-    try {
-      await lockGoal(goalSet.id).unwrap();
-      toast.success('Goal set locked.');
-    } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to lock goal set');
-    }
+    setShowLockConfirm(true);
   };
 
   // Helper: human-friendly age (days/weeks/months/years)
@@ -113,9 +104,7 @@ const GoalDetail: React.FC = () => {
 
   const totalWeight = items.reduce((sum, i) => sum + i.weightPercent, 0);
 
-  const currentStepIndex = isScoredState
-    ? 3
-    : STEPS.findIndex(s => s.id === goalSet.status);
+  const currentStepIndex = STEPS.findIndex(s => s.id === goalSet.status);
 
   return (
     <div className="space-y-4 pb-8">
@@ -196,18 +185,10 @@ const GoalDetail: React.FC = () => {
                     Revert to Draft
                   </button>
                 )}
-
                 {goalSet.status === 'APPROVED' && (
                   <button onClick={handleLock}
                     style={{ background: '#F1EFE8', color: '#444441', border: '0.5px solid #DDDBD2', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
                     Lock Goals
-                  </button>
-                )}
-
-                {goalSet.status === 'LOCKED' && (
-                  <button onClick={handleCalculate}
-                    style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
-                    Calculate Score
                   </button>
                 )}
               </Can>
@@ -260,6 +241,30 @@ const GoalDetail: React.FC = () => {
             );
           })}
         </div>
+        {/* Score status indicator — independent of step position */}
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '0.5px solid #E4E6EC',
+                      display: 'flex', justifyContent: 'center', width: '100%' }}>
+          {isScoredState && finalScore ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6,
+                          background: '#EAF3DE', border: '0.5px solid #B8DCA0',
+                          borderRadius: 20, padding: '4px 14px',
+                          fontSize: 11, fontWeight: 500, color: '#27500A' }}>
+              <Award size={12} />
+              Score calculated — {finalScore.weightedScore.toFixed(1)} / 100
+              <span style={{ color: '#5A7A3A', fontWeight: 400 }}>
+                · {new Date(finalScore.calculatedAt).toLocaleDateString()}
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6,
+                          background: '#F5F6F8', border: '0.5px solid #E0E2E8',
+                          borderRadius: 20, padding: '4px 14px',
+                          fontSize: 11, color: '#9EA3B0' }}>
+              <Award size={12} />
+              Score not yet calculated
+            </div>
+          )}
+        </div>
       </div>
       )}
 
@@ -283,49 +288,18 @@ const GoalDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Final Score Card */}
-      {isScoredState && finalScore && (
-        <div style={{
-          background: 'linear-gradient(135deg, #EAF3DE 0%, #FFFFFF 100%)',
-          border: '0.5px solid #B8DCA0',
-          borderRadius: 12,
-          padding: '20px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-        }}>
-          <div>
-            <p style={{ fontSize: 10, fontWeight: 500, color: '#27500A', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
-              Final Score — {goalSet.appraisalCycleName || `Cycle ${goalSet.appraisalCycleId}`}
-            </p>
-            <p style={{ fontSize: 28, fontWeight: 600, color: '#27500A', margin: 0 }}>
-              {finalScore.weightedScore.toFixed(1)}
-              <span style={{ fontSize: 14, fontWeight: 400, color: '#5A7A3A', marginLeft: 4 }}>/ 100</span>
-            </p>
-            {finalScore.totalAchievementPercent !== undefined && (
-              <p style={{ fontSize: 12, color: '#5A7A3A', marginTop: 2 }}>
-                Achievement: {finalScore.totalAchievementPercent.toFixed(1)}%
-              </p>
-            )}
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <Award size={32} color="#27500A" strokeWidth={1.5} />
-            <p style={{ fontSize: 10, color: '#9EA3B0', marginTop: 6 }}>
-              Calculated {new Date(finalScore.calculatedAt).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* 2-column layout: table left, score sidebar right */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
 
-      {/* Goals table */}
-      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left" style={{ minWidth: 600 }}>
+        {/* Left — KPI items table (existing, unchanged) */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left" style={{ minWidth: 600 }}>
             <thead>
               <tr style={{ borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
-                {['KPI Item', 'Weight', 'Target', 'Progress', 'Actions'].map((h, i) => (
-                  <th key={h} style={{ padding: '10px 18px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 4 ? 'right' : 'left' }}>{h}</th>
+                {['KPI Item', 'Weight', 'Target', 'Unit', 'Progress', 'Actions'].map((h, i) => (
+                  <th key={h} style={{ padding: '10px 18px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -351,7 +325,10 @@ const GoalDetail: React.FC = () => {
                     </td>
                     <td style={{ padding: '12px 18px', fontSize: 13, fontWeight: 500, color: '#111827', background: rowBg }}>{item.weightPercent}%</td>
                     <td style={{ padding: '12px 18px', fontSize: 12, color: '#5A6070', background: rowBg }}>
-                      {item.targetValue} <span style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase' }}>{item.unit}</span>
+                      {item.targetValue}
+                    </td>
+                    <td style={{ padding: '12px 18px', fontSize: 12, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', background: rowBg }}>
+                      {item.unit || '—'}
                     </td>
                     <td style={{ padding: '12px 18px', background: rowBg }}>
                       <div className="flex items-center gap-3">
@@ -419,6 +396,64 @@ const GoalDetail: React.FC = () => {
               })}
             </tbody>
           </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Right — Score sidebar (new, 300px fixed) */}
+        <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Score card */}
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px' }}>
+            <p style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              KPI Score
+            </p>
+            {finalScore ? (
+              <>
+                <p style={{ fontSize: 32, fontWeight: 600, color: '#111827' }}>
+                  {finalScore.weightedScore.toFixed(1)}
+                  <span style={{ fontSize: 13, color: '#9EA3B0' }}> / 100</span>
+                </p>
+                <p style={{ fontSize: 12, color: '#5A6070' }}>
+                  Achievement: {finalScore.totalAchievementPercent?.toFixed(1)}%
+                </p>
+                <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 4 }}>
+                  Last calculated {getTimeAgo(finalScore.calculatedAt)}
+                </p>
+              </>
+            ) : (
+              <p style={{ fontSize: 13, color: '#9EA3B0', marginTop: 8 }}>Not yet calculated</p>
+            )}
+
+            {/* Recalculate button — always visible to Manager/HR */}
+            {isPrivileged && goalSet.status !== 'ARCHIVED' && (
+              <button onClick={handleCalculate}
+                style={{ width: '100%', marginTop: 12, background: '#EEF3FD', color: '#0C447C',
+                         border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '8px', fontSize: 12, fontWeight: 500 }}>
+                {finalScore ? 'Recalculate Score' : 'Calculate Score'}
+              </button>
+            )}
+          </div>
+
+          {/* Per-item score breakdown */}
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px' }}>
+            <p style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
+              Item Breakdown
+            </p>
+            {items.map(item => (
+              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between',
+                                          padding: '6px 0', borderBottom: '0.5px solid #F0F2F6', fontSize: 12 }}>
+                <span style={{ color: '#5A6070', flex: 1, marginRight: 8,
+                               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {item.title}
+                </span>
+                <span style={{ color: '#111827', fontWeight: 500, flexShrink: 0 }}>
+                  {item.scorePercent != null ? `${Number(item.scorePercent).toFixed(0)}%` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+
         </div>
       </div>
 
@@ -466,6 +501,56 @@ const GoalDetail: React.FC = () => {
                 }}
                 style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>
                 Yes, Revert
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLockConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
+        }}>
+          <div style={{
+            background: '#FFFFFF', borderRadius: 16, padding: '28px 32px',
+            maxWidth: 420, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
+          }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 8 }}>
+              Lock Goal Set?
+            </h3>
+            <p style={{ fontSize: 13, color: '#5A6070', lineHeight: 1.6, marginBottom: 16 }}>
+              This will:
+            </p>
+            <ul style={{ fontSize: 13, color: '#5A6070', lineHeight: 2,
+                         paddingLeft: 20, marginBottom: 20 }}>
+              <li>Send a <strong>KPI_LOCKED</strong> notification to {goalSet?.employeeName}</li>
+              <li>Prevent any further progress updates</li>
+              <li>Allow final score calculation to proceed</li>
+              <li>Cannot be undone — goal set cannot be reverted from LOCKED</li>
+            </ul>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowLockConfirm(false)}
+                style={{ background: '#F5F6F8', color: '#5A6070',
+                         border: '0.5px solid #E0E2E8', borderRadius: 8,
+                         padding: '8px 16px', fontSize: 13 }}>
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowLockConfirm(false);
+                  try {
+                    await lockGoal(goalSet!.id).unwrap();
+                    toast.success('Goal set locked.');
+                  } catch (err: any) {
+                    toast.error(err?.data?.message || 'Failed to lock goal set');
+                  }
+                }}
+                style={{ background: '#F1EFE8', color: '#444441',
+                         border: '0.5px solid #DDDBD2', borderRadius: 8,
+                         padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>
+                Yes, Lock
               </button>
             </div>
           </div>

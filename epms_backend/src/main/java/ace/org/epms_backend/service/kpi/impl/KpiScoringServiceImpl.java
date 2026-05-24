@@ -71,11 +71,9 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                 // appraisal cycle is still active.");
                 // }
 
-                // Precondition 2: Has the manager locked the goal set?
-                if (!goalSet.getStatus().equals(KpiGoalStatus.LOCKED) &&
-                                !goalSet.getStatus().equals(KpiGoalStatus.APPROVED)) {
-                        throw new IllegalStateException(
-                                        "Goal set must be APPROVED or LOCKED before finalizing the score.");
+                // Precondition 2: Block ARCHIVED status only
+                if (goalSet.getStatus().equals(KpiGoalStatus.ARCHIVED)) {
+                        throw new IllegalStateException("Cannot calculate score for an archived goal set.");
                 }
 
                 // Precondition 3: Is the employee still active?
@@ -83,10 +81,7 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                         throw new IllegalStateException("Cannot calculate score for an inactive employee.");
                 }
 
-                // Precondition 4: Has this score already been finalized?
-                if (finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId).isPresent()) {
-                        throw new IllegalStateException("KPI Score has already been finalized for this cycle.");
-                }
+
 
                 List<KpiGoalItem> items = goalItemRepository.findByGoalSetIdAndIsActiveTrue(goalSet.getId());
 
@@ -117,7 +112,12 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                                                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                                                 .divide(new BigDecimal(items.size()), 2, RoundingMode.HALF_UP);
 
-                KpiFinalScore finalScore = new KpiFinalScore();
+                // UPSERT: find existing score or create new one
+                KpiFinalScore finalScore = finalScoreRepository
+                                .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+                                .orElse(new KpiFinalScore());
+
+                boolean isNew = (finalScore.getId() == null);
 
                 finalScore.setEmployee(goalSet.getEmployee());
                 finalScore.setGoalSet(goalSet);
@@ -148,15 +148,23 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                                         .build());
                 }
 
-                // Log Audit
+                // Log Audit — correctly use isNew flag
                 auditService.log(AuditRequest.builder()
                                 .tableName("kpi_final_score")
                                 .recordId(savedScore.getId())
-                                .action(AuditAction.INSERT)
+                                .action(isNew ? AuditAction.INSERT : AuditAction.UPDATE)
                                 .newState(savedScore)
                                 .status(AuditStatus.SUCCESS)
                                 .build());
                 return kpiMapper.toScoreResponse(savedScore);
+        }
+
+        @Override
+        public KpiScoreResponse getFinalScore(Long employeeId, Long cycleId) {
+                return finalScoreRepository
+                        .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+                        .map(kpiMapper::toScoreResponse)
+                        .orElse(null);
         }
 
         private Employee getCurrentEmployee() {
