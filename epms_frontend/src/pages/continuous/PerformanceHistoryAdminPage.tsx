@@ -456,7 +456,7 @@ const CombinedStats = ({ history, meetingTotal, meetingCompleted, employeeName, 
 const ManagerialActivityChart = ({ history, managerName, managerId, timeRange, onTimeRangeChange, filterType }: { history: any[], managerName: string, managerId: number, timeRange: number, onTimeRangeChange: (val: number) => void, filterType: string }) => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const now = new Date();
-  const chartData = [];
+  const chartData: { name: string; month: number; year: number; praise: number; improvement: number; correction: number; meetings: number }[] = [];
   
   for (let i = timeRange - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
