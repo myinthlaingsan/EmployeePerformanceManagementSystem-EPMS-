@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class EmployeeRoleController {
     private final EmployeeRoleService employeeRoleService;
 
     @PostMapping("/employees/{id}/roles")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> assignRole(
             @PathVariable Long id, @Valid @RequestBody AssignRoleRequest request) {
         employeeRoleService.assignRoleToEmployee(id, request);
@@ -28,11 +30,13 @@ public class EmployeeRoleController {
     }
 
     @GetMapping("/employees/{id}/roles")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<List<RoleResponse>>> getRolesByEmployeeId(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(employeeRoleService.getRolesByEmployeeId(id)));
     }
 
     @DeleteMapping("/employees/{id}/roles/{roleId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> removeRole(
             @PathVariable Long id, @PathVariable Long roleId) {
         employeeRoleService.removeRoleFromEmployee(id, roleId);
@@ -40,6 +44,7 @@ public class EmployeeRoleController {
     }
 
     @GetMapping("/roles/{roleId}/employees")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<List<EmployeeResponse>>> getEmployeesByRole(@PathVariable Long roleId) {
         return ResponseEntity.ok(ApiResponse.success(employeeRoleService.getEmployeesByRoleId(roleId)));
     }

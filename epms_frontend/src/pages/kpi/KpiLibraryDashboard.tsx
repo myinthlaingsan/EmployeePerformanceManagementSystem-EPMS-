@@ -4,12 +4,13 @@ import { useGetAllLibrariesWithInactiveQuery } from '../../services/kpiApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import {
   Search, Plus, ChevronDown, LayoutGrid, List,
-  Terminal, Handshake, Brain, Filter, FileUp, History,
+  Terminal, Handshake, Brain, FileUp, History,
   Pencil, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import KpiImportModal from '../../components/kpi/KpiImportModal';
 import KpiLibraryHistoryModal from '../../components/kpi/KpiLibraryHistoryModal';
 import React from 'react';
+import { Can } from '../../components/Can';
 
 const PAGE_SIZE = 6;
 
@@ -93,20 +94,22 @@ const KpiLibraryDashboard: React.FC = () => {
             Manage and standardize performance metrics across your organization.
           </p>
         </div>
-        <div className="flex gap-2 self-start sm:self-auto">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            style={{ background: '#374151', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}
-            className="hover:opacity-90 transition-opacity">
-            <FileUp size={14} /> Import Excel
-          </button>
-          <button
-            onClick={() => navigate('/kpi/library/new')}
-            style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}
-            className="hover:opacity-90 transition-opacity">
-            <Plus size={14} strokeWidth={3} /> New Library
-          </button>
-        </div>
+        <Can permission="KPI_LIBRARY_MANAGE">
+          <div className="flex gap-2 self-start sm:self-auto">
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              style={{ background: '#374151', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}
+              className="hover:opacity-90 transition-opacity">
+              <FileUp size={14} /> Import Excel
+            </button>
+            <button
+              onClick={() => navigate('/kpi/library/new')}
+              style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}
+              className="hover:opacity-90 transition-opacity">
+              <Plus size={14} strokeWidth={3} /> New Library
+            </button>
+          </div>
+        </Can>
       </div>
 
       {/* Filters */}
@@ -203,37 +206,41 @@ const KpiLibraryDashboard: React.FC = () => {
               <div style={{ height: 1, background: '#E4E6EC', marginBottom: 12 }} />
 
               {/* Actions */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button
-                  onClick={() => navigate(`/kpi/library/edit/${library.id}`)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#6B7280', display: 'flex', alignItems: 'center' }}
-                  className="hover:text-[#1A56DB] transition-colors"
-                  title="Edit">
-                  <Pencil size={15} />
-                </button>
-                <button
-                  onClick={() => setHistoryModalState({ isOpen: true, positionId: library.positionId || 0, positionName: library.positionName || library.title })}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#6B7280', display: 'flex', alignItems: 'center' }}
-                  className="hover:text-[#1A56DB] transition-colors"
-                  title="History">
-                  <History size={15} />
-                </button>
-              </div>
+              <Can permission="KPI_LIBRARY_MANAGE">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button
+                    onClick={() => navigate(`/kpi/library/edit/${library.id}`)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                    className="hover:text-[#1A56DB] transition-colors"
+                    title="Edit">
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    onClick={() => setHistoryModalState({ isOpen: true, positionId: library.positionId || 0, positionName: library.positionName || library.title })}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                    className="hover:text-[#1A56DB] transition-colors"
+                    title="History">
+                    <History size={15} />
+                  </button>
+                </div>
+              </Can>
             </div>
           ))}
 
           {/* Create New Template card — only on last page */}
-          {isLastPage && (
-            <button
-              onClick={() => navigate('/kpi/library/new')}
-              style={{ border: '1.5px dashed #D1D5DB', borderRadius: 12, padding: '24px 18px', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, minHeight: 180 }}
-              className="hover:border-[#1A56DB] hover:bg-blue-50/20 transition-colors">
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#F5F6F8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Plus size={20} style={{ color: '#9EA3B0' }} />
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#9EA3B0' }}>Create New Template</span>
-            </button>
-          )}
+          <Can permission="KPI_LIBRARY_MANAGE">
+            {isLastPage && (
+              <button
+                onClick={() => navigate('/kpi/library/new')}
+                style={{ border: '1.5px dashed #D1D5DB', borderRadius: 12, padding: '24px 18px', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, minHeight: 180 }}
+                className="hover:border-[#1A56DB] hover:bg-blue-50/20 transition-colors">
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#F5F6F8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Plus size={20} style={{ color: '#9EA3B0' }} />
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#9EA3B0' }}>Create New Template</span>
+              </button>
+            )}
+          </Can>
 
           {filteredLibraries.length === 0 && (
             <div className="col-span-full" style={{ padding: '48px 24px', textAlign: 'center', background: '#F5F6F8', border: '0.5px dashed #E0E2E8', borderRadius: 12 }}>
@@ -265,19 +272,21 @@ const KpiLibraryDashboard: React.FC = () => {
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: library.isActive ? '#22C55E' : '#9CA3AF', display: 'inline-block' }} />
                   {library.isActive ? 'ACTIVE' : 'INACTIVE'}
                 </span>
-                <button onClick={() => navigate(`/kpi/library/edit/${library.id}`)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#9EA3B0', display: 'flex', alignItems: 'center', borderRadius: 6 }}
-                  className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors"
-                  title="Edit">
-                  <Pencil size={14} />
-                </button>
-                <button
-                  onClick={() => setHistoryModalState({ isOpen: true, positionId: library.positionId || 0, positionName: library.positionName || library.title })}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#9EA3B0', display: 'flex', alignItems: 'center', borderRadius: 6 }}
-                  className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors"
-                  title="History">
-                  <History size={14} />
-                </button>
+                <Can permission="KPI_LIBRARY_MANAGE">
+                  <button onClick={() => navigate(`/kpi/library/edit/${library.id}`)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#9EA3B0', display: 'flex', alignItems: 'center', borderRadius: 6 }}
+                    className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors"
+                    title="Edit">
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => setHistoryModalState({ isOpen: true, positionId: library.positionId || 0, positionName: library.positionName || library.title })}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#9EA3B0', display: 'flex', alignItems: 'center', borderRadius: 6 }}
+                    className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors"
+                    title="History">
+                    <History size={14} />
+                  </button>
+                </Can>
               </div>
             </div>
           ))}

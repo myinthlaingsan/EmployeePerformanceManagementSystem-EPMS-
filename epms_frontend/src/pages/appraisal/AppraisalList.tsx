@@ -24,7 +24,6 @@ import {
   Calendar,
   FileText,
   ChevronRight,
-  Clock,
   Target,
   Users,
   CheckCircle2,
@@ -35,6 +34,7 @@ import {
   Calculator
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { Can } from '../../components/Can';
 
 const panelStyle: React.CSSProperties = {
   background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12,
@@ -54,7 +54,7 @@ const getStatusStyle = (status: string) =>
 const AppraisalList: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAdmin, isHR, isManager, user } = useAuth();
+  const { isAdmin, isHR, isManager } = useAuth();
   const isPrivileged = isAdmin || isHR;
 
   const [activeTab, setActiveTab] = React.useState<'appraisals' | 'team' | 'cycles' | 'forms'>(
@@ -221,6 +221,7 @@ const AppraisalList: React.FC = () => {
               </p>
             </div>
 
+            <Can permission="APPRAISAL_CYCLE_MANAGE">
             <div className="flex items-center gap-3">
               <button
                 onClick={async () => {
@@ -239,13 +240,13 @@ const AppraisalList: React.FC = () => {
               >
                 <Mail className="w-4 h-4" /> {isSendingReminders ? 'Sending...' : 'Send Reminders'}
               </button>
-              {isPrivileged && !cycle?.isAssigned && !cycle?.isActive && cycle?.status !== 'ARCHIVED' && (
+              {isPrivileged && !cycle?.isAssigned && (
                 <button
                   onClick={() => {
                     setConfirmModal({
                       isOpen: true,
                       title: 'Delete Appraisal Cycle',
-                      message: `Are you sure you want to permanently delete the cycle "${cycle.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
+                      message: `Are you sure you want to permanently delete the cycle "${cycle?.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
                       onConfirm: async () => {
                         try {
                           await deleteCycle(Number(selectedCycleId)).unwrap();
@@ -303,6 +304,7 @@ const AppraisalList: React.FC = () => {
                 </div>
               ) : null}
             </div>
+            </Can>
           </div>
 
           {/* Completion rates */}
@@ -424,31 +426,33 @@ const AppraisalList: React.FC = () => {
                 {cycle.status?.replace('_', ' ') || (cycle.isActive ? 'ACTIVE' : 'INACTIVE')}
               </div>
               <div className="flex items-center gap-2">
-                {isPrivileged && !cycle.isAssigned && !cycle.isActive && cycle.status !== 'ARCHIVED' && (
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      setConfirmModal({
-                        isOpen: true,
-                        title: 'Delete Appraisal Cycle',
-                        message: `Are you sure you want to permanently delete the cycle "${cycle.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
-                        onConfirm: async () => {
-                          try {
-                            await deleteCycle(cycle.cycleId).unwrap();
-                            toast.success('Appraisal Cycle deleted successfully!');
-                          } catch (err: any) {
-                            const errorMsg = err?.data?.message || 'Failed to delete cycle';
-                            toast.error(`Error: ${errorMsg}`);
+                <Can permission="APPRAISAL_CYCLE_MANAGE">
+                  {isPrivileged && !cycle.isAssigned && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setConfirmModal({
+                          isOpen: true,
+                          title: 'Delete Appraisal Cycle',
+                          message: `Are you sure you want to permanently delete the cycle "${cycle.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
+                          onConfirm: async () => {
+                            try {
+                              await deleteCycle(cycle.cycleId).unwrap();
+                              toast.success('Appraisal Cycle deleted successfully!');
+                            } catch (err: any) {
+                              const errorMsg = err?.data?.message || 'Failed to delete cycle';
+                              toast.error(`Error: ${errorMsg}`);
+                            }
                           }
-                        }
-                      });
-                    }}
-                    className="w-10 h-10 rounded-xl bg-slate-50 text-rose-500 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center transition-all duration-300 relative z-20"
-                    title="Delete Cycle"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
+                        });
+                      }}
+                      className="w-10 h-10 rounded-xl bg-slate-50 text-rose-500 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center transition-all duration-300 relative z-20"
+                      title="Delete Cycle"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
+                </Can>
                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                   <Calendar className="w-5 h-5" />
                 </div>
@@ -541,26 +545,30 @@ const AppraisalList: React.FC = () => {
                         style={{ background: '#F5F6F8', color: '#111827', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
                         View Template
                       </button>
-                      {!form.isAssigned && (
-                        <div className="flex gap-2">
-                          <button onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formId=${form.formId}&edit=true`)}
-                            className="flex-1 transition-colors"
-                            style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
-                            Edit
-                          </button>
-                          <button onClick={() => setConfirmModal({ isOpen: true, title: 'Delete Template', message: 'Delete this template? This cannot be undone.', onConfirm: async () => { try { await deleteForm(form.formId).unwrap(); toast.success('Deleted'); } catch { toast.error('Failed'); } } })}
-                            style={{ background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5C2C2', borderRadius: 8, padding: '8px 12px' }}>
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      )}
+                      <Can permission="APPRAISAL_FORM_DESIGN">
+                        {!form.isAssigned && (
+                          <div className="flex gap-2">
+                            <button onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formId=${form.formId}&edit=true`)}
+                              className="flex-1 transition-colors"
+                              style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
+                              Edit
+                            </button>
+                            <button onClick={() => setConfirmModal({ isOpen: true, title: 'Delete Template', message: 'Delete this template? This cannot be undone.', onConfirm: async () => { try { await deleteForm(form.formId).unwrap(); toast.success('Deleted'); } catch { toast.error('Failed'); } } })}
+                              style={{ background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5C2C2', borderRadius: 8, padding: '8px 12px' }}>
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        )}
+                      </Can>
                     </>
                   ) : (
-                    <button onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}`)}
-                      className="w-full transition-colors"
-                      style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
-                      <Plus size={13} style={{ display: 'inline', marginRight: 4 }} /> Design Template
-                    </button>
+                    <Can permission="APPRAISAL_FORM_DESIGN">
+                      <button onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}`)}
+                        className="w-full transition-colors"
+                        style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
+                        <Plus size={13} style={{ display: 'inline', marginRight: 4 }} /> Design Template
+                      </button>
+                    </Can>
                   )}
                 </div>
               </div>
@@ -586,11 +594,13 @@ const AppraisalList: React.FC = () => {
               </nav>
               <h2 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Form Sets</h2>
             </div>
-            <button onClick={() => { setShowNewSetModal(true); setNewSetName(''); }}
-              className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
-              style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
-              <Plus size={14} /> Create Form Set
-            </button>
+            <Can permission="APPRAISAL_FORM_DESIGN">
+              <button onClick={() => { setShowNewSetModal(true); setNewSetName(''); }}
+                className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+                style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+                <Plus size={14} /> Create Form Set
+              </button>
+            </Can>
           </div>
 
           {showNewSetModal && (
@@ -639,12 +649,14 @@ const AppraisalList: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center justify-between" style={{ marginTop: 12 }}>
-                    {!set.isAssigned ? (
-                      <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error(err?.data?.message || 'Delete failed'); } } }); }}
-                        style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-[#791F1F] transition-colors">
-                        <Trash2 size={13} />
-                      </button>
-                    ) : <div />}
+                    <Can permission="APPRAISAL_FORM_DESIGN">
+                      {!set.isAssigned ? (
+                        <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error(err?.data?.message || 'Delete failed'); } } }); }}
+                          style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-[#791F1F] transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      ) : <div />}
+                    </Can>
                     <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
                   </div>
                 </div>
@@ -690,18 +702,20 @@ const AppraisalList: React.FC = () => {
           <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Appraisal Hub</h1>
           <p style={{ fontSize: 13, color: '#9EA3B0', marginTop: 2 }}>Organisation performance & evaluation management</p>
         </div>
-        {isPrivileged && (
-          <div className="flex flex-wrap gap-2 self-start sm:self-auto">
-            <button onClick={() => navigate('/appraisal/create-cycle')} className="inline-flex items-center gap-2 transition-colors"
-              style={{ background: '#FFFFFF', color: '#111827', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500 }}>
-              <Calendar size={14} style={{ color: '#1A56DB' }} /> New Cycle
-            </button>
-            <button onClick={() => navigate('/appraisal/assign')} className="inline-flex items-center gap-2 transition-colors"
-              style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
-              <Plus size={14} /> Bulk Assign
-            </button>
-          </div>
-        )}
+        <Can permission="APPRAISAL_CYCLE_MANAGE">
+          {isPrivileged && (
+            <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+              <button onClick={() => navigate('/appraisal/create-cycle')} className="inline-flex items-center gap-2 transition-colors"
+                style={{ background: '#FFFFFF', color: '#111827', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500 }}>
+                <Calendar size={14} style={{ color: '#1A56DB' }} /> New Cycle
+              </button>
+              <button onClick={() => navigate('/appraisal/assign')} className="inline-flex items-center gap-2 transition-colors"
+                style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+                <Plus size={14} /> Bulk Assign
+              </button>
+            </div>
+          )}
+        </Can>
       </div>
 
       {/* Tab navigation */}
