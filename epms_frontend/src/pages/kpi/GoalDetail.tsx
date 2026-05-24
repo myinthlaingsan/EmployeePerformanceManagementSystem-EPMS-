@@ -190,7 +190,7 @@ const GoalDetail: React.FC = () => {
             <>
               {(goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
                 <button
-                   onClick={() => navigate(`/kpi/assign/${employeeId}?cycleId=${effectiveCycleId}`)}
+                   onClick={() => navigate(`/kpi/assign/${employeeId}?cycleId=${effectiveCycleId}&mode=edit`)}
                   style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none' }}>
                   Modify Goals
                 </button>

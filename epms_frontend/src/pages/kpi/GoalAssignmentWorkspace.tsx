@@ -28,6 +28,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const { isAdmin, isHR, isManager, activeCycleId, activeCycleName, isLoadingCycle: isLoadingActiveCycle } = useAuth();
 
   const urlCycleId = searchParams.get('cycleId');
+  const editMode = searchParams.get('mode') === 'edit';
   const resolvedCycleId = urlCycleId ? Number(urlCycleId) : activeCycleId;
 
   const { data: employee } = useGetEmployeeByIdQuery(Number(employeeId), { skip: !employeeId });
@@ -46,7 +47,9 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const cycles = cyclesData || [];
   const resolvedCycleObj = (cycles as any[]).find((c: any) => (c.cycleId || c.id) === resolvedCycleId);
   const isArchivedCycle = resolvedCycleObj?.status?.toUpperCase() === 'ARCHIVED';
-  const isHistoricalCycle = isArchivedCycle || (!!resolvedCycleId && activeCycleId !== undefined && resolvedCycleId !== activeCycleId);
+  // In edit mode (navigated from GoalDetail), treat as non-historical even if cycle differs from active
+  // Otherwise, archived cycles or non-active cycles are historical
+  const isHistoricalCycle = editMode ? false : isArchivedCycle || (!!resolvedCycleId && activeCycleId !== undefined && resolvedCycleId !== activeCycleId);
   const isPrivileged = isManager || isAdmin || isHR;
 
   // goalSet must be declared before any hook or useMemo that references it.
@@ -72,7 +75,10 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const [approveGoalSet] = useApproveGoalSetMutation();
   const [revertToDraft] = useRevertGoalSetMutation();
   const [assignLibrary] = useAssignKpiToEmployeeMutation();
-  const isInputDisabled = isArchivedCycle || ['APPROVED', 'LOCKED', 'SCORED', 'ARCHIVED'].includes(goalSet?.status ?? '');
+  // Respect edit mode: APPROVED is only disabled when NOT arriving via mode=edit
+  const isInputDisabled = isArchivedCycle 
+    || (['LOCKED', 'SCORED', 'ARCHIVED'].includes(goalSet?.status ?? ''))
+    || (goalSet?.status === 'APPROVED' && !editMode);
   const [localItems, setLocalItems] = React.useState<any[]>([]);
   const [isModified, setIsModified] = useState(false);
   const [assignmentMode, setAssignmentMode] = useState<'append'|'replace'>('append');
