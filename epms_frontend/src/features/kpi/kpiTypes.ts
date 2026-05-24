@@ -1,5 +1,5 @@
 // ==================== Enums ====================
-export type KpiGoalStatus = 'DRAFT' | 'APPROVED' | 'LOCKED' | 'ARCHIVED';
+export type KpiGoalStatus = 'DRAFT' | 'APPROVED' | 'LOCKED' | 'SCORED' | 'ARCHIVED';
 
 export type KpiItemStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 

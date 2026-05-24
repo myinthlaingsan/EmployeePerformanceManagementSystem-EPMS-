@@ -9,12 +9,13 @@ import {
   useCalculateScoresMutation,
   useGetFinalScoreQuery
 } from '../../services/kpiApi';
+import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
 import ProgressUpdateModal from '../../components/kpi/ProgressUpdateModal';
 import KpiRevisionModal from '../../components/kpi/KpiRevisionModal';
 import KpiAuditLogModal from '../../components/kpi/KpiAuditLogModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
-import { ChevronLeft, CheckCircle2, AlertCircle, Lock, Award, ShieldCheck, History } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, AlertCircle, Lock, Award, ShieldCheck, History, Archive } from 'lucide-react';
 
 const STEPS = [
   { id: 'DRAFT', label: 'Draft', icon: CheckCircle2 },
@@ -28,22 +29,28 @@ const GoalDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { user, activeCycleId, isManager: _isManager, isAdmin, isHR } = useAuth();
   const cycleIdParam = searchParams.get('cycleId');
-  const effectiveCycleId = cycleIdParam ? Number(cycleIdParam) : Number(activeCycleId!);
+  const effectiveCycleId = cycleIdParam ? Number(cycleIdParam) : activeCycleId ? Number(activeCycleId) : undefined;
 
-  const { data: goalSetResponse, isLoading, error } = useGetGoalSetByEmployeeQuery(
-    { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId },
-    { skip: !user?.id || !activeCycleId }
+  const { data: goalSetResponse, isLoading, error, refetch } = useGetGoalSetByEmployeeQuery(
+    { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId! },
+    { skip: !user?.id || !effectiveCycleId }
   );
 
   const goalSet = goalSetResponse?.data;
   const items = goalSet?.items || [];
 
   const { data: finalScoreResponse } = useGetFinalScoreQuery(
-    { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId },
-    { skip: !goalSet }
+    { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId! },
+    { skip: !goalSet || !effectiveCycleId }
   );
   const finalScore = finalScoreResponse?.data ?? null;
   const isScoredState = !!finalScore;
+
+  const { data: cyclesData } = useGetCyclesQuery();
+  const cycles = cyclesData || [];
+  const cycleData = cycles.find((cycle) => cycle.cycleId === effectiveCycleId);
+  const isArchivedCycle = cycleData?.status?.toUpperCase() === 'ARCHIVED';
+  const isReadOnly = isArchivedCycle || goalSet?.status === 'ARCHIVED';
 
   const [approveGoal] = useApproveGoalSetMutation();
   const [revertGoal] = useRevertGoalSetMutation();
@@ -62,8 +69,11 @@ const GoalDetail: React.FC = () => {
 
   const handleApprove = async () => {
     if (!goalSet) return;
-    try { await approveGoal(goalSet.id).unwrap(); toast.success('Goal set approved!'); }
-    catch { toast.error('Failed to approve goal set'); }
+    try {
+      await approveGoal(goalSet.id).unwrap();
+      toast.success('Goal set approved!');
+      await refetch();
+    } catch { toast.error('Failed to approve goal set'); }
   };
 
   const handleCalculate = async () => {
@@ -71,6 +81,7 @@ const GoalDetail: React.FC = () => {
     try {
       await calculateScores({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
       toast.success('Score calculated!');
+      await refetch();
     } catch { toast.error('Failed to calculate score'); }
   };
 
@@ -97,13 +108,30 @@ const GoalDetail: React.FC = () => {
   if (isLoading) return (
     <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading goal details…</div>
   );
-  if (error || !goalSet) return (
+  if (error) {
+    const isNotFound = (error as any)?.status === 404;
+    return (
+      <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+        <AlertCircle size={32} style={{ color: '#E0E0E0', margin: '0 auto 12px' }} />
+        <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>
+          {isNotFound ? 'No goal set found for this cycle' : 'Failed to load goal details'}
+        </p>
+        <p style={{ fontSize: 12, color: '#9EA3B0' }}>
+          {isNotFound
+            ? 'Goals may not have been assigned for the selected appraisal cycle.'
+            : 'Please try again or contact support.'}
+        </p>
+      </div>
+    );
+  }
+  if (!goalSet) return (
     <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#791F1F' }}>Goal set not found for this cycle.</div>
   );
 
   const totalWeight = items.reduce((sum, i) => sum + i.weightPercent, 0);
 
   const currentStepIndex = STEPS.findIndex(s => s.id === goalSet.status);
+  const effectiveStepIndex = goalSet.status === 'SCORED' ? STEPS.length - 1 : currentStepIndex;
 
   return (
     <div className="space-y-4 pb-8">
@@ -158,7 +186,7 @@ const GoalDetail: React.FC = () => {
               <History size={14} /> History
             </button>
           )}
-          {isPrivileged && goalSet.status !== 'ARCHIVED' && (
+          {isPrivileged && !isReadOnly && (
             <>
               {(goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
                 <button
@@ -193,6 +221,24 @@ const GoalDetail: React.FC = () => {
         </div>
       </div>
 
+      {/* Archived cycle banner */}
+      {isArchivedCycle && (
+        <div style={{
+          background: '#F5F6F8',
+          border: '0.5px solid #E0E2E8',
+          borderRadius: 12,
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          color: '#475569',
+          fontSize: 13,
+          marginBottom: 12,
+        }}>
+          <Archive size={14} /> This cycle has been archived — goal data is read-only.
+        </div>
+      )}
+
       {/* Visual Stepper */}
       {goalSet.status === 'ARCHIVED' ? (
         <div style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 12, padding: '16px 24px', textAlign: 'center', color: '#9EA3B0', fontSize: 13 }}>
@@ -202,8 +248,8 @@ const GoalDetail: React.FC = () => {
       <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div className="flex items-center w-full max-w-2xl mx-auto relative">
           {STEPS.map((step, index) => {
-            const isCompleted = currentStepIndex > index;
-            const isCurrent = currentStepIndex === index;
+            const isCompleted = effectiveStepIndex > index;
+            const isCurrent = effectiveStepIndex === index;
             const statusColor = isCompleted || isCurrent ? '#1A56DB' : '#E4E6EC';
             const Icon = step.icon;
 
@@ -337,7 +383,7 @@ const GoalDetail: React.FC = () => {
                     <td style={{ padding: '12px 18px', textAlign: 'right', background: rowBg }}>
                       <div className="flex justify-end gap-2">
                         {/* Employee update button - for regular goals */}
-                        {isOwner && goalSet.status === 'APPROVED' && !item.isCompliance && (
+                        {isOwner && goalSet.status === 'APPROVED' && !item.isCompliance && !isArchivedCycle && (
                           <button
                             onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
                             style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
@@ -354,7 +400,7 @@ const GoalDetail: React.FC = () => {
                         )}
 
                         {/* Manager verify button - for compliance items */}
-                        {isPrivileged && item.isCompliance && goalSet.status === 'APPROVED' && (
+                        {isPrivileged && item.isCompliance && goalSet.status === 'APPROVED' && !isArchivedCycle && (
                           item.verifiedAt ? (
                             <div style={{ fontSize: 10, color: '#27500A', background: '#EAF3DE', border: '0.5px solid #B8DCA0', borderRadius: 6, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
                               <ShieldCheck size={11} />
@@ -371,7 +417,7 @@ const GoalDetail: React.FC = () => {
                         )}
 
                         {/* Manager revise button - for all items */}
-                        {isPrivileged && goalSet.status !== 'LOCKED' && goalSet.status !== 'ARCHIVED' && (
+                        {isPrivileged && !isReadOnly && goalSet.status !== 'LOCKED' && (
                           <button
                             onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
                             style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
@@ -416,7 +462,7 @@ const GoalDetail: React.FC = () => {
             )}
 
             {/* Recalculate button — always visible to Manager/HR */}
-            {isPrivileged && goalSet.status !== 'ARCHIVED' && (
+            {isPrivileged && !isArchivedCycle && (
               <button onClick={handleCalculate}
                 style={{ width: '100%', marginTop: 12, background: '#EEF3FD', color: '#0C447C',
                          border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '8px', fontSize: 12, fontWeight: 500 }}>
@@ -485,6 +531,7 @@ const GoalDetail: React.FC = () => {
                   try {
                     await revertGoal(goalSet!.id).unwrap();
                     toast.success('Goal set reverted to draft.');
+                    await refetch();
                   } catch (err: any) {
                     toast.error(err?.data?.message || 'Failed to revert goal set');
                   }
@@ -533,6 +580,7 @@ const GoalDetail: React.FC = () => {
                   try {
                     await lockGoal(goalSet!.id).unwrap();
                     toast.success('Goal set locked.');
+                    await refetch();
                   } catch (err: any) {
                     toast.error(err?.data?.message || 'Failed to lock goal set');
                   }

@@ -11,6 +11,7 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }>
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
   LOCKED:   { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
   DRAFT:    { bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
+  SCORED:   { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
   ARCHIVED: { bg: '#F0F0F0', text: '#6B7280', border: '#D1D5DB' },
 };
 
