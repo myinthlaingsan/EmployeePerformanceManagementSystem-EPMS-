@@ -20,6 +20,12 @@ public class AdminDashboardResponse {
     private long activeCycles;
     private List<RecentActivity> recentActivities;
     private List<SecurityAlert> securityAlerts;
+    private Long failedLoginsLast24h;
+    private Long accountsCreatedThisMonth;
+    private Long accountsDeactivatedThisMonth;
+    private String activeCycleName;
+    private String cycleStartDate;
+    private String cycleEndDate;
 
     @Data
     @Builder

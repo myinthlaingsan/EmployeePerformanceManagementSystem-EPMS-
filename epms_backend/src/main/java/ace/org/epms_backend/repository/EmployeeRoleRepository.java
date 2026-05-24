@@ -29,4 +29,7 @@ public interface EmployeeRoleRepository extends JpaRepository<EmployeeRole, Empl
 
     long countByRole_RoleName(RoleType roleName);
 
+    @Query("SELECT er.employee.id FROM EmployeeRole er WHERE er.role.roleName = :roleName")
+    List<Long> findUserIdsByRole(RoleType roleName);
+
 }

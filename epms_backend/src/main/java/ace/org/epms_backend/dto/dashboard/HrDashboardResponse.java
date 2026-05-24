@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -21,6 +22,11 @@ public class HrDashboardResponse {
     private List<DepartmentPerformance> departmentPerformance;
     private List<TopPerformer> topPerformers;
     private List<DashboardAlert> alerts;
+    private String currentCyclePhase;
+    private Double cyclePhaseProgress;
+    private List<String> nonCompliantManagers;
+    private Map<String, PipSummary> pipByDepartment;
+    private Long daysUntilCycleEnd;
 
     @Data
     @Builder
@@ -52,5 +58,14 @@ public class HrDashboardResponse {
         private String message;
         private String type; // info, warning, danger
         private String timestamp;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PipSummary {
+        private int active;
+        private int closed;
     }
 }

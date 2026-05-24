@@ -20,6 +20,12 @@ public class EmployeeDashboardResponse {
     private List<KpiProgress> kpiStatus;
     private List<UpcomingPhase> appraisalTimeline;
     private List<DashboardTask> tasks;
+    private Double managerLastScore;
+    private String managerLastComment;
+    private Long daysUntilNextDeadline;
+    private Integer teamRank;
+    private Integer teamSize;
+    private Boolean onPip;
 
     @Data
     @Builder
