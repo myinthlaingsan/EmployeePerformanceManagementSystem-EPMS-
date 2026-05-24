@@ -14,7 +14,7 @@ public class PipCreateRequest {
    @NotNull(message = "Employee ID is required")
     private Long employeeId;
 
-    @NotNull(message = "Manager ID is required")
+    // Optional: Auto-resolved from ReportingLine if omitted
     private Long managerId;
 
     @NotNull(message = "Start date is required")
