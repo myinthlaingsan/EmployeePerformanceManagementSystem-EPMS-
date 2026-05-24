@@ -28,4 +28,5 @@ public class PerformanceHistoryResponse {
     private ace.org.epms_backend.enums.FeedbackType feedbackType;
     private String tagName;
     private Instant createdAt;
+    private String managerPositionName;
 }

@@ -286,22 +286,12 @@ export const PerformanceHistoryPage = () => {
                             </div>
                           </td>
                           <td style={{ padding: '10px 12px', maxWidth: 240 }}>
-                            {record.isPrivate ? (
-                              <div style={{ position: 'relative' }}>
-                                <p style={{ fontSize: 11, color: '#E0E2E8', filter: 'blur(4px)', userSelect: 'none', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{record.description}</p>
-                                <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, color: '#9EA3B0', textTransform: 'uppercase', fontWeight: 500 }}>
-                                  <svg style={{ width: 11, height: 11 }} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                                  Confidential
-                                </span>
-                              </div>
-                            ) : (
-                              <p style={{ fontSize: 11, color: '#5A6070', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' as any, fontStyle: 'italic' }}>"{record.description}"</p>
-                            )}
+                            <p style={{ fontSize: 11, color: '#5A6070', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' as any, fontStyle: 'italic' }}>"{record.description}"</p>
                           </td>
                           <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                            <span style={{ fontSize: 9, fontWeight: 500, color: record.isPrivate ? '#791F1F' : '#1A56DB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: record.isPrivate ? '#791F1F' : '#1A56DB' }} />
-                              {record.isPrivate ? 'Private' : 'Public'}
+                            <span style={{ fontSize: 9, fontWeight: 500, color: '#1A56DB', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#1A56DB' }} />
+                              Published
                             </span>
                           </td>
                         </tr>
@@ -325,7 +315,6 @@ export const PerformanceHistoryPage = () => {
                               <span style={{ fontSize: 9, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 4, padding: '2px 6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{record.sourceType}</span>
                               {fs && <span style={{ fontSize: 9, fontWeight: 500, background: fs.bg, color: fs.text, border: `0.5px solid ${fs.border}`, borderRadius: 4, padding: '2px 6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{record.feedbackType}</span>}
                               {record.tagName && <span style={{ fontSize: 9, color: '#9EA3B0', background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 4, padding: '2px 6px' }}>#{record.tagName}</span>}
-                              {record.isPrivate && <span style={{ fontSize: 9, fontWeight: 500, background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5BFBF', borderRadius: 4, padding: '2px 6px', textTransform: 'uppercase' }}>Private</span>}
                             </div>
                             <div style={{ textAlign: 'right' }}>
                               <p style={{ fontSize: 11, color: '#9EA3B0' }}>{format(new Date(record.createdAt), 'dd/MM/yyyy')}</p>

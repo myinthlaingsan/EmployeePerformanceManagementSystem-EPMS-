@@ -40,8 +40,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck, end: true },
   { label: "Performance Pulse", to: "/performance-history/admin", icon: History, adminOnly: true },
   { label: "Team Pulse", to: "/performance-history/manager", icon: History, privilegedOnly: true, hideForAdmin: true },
-  { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true },
-  { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true },
+  { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true, hideForAdmin: true },
+  { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true, hideForAdmin: true },
   { label: "PIP", to: "/pip", icon: TrendingUp, end: true },
   { label: "Analytics", to: "/analytics", icon: BarChart3, adminOnly: true },
 ];
