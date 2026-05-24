@@ -10,6 +10,7 @@ import { useDownloadReportMutation } from "../../features/report/reportApi";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Building2, Download, Search, Settings2 } from "lucide-react";
+import { Can } from "../../components/Can";
 
 const AVATAR_COLORS = [
   { bg: "#EEF3FD", text: "#0C447C" },
@@ -76,15 +77,17 @@ const EmployeeList = () => {
           <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Employees</h1>
           <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Manage staff accounts, roles, and status.</p>
         </div>
-        <Link
-          to="/employees/new"
-          className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
-          style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, textDecoration: "none" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
-        >
-          <Plus size={14} aria-hidden="true" /> Add staff
-        </Link>
+        <Can permission="EMPLOYEE_CREATE">
+          <Link
+            to="/employees/new"
+            className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+            style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, textDecoration: "none" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+          >
+            <Plus size={14} aria-hidden="true" /> Add staff
+          </Link>
+        </Can>
       </div>
 
       {/* Filters & export bar */}
@@ -205,30 +208,36 @@ const EmployeeList = () => {
                           className="hover:bg-info-fill hover:text-[#1A56DB] transition-colors">
                           <Building2 size={14} aria-hidden="true" />
                         </Link>
-                        <Link to={`/employees/edit/${emp.id}`} title="Edit"
-                          style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: "#9EA3B0", borderRadius: 6 }}
-                          className="hover:bg-info-fill hover:text-[#1A56DB] transition-colors">
-                          <Pencil size={14} aria-hidden="true" />
-                        </Link>
-                        <button onClick={() => emp.id && deleteEmployee(emp.id)} title="Delete"
-                          style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: "#9EA3B0", borderRadius: 6 }}
-                          className="hover:bg-danger-fill hover:text-danger-text transition-colors">
-                          <Trash2 size={14} aria-hidden="true" />
-                        </button>
+                        <Can permission="EMPLOYEE_EDIT">
+                          <Link to={`/employees/edit/${emp.id}`} title="Edit"
+                            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: "#9EA3B0", borderRadius: 6 }}
+                            className="hover:bg-info-fill hover:text-[#1A56DB] transition-colors">
+                            <Pencil size={14} aria-hidden="true" />
+                          </Link>
+                        </Can>
+                        <Can permission="EMPLOYEE_DELETE">
+                          <button onClick={() => emp.id && deleteEmployee(emp.id)} title="Delete"
+                            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: "#9EA3B0", borderRadius: 6 }}
+                            className="hover:bg-danger-fill hover:text-danger-text transition-colors">
+                            <Trash2 size={14} aria-hidden="true" />
+                          </button>
+                        </Can>
                         <div style={{ width: 1, height: 14, background: "#E4E6EC", margin: "0 2px" }} />
-                        {emp.status !== "ACTIVE" ? (
-                          <button
-                            onClick={async () => { try { await activateEmployee(emp.id).unwrap(); } catch (err) { console.error("Activate failed:", err); } }}
-                            style={{ fontSize: 11, fontWeight: 500, color: "#27500A", background: "#EAF3DE", border: "0.5px solid #B8DCA0", borderRadius: 6, padding: "3px 8px" }}>
-                            Activate
-                          </button>
-                        ) : (
-                          <button
-                            onClick={async () => { try { await deactivateEmployee(emp.id).unwrap(); } catch (err) { console.error("Deactivate failed:", err); } }}
-                            style={{ fontSize: 11, fontWeight: 500, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}>
-                            Deactivate
-                          </button>
-                        )}
+                        <Can permission="EMPLOYEE_EDIT">
+                          {emp.status !== "ACTIVE" ? (
+                            <button
+                              onClick={async () => { try { await activateEmployee(emp.id).unwrap(); } catch (err) { console.error("Activate failed:", err); } }}
+                              style={{ fontSize: 11, fontWeight: 500, color: "#27500A", background: "#EAF3DE", border: "0.5px solid #B8DCA0", borderRadius: 6, padding: "3px 8px" }}>
+                              Activate
+                            </button>
+                          ) : (
+                            <button
+                              onClick={async () => { try { await deactivateEmployee(emp.id).unwrap(); } catch (err) { console.error("Deactivate failed:", err); } }}
+                              style={{ fontSize: 11, fontWeight: 500, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}>
+                              Deactivate
+                            </button>
+                          )}
+                        </Can>
                       </div>
                     </td>
                   </tr>

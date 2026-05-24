@@ -1,6 +1,7 @@
 import { useGetRolesQuery, useCreateRoleMutation, useDeleteRoleMutation } from "../../features/org/roleApi";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { Can } from "../../components/Can";
 
 const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
   ADMIN:    { bg: "#FCEBEB", text: "#791F1F" },
@@ -37,31 +38,33 @@ const RoleList = () => {
       </div>
 
       {/* Create form */}
-      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
-        <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Add role</p>
-        <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3">
-          <select
-            style={{ background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8, padding: "7px 12px", fontSize: 13, color: "#111827", fontFamily: "inherit", outline: "none", flex: 1 }}
-            value={newRoleName}
-            onChange={(e) => setNewRoleName(e.target.value)}
-          >
-            <option value="">Select role type</option>
-            <option value="ADMIN">ADMIN</option>
-            <option value="HR">HR</option>
-            <option value="MANAGER">MANAGER</option>
-            <option value="EMPLOYEE">EMPLOYEE</option>
-          </select>
-          <button
-            type="submit"
-            className="flex items-center justify-center gap-2 transition-colors sm:w-auto"
-            style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
-          >
-            <Plus size={14} aria-hidden="true" /> Add
-          </button>
-        </form>
-      </div>
+      <Can permission="ROLE_MANAGE">
+        <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Add role</p>
+          <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3">
+            <select
+              style={{ background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8, padding: "7px 12px", fontSize: 13, color: "#111827", fontFamily: "inherit", outline: "none", flex: 1 }}
+              value={newRoleName}
+              onChange={(e) => setNewRoleName(e.target.value)}
+            >
+              <option value="">Select role type</option>
+              <option value="ADMIN">ADMIN</option>
+              <option value="HR">HR</option>
+              <option value="MANAGER">MANAGER</option>
+              <option value="EMPLOYEE">EMPLOYEE</option>
+            </select>
+            <button
+              type="submit"
+              className="flex items-center justify-center gap-2 transition-colors sm:w-auto"
+              style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+            >
+              <Plus size={14} aria-hidden="true" /> Add
+            </button>
+          </form>
+        </div>
+      </Can>
 
       {/* Table */}
       <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, overflow: "hidden" }}>
@@ -87,13 +90,15 @@ const RoleList = () => {
                       </span>
                     </td>
                     <td style={{ padding: "11px 18px", textAlign: "right" }}>
-                      <button
-                        onClick={() => deleteRole(role.roleId)}
-                        className="inline-flex items-center gap-1 transition-colors"
-                        style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
-                      >
-                        <Trash2 size={12} aria-hidden="true" /> Delete
-                      </button>
+                      <Can permission="ROLE_MANAGE">
+                        <button
+                          onClick={() => deleteRole(role.roleId)}
+                          className="inline-flex items-center gap-1 transition-colors"
+                          style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
+                        >
+                          <Trash2 size={12} aria-hidden="true" /> Delete
+                        </button>
+                      </Can>
                     </td>
                   </tr>
                 );

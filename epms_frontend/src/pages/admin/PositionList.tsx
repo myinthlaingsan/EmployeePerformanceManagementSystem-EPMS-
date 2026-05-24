@@ -2,6 +2,7 @@ import { useGetPositionsQuery, useCreatePositionMutation, useDeletePositionMutat
 import { useGetJobLevelsQuery } from "../../features/org/jobLevelApi";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { Can } from "../../components/Can";
 
 const inputStyle: React.CSSProperties = {
   background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8,
@@ -38,6 +39,7 @@ const PositionList = () => {
         <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Manage job positions and their associated levels.</p>
       </div>
 
+      <Can permission="ORG_POSITION_MANAGE">
       <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
         <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Add position</p>
         <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -64,6 +66,7 @@ const PositionList = () => {
           </button>
         </form>
       </div>
+      </Can>
 
       <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, overflow: "hidden" }}>
         <div className="overflow-x-auto">
@@ -83,13 +86,15 @@ const PositionList = () => {
                   <td style={{ padding: "11px 18px", fontSize: 13, fontWeight: 500, color: "#111827" }}>{pos.positionName}</td>
                   <td style={{ padding: "11px 18px", fontSize: 12, color: "#5A6070" }}>{pos.levelName}</td>
                   <td style={{ padding: "11px 18px", textAlign: "right" }}>
-                    <button
-                      onClick={() => deletePosition(pos.positionId)}
-                      className="inline-flex items-center gap-1 transition-colors"
-                      style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
-                    >
-                      <Trash2 size={12} aria-hidden="true" /> Delete
-                    </button>
+                    <Can permission="ORG_POSITION_MANAGE">
+                      <button
+                        onClick={() => deletePosition(pos.positionId)}
+                        className="inline-flex items-center gap-1 transition-colors"
+                        style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
+                      >
+                        <Trash2 size={12} aria-hidden="true" /> Delete
+                      </button>
+                    </Can>
                   </td>
                 </tr>
               ))}

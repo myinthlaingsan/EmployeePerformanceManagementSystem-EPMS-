@@ -105,9 +105,17 @@ const App = () => {
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
 
-              {adminRoutes.map((route) => (
+              {/* Shared HR + Admin routes (employees, departments, org, etc.) */}
+              {adminRoutes.filter(r => !['/roles', '/permissions', '/permissions/matrix', '/permissions/assign'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
+
+              {/* ADMIN-only routes — Roles & Permissions management */}
+              <Route element={<ProtectedRoute requiredPermissions={["PERMISSION_MANAGE"]} />}>
+                {adminRoutes.filter(r => ['/roles', '/permissions', '/permissions/matrix', '/permissions/assign'].includes(r.path)).map((route) => (
+                  <Route key={route.path} path={route.path} element={route.element} />
+                ))}
+              </Route>
 
               {/* PIP Creation Route (Restricted) */}
               {pipRoutes.filter(r => r.adminOnly).map((route) => (
@@ -121,16 +129,8 @@ const App = () => {
               <Route path="/kpi/categories" element={<KpiCategoryManager />} />
             </Route>
 
-            {/* Specialized Manager Routes */}
-            <Route
-              element={
-                <ProtectedRoute
-                  allowedRoles={["MANAGER"]}
-                  maxLevel={4}
-                  requiredPermissions={["APPROVAL_CREATE"]}
-                />
-              }
-            >
+            {/* Approvals — requires calibrate permission */}
+            <Route element={<ProtectedRoute requiredPermissions={["APPRAISAL_CALIBRATE"]} />}>
               <Route path="/approvals" element={<ApprovalPage />} />
             </Route>
           </Route>

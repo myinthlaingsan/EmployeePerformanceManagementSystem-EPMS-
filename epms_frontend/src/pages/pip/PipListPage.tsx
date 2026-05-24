@@ -6,6 +6,7 @@ import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { useGetActiveDepartmentsQuery } from '../../features/org/departmentApi';
 import { format, parseISO, isAfter, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { CheckCircle2, AlertCircle, Plus, ChevronRight, Activity, Target, User } from 'lucide-react';
+import { Can } from '../../components/Can';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   ACTIVE:      { bg: "#EEF3FD", text: "#0C447C", border: "#B5D4F4" },
@@ -110,7 +111,7 @@ const PipListPage: React.FC = () => {
           <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>PIPs overview</h1>
           <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Managing growth and accountability across your organisation.</p>
         </div>
-        {isHR && (
+        <Can permission="PIP_CREATE">
           <button
             onClick={() => navigate('/pip/new')}
             className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
@@ -120,7 +121,7 @@ const PipListPage: React.FC = () => {
           >
             <Plus size={14} aria-hidden="true" /> Launch new PIP
           </button>
-        )}
+        </Can>
       </div>
 
       {/* Metric cards */}
