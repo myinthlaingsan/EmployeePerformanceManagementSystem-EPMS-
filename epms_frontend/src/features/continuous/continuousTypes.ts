@@ -51,7 +51,6 @@ export interface ContinuousFeedbackResponse {
   replyCount?: number;
   createdAt: string;
   publishedAt?: string; // Set when the draft is published; null if created directly as published (use createdAt fallback)
-  isPrivate?: boolean;
 }
 
 export interface ContinuousFeedbackRequest {
@@ -71,6 +70,7 @@ export interface FeedbackReplyResponse {
   employeeName: string;
   replyText: string;
   parentId?: number;
+  children?: FeedbackReplyResponse[];
   createdAt: string;
 }
 
@@ -80,12 +80,23 @@ export interface FeedbackReplyRequest {
   parentId?: number;
 }
 
+export interface MeetingActionItemRequest {
+  id?: number;
+  content: string;
+  status?: ActionItemStatus;
+  assignedToId?: number;
+  dueDate?: string;
+}
+
 export interface MeetingActionItemResponse {
   id: number;
   content: string;
   status: ActionItemStatus;
   completedAt?: string;
   reopenReason?: string;
+  assignedToId?: number;
+  assignedToName?: string;
+  dueDate?: string;
 }
 
 export interface OneOnOneMeetingResponse {
@@ -94,6 +105,7 @@ export interface OneOnOneMeetingResponse {
   employeeName: string;
   managerId: number;
   managerName: string;
+  meetingTitle?: string;
   meetingDate: string;
   meetingTime: string;
   discussionPoints: string;
@@ -111,11 +123,12 @@ export interface OneOnOneMeetingResponse {
 export interface OneOnOneMeetingRequest {
   employeeId: number;
   managerId: number;
+  meetingTitle?: string;
   meetingDate: string;
   meetingTime: string;
   discussionPoints: string;
   keyIssues: string;
-  actionItems: string[];
+  actionItems: MeetingActionItemRequest[];
   followUpDate?: string;
 
   status?: ContinuousStatus;

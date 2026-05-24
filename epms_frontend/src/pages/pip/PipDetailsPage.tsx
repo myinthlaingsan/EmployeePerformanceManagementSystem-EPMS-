@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
+import { Can } from '../../components/Can';
 import ObjectiveStatusBadge from '../../components/pip/ObjectiveStatusBadge';
 import PipStatusBadge from '../../components/pip/PipStatusBadge';
 import ReviewModal from '../../components/pip/ReviewModal';
@@ -54,7 +55,7 @@ const PipDetailsPage: React.FC = () => {
   const pip = pipResponse?.data;
   const objectives = objectivesResponse?.data ?? [];
   const reviews = reviewsResponse?.data ?? [];
-  const { user, isHR, isManager: hasManagerRole, isEmployee: hasEmployeeRole } = useAuth();
+  const { user, isHR } = useAuth();
 
   const isCurrentEmployee = user?.id === pip?.employeeId;
   const isCurrentManager = user?.id === pip?.managerId;
@@ -74,7 +75,6 @@ const PipDetailsPage: React.FC = () => {
   const { data: employeesData } = useGetEmployeesQuery({ page: 0, size: 1000 });
   const allEmployees = employeesData?.content || [];
 
-  const [reflection, setReflection] = useState('');
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isObjectiveModalOpen, setIsObjectiveModalOpen] = useState(false);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
@@ -144,6 +144,7 @@ const PipDetailsPage: React.FC = () => {
   };
 
   const handleAddProgress = async (data: any) => {
+    if (!selectedObjectiveId) return;
     try {
       await addProgress({ ...data, objectiveId: selectedObjectiveId }).unwrap();
       const objective = objectives.find(o => o.objectiveId === selectedObjectiveId);
@@ -219,10 +220,12 @@ const PipDetailsPage: React.FC = () => {
             ) : (
               <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 4 }}>
                 <h1 style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>{pip.reason || 'Performance Improvement Plan'}</h1>
-                {canManage && pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED && (
-                  <button onClick={() => setIsEditingReason(true)} style={{ fontSize: 11, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 500 }}
-                    className="hover:text-[#1A56DB] transition-colors">Edit</button>
-                )}
+                <Can permission="PIP_MANAGE">
+                  {canManage && pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED && (
+                    <button onClick={() => setIsEditingReason(true)} style={{ fontSize: 11, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 500 }}
+                      className="hover:text-[#1A56DB] transition-colors">Edit</button>
+                  )}
+                </Can>
               </div>
             )}
             <p style={{ fontSize: 12, color: '#9EA3B0' }}>
@@ -233,24 +236,27 @@ const PipDetailsPage: React.FC = () => {
           </div>
           <div className="flex flex-wrap items-center gap-2 self-start">
             <PipStatusBadge status={pip.status} />
-            {pip.status === PipStatus.DRAFT && canManage && (
-              <button onClick={handleActivate}
-                style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Play size={11} fill="currentColor" /> Activate PIP
-              </button>
-            )}
-            {canManage && pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED && (
-              <button onClick={() => setIsFinalizeModalOpen(true)}
-                style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 500 }}>
-                Finalize PIP
-              </button>
-            )}
-            {isHR && pip.status === PipStatus.DRAFT && (
-              <button onClick={handleDelete}
-                style={{ background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5BFBF', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 500 }}>
-                Delete PIP
-              </button>
-            )}
+            <Can permission="PIP_MANAGE">
+              {pip.status === PipStatus.DRAFT && canManage && (
+                <button onClick={handleActivate}
+                  style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Play size={11} fill="currentColor" /> Activate PIP
+                </button>
+              )}
+              {canManage && pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED && (
+                <button onClick={() => setIsFinalizeModalOpen(true)}
+                  style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 500 }}>
+                  Finalize PIP
+                </button>
+              )}
+              {pip.status === PipStatus.DRAFT && (
+                <button onClick={handleDelete}
+                  style={{ background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5BFBF', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 500 }}>
+                  Delete PIP
+                </button>
+              )}
+            </Can>
+            <Can permission="REPORT_EXPORT">
             <button
               id="export-pip-pdf-btn"
               onClick={handleExportPdf}
@@ -270,6 +276,7 @@ const PipDetailsPage: React.FC = () => {
               <Download size={11} />
               {isExporting ? 'Exporting…' : 'Export PDF'}
             </button>
+            </Can>
           </div>
         </div>
       </div>
@@ -308,12 +315,14 @@ const PipDetailsPage: React.FC = () => {
           <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
             <div className="flex justify-between items-center" style={{ padding: '10px 16px', background: '#FAFBFF', borderBottom: '0.5px solid #E4E6EC' }}>
               <p style={{ fontSize: 11, fontWeight: 500, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Improvement Objectives</p>
-              {canManage && pip.status !== PipStatus.CLOSED && pip.status !== PipStatus.COMPLETED && (
-                <button onClick={() => setIsObjectiveModalOpen(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 500, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer' }}>
-                  <Plus size={12} strokeWidth={3} /> Add Objective
-                </button>
-              )}
+              <Can permission="PIP_MANAGE">
+                {canManage && pip.status !== PipStatus.CLOSED && pip.status !== PipStatus.COMPLETED && (
+                  <button onClick={() => setIsObjectiveModalOpen(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 500, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer' }}>
+                    <Plus size={12} strokeWidth={3} /> Add Objective
+                  </button>
+                )}
+              </Can>
             </div>
             <div style={{ padding: '16px 20px' }} className="space-y-8">
               {objectives.length > 0 ? objectives.map(objective => (
@@ -323,22 +332,26 @@ const PipDetailsPage: React.FC = () => {
                     <div className="flex flex-wrap items-center justify-between gap-2" style={{ marginBottom: 4 }}>
                       <div className="flex items-center gap-2">
                         <h4 style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{objective.title}</h4>
-                        {canManage && pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED && (
-                          <button onClick={() => setEditingObjective(objective)}
-                            style={{ fontSize: 10, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px' }}
-                            className="hover:text-[#1A56DB] transition-colors">Edit</button>
-                        )}
+                        <Can permission="PIP_MANAGE">
+                          {canManage && pip.status !== PipStatus.COMPLETED && pip.status !== PipStatus.CLOSED && (
+                            <button onClick={() => setEditingObjective(objective)}
+                              style={{ fontSize: 10, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+                              className="hover:text-[#1A56DB] transition-colors">Edit</button>
+                          )}
+                        </Can>
                       </div>
                       <div className="flex items-center gap-2">
                         <ObjectiveStatusBadge status={objective.status} />
-                        {canManage && pip.status !== PipStatus.DRAFT && pip.status !== PipStatus.CLOSED && (
-                          <select value={objective.status} onChange={e => handleStatusChange(objective.objectiveId, e.target.value as ObjectiveStatus)}
-                            style={{ fontSize: 10, background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '3px 6px', color: '#5A6070', outline: 'none', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            {objective.status === 'NOT_STARTED' && <option value="NOT_STARTED">Not Started</option>}
-                            <option value="IN_PROGRESS">In Progress</option>
-                            <option value="COMPLETED">Completed</option>
-                          </select>
-                        )}
+                        <Can permission="PIP_MANAGE">
+                          {canManage && pip.status !== PipStatus.DRAFT && pip.status !== PipStatus.CLOSED && (
+                            <select value={objective.status} onChange={e => handleStatusChange(objective.objectiveId, e.target.value as ObjectiveStatus)}
+                              style={{ fontSize: 10, background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '3px 6px', color: '#5A6070', outline: 'none', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              {objective.status === 'NOT_STARTED' && <option value="NOT_STARTED">Not Started</option>}
+                              <option value="IN_PROGRESS">In Progress</option>
+                              <option value="COMPLETED">Completed</option>
+                            </select>
+                          )}
+                        </Can>
                       </div>
                     </div>
                     <p style={{ fontSize: 13, color: '#5A6070', lineHeight: 1.6, marginBottom: 8 }}>{objective.description}</p>
@@ -347,12 +360,14 @@ const PipDetailsPage: React.FC = () => {
                         <Calendar size={11} /> Target: {format(parseISO(objective.targetDate), 'dd/MM/yyyy')}
                       </span>
                       <span style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 4, padding: '1px 7px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{objective.successCriteria}</span>
-                      {isCurrentEmployee && pip.status !== PipStatus.CLOSED && pip.status !== PipStatus.COMPLETED && (
-                        <button onClick={() => { setSelectedObjectiveId(objective.objectiveId); setIsProgressModalOpen(true); }}
-                          style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 500, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          Log Progress
-                        </button>
-                      )}
+                      <Can permission="PIP_CREATE">
+                        {isCurrentEmployee && pip.status !== PipStatus.CLOSED && pip.status !== PipStatus.COMPLETED && (
+                          <button onClick={() => { setSelectedObjectiveId(objective.objectiveId); setIsProgressModalOpen(true); }}
+                            style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 500, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Log Progress
+                          </button>
+                        )}
+                      </Can>
                     </div>
                     <div style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
                       <div className="flex justify-between items-center" style={{ marginBottom: 6, fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -453,12 +468,14 @@ const PipDetailsPage: React.FC = () => {
             <div style={{ width: 3, height: 18, background: '#1A56DB', borderRadius: 2 }} />
             <p style={{ fontSize: 11, fontWeight: 500, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Progress Ledger</p>
           </div>
-          {canManage && pip.status !== PipStatus.CLOSED && pip.status !== PipStatus.COMPLETED && (
-            <button onClick={() => setIsReviewModalOpen(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 500, color: '#1A56DB', background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 20, padding: '4px 10px' }}>
-              <Plus size={12} /> Add Entry
-            </button>
-          )}
+          <Can permission="PIP_MANAGE">
+            {canManage && pip.status !== PipStatus.CLOSED && pip.status !== PipStatus.COMPLETED && (
+              <button onClick={() => setIsReviewModalOpen(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 500, color: '#1A56DB', background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 20, padding: '4px 10px' }}>
+                <Plus size={12} /> Add Entry
+              </button>
+            )}
+          </Can>
         </div>
         <div>
           {reviews.length > 0 ? reviews.map((log, idx) => (

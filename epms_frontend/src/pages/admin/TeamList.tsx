@@ -7,6 +7,7 @@ import { useGetDepartmentsQuery } from "../../features/org/departmentApi";
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import type { TeamResponse } from "../../features/org/orgTypes";
 import { Plus, Trash2, X, Users } from "lucide-react";
+import { Can } from "../../components/Can";
 
 const inputStyle: React.CSSProperties = {
   background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8,
@@ -69,27 +70,29 @@ const TeamList = () => {
         {/* Left: list + create */}
         <div className="lg:col-span-2 space-y-4">
           {/* Create form */}
-          <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
-            <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Add team</p>
-            <form onSubmit={handleCreateTeam} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input style={inputStyle} placeholder="Team name" value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} />
-              <select style={inputStyle} value={selectedDeptId} onChange={(e) => setSelectedDeptId(e.target.value === "" ? "" : Number(e.target.value))}>
-                <option value="">Select department</option>
-                {departments?.map((dept) => (
-                  <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="flex items-center justify-center gap-2 transition-colors"
-                style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
-              >
-                <Plus size={14} aria-hidden="true" /> Add
-              </button>
-            </form>
-          </div>
+          <Can permission="ORG_TEAM_MANAGE">
+            <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Add team</p>
+              <form onSubmit={handleCreateTeam} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <input style={inputStyle} placeholder="Team name" value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} />
+                <select style={inputStyle} value={selectedDeptId} onChange={(e) => setSelectedDeptId(e.target.value === "" ? "" : Number(e.target.value))}>
+                  <option value="">Select department</option>
+                  {departments?.map((dept) => (
+                    <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="flex items-center justify-center gap-2 transition-colors"
+                  style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+                >
+                  <Plus size={14} aria-hidden="true" /> Add
+                </button>
+              </form>
+            </div>
+          </Can>
 
           {/* Teams table */}
           <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, overflow: "hidden" }}>
@@ -124,13 +127,15 @@ const TeamList = () => {
                           >
                             Members
                           </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); if (window.confirm("Delete this team?")) deleteTeam(team.teamId); }}
-                            className="inline-flex items-center gap-1 transition-colors"
-                            style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
-                          >
-                            <Trash2 size={12} aria-hidden="true" />
-                          </button>
+                          <Can permission="ORG_TEAM_MANAGE">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); if (window.confirm("Delete this team?")) deleteTeam(team.teamId); }}
+                              className="inline-flex items-center gap-1 transition-colors"
+                              style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
+                            >
+                              <Trash2 size={12} aria-hidden="true" />
+                            </button>
+                          </Can>
                         </div>
                       </td>
                     </tr>
@@ -159,6 +164,7 @@ const TeamList = () => {
               </div>
 
               {/* Assign form */}
+              <Can permission="ORG_TEAM_MANAGE">
               <form onSubmit={handleAssignEmployee} className="space-y-3 pb-4" style={{ borderBottom: "0.5px solid #F0F2F6", marginBottom: 14 }}>
                 <p style={{ fontSize: 12, fontWeight: 500, color: "#5A6070" }}>Assign member</p>
                 <select style={inputStyle} value={employeeToAssign} onChange={(e) => setEmployeeToAssign(e.target.value === "" ? "" : Number(e.target.value))}>
@@ -182,6 +188,7 @@ const TeamList = () => {
                   <Plus size={13} /> Assign
                 </button>
               </form>
+              </Can>
 
               {/* Member list */}
               <p style={{ fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 10 }}>Members</p>
@@ -199,12 +206,14 @@ const TeamList = () => {
                         {member.isPrimary && (
                           <span style={{ background: "#EAF3DE", color: "#27500A", fontSize: 11, fontWeight: 500, padding: "2px 6px", borderRadius: 20 }}>Primary</span>
                         )}
-                        <button
-                          onClick={() => removeMember({ teamId: selectedTeam.teamId, employeeId: member.employeeId })}
-                          style={{ color: "#9EA3B0" }} aria-label="Remove member"
-                        >
-                          <X size={13} />
-                        </button>
+                        <Can permission="ORG_TEAM_MANAGE">
+                          <button
+                            onClick={() => removeMember({ teamId: selectedTeam.teamId, employeeId: member.employeeId })}
+                            style={{ color: "#9EA3B0" }} aria-label="Remove member"
+                          >
+                            <X size={13} />
+                          </button>
+                        </Can>
                       </div>
                     </div>
                   ))}

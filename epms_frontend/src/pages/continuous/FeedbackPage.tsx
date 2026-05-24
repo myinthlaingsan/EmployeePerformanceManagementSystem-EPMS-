@@ -16,6 +16,8 @@ import {
   useUpdateReplyMutation,
   usePublishFeedbackMutation,
   useGetFeedbackStatsForManagerQuery,
+  useGetFeedbacksByEmployeeQuery,
+  useGetFeedbacksByManagerQuery,
 } from "../../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { FeedbackType, ContinuousStatus } from "../../features/continuous/continuousTypes";
@@ -59,7 +61,7 @@ const FeedbackSnapshot = ({ stats }: { stats: { praise: number; improvement: num
           <div key={b.label} className="space-y-1">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 12, fontWeight: 500, color: '#5A6070' }}>{b.label}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: b.text }}>{b.val}%</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: b.text }}>{b.val}%</span>
             </div>
             <div style={{ height: 6, background: '#F5F6F8', borderRadius: 4, overflow: 'hidden', border: '0.5px solid #E4E6EC' }}>
               <div style={{ height: '100%', background: b.bar, borderRadius: 4, width: `${b.val}%`, transition: 'width 0.5s' }} />
@@ -69,19 +71,19 @@ const FeedbackSnapshot = ({ stats }: { stats: { praise: number; improvement: num
       </div>
 
       {showTips && (
-        <div style={{ background: '#111827', borderRadius: 8, padding: '14px 16px', marginTop: 4 }} className="space-y-3">
+        <div style={{ background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '14px 16px', marginTop: 4 }} className="space-y-3">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg style={{ width: 16, height: 16, color: '#9EA3B0' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg style={{ width: 16, height: 16, color: '#0C447C' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF' }}>Manager Tips</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#0C447C' }}>Manager Tips</span>
           </div>
-          <p style={{ fontSize: 12, color: '#9EA3B0', lineHeight: 1.6 }}>Giving constructive feedback works best when it's specific, actionable, and delivered within 24 hours.</p>
+          <p style={{ fontSize: 12, color: '#0C447C', lineHeight: 1.6 }}>Giving constructive feedback works best when it's specific, actionable, and delivered within 24 hours.</p>
           <div className="space-y-2">
             {['Use the "Situation-Behavior-Impact" model.', 'Balance praise with growth opportunities.'].map(tip => (
-              <div key={tip} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'rgba(255,255,255,0.05)', border: '0.5px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '7px 10px' }}>
-                <svg style={{ width: 12, height: 12, color: '#B5D4F4', flexShrink: 0, marginTop: 1 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                <p style={{ fontSize: 11, color: '#9EA3B0', lineHeight: 1.4 }}>{tip}</p>
+              <div key={tip} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: '#FFFFFF', border: '0.5px solid #B5D4F4', borderRadius: 6, padding: '7px 10px' }}>
+                <svg style={{ width: 12, height: 12, color: '#0C447C', flexShrink: 0, marginTop: 1 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                <p style={{ fontSize: 11, color: '#5A6070', lineHeight: 1.4 }}>{tip}</p>
               </div>
             ))}
           </div>
@@ -138,16 +140,16 @@ const ReplyItem = ({
     <div id={`reply-${reply.replyId}`} onContextMenu={(e) => onContextMenu(e, reply)}
       style={isHighlighted ? { background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: 8, margin: -8 } : {}}>
       <div style={{ display: 'flex', gap: 10, ...(isCurrentUser ? { flexDirection: 'row-reverse' as const } : {}) }}>
-        <div style={{ width: 30, height: 30, borderRadius: 6, background: isCurrentUser || isHighlighted ? '#1A56DB' : '#F5F6F8', color: isCurrentUser || isHighlighted ? '#FFFFFF' : '#111827', border: isCurrentUser || isHighlighted ? 'none' : '0.5px solid #E4E6EC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 4 }}>
+        <div style={{ width: 30, height: 30, borderRadius: 6, background: isCurrentUser || isHighlighted ? '#1A56DB' : '#F5F6F8', color: isCurrentUser || isHighlighted ? '#FFFFFF' : '#111827', border: isCurrentUser || isHighlighted ? 'none' : '0.5px solid #E4E6EC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, flexShrink: 0, marginTop: 4 }}>
           {reply.employeeName?.charAt(0) || '?'}
         </div>
         <div style={{ maxWidth: '80%', display: 'flex', flexDirection: 'column', gap: 3, alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
               {isCurrentUser ? 'You' : reply.employeeName}
             </span>
-            {isAuthor && <span style={{ background: '#111827', color: '#FFFFFF', fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Author</span>}
-            <span style={{ fontSize: 10, color: '#9EA3B0' }}>{reply.createdAt ? format(new Date(reply.createdAt), 'h:mm a') : ''}</span>
+            {isAuthor && <span style={{ background: '#EEF3FD', color: '#0C447C', fontSize: 11, fontWeight: 500, padding: '1px 5px', borderRadius: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Author</span>}
+            <span style={{ fontSize: 11, color: '#9EA3B0' }}>{reply.createdAt ? format(new Date(reply.createdAt), 'h:mm a') : ''}</span>
           </div>
 
           <div style={bubbleStyle} className="group">
@@ -163,8 +165,8 @@ const ReplyItem = ({
               return (
                 <div onClick={() => handleScrollToParent(parent.replyId)}
                   style={{ marginBottom: 8, padding: '5px 8px', borderRadius: 6, borderLeft: '2px solid #1A56DB', background: '#EEF3FD', cursor: 'pointer' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{parent.employeeName}</div>
-                  <div style={{ fontSize: 10, color: '#5A6070', fontStyle: 'italic' }} className="line-clamp-2">"{parent.replyText}"</div>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{parent.employeeName}</div>
+                  <div style={{ fontSize: 11, color: '#5A6070', fontStyle: 'italic' }} className="line-clamp-2">"{parent.replyText}"</div>
                 </div>
               );
             })()}
@@ -174,9 +176,9 @@ const ReplyItem = ({
                 <input style={{ ...inputStyle, padding: '6px 8px' }}
                   value={editReplyText} onChange={(e) => setEditReplyText(e.target.value)} autoFocus />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setEditingReplyId(null)} style={{ fontSize: 10, fontWeight: 600, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => setEditingReplyId(null)} style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
                   <button disabled={isUpdatingReply} onClick={() => handleUpdateReply(reply.replyId)}
-                    style={{ fontSize: 10, fontWeight: 600, color: '#1A56DB', background: 'none', border: 'none', cursor: isUpdatingReply ? 'not-allowed' : 'pointer', opacity: isUpdatingReply ? 0.5 : 1 }}>
+                    style={{ fontSize: 11, fontWeight: 500, color: '#1A56DB', background: 'none', border: 'none', cursor: isUpdatingReply ? 'not-allowed' : 'pointer', opacity: isUpdatingReply ? 0.5 : 1 }}>
                     {isUpdatingReply ? 'Saving…' : 'Save'}
                   </button>
                 </div>
@@ -185,7 +187,7 @@ const ReplyItem = ({
               <>
                 <span style={{ fontSize: 13, color: '#111827', lineHeight: 1.5 }}>{reply.replyText}</span>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                  <span style={{ fontSize: 8, fontWeight: 500, color: '#9EA3B0' }}>{formatRelativeTime(reply.createdAt)}</span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0' }}>{formatRelativeTime(reply.createdAt)}</span>
                   {isCurrentUser && <svg style={{ width: 10, height: 10, color: '#B5D4F4' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                 </div>
               </>
@@ -201,15 +203,43 @@ const FeedbackPage = () => {
   const { user, isManager, isAdmin, isHR } = useAuth();
   const canCreate = isManager;
 
+  const [perspective, setPerspective] = useState<'all' | 'received' | 'given'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [goToPage, setGoToPage] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+  const [filterFeedbackType, setFilterFeedbackType] = useState<string | undefined>(undefined);
+  const [filterTagId, setFilterTagId] = useState<number | undefined>(undefined);
+  const [filterCreatedAfter, setFilterCreatedAfter] = useState<string>('');
+  const [filterCreatedBefore, setFilterCreatedBefore] = useState<string>('');
 
-  const { data: feedbackResponse, isLoading } = useGetAllFeedbacksQuery(
-    { page: currentPage - 1, size: itemsPerPage, status: filterStatus },
-    { skip: !user }
+  const queryParams = {
+    page: currentPage - 1,
+    size: itemsPerPage,
+    feedbackType: filterFeedbackType,
+    tagId: filterTagId,
+    createdAfter: filterCreatedAfter || undefined,
+    createdBefore: filterCreatedBefore || undefined
+  };
+
+  const { data: allResponse, isLoading: isLoadingAll } = useGetAllFeedbacksQuery(
+    { ...queryParams, status: filterStatus },
+    { skip: !user || perspective !== 'all' }
   );
+
+  const { data: employeeResponse, isLoading: isLoadingEmp } = useGetFeedbacksByEmployeeQuery(
+    { employeeId: user?.id || 0, ...queryParams },
+    { skip: !user || perspective !== 'received' }
+  );
+
+  const { data: managerResponse, isLoading: isLoadingMgr } = useGetFeedbacksByManagerQuery(
+    { managerId: user?.id || 0, status: filterStatus, ...queryParams },
+    { skip: !user || perspective !== 'given' }
+  );
+
+  const feedbackResponse = perspective === 'all' ? allResponse : perspective === 'received' ? employeeResponse : managerResponse;
+  const isLoading = perspective === 'all' ? isLoadingAll : perspective === 'received' ? isLoadingEmp : isLoadingMgr;
+
   const feedbacks = feedbackResponse?.content || [];
   const { data: tags } = useGetFeedbackTagsQuery();
   const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000, excludeSelf: true });
@@ -232,15 +262,31 @@ const FeedbackPage = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<number | null>(null);
 
+  const deptEmployees = employees?.filter(emp =>
+    emp.currentDepartmentName && user?.currentDepartmentName &&
+    emp.currentDepartmentName === user?.currentDepartmentName
+  ) || [];
+  // Include the logged-in user's own rank since they are excluded from the
+  // employees list (excludeSelf=true). Without this, the next person below
+  // them becomes minRankInDept and gets incorrectly filtered out.
+  const allDeptRanks = [
+    ...deptEmployees.map(emp => emp.levelRank ?? 9999),
+    user?.levelRank ?? 9999
+  ];
+  const minRankInDept = allDeptRanks.length > 0
+    ? Math.min(...allDeptRanks)
+    : 9999;
+
   const filteredEmployees = (isAdmin || isHR)
     ? employees
     : employees?.filter(emp =>
         emp.currentDepartmentName && user?.currentDepartmentName &&
         emp.currentDepartmentName === user?.currentDepartmentName &&
-        emp.id !== user?.id
+        emp.id !== user?.id &&
+        (emp.levelRank === undefined || emp.levelRank === null || emp.levelRank !== minRankInDept) &&
+        (emp.levelRank === undefined || emp.levelRank === null || user?.levelRank === undefined || user?.levelRank === null || emp.levelRank >= user.levelRank)
       );
 
-  const blankFeedback = { employeeId: 0, tagId: "" as number | "", feedbackType: FeedbackType.PRAISE, description: "", isPrivate: false };
   const [showModal, setShowModal] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<ContinuousStatus>(ContinuousStatus.PUBLISHED);
   const [newFeedback, setNewFeedback] = useState<{
@@ -346,7 +392,7 @@ const FeedbackPage = () => {
     if (page >= 1 && page <= totalPages) { setCurrentPage(page); setGoToPage(""); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   };
 
-  const handleGoToPage = (e: React.FormEvent) => {
+  const handleGoToPage = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const pageNum = parseInt(goToPage);
     if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) handlePageChange(pageNum);
@@ -372,7 +418,7 @@ const FeedbackPage = () => {
   };
 
   const btnPageStyle = (active: boolean): React.CSSProperties => ({
-    width: 30, height: 30, borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+    width: 30, height: 30, borderRadius: 6, fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer',
     background: active ? '#1A56DB' : 'transparent', color: active ? '#FFFFFF' : '#9EA3B0',
   });
 
@@ -394,23 +440,103 @@ const FeedbackPage = () => {
       </div>
 
       {isManager && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {([{ label: 'All', value: undefined }, { label: 'Published', value: ContinuousStatus.PUBLISHED }, { label: 'Drafts', value: ContinuousStatus.DRAFT }] as const).map(({ label, value }) => (
-            <button key={label} type="button"
-              onClick={() => { setFilterStatus(value as string | undefined); setCurrentPage(1); }}
-              style={{ padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.15s', background: filterStatus === value ? '#111827' : '#F5F6F8', color: filterStatus === value ? '#FFFFFF' : '#5A6070' }}>
-              {label}
+        <div className="space-y-3">
+          <div className="bg-white border border-gray-200/80 rounded-xl p-1.5 flex gap-2 w-fit">
+            <button
+              type="button"
+              onClick={() => { setPerspective('all'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2 rounded-lg text-[12px] font-medium transition-all duration-300 ${
+                perspective === 'all'
+                  ? 'bg-[#1A56DB] text-white'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              All Feedback
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => { setPerspective('received'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2 rounded-lg text-[12px] font-medium transition-all duration-300 ${
+                perspective === 'received'
+                  ? 'bg-[#1A56DB] text-white'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Feedback Received
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPerspective('given'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2 rounded-lg text-[12px] font-medium transition-all duration-300 ${
+                perspective === 'given'
+                  ? 'bg-[#1A56DB] text-white'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Feedback Given
+            </button>
+          </div>
+
+          {/* Draft/Published filter (only applicable for given or all) */}
+          {perspective !== 'received' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {([{ label: 'All Statuses', value: undefined }, { label: 'Published Only', value: ContinuousStatus.PUBLISHED }, { label: 'Drafts Only', value: ContinuousStatus.DRAFT }] as const).map(({ label, value }) => (
+                <button key={label} type="button"
+                  onClick={() => { setFilterStatus(value as string | undefined); setCurrentPage(1); }}
+                  style={{ padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 500, cursor: 'pointer', border: 'none', transition: 'all 0.15s', background: filterStatus === value ? '#1A56DB' : '#F5F6F8', color: filterStatus === value ? '#FFFFFF' : '#5A6070' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
+
+      {/* Filter Toolbar */}
+      <div style={{ ...panelStyle, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+        <div style={{ flex: '1 1 130px', minWidth: 0 }}>
+          <label style={labelStyle}>Type</label>
+          <select style={inputStyle} value={filterFeedbackType ?? ''}
+            onChange={e => { setFilterFeedbackType(e.target.value || undefined); setCurrentPage(1); }}>
+            <option value="">All Types</option>
+            <option value="PRAISE">Praise</option>
+            <option value="IMPROVEMENT">Improvement</option>
+            <option value="WARNING">Warning</option>
+          </select>
+        </div>
+        <div style={{ flex: '1 1 130px', minWidth: 0 }}>
+          <label style={labelStyle}>Tag</label>
+          <select style={inputStyle} value={filterTagId ?? ''}
+            onChange={e => { setFilterTagId(e.target.value ? Number(e.target.value) : undefined); setCurrentPage(1); }}>
+            <option value="">All Tags</option>
+            {(tags || []).map(t => <option key={t.tagId} value={t.tagId}>{t.tagName}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: '1 1 130px', minWidth: 0 }}>
+          <label style={labelStyle}>From</label>
+          <input type="date" style={inputStyle} value={filterCreatedAfter}
+            onChange={e => { setFilterCreatedAfter(e.target.value); setCurrentPage(1); }} />
+        </div>
+        <div style={{ flex: '1 1 130px', minWidth: 0 }}>
+          <label style={labelStyle}>To</label>
+          <input type="date" style={inputStyle} value={filterCreatedBefore}
+            onChange={e => { setFilterCreatedBefore(e.target.value); setCurrentPage(1); }} />
+        </div>
+        {(filterFeedbackType || filterTagId || filterCreatedAfter || filterCreatedBefore) && (
+          <button type="button"
+            onClick={() => { setFilterFeedbackType(undefined); setFilterTagId(undefined); setFilterCreatedAfter(''); setFilterCreatedBefore(''); setCurrentPage(1); }}
+            style={{ padding: '7px 12px', background: '#F5F6F8', color: '#9EA3B0', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            Clear Filters
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Main Feed */}
         <div className="lg:col-span-2 space-y-3 order-2 lg:order-1">
           {(isAdmin || isHR) && (
             <div style={{ background: '#FAEEDA', border: '2px dashed #F0D4A4', borderRadius: 12, padding: '32px 24px', textAlign: 'center' }}>
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#633806', marginBottom: 6 }}>Access Restricted</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 500, color: '#633806', marginBottom: 6 }}>Access Restricted</h3>
               <p style={{ fontSize: 12, color: '#633806', marginBottom: 14 }}>Admins are restricted to viewing performance history only. Feedback details are hidden.</p>
               <a href="/performance-history" style={{ display: 'inline-block', padding: '7px 16px', background: '#633806', color: '#FFFFFF', borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>Go to Performance History</a>
             </div>
@@ -428,11 +554,11 @@ const FeedbackPage = () => {
               <div key={fb.feedbackId} style={panelStyle} className="group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 8, background: typeStyle.bg, color: typeStyle.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 8, background: typeStyle.bg, color: typeStyle.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500, fontSize: 15, flexShrink: 0 }}>
                       {fb.managerName.charAt(0)}
                     </div>
                     <div>
-                      <h3 style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
+                      <h3 style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>
                         {fb.managerName}
                         {fb.employeeId !== user?.id && <span style={{ color: '#9EA3B0', fontWeight: 400, marginLeft: 4, fontSize: 12 }}>to {fb.employeeName}</span>}
                         {fb.employeeId === user?.id && fb.managerId === user?.id && <span style={{ color: '#9EA3B0', fontWeight: 400, marginLeft: 4, fontSize: 12 }}>(Self)</span>}
@@ -446,19 +572,19 @@ const FeedbackPage = () => {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {fb.status === ContinuousStatus.DRAFT && (
-                      <span style={{ fontSize: 9, fontWeight: 600, background: '#FAEEDA', color: '#633806', border: '0.5px solid #F0D4A4', borderRadius: 6, padding: '3px 8px' }}>
+                      <span style={{ fontSize: 11, fontWeight: 500, background: '#FAEEDA', color: '#633806', border: '0.5px solid #F0D4A4', borderRadius: 6, padding: '3px 8px' }}>
                         Draft
                       </span>
                     )}
-                    <span style={{ fontSize: 9, fontWeight: 600, background: typeStyle.bg, color: typeStyle.text, border: `0.5px solid ${typeStyle.border}`, borderRadius: 6, padding: '3px 8px', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, background: typeStyle.bg, color: typeStyle.text, border: `0.5px solid ${typeStyle.border}`, borderRadius: 6, padding: '3px 8px', textTransform: 'uppercase' }}>
                       {fb.feedbackType}
                     </span>
                     {(fb.managerId === user?.id || isAdmin || isHR) && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <button onClick={() => handleEdit(fb)} style={{ padding: 5, background: 'none', border: 'none', color: '#9EA3B0', cursor: 'pointer', borderRadius: 6 }} className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
+                        <button onClick={() => handleEdit(fb)} style={{ padding: 5, background: 'none', border: 'none', color: '#9EA3B0', cursor: 'pointer', borderRadius: 6 }} className="hover:bg-info-fill hover:text-[#1A56DB] transition-colors">
                           <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
-                        <button onClick={() => setFeedbackToDelete(fb.feedbackId)} style={{ padding: 5, background: 'none', border: 'none', color: '#9EA3B0', cursor: 'pointer', borderRadius: 6 }} className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
+                        <button onClick={() => setFeedbackToDelete(fb.feedbackId)} style={{ padding: 5, background: 'none', border: 'none', color: '#9EA3B0', cursor: 'pointer', borderRadius: 6 }} className="hover:bg-danger-fill hover:text-danger-text transition-colors">
                           <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                       </div>
@@ -468,7 +594,7 @@ const FeedbackPage = () => {
 
 
               {fb.tag && (
-                <span style={{ fontSize: 10, fontWeight: 600, background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 20, padding: '2px 8px', display: 'inline-block', marginBottom: 8 }}>#{fb.tag.tagName}</span>
+                <span style={{ fontSize: 11, fontWeight: 500, background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 20, padding: '2px 8px', display: 'inline-block', marginBottom: 8 }}>#{fb.tag.tagName}</span>
               )}
               <p style={{ fontSize: 13, color: '#5A6070', lineHeight: 1.6 }}>{fb.description}</p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginTop: 12, borderTop: '0.5px solid #F0F2F6' }}>
@@ -482,7 +608,7 @@ const FeedbackPage = () => {
                 </button>
                 {fb.status === ContinuousStatus.DRAFT && fb.managerId === user?.id && (
                   <button type="button" onClick={() => handlePublish(fb.feedbackId)} disabled={isPublishing}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, cursor: isPublishing ? 'not-allowed' : 'pointer', opacity: isPublishing ? 0.5 : 1 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 500, cursor: isPublishing ? 'not-allowed' : 'pointer', opacity: isPublishing ? 0.5 : 1 }}>
                     <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                     Publish
                   </button>
@@ -492,8 +618,8 @@ const FeedbackPage = () => {
                 <FeedbackReplies feedbackId={fb.feedbackId} authorId={fb.managerId} />
               )}
             </div>
-          )
-        })}
+            )
+          })}
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -527,11 +653,15 @@ const FeedbackPage = () => {
               <svg style={{ width: 18, height: 18 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
             </div>
             <div>
-              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>{isManager ? 'Total Published' : 'Total Received'}</p>
-              <p style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>{isManager ? (feedbackStats?.totalPublished || 0) : totalItems}</p>
+              <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>
+                {perspective === 'received' ? 'Received Published' : perspective === 'given' ? 'Given Published' : isManager ? 'Total Published' : 'Total Received'}
+              </p>
+              <p style={{ fontSize: 22, fontWeight: 500, color: '#111827' }}>
+                {perspective === 'received' ? (feedbackResponse?.totalElements || 0) : perspective === 'given' ? (feedbackStats?.totalPublished || 0) : isManager ? (feedbackStats?.totalPublished || 0) : totalItems}
+              </p>
             </div>
           </div>
-          {isManager && (
+          {isManager && perspective !== 'received' && (
             <button type="button"
               onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
               style={{ ...panelStyle, display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left', cursor: 'pointer' }}
@@ -541,8 +671,8 @@ const FeedbackPage = () => {
                 <svg style={{ width: 18, height: 18 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
               </div>
               <div>
-                <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>Total Drafts</p>
-                <p style={{ fontSize: 22, fontWeight: 700, color: '#633806' }}>{feedbackStats?.totalDraft || 0}</p>
+                <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>Total Drafts</p>
+                <p style={{ fontSize: 22, fontWeight: 500, color: '#633806' }}>{feedbackStats?.totalDraft || 0}</p>
               </div>
             </button>
           )}
@@ -554,8 +684,8 @@ const FeedbackPage = () => {
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
           <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, width: '100%', maxWidth: 500, overflow: 'hidden' }}>
-            <div style={{ background: '#111827', padding: '14px 20px' }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#FFFFFF' }}>{editingId ? 'Edit Feedback' : 'Give Performance Feedback'}</h2>
+            <div style={{ background: '#FFFFFF', borderBottom: '0.5px solid #E4E6EC', padding: '14px 20px' }}>
+              <h2 style={{ fontSize: 15, fontWeight: 500, color: '#111827' }}>{editingId ? 'Edit Feedback' : 'Give Performance Feedback'}</h2>
             </div>
             <div style={{ padding: 20, maxHeight: '80vh', overflowY: 'auto' }}>
               <form onSubmit={handleCreate} className="space-y-4">
@@ -573,7 +703,7 @@ const FeedbackPage = () => {
                       <label style={{ ...labelStyle, marginBottom: 0 }}>Tag</label>
                       {!isAddingTag && (
                         <button type="button" onClick={() => setIsAddingTag(true)}
-                          style={{ fontSize: 10, fontWeight: 600, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer' }}>+ New Tag</button>
+                          style={{ fontSize: 11, fontWeight: 500, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer' }}>+ New Tag</button>
                       )}
                     </div>
                     {isAddingTag ? (
@@ -603,12 +733,12 @@ const FeedbackPage = () => {
                 {selectedEmp && (
                   <div style={{ background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '10px 14px', display: 'flex', gap: 24 }}>
                     <div>
-                      <p style={{ fontSize: 10, fontWeight: 600, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Department</p>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{selectedEmp.currentDepartmentName || 'N/A'}</p>
+                      <p style={{ fontSize: 11, fontWeight: 500, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Department</p>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{selectedEmp.currentDepartmentName || 'N/A'}</p>
                     </div>
                     <div>
-                      <p style={{ fontSize: 10, fontWeight: 600, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Position</p>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{selectedEmp.positionName}</p>
+                      <p style={{ fontSize: 11, fontWeight: 500, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Position</p>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{selectedEmp.positionName}</p>
                     </div>
                   </div>
                 )}
@@ -621,7 +751,7 @@ const FeedbackPage = () => {
                       const isActive = newFeedback.feedbackType === type;
                       return (
                         <button key={type} type="button" onClick={() => setNewFeedback({ ...newFeedback, feedbackType: type })}
-                          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 4px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.15s', ...(isActive ? config.activeStyle : config.inactiveStyle) }}>
+                          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 4px', borderRadius: 6, fontSize: 11, fontWeight: 500, cursor: 'pointer', border: 'none', transition: 'all 0.15s', ...(isActive ? config.activeStyle : config.inactiveStyle) }}>
                           {config.icon}{config.label}
                         </button>
                       );
@@ -645,7 +775,7 @@ const FeedbackPage = () => {
                   </button>
                   {editingId ? (
                     <button type="submit" disabled={isUpdating}
-                      style={{ padding: '8px 16px', background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: isUpdating ? 'not-allowed' : 'pointer', opacity: isUpdating ? 0.6 : 1 }}>
+                      style={{ padding: '8px 16px', background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: isUpdating ? 'not-allowed' : 'pointer', opacity: isUpdating ? 0.6 : 1 }}>
                       {isUpdating ? 'Updating…' : 'Update Feedback'}
                     </button>
                   ) : (
@@ -675,7 +805,7 @@ const FeedbackPage = () => {
             <div style={{ width: 48, height: 48, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
               <svg style={{ width: 22, height: 22, color: '#791F1F' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginBottom: 6 }}>Delete Tag?</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 500, color: '#111827', marginBottom: 6 }}>Delete Tag?</h3>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 20 }}>Are you sure you want to delete <strong style={{ color: '#111827' }}>"{tags?.find(t => t.tagId === tagToDelete)?.tagName}"</strong>? This may affect historical data.</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setTagToDelete(null)} style={{ flex: 1, padding: '9px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
@@ -692,7 +822,7 @@ const FeedbackPage = () => {
             <div style={{ width: 48, height: 48, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
               <svg style={{ width: 22, height: 22, color: '#791F1F' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginBottom: 6 }}>Delete Feedback?</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 500, color: '#111827', marginBottom: 6 }}>Delete Feedback?</h3>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 20 }}>This action cannot be undone. All replies associated with this feedback will also be removed.</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setFeedbackToDelete(null)} style={{ flex: 1, padding: '9px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
@@ -749,7 +879,7 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
     }
   };
 
-  const handleReply = async (e: React.FormEvent) => {
+  const handleReply = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newReply.trim() || !user) return;
     try {
@@ -780,30 +910,44 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
 
   if (isLoading) return <div style={{ marginTop: 12, fontSize: 11, color: '#9EA3B0' }}>Loading discussion…</div>;
 
-  const sortedReplies = [...(replies || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const flattenReplies = (list: NonNullable<typeof replies>): NonNullable<typeof replies> => {
+    return list.flatMap(r => [r, ...flattenReplies(r.children || [])]);
+  };
+  const allReplies = flattenReplies(replies || []);
+  const rootReplies = [...(replies || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  const renderReply = (reply: NonNullable<typeof replies>[0], depth = 0) => {
+    const children = [...(reply.children || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return (
+      <div key={reply.replyId} style={depth > 0 ? { marginLeft: 24, borderLeft: '2px solid #EEF3FD', paddingLeft: 8 } : {}}>
+        <ReplyItem reply={reply} allReplies={allReplies} user={user} authorId={authorId}
+          highlightedReplyId={highlightedReplyId} editingReplyId={editingReplyId}
+          editReplyText={editReplyText} setEditReplyText={setEditReplyText}
+          setEditingReplyId={setEditingReplyId} handleUpdateReply={handleUpdateReply}
+          handleScrollToParent={handleScrollToParent} onContextMenu={handleContextMenu}
+          isUpdatingReply={isUpdatingReply} />
+        {children.map(child => renderReply(child, depth + 1))}
+      </div>
+    );
+  };
 
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: '0.5px solid #E4E6EC' }} className="space-y-4">
       <div className="space-y-3">
-        {sortedReplies.map((reply, index) => {
+        {rootReplies.map((reply, index) => {
           const currentDate = reply.createdAt ? format(new Date(reply.createdAt), 'yyyy-MM-dd') : '';
-          const prevDate = index > 0 && sortedReplies[index - 1].createdAt ? format(new Date(sortedReplies[index - 1].createdAt), 'yyyy-MM-dd') : '';
+          const prevDate = index > 0 && rootReplies[index - 1].createdAt ? format(new Date(rootReplies[index - 1].createdAt), 'yyyy-MM-dd') : '';
           const isNewDay = currentDate !== prevDate;
           return (
             <React.Fragment key={reply.replyId}>
               {isNewDay && (
                 <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
-                  <span style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 500, color: '#9EA3B0' }}>
+                  <span style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 500, color: '#9EA3B0' }}>
                     {format(new Date(reply.createdAt), 'dd/MM/yyyy')}
                   </span>
                 </div>
               )}
-              <ReplyItem reply={reply} allReplies={sortedReplies} user={user} authorId={authorId}
-                highlightedReplyId={highlightedReplyId} editingReplyId={editingReplyId}
-                editReplyText={editReplyText} setEditReplyText={setEditReplyText}
-                setEditingReplyId={setEditingReplyId} handleUpdateReply={handleUpdateReply}
-                handleScrollToParent={handleScrollToParent} onContextMenu={handleContextMenu}
-                isUpdatingReply={isUpdatingReply} />
+              {renderReply(reply)}
             </React.Fragment>
           );
         })}
@@ -849,7 +993,7 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
         {replyTarget && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderLeft: '2px solid #1A56DB', borderRadius: 8, padding: '6px 10px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 2 }}>{replyTarget.name}</p>
+              <p style={{ fontSize: 11, fontWeight: 500, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 2 }}>{replyTarget.name}</p>
               <p style={{ fontSize: 11, color: '#5A6070', fontStyle: 'italic' }} className="truncate">{replyTarget.text}</p>
             </div>
             <button onClick={() => { setReplyingToId(null); setReplyTarget(null); }}
@@ -859,7 +1003,7 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
           </div>
         )}
         <form onSubmit={handleReply} style={{ display: 'flex', gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 6, background: '#EEF3FD', color: '#1A56DB', border: '0.5px solid #B5D4F4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 6, background: '#EEF3FD', color: '#1A56DB', border: '0.5px solid #B5D4F4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, flexShrink: 0 }}>
             {user?.staffName?.charAt(0) || '?'}
           </div>
           <div style={{ flex: 1, display: 'flex', gap: 6 }}>
@@ -881,7 +1025,7 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
             <div style={{ width: 48, height: 48, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
               <svg style={{ width: 22, height: 22, color: '#791F1F' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginBottom: 6 }}>Delete Message?</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 500, color: '#111827', marginBottom: 6 }}>Delete Message?</h3>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 20 }}>This will permanently remove your contribution from this thread.</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setReplyToDelete(null)} style={{ flex: 1, padding: '9px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>

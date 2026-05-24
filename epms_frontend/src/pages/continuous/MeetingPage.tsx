@@ -13,7 +13,9 @@ import {
   usePublishMeetingMutation,
   useGetMeetingStatsForManagerQuery,
   useUpdateActionItemStatusMutation,
-  useReopenActionItemMutation
+  useReopenActionItemMutation,
+  useGetMeetingsByEmployeeQuery,
+  useGetMeetingsByManagerQuery,
 } from "../../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { ContinuousStatus, ActionItemStatus } from "../../features/continuous/continuousTypes";
@@ -61,25 +63,25 @@ const CommentItem = ({
       className={`space-y-2`}
       onContextMenu={(e) => onContextMenu(e, comment)}
     >
-      <div className={`flex gap-3 px-3 py-2 rounded-2xl transition-all duration-500 group relative ${
+      <div className={`flex gap-3 px-3 py-2 rounded-xl transition-all duration-500 group relative ${
         highlightedCommentId === comment.id 
-          ? 'bg-blue-100 ring-4 ring-blue-300 scale-[1.02] shadow-lg' 
-          : isOwnComment ? 'flex-row-reverse bg-blue-50/30 border-l-4 border-blue-500' : 'bg-gray-50/30'
+          ? 'bg-blue-50/80 ring-2 ring-blue-200 scale-[1.01]' 
+          : isOwnComment ? 'flex-row-reverse bg-[#EEF3FD]/30 border-l-2 border-[#1A56DB]' : 'bg-[#F5F6F8]/30'
       }`}>
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-sm transition-colors duration-500 ${
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-medium shrink-0 transition-colors duration-500 ${
           highlightedCommentId === comment.id
-            ? 'bg-blue-600 text-white'
-            : isOwnComment ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-100'
+            ? 'bg-[#1A56DB] text-white'
+            : isOwnComment ? 'bg-[#1A56DB] text-white' : 'bg-white text-gray-600 border border-gray-200'
         }`}>
           {(comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)?.charAt(0)}
         </div>
         <div style={{ maxWidth: '80%', display: 'flex', flexDirection: 'column', gap: 3, alignItems: isOwnComment ? 'flex-end' : 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
               {isOwnComment ? 'You' : (comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)}
             </span>
-            {comment.commentType === 'MANAGER' && <span style={{ background: '#111827', color: '#FFFFFF', fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manager</span>}
-            <span style={{ fontSize: 10, color: '#9EA3B0' }}>{comment.createdAt ? format(new Date(comment.createdAt), 'h:mm a') : ''}</span>
+            {comment.commentType === 'MANAGER' && <span style={{ background: '#EEF3FD', color: '#0C447C', fontSize: 11, fontWeight: 500, padding: '1px 5px', borderRadius: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manager</span>}
+            <span style={{ fontSize: 11, color: '#9EA3B0' }}>{comment.createdAt ? format(new Date(comment.createdAt), 'h:mm a') : ''}</span>
           </div>
 
           <div style={bubbleStyle} className="group">
@@ -96,8 +98,8 @@ const CommentItem = ({
               return (
                 <div onClick={() => handleScrollToParent(parent.id)}
                   style={{ marginBottom: 8, padding: '5px 8px', borderRadius: 6, borderLeft: '2px solid #1A56DB', background: '#EEF3FD', cursor: 'pointer' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{parentName}</div>
-                  <div style={{ fontSize: 10, color: '#5A6070', fontStyle: 'italic' }} className="line-clamp-2">"{parent.comment}"</div>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{parentName}</div>
+                  <div style={{ fontSize: 11, color: '#5A6070', fontStyle: 'italic' }} className="line-clamp-2">"{parent.comment}"</div>
                 </div>
               );
             })()}
@@ -107,9 +109,9 @@ const CommentItem = ({
                 <textarea style={{ ...inputStyle, height: 60, resize: 'none', padding: '6px 8px' }}
                   value={editCommentText} onChange={(e) => setEditCommentText(e.target.value)} autoFocus />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setEditingCommentId(null)} style={{ fontSize: 10, fontWeight: 600, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => setEditingCommentId(null)} style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
                   <button disabled={isUpdatingComment} onClick={() => handleUpdateComment(comment.id)}
-                    style={{ fontSize: 10, fontWeight: 600, color: '#1A56DB', background: 'none', border: 'none', cursor: isUpdatingComment ? 'not-allowed' : 'pointer', opacity: isUpdatingComment ? 0.5 : 1 }}>
+                    style={{ fontSize: 11, fontWeight: 500, color: '#1A56DB', background: 'none', border: 'none', cursor: isUpdatingComment ? 'not-allowed' : 'pointer', opacity: isUpdatingComment ? 0.5 : 1 }}>
                     {isUpdatingComment ? 'Saving…' : 'Save'}
                   </button>
                 </div>
@@ -118,7 +120,7 @@ const CommentItem = ({
               <>
                 <span style={{ fontSize: 13, color: '#111827', lineHeight: 1.5 }}>{comment.comment}</span>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                  <span style={{ fontSize: 8, fontWeight: 500, color: '#9EA3B0' }}>{formatRelativeTime(comment.createdAt)}</span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0' }}>{formatRelativeTime(comment.createdAt)}</span>
                   {isOwnComment && <svg style={{ width: 10, height: 10, color: '#B5D4F4' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                 </div>
               </>
@@ -133,26 +135,59 @@ const CommentItem = ({
 const MeetingPage = () => {
   const { user, isManager, isAdmin, isHR } = useAuth();
   const canSchedule = isManager;
+  const todayStr = new Date().toISOString().split('T')[0];
 
+  const [perspective, setPerspective] = useState<'all' | 'received' | 'given'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [goToPage, setGoToPage] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
 
-  const { data: meetingResponse, isLoading } = useGetAllMeetingsQuery(
+  const { data: allResponse, isLoading: isLoadingAll } = useGetAllMeetingsQuery(
     { page: currentPage - 1, size: itemsPerPage, status: filterStatus },
-    { skip: !user }
+    { skip: !user || perspective !== 'all' }
   );
+
+  const { data: employeeResponse, isLoading: isLoadingEmp } = useGetMeetingsByEmployeeQuery(
+    { employeeId: user?.id || 0, page: currentPage - 1, size: itemsPerPage },
+    { skip: !user || perspective !== 'received' }
+  );
+
+  const { data: managerResponse, isLoading: isLoadingMgr } = useGetMeetingsByManagerQuery(
+    { managerId: user?.id || 0, status: filterStatus, page: currentPage - 1, size: itemsPerPage },
+    { skip: !user || perspective !== 'given' }
+  );
+
+  const meetingResponse = perspective === 'all' ? allResponse : perspective === 'received' ? employeeResponse : managerResponse;
+  const isLoading = perspective === 'all' ? isLoadingAll : perspective === 'received' ? isLoadingEmp : isLoadingMgr;
+
   const meetings = meetingResponse?.content || [];
   const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000, excludeSelf: true });
   const employees = employeeData?.content || [];
+
+  const deptEmployees = employees?.filter(emp =>
+    emp.currentDepartmentName && user?.currentDepartmentName &&
+    emp.currentDepartmentName === user?.currentDepartmentName
+  ) || [];
+  // Include the logged-in user's own rank since they are excluded from the
+  // employees list (excludeSelf=true). Without this, the next person below
+  // them becomes minRankInDept and gets incorrectly filtered out.
+  const allDeptRanks = [
+    ...deptEmployees.map(emp => emp.levelRank ?? 9999),
+    user?.levelRank ?? 9999
+  ];
+  const minRankInDept = allDeptRanks.length > 0
+    ? Math.min(...allDeptRanks)
+    : 9999;
 
   const filteredEmployees = (isAdmin || isHR)
     ? employees
     : employees?.filter(emp =>
         emp.currentDepartmentName && user?.currentDepartmentName &&
         emp.currentDepartmentName === user?.currentDepartmentName &&
-        emp.id !== user?.id
+        emp.id !== user?.id &&
+        (emp.levelRank === undefined || emp.levelRank === null || emp.levelRank !== minRankInDept) &&
+        (emp.levelRank === undefined || emp.levelRank === null || user?.levelRank === undefined || user?.levelRank === null || emp.levelRank >= user.levelRank)
       );
 
   const [scheduleMeeting, { isLoading: isScheduling }] = useScheduleMeetingMutation();
@@ -172,35 +207,31 @@ const MeetingPage = () => {
 
   interface MeetingState {
     employeeId: number;
+    meetingTitle: string;
     meetingDate: string;
     meetingTime: string;
     discussionPoints: string;
     keyIssues: string;
-    actionItems: string | any[];
+    actionItems: { id?: number; content: string; status?: string; assignedToId?: number; dueDate?: string }[];
     followUpDate: string;
-
   }
 
   const [newMeeting, setNewMeeting] = useState<MeetingState>({
     employeeId: 0,
+    meetingTitle: "",
     meetingDate: "",
     meetingTime: "",
     discussionPoints: "",
     keyIssues: "",
-    actionItems: "",
+    actionItems: [],
     followUpDate: "",
-
   });
 
 
   const handleSchedule = async (e: React.FormEvent, status: ContinuousStatus = ContinuousStatus.PUBLISHED) => {
     if (e) e.preventDefault();
 
-    const actionItemsValid = Array.isArray(newMeeting.actionItems)
-      ? newMeeting.actionItems.length > 0
-      : newMeeting.actionItems.trim() !== '';
-
-    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || !actionItemsValid || !user) {
+    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || newMeeting.actionItems.length === 0 || !user) {
       alert("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
       return;
     }
@@ -208,16 +239,37 @@ const MeetingPage = () => {
       toast.warning("Follow up date cannot be earlier than the meeting date.");
       return;
     }
+
+    for (const item of newMeeting.actionItems) {
+      if (item.content.trim() !== '') {
+        if (!item.dueDate) {
+          toast.warning("All active action items must have a due date.");
+          return;
+        }
+        if (item.dueDate < newMeeting.meetingDate) {
+          toast.warning(`Action Item due date (${item.dueDate}) cannot be earlier than the meeting date (${newMeeting.meetingDate}).`);
+          return;
+        }
+        if (newMeeting.followUpDate && item.dueDate > newMeeting.followUpDate) {
+          toast.warning(`Action Item due date (${item.dueDate}) cannot be later than the follow-up date (${newMeeting.followUpDate}).`);
+          return;
+        }
+      }
+    }
     try {
       const body = {
         ...newMeeting,
         managerId: user.id,
         status: editingId ? undefined : status,
-        actionItems: Array.isArray(newMeeting.actionItems)
-          ? (newMeeting.actionItems as any[])
-              .map((item: any) => (typeof item === 'string' ? item : item?.content ?? '').trim())
-              .filter((c: string) => c !== '')
-          : (newMeeting.actionItems as string).split('\n').map(s => s.trim()).filter((item: string) => item !== '')
+        actionItems: newMeeting.actionItems
+          .map(item => ({
+            id: item.id || undefined,
+            content: (item.content ?? '').trim(),
+            status: (item.status || 'PENDING') as ActionItemStatus,
+            assignedToId: item.assignedToId || newMeeting.employeeId,
+            dueDate: item.dueDate,
+          }))
+          .filter(item => item.content !== ''),
       };
       if (editingId) {
         await updateMeeting({ id: editingId, body }).unwrap();
@@ -228,11 +280,12 @@ const MeetingPage = () => {
       setEditingId(null);
       setNewMeeting({
         employeeId: 0,
+        meetingTitle: "",
         meetingDate: "",
         meetingTime: "",
         discussionPoints: "",
         keyIssues: "",
-        actionItems: "",
+        actionItems: [],
         followUpDate: "",
       });
     } catch (err: any) {
@@ -244,11 +297,12 @@ const MeetingPage = () => {
     setEditingId(m.meetingId);
     setNewMeeting({
       employeeId: m.employeeId,
+      meetingTitle: m.meetingTitle || "",
       meetingDate: m.meetingDate,
       meetingTime: m.meetingTime.substring(0, 5),
       discussionPoints: m.discussionPoints,
       keyIssues: m.keyIssues,
-      actionItems: m.actionItems,
+      actionItems: m.actionItems || [],
       followUpDate: m.followUpDate || "",
     });
     setShowModal(true);
@@ -299,7 +353,7 @@ const MeetingPage = () => {
   const endIndex = startIndex + meetings.length;
 
   const btnPageStyle = (active: boolean): React.CSSProperties => ({
-    width: 30, height: 30, borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+    width: 30, height: 30, borderRadius: 6, fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer',
     background: active ? '#1A56DB' : 'transparent', color: active ? '#FFFFFF' : '#9EA3B0',
   });
 
@@ -321,60 +375,103 @@ const MeetingPage = () => {
       </div>
 
       {isManager && (
-        <div className="flex items-center gap-3 mb-2 overflow-x-auto pb-2 scrollbar-hide">
-          <button
-            onClick={() => { setFilterStatus(undefined); setCurrentPage(1); }}
-            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!filterStatus ? 'bg-gray-900 text-white shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
-          >
-            All Meetings
-          </button>
-          <button
-            onClick={() => { setFilterStatus(ContinuousStatus.PUBLISHED); setCurrentPage(1); }}
-            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.PUBLISHED ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
-          >
-            Published
-          </button>
-          <button
-            onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
-            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.DRAFT ? 'bg-amber-500 text-white shadow-lg shadow-amber-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
-          >
-            Drafts
-          </button>
+        <div className="space-y-3">
+          {/* Perspective selector tabs */}
+          <div className="bg-white border border-gray-200/80 rounded-xl p-1.5 flex gap-2 w-fit">
+            <button
+              onClick={() => { setPerspective('all'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-lg text-[12px] font-medium transition-all duration-300 ${
+                perspective === 'all'
+                  ? 'bg-[#1A56DB] text-white'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              All Interactions
+            </button>
+            <button
+              onClick={() => { setPerspective('received'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-lg text-[12px] font-medium transition-all duration-300 ${
+                perspective === 'received'
+                  ? 'bg-[#1A56DB] text-white'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Meetings Received
+            </button>
+            <button
+              onClick={() => { setPerspective('given'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-lg text-[12px] font-medium transition-all duration-300 ${
+                perspective === 'given'
+                  ? 'bg-[#1A56DB] text-white'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Meetings Conducted (Given)
+            </button>
+          </div>
+
+          {/* Draft/Published filter (only applicable for given or all) */}
+          {perspective !== 'received' && (
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              <button
+                onClick={() => { setFilterStatus(undefined); setCurrentPage(1); }}
+                className={`px-5 py-2 rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all ${!filterStatus ? 'bg-[#1A56DB] text-white' : 'bg-white text-gray-500 hover:bg-[#F5F6F8] border border-gray-200'}`}
+              >
+                All Statuses
+              </button>
+              <button
+                onClick={() => { setFilterStatus(ContinuousStatus.PUBLISHED); setCurrentPage(1); }}
+                className={`px-5 py-2 rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all ${filterStatus === ContinuousStatus.PUBLISHED ? 'bg-[#E7F4E4] border border-[#A2DB93] text-[#27500A]' : 'bg-white text-gray-500 hover:bg-[#F5F6F8] border border-gray-200'}`}
+              >
+                Published Only
+              </button>
+              <button
+                onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
+                className={`px-5 py-2 rounded-lg text-[11px] font-medium uppercase tracking-wider transition-all ${filterStatus === ContinuousStatus.DRAFT ? 'bg-[#FAEEDA] border border-[#F0D4A4] text-[#633806]' : 'bg-white text-gray-500 hover:bg-[#F5F6F8] border border-gray-200'}`}
+              >
+                Drafts Only
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition">
-          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
+        <div className="bg-white p-6 rounded-xl border border-gray-200 flex items-center gap-5 transition">
+          <div className="w-14 h-14 bg-[#EEF3FD] text-[#1A56DB] border border-[#B5D4F4] rounded-lg flex items-center justify-center shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isManager ? 'Total Published' : 'Total Received'}</p>
-            <h3 className="text-2xl font-bold text-gray-900">{isManager ? (meetingStats?.totalPublished || 0) : totalItems}</h3>
+            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest mb-1">
+              {perspective === 'received' ? 'Received Published' : perspective === 'given' ? 'Given Published' : isManager ? 'Total Published' : 'Total Received'}
+            </p>
+            <h3 className="text-2xl font-medium text-gray-900">
+              {perspective === 'received' ? (meetingResponse?.totalElements || 0) : perspective === 'given' ? (meetingStats?.totalPublished || 0) : isManager ? (meetingStats?.totalPublished || 0) : totalItems}
+            </h3>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group">
-          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+        <div className="bg-white p-6 rounded-xl border border-gray-200 flex items-center gap-5 transition group">
+          <div className="w-14 h-14 bg-[#FAEEDA] text-[#633806] border border-[#F0D4A4] rounded-lg flex items-center justify-center shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
           </div>
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Follow up Tasks</p>
-            <h3 className="text-2xl font-bold text-gray-900">{meetings?.filter(m => m.status === ContinuousStatus.PUBLISHED && m.followUpDate).length || 0}</h3>
+            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest mb-1">Follow up Tasks</p>
+            <h3 className="text-2xl font-medium text-gray-900">{meetings?.filter(m => m.status === ContinuousStatus.PUBLISHED && m.followUpDate).length || 0}</h3>
           </div>
         </div>
 
-        {isManager && (
+        {isManager && perspective !== 'received' && (
           <button 
             onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
-            className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group text-left"
+            className="bg-white p-6 rounded-xl border border-gray-200 flex items-center gap-5 transition group text-left w-full"
           >
-            <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <div className="w-14 h-14 bg-[#FCEBEB] text-[#791F1F] border border-[#F5C2C2] rounded-lg flex items-center justify-center shrink-0">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
             </div>
             <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Drafts</p>
-              <h3 className="text-2xl font-bold text-rose-600">{meetingStats?.totalDraft || 0}</h3>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest mb-1">Total Drafts</p>
+              <h3 className="text-2xl font-medium text-[#791F1F]">{meetingStats?.totalDraft || 0}</h3>
             </div>
           </button>
         )}
@@ -391,11 +488,17 @@ const MeetingPage = () => {
           <div key={m.meetingId} style={panelStyle} className="group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEF3FD', color: '#1A56DB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>
-                  {m.employeeName?.charAt(0)}
+                <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEF3FD', color: '#1A56DB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500, fontSize: 15, flexShrink: 0 }}>
+                  {(m.employeeId === user?.id ? m.managerName : m.employeeName)?.charAt(0)}
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{m.employeeName}</h3>
+                  <h3 style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>
+                    {m.employeeId === user?.id ? `1-on-1 with ${m.managerName}` : m.employeeName}
+                    {m.employeeId === user?.id && <span style={{ color: '#9EA3B0', fontWeight: 400, marginLeft: 6, fontSize: 11 }}>(Received)</span>}
+                  </h3>
+                  {m.meetingTitle && (
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#5A6070', marginTop: 1 }}>{m.meetingTitle}</p>
+                  )}
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 2 }}>
                     <span style={{ fontSize: 12, color: '#5A6070', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <svg style={{ width: 13, height: 13, color: '#9EA3B0' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -414,15 +517,14 @@ const MeetingPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+              <div className="flex items-center gap-3">                <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap">
                   {m.publishedAt 
                     ? <>Published {format(new Date(m.publishedAt), 'MMM d, yyyy')}</> 
                     : <>Created {format(new Date(m.createdAt), 'MMM d, yyyy')}</>}
                 </span>
                 {m.status === ContinuousStatus.DRAFT && (
-                  <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[8px] font-black rounded uppercase tracking-widest border border-gray-200 flex items-center gap-1">
-                    <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                  <span className="px-2 py-0.5 bg-[#F5F6F8] text-gray-500 text-[11px] font-medium rounded uppercase tracking-wider border border-gray-200 flex items-center gap-1">
+                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
                     Draft
                   </span>
                 )}
@@ -439,17 +541,17 @@ const MeetingPage = () => {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6 bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100/50">
+            <div className="grid md:grid-cols-3 gap-6 bg-[#F5F6F8]/40 p-6 rounded-xl border border-gray-200">
               <div className="space-y-2">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Discussion Points</span>
+                <span className="text-[11px] font-medium text-gray-400 uppercase tracking-widest px-1">Discussion Points</span>
                 <p className="text-gray-700 text-sm leading-relaxed">{m.discussionPoints}</p>
               </div>
               <div className="space-y-2">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Key Issues</span>
+                <span className="text-[11px] font-medium text-gray-400 uppercase tracking-widest px-1">Key Issues</span>
                 <p className="text-gray-700 text-sm leading-relaxed">{m.keyIssues}</p>
               </div>
               <div className="space-y-2">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</span>
+                <span className="text-[11px] font-medium text-gray-400 uppercase tracking-widest px-1">Action Items</span>
                 <div className="space-y-2 mt-2">
                   {m.actionItems.map((item: any) => {
                     const isDone = item.status === ActionItemStatus.DONE;
@@ -476,33 +578,43 @@ const MeetingPage = () => {
                             className={`w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 transition-all ${(!isEmployee || isDone) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:scale-110'}`}
                           />
                           {(!isEmployee || isDone) && (
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#F5F6F8] text-[#5A6070] text-[11px] rounded border border-[#E4E6EC] opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
                               {isDone ? 'Completed items cannot be unchecked' : 'This status is managed by the employee'}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#E4E6EC]" />
                             </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           {/* Item content with status-based styling */}
                           <div className="flex items-start gap-2 flex-wrap">
-                            <p className={`text-sm leading-relaxed transition-all duration-300 ${isDone ? 'text-green-600 line-through' : 'text-gray-700'}`}>
+                            <p className={`text-sm leading-relaxed transition-all duration-300 ${isDone ? 'text-[#27500A] line-through' : 'text-gray-700'}`}>
                               {item.content}
                             </p>
+                            {item.assignedToName && (
+                              <span style={{ fontSize: 11, fontWeight: 500, background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 4, padding: '1px 6px' }}>
+                                {item.assignedToName}
+                              </span>
+                            )}
+                            {item.dueDate && (
+                              <span style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0' }}>
+                                due {format(new Date(item.dueDate), 'dd/MM/yyyy')}
+                              </span>
+                            )}
 
                             {/* Re-opened badge: shown when PENDING but has a reopenReason */}
                             {!isDone && item.reopenReason && (
                               <div className="relative group/reopen flex-shrink-0">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-black uppercase tracking-widest rounded-full cursor-default">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#FAEEDA] border border-[#F0D4A4] text-[#633806] text-[11px] font-medium uppercase tracking-wider rounded-full cursor-default">
                                   <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                   </svg>
                                   Re-opened
                                 </span>
                                 {/* Tooltip showing the reopen reason */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-gray-900 text-white rounded-xl shadow-2xl opacity-0 group-hover/reopen:opacity-100 transition-all duration-200 pointer-events-none z-20 p-3">
-                                  <p className="text-[9px] font-black uppercase tracking-widest text-amber-400 mb-1">Re-open Reason</p>
-                                  <p className="text-xs leading-relaxed text-gray-200 font-normal">"{item.reopenReason}"</p>
-                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-[#F5F6F8] text-[#5A6070] rounded-xl border border-[#E4E6EC] opacity-0 group-hover/reopen:opacity-100 transition-all duration-200 pointer-events-none z-20 p-3">
+                                  <p className="text-[11px] font-medium uppercase tracking-wider text-[#633806] mb-1">Re-open Reason</p>
+                                  <p className="text-xs leading-relaxed text-[#5A6070] font-normal">"{item.reopenReason}"</p>
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#E4E6EC]" />
                                 </div>
                               </div>
                             )}
@@ -512,7 +624,7 @@ const MeetingPage = () => {
                           {isDone && (
                             <div className="mt-1 flex items-center justify-between">
                               <div className="flex items-center">
-                                <span className="inline-flex items-center text-[8px] font-black uppercase tracking-widest text-green-500">
+                                <span className="inline-flex items-center text-[11px] font-medium uppercase tracking-wider text-[#27500A]">
                                   <svg className="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                   Completed
                                 </span>
@@ -525,7 +637,7 @@ const MeetingPage = () => {
                               {canSchedule && (
                                 <button
                                   onClick={() => setReopenConfig({ meetingId: m.meetingId, item })}
-                                  className="text-[8px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 transition opacity-0 group-hover/item:opacity-100 bg-indigo-50 px-2 py-1 rounded"
+                                  className="text-[11px] font-medium uppercase tracking-wider text-[#1A56DB] hover:text-blue-700 transition opacity-0 group-hover/item:opacity-100 bg-[#EEF3FD] px-2 py-1 rounded border border-[#B5D4F4]"
                                 >
                                   Re-open
                                 </button>
@@ -543,12 +655,12 @@ const MeetingPage = () => {
               </div>
             </div>
 
-            <div className="pt-4 mt-4 border-t border-gray-50 flex items-center justify-between">
+            <div className="pt-4 mt-4 border-t border-gray-100 flex items-center justify-between">
               <button 
                 onClick={() => setExpandedMeetingId(expandedMeetingId === m.meetingId ? null : m.meetingId)}
-                className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-indigo-600 transition group"
+                className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-[#1A56DB] transition group"
               >
-                <div className="w-8 h-8 rounded-lg bg-gray-50 group-hover:bg-indigo-50 flex items-center justify-center transition">
+                <div className="w-8 h-8 rounded-lg bg-gray-50 group-hover:bg-[#EEF3FD] flex items-center justify-center transition border border-gray-100 group-hover:border-[#B5D4F4]">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
@@ -559,7 +671,7 @@ const MeetingPage = () => {
                 <button 
                   onClick={() => handlePublish(m.meetingId)}
                   disabled={isPublishing}
-                  className="px-4 py-1.5 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-black transition shadow-sm disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-1.5 bg-[#1A56DB] text-white text-[11px] font-medium uppercase tracking-wider rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -570,7 +682,7 @@ const MeetingPage = () => {
             </div>
 
             {expandedMeetingId === m.meetingId && (
-              <MeetingComments meetingId={m.meetingId} isManager={isManager} />
+              <MeetingComments meetingId={m.meetingId} isManager={m.managerId === user?.id} />
             )}
           </div>
         ))}
@@ -610,12 +722,18 @@ const MeetingPage = () => {
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
           <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, width: '100%', maxWidth: 520, overflow: 'hidden' }}>
-            <div style={{ background: '#111827', padding: '14px 20px' }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#FFFFFF' }}>{editingId ? 'Update Meeting' : 'Schedule 1-on-1'}</h2>
+            <div style={{ background: '#FFFFFF', borderBottom: '0.5px solid #E4E6EC', padding: '14px 20px' }}>
+              <h2 style={{ fontSize: 15, fontWeight: 500, color: '#111827' }}>{editingId ? 'Update Meeting' : 'Schedule 1-on-1'}</h2>
               <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Define goals and expectations for the upcoming conversation.</p>
             </div>
             <div style={{ padding: 20, maxHeight: '75vh', overflowY: 'auto' }}>
               <form onSubmit={handleSchedule} className="space-y-4">
+                <div>
+                  <label style={labelStyle}>Meeting Title</label>
+                  <input type="text" style={inputStyle} placeholder="e.g. Sprint Review 1:1"
+                    value={newMeeting.meetingTitle}
+                    onChange={e => setNewMeeting({ ...newMeeting, meetingTitle: e.target.value })} />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label style={labelStyle}>Select Employee</label>
@@ -628,7 +746,7 @@ const MeetingPage = () => {
                   <div>
                     <label style={labelStyle}>Date &amp; Time</label>
                     <div className="grid grid-cols-2 gap-2">
-                      <input required type="date" style={inputStyle} value={newMeeting.meetingDate}
+                      <input required type="date" min={todayStr} style={inputStyle} value={newMeeting.meetingDate}
                         onChange={e => setNewMeeting({ ...newMeeting, meetingDate: e.target.value })} />
                       <input required type="time" style={inputStyle} value={newMeeting.meetingTime}
                         onChange={e => setNewMeeting({ ...newMeeting, meetingTime: e.target.value })} />
@@ -648,61 +766,60 @@ const MeetingPage = () => {
                       value={newMeeting.keyIssues} onChange={e => setNewMeeting({ ...newMeeting, keyIssues: e.target.value })} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</label>
-                    {editingId ? (
-                      <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
-                        {Array.isArray(newMeeting.actionItems) && newMeeting.actionItems.map((item: any, index: number) => {
-                          const isDone = item.status === ActionItemStatus.DONE;
-                          return (
-                            <div key={index} className="flex items-center gap-2">
-                              <div className="flex-1 relative group/item">
+                    <label className="text-[11px] font-medium text-gray-400 uppercase tracking-widest px-1">Action Items</label>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {newMeeting.actionItems.map((item, index) => {
+                        const isDone = item.status === ActionItemStatus.DONE;
+                        return (
+                          <div key={index} className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 relative">
                                 <input
                                   type="text"
                                   disabled={isDone}
-                                  className={`w-full px-4 py-2 rounded-xl text-sm transition border-none ${
-                                    isDone 
-                                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed italic' 
-                                      : 'bg-gray-50 focus:ring-2 focus:ring-indigo-500 text-gray-700'
-                                  }`}
+                                  className={`w-full px-3 py-1.5 rounded-lg text-sm transition border border-gray-200 ${isDone ? 'bg-[#F5F6F8] text-gray-400 cursor-not-allowed italic border-none' : 'bg-gray-50 focus:ring-1 focus:ring-[#1A56DB] text-gray-700'}`}
+                                  placeholder="Task description…"
                                   value={item.content}
-                                  onChange={(e) => {
+                                  onChange={e => {
                                     const updated = [...newMeeting.actionItems];
                                     updated[index] = { ...item, content: e.target.value };
                                     setNewMeeting({ ...newMeeting, actionItems: updated });
                                   }}
                                 />
-                                {isDone && (
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase tracking-widest text-green-500 bg-green-50 px-2 py-0.5 rounded-full">
-                                    Locked
-                                  </span>
-                                )}
+                                {isDone && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-medium uppercase tracking-wider text-[#27500A] bg-[#E7F4E4] px-1.5 py-0.5 rounded-full border border-[#A2DB93]">Locked</span>}
                               </div>
+                              {!isDone && (
+                                <button type="button" onClick={() => setNewMeeting({ ...newMeeting, actionItems: newMeeting.actionItems.filter((_, i) => i !== index) })}
+                                  className="p-1.5 text-gray-400 hover:text-[#791F1F] hover:bg-[#FCEBEB] rounded-lg transition shrink-0 border border-gray-200">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                              )}
                             </div>
-                          );
-                        })}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewMeeting({
-                              ...newMeeting,
-                              actionItems: [...(newMeeting.actionItems as any[]), { content: "", status: ActionItemStatus.PENDING }]
-                            });
-                          }}
-                          className="w-full py-2 border-2 border-dashed border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:border-indigo-200 hover:text-indigo-600 transition flex items-center justify-center gap-2 mt-2"
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                          Add New Task
-                        </button>
-                      </div>
-                    ) : (
-                      <textarea 
-                        required
-                        className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-12 resize-none text-sm"
-                        placeholder="Enter tasks, one per line..."
-                        value={newMeeting.actionItems}
-                        onChange={e => setNewMeeting({ ...newMeeting, actionItems: e.target.value })}
-                      />
-                    )}
+                            {!isDone && (
+                              <div className="flex gap-2 pl-0">
+                                <input type="date"
+                                  min={newMeeting.meetingDate || undefined}
+                                  max={newMeeting.followUpDate || undefined}
+                                  style={{ ...inputStyle, fontSize: 11, padding: '4px 8px', flex: 1 }}
+                                  value={item.dueDate ?? ''}
+                                  onChange={e => {
+                                    const updated = [...newMeeting.actionItems];
+                                    updated[index] = { ...item, dueDate: e.target.value || undefined };
+                                    setNewMeeting({ ...newMeeting, actionItems: updated });
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <button type="button"
+                        onClick={() => setNewMeeting({ ...newMeeting, actionItems: [...newMeeting.actionItems, { content: "", status: ActionItemStatus.PENDING }] })}
+                        className="w-full py-2 border border-dashed border-gray-200 rounded-lg text-[11px] font-medium uppercase tracking-wider text-gray-400 hover:border-blue-200 hover:text-[#1A56DB] transition flex items-center justify-center gap-2 mt-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                        Add Task
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -711,7 +828,7 @@ const MeetingPage = () => {
                     onChange={e => setNewMeeting({ ...newMeeting, followUpDate: e.target.value })} />
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4">
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                   <button
                     type="button"
                     onClick={() => {
@@ -719,15 +836,16 @@ const MeetingPage = () => {
                       setEditingId(null);
                       setNewMeeting({
                         employeeId: 0,
+                        meetingTitle: "",
                         meetingDate: "",
                         meetingTime: "",
                         discussionPoints: "",
                         keyIssues: "",
-                        actionItems: "",
+                        actionItems: [],
                         followUpDate: ""
                       });
                     }}
-                    className="px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+                    className="px-6 py-2.5 text-gray-500 font-medium hover:bg-gray-100 rounded-lg transition"
                   >
                     Cancel
                   </button>
@@ -736,7 +854,7 @@ const MeetingPage = () => {
                       type="button"
                       onClick={(e) => handleSchedule(e as any)}
                       disabled={isUpdating}
-                      className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 disabled:opacity-50"
+                      className="px-8 py-2.5 bg-[#1A56DB] text-white font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
                     >
                       {isUpdating ? "Updating..." : "Update Meeting"}
                     </button>
@@ -746,7 +864,7 @@ const MeetingPage = () => {
                         type="button"
                         onClick={(e) => handleSchedule(e as any, ContinuousStatus.DRAFT)}
                         disabled={isScheduling}
-                        className="px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
+                        className="px-6 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition border border-gray-200"
                       >
                         Save as Draft
                       </button>
@@ -754,7 +872,7 @@ const MeetingPage = () => {
                         type="button"
                         onClick={(e) => handleSchedule(e as any, ContinuousStatus.PUBLISHED)}
                         disabled={isScheduling}
-                        className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 disabled:opacity-50 flex items-center gap-2"
+                        className="px-8 py-2.5 bg-[#1A56DB] text-white font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -777,7 +895,7 @@ const MeetingPage = () => {
             <div style={{ width: 48, height: 48, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
               <svg style={{ width: 22, height: 22, color: '#791F1F' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginBottom: 6 }}>Delete Meeting?</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 500, color: '#111827', marginBottom: 6 }}>Delete Meeting?</h3>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 20 }}>This action cannot be undone. All discussion points and comments will be permanently removed.</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setMeetingToDelete(null)} style={{ flex: 1, padding: '9px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
@@ -789,25 +907,25 @@ const MeetingPage = () => {
 
       {reopenConfig && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden border border-gray-100">
-            <div className="bg-indigo-600 p-6 text-white text-center">
-              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          <div className="bg-white rounded-xl w-full max-w-md border border-gray-200">
+            <div className="bg-white p-6 border-b border-gray-200/80 text-center">
+              <div className="w-12 h-12 bg-[#FAEEDA] border border-[#F0D4A4] rounded-lg flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-[#633806]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               </div>
-              <h3 className="text-xl font-black uppercase tracking-tight">Re-open Action Item</h3>
-              <p className="text-indigo-100 text-xs font-medium mt-1">Please provide a reason for re-opening this task.</p>
+              <h3 className="text-xl font-medium text-gray-900">Re-open Action Item</h3>
+              <p className="text-gray-500 text-xs font-medium mt-1">Please provide a reason for re-opening this task.</p>
             </div>
             <div className="p-6">
-              <div className="bg-gray-50 p-4 rounded-2xl mb-4 border border-gray-100">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Task Content</span>
+              <div className="bg-[#FAEEDA]/50 border border-[#F0D4A4]/50 p-4 rounded-lg mb-4">
+                <span className="text-[11px] font-medium text-gray-400 uppercase tracking-widest block mb-1">Task Content</span>
                 <p className="text-sm text-gray-700 font-medium italic">"{reopenConfig.item.content}"</p>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Reason for Re-opening</label>
+                <label className="text-[11px] font-medium text-gray-400 uppercase tracking-widest px-1">Reason for Re-opening</label>
                 <textarea 
                   autoFocus
                   required
-                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-24 resize-none text-sm"
+                  className="w-full px-4 py-3 bg-[#F5F6F8] border border-[#E0E2E8] rounded-lg focus:ring-2 focus:ring-blue-100 outline-none transition h-24 resize-none text-sm text-gray-700"
                   placeholder="Explain why this task needs further attention..."
                   value={reopenReason}
                   onChange={e => setReopenReason(e.target.value)}
@@ -819,7 +937,7 @@ const MeetingPage = () => {
                     setReopenConfig(null);
                     setReopenReason("");
                   }}
-                  className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+                  className="flex-1 px-6 py-2.5 text-gray-500 font-medium hover:bg-gray-100 rounded-lg transition"
                 >
                   Cancel
                 </button>
@@ -838,7 +956,7 @@ const MeetingPage = () => {
                       console.error("Failed to re-open item", err);
                     }
                   }}
-                  className="flex-1 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
+                  className="flex-1 px-6 py-2.5 bg-[#1A56DB] text-white font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
                 >
                   Re-open Task
                 </button>
@@ -852,7 +970,7 @@ const MeetingPage = () => {
 };
 
 const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManager: boolean }) => {
-  const { user } = useAuth();
+  const { user, isAdmin, isHR } = useAuth();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; comment: any } | null>(null);
 
   useEffect(() => {
@@ -943,7 +1061,7 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
               <React.Fragment key={comment.id}>
                 {isNewDay && (
                   <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-                    <span style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 500, color: '#9EA3B0' }}>
+                    <span style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 500, color: '#9EA3B0' }}>
                       {format(new Date(comment.createdAt), 'dd/MM/yyyy')}
                     </span>
                   </div>
@@ -979,7 +1097,8 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
             </button>
           ))}
           {((isManager && contextMenu.comment.commentType === 'MANAGER' && contextMenu.comment.managerId === user?.id) ||
-            (!isManager && contextMenu.comment.commentType === 'EMPLOYEE' && contextMenu.comment.employeeId === user?.id)) && (
+            (!isManager && contextMenu.comment.commentType === 'EMPLOYEE' && contextMenu.comment.employeeId === user?.id) ||
+            isAdmin || isHR) && (
             <>
               <div style={{ height: '0.5px', background: '#E4E6EC', margin: '2px 0' }} />
               <button onClick={() => { setEditingCommentId(contextMenu.comment.id); setEditCommentText(contextMenu.comment.comment); setContextMenu(null); }}
@@ -1004,7 +1123,7 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
         {replyTarget && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderLeft: '2px solid #1A56DB', borderRadius: 8, padding: '6px 10px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 2 }}>{replyTarget.name}</p>
+              <p style={{ fontSize: 11, fontWeight: 500, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 2 }}>{replyTarget.name}</p>
               <p style={{ fontSize: 11, color: '#5A6070', fontStyle: 'italic' }} className="truncate">{replyTarget.text}</p>
             </div>
             <button onClick={() => { setReplyingToId(null); setReplyTarget(null); }}
@@ -1014,13 +1133,13 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
           </div>
         )}
         <form onSubmit={handleComment} style={{ display: 'flex', gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 6, background: '#EEF3FD', color: '#1A56DB', border: '0.5px solid #B5D4F4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 6, background: '#EEF3FD', color: '#1A56DB', border: '0.5px solid #B5D4F4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, flexShrink: 0 }}>
             {user?.staffName?.charAt(0) || '?'}
           </div>
           <div className="flex-1 flex gap-2">
             <input
               ref={mainInputRef}
-              className="flex-1 px-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
+              className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-100 outline-none transition"
               placeholder={replyTarget ? `Replying to ${replyTarget.name}...` : "Add to the conversation..."}
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
@@ -1028,7 +1147,7 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
             <button 
               type="submit"
               disabled={isCommenting || !newComment.trim()}
-              className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
+              className="p-2 bg-[#1A56DB] text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
             </button>
@@ -1043,7 +1162,7 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
             <div style={{ width: 48, height: 48, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
               <svg style={{ width: 22, height: 22, color: '#791F1F' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginBottom: 6 }}>Delete Comment?</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 500, color: '#111827', marginBottom: 6 }}>Delete Comment?</h3>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 20 }}>This thread path will be removed permanently.</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setCommentToDelete(null)} style={{ flex: 1, padding: '9px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>

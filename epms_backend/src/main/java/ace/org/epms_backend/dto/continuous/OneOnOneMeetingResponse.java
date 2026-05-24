@@ -14,6 +14,8 @@ public class OneOnOneMeetingResponse {
     private String employeeName;
     private Long managerId;
     private String managerName;
+    private String managerPositionName;
+    private String meetingTitle;
     private LocalDate meetingDate;
     private LocalTime meetingTime;
     private String discussionPoints;

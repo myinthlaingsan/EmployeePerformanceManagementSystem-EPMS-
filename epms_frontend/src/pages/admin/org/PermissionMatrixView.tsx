@@ -1,5 +1,6 @@
 import { useGetPermissionMatrixQuery, useUpdatePermissionMatrixMutation } from "../../../features/org/permissionApi";
 import { useState } from "react";
+import { getLevelsForRole } from "../../../utils/roleLevel";
 
 const PermissionMatrixView = () => {
   const { data: matrixData, isLoading, error } = useGetPermissionMatrixQuery();
@@ -12,15 +13,8 @@ const PermissionMatrixView = () => {
 
   const { roles, levels, permissions, matrix } = matrixData;
 
-  const getRelevantLevelsForRole = (roleName: string) => {
-    switch (roleName.toUpperCase()) {
-      case 'ADMIN':    return levels.filter(l => [1, 2, 3].includes(l.levelRank));
-      case 'HR':       return levels.filter(l => [4, 7].includes(l.levelRank));
-      case 'MANAGER':  return levels.filter(l => [4, 5, 6].includes(l.levelRank));
-      case 'EMPLOYEE': return levels.filter(l => [7, 8, 9].includes(l.levelRank));
-      default:         return levels;
-    }
-  };
+  const getRelevantLevelsForRole = (roleName: string) =>
+    getLevelsForRole(roleName, levels);
 
   const handleToggle = async (roleId: number, levelId: number, permissionId: number) => {
     const key = `${roleId}-${levelId}-${permissionId}`;

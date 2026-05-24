@@ -101,9 +101,9 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
   });
 
   actionItems.forEach(ai => {
-    const assignedDate = ai.assignedAt ? new Date(ai.assignedAt) : null;
-    if (assignedDate) {
-      const monthData = chartData.find(m => m.month === assignedDate.getMonth() && m.year === assignedDate.getFullYear());
+    if (ai.dueDate) {
+      const dueDate = new Date(ai.dueDate);
+      const monthData = chartData.find(m => m.month === dueDate.getMonth() && m.year === dueDate.getFullYear());
       if (monthData) monthData.totalActionItems++;
     }
     if (ai.status === 'DONE' && ai.completedAt) {
@@ -456,7 +456,7 @@ const CombinedStats = ({ history, meetingTotal, meetingCompleted, employeeName, 
 const ManagerialActivityChart = ({ history, managerName, managerId, timeRange, onTimeRangeChange, filterType }: { history: any[], managerName: string, managerId: number, timeRange: number, onTimeRangeChange: (val: number) => void, filterType: string }) => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const now = new Date();
-  const chartData = [];
+  const chartData: { name: string; month: number; year: number; praise: number; improvement: number; correction: number; meetings: number }[] = [];
   
   for (let i = timeRange - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -699,6 +699,7 @@ export const PerformanceHistoryAdminPage = () => {
 
   const [selectedDeptId, setSelectedDeptId] = useState<number | ''>('');
   const [selectedEmpId, setSelectedEmpId] = useState<number | ''>('');
+  const [managerPerspective, setManagerPerspective] = useState<'conducted' | 'received'>('conducted');
   const [filterType, setFilterType] = useState<'ALL' | 'FEEDBACK' | 'MEETING'>('ALL');
   const [managerTimeRange, setManagerTimeRange] = useState(6);
   const [currentPage, setCurrentPage] = useState(1);
@@ -750,6 +751,33 @@ export const PerformanceHistoryAdminPage = () => {
     return [...baseHistory].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [analyticsData, meetingPulseData, selectedEmpId]);
 
+  const receivedAnalyticsData = useMemo(() => {
+    if (!selectedEmpId || !analyticsData) return [];
+    return analyticsData.filter(h => h.employeeId === Number(selectedEmpId));
+  }, [analyticsData, selectedEmpId]);
+
+  // analyticsData includes all roles (employee.id, manager.id, performer.id, createdBy)
+  // via findLatestStateByEmployee. Filtering to MEETING + employeeId gives meetings
+  // where the selected manager is the EMPLOYEE (received side).
+  // meetingPulseData.meetingHistory only has performer-side history for managers.
+  const receivedMeetingHistory = useMemo(() => {
+    if (!selectedEmpId || !analyticsData) return [];
+    return analyticsData.filter((h: any) =>
+      h.sourceType === 'MEETING' && h.employeeId === Number(selectedEmpId)
+    );
+  }, [analyticsData, selectedEmpId]);
+
+  const receivedActionItems = useMemo(() => {
+    if (!selectedEmpId || !meetingPulseData?.actionItems) return [];
+    return meetingPulseData.actionItems.filter((ai: any) => ai.assignedToId === Number(selectedEmpId));
+  }, [meetingPulseData, selectedEmpId]);
+
+  // Action items from meetings the manager CONDUCTED — assigned to their subordinates
+  const conductedActionItems = useMemo(() => {
+    if (!selectedEmpId || !meetingPulseData?.actionItems) return [];
+    return meetingPulseData.actionItems.filter((ai: any) => ai.assignedToId !== Number(selectedEmpId));
+  }, [meetingPulseData, selectedEmpId]);
+
   const history = historyResponse?.content || [];
   const totalItems = historyResponse?.totalElements || 0;
   const totalPages = historyResponse?.totalPages || 0;
@@ -778,21 +806,86 @@ export const PerformanceHistoryAdminPage = () => {
       {(analyticsData || meetingPulseData) && (
         <div className="space-y-6">
           {isManagerSelected && selectedEmpId ? (
-            /* Manager-Specific View */
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-700">
-              <div className="lg:col-span-2">
-                <ManagerialActivityChart 
-                  history={managerChartHistory}
-                  managerName={selectedEmployeeName || ''}
-                  managerId={Number(selectedEmpId)}
-                  timeRange={managerTimeRange}
-                  onTimeRangeChange={setManagerTimeRange}
-                  filterType={filterType}
-                />
+            /* Manager-Specific Toggleable View */
+            <div className="space-y-4">
+              <div className="bg-white border border-gray-200/80 rounded-2xl p-1.5 flex gap-2 w-fit shadow-sm">
+                <button
+                  onClick={() => setManagerPerspective('conducted')}
+                  className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                    managerPerspective === 'conducted'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  Conducted Activities (Given)
+                </button>
+                <button
+                  onClick={() => setManagerPerspective('received')}
+                  className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                    managerPerspective === 'received'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  Individual Performance (Received)
+                </button>
               </div>
-              <div className="lg:col-span-1">
-                <ManagerActionStats history={managerChartHistory} managerId={Number(selectedEmpId)} filterType={filterType} />
-              </div>
+
+              {managerPerspective === 'conducted' ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-700">
+                  <div className="lg:col-span-2">
+                    <ManagerialActivityChart 
+                      history={managerChartHistory}
+                      managerName={selectedEmployeeName || ''}
+                      managerId={Number(selectedEmpId)}
+                      timeRange={managerTimeRange}
+                      onTimeRangeChange={setManagerTimeRange}
+                      filterType={filterType}
+                    />
+                  </div>
+                  <div className="lg:col-span-1 flex flex-col gap-4">
+                    <ManagerActionStats history={managerChartHistory} managerId={Number(selectedEmpId)} filterType={filterType} />
+                    {(filterType === 'ALL' || filterType === 'MEETING') && (
+                      <MeetingStats
+                        total={conductedActionItems.length}
+                        completed={conductedActionItems.filter((ai: any) => ai.status === 'DONE').length}
+                        isManagerView={true}
+                        employeeName={selectedEmployeeName}
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-700">
+                  <div className="lg:col-span-1">
+                    {filterType === 'ALL' ? (
+                      <CombinedStats
+                        history={receivedAnalyticsData}
+                        meetingTotal={receivedActionItems.length}
+                        meetingCompleted={receivedActionItems.filter((ai: any) => ai.status === 'DONE').length}
+                        employeeName={selectedEmployeeName}
+                      />
+                    ) : filterType === 'FEEDBACK' ? (
+                      <AdminStats history={receivedAnalyticsData} employeeName={selectedEmployeeName} />
+                    ) : (
+                      <MeetingStats
+                        total={receivedActionItems.length}
+                        completed={receivedActionItems.filter((ai: any) => ai.status === 'DONE').length}
+                        isManagerView={false}
+                        employeeName={selectedEmployeeName}
+                      />
+                    )}
+                  </div>
+                  <div className="lg:col-span-2">
+                    <SentimentChart 
+                      history={filterType === 'MEETING' ? receivedMeetingHistory : receivedAnalyticsData} 
+                      employeeName={selectedEmployeeName} 
+                      filterType={filterType}
+                      actionItems={receivedActionItems}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             /* Standard Employee/Global View */

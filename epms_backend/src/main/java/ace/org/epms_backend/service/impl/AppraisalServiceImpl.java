@@ -5,6 +5,7 @@ import ace.org.epms_backend.dto.appraisal.*;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.*;
 import ace.org.epms_backend.exception.AlreadyAssignException;
+import ace.org.epms_backend.exception.InvalidStateException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.AppraisalMapper;
 import ace.org.epms_backend.model.appraisal.*;
@@ -332,11 +333,25 @@ public class AppraisalServiceImpl implements AppraisalService {
                 Appraisal appraisal = appraisalRepo.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
-                // Guard: must be HR_APPROVED before finalization
+                // Guard 1: must be HR_APPROVED before finalization
                 if (appraisal.getStatus() != AppraisalStatus.HR_APPROVED) {
                         throw new RuntimeException(
                                 "Cannot finalize: appraisal must be HR_APPROVED first. Current status: "
                                 + appraisal.getStatus());
+                }
+
+                // Guard 2: both signatures must be captured before finalization
+                if (appraisal.getEmployeeSignedAt() == null && appraisal.getManagerSignedAt() == null) {
+                        throw new InvalidStateException(
+                                "Cannot finalize: employee and manager have not signed off yet.");
+                }
+                if (appraisal.getEmployeeSignedAt() == null) {
+                        throw new InvalidStateException(
+                                "Cannot finalize: awaiting employee signature.");
+                }
+                if (appraisal.getManagerSignedAt() == null) {
+                        throw new InvalidStateException(
+                                "Cannot finalize: awaiting manager signature.");
                 }
 
                 appraisal.setStatus(AppraisalStatus.FINALIZED);

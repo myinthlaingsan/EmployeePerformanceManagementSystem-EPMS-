@@ -8,6 +8,7 @@ import {
   useRolloverFinancialYearMutation
 } from '../../features/appraisal/financialYearApi';
 import { Plus, CheckCircle2, Trash2, History, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Can } from '../../components/Can';
 import { format, addYears, subDays, parseISO, isValid } from 'date-fns';
 import { CustomDateInput } from '../../components/common/CustomDateInput';
 
@@ -80,10 +81,12 @@ const FinancialYearManagement = () => {
           <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Financial Year Configuration</h1>
           <p style={{ fontSize: 13, color: '#9EA3B0', marginTop: 2 }}>Manage corporate periods and active appraisal timelines.</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
-          style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
-          <Plus size={14} /> Initialize New FY
-        </button>
+        <Can permission="CYCLE_CONFIG_MANAGE">
+          <button onClick={() => setShowAddModal(true)} className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+            style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+            <Plus size={14} /> Initialize New FY
+          </button>
+        </Can>
       </div>
 
       {/* Stats */}
@@ -106,14 +109,16 @@ const FinancialYearManagement = () => {
             <p style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{years?.filter(y => y.isCurrent || (y as any).current).length || 0} Period Live</p>
           </div>
         </div>
-        <div onClick={handleRollover} style={{ background: '#111827', border: 'none', borderRadius: 12, padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-          className="hover:opacity-90 transition-opacity">
-          <div>
-            <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Next Phase</p>
-            <p style={{ fontSize: 14, fontWeight: 500, color: '#FFFFFF', marginTop: 2 }}>Execute Rollover</p>
+        <Can permission="CYCLE_CONFIG_MANAGE">
+          <div onClick={handleRollover} style={{ background: '#111827', border: 'none', borderRadius: 12, padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            className="hover:opacity-90 transition-opacity">
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Next Phase</p>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#FFFFFF', marginTop: 2 }}>Execute Rollover</p>
+            </div>
+            <ArrowRight size={18} style={{ color: 'rgba(255,255,255,0.4)' }} />
           </div>
-          <ArrowRight size={18} style={{ color: 'rgba(255,255,255,0.4)' }} />
-        </div>
+        </Can>
       </div>
 
       {/* Table */}
@@ -151,20 +156,22 @@ const FinancialYearManagement = () => {
                       </span>
                     </td>
                     <td style={{ padding: '11px 18px', textAlign: 'right' }}>
-                      <div className="flex justify-end items-center gap-1">
-                        {!isCurrent && (
-                          <button onClick={() => handleSetCurrent(year.id)} title="Set as Current"
+                      <Can permission="CYCLE_CONFIG_MANAGE">
+                        <div className="flex justify-end items-center gap-1">
+                          {!isCurrent && (
+                            <button onClick={() => handleSetCurrent(year.id)} title="Set as Current"
+                              style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
+                              className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
+                              <CheckCircle2 size={14} />
+                            </button>
+                          )}
+                          <button onClick={() => handleDelete(year.id)} title="Delete"
                             style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
-                            className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
-                            <CheckCircle2 size={14} />
+                            className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
+                            <Trash2 size={14} />
                           </button>
-                        )}
-                        <button onClick={() => handleDelete(year.id)} title="Delete"
-                          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
-                          className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                        </div>
+                      </Can>
                     </td>
                   </tr>
                 );

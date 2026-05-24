@@ -565,6 +565,8 @@ public class ReportServiceImpl implements ReportService {
                 .managerComments(managerComment)
                 .hrComments(appraisal.getApprovalComment())
                 .selfComments("")
+                .employeeSignatureUrl(appraisal.getEmployeeSignComment() != null && appraisal.getEmployeeSignComment().startsWith("/uploads/") ? "http://localhost:8080" + appraisal.getEmployeeSignComment() : null)
+                .managerSignatureUrl(appraisal.getManagerSignComment() != null && appraisal.getManagerSignComment().startsWith("/uploads/") ? "http://localhost:8080" + appraisal.getManagerSignComment() : null)
                 .build();
     }
 

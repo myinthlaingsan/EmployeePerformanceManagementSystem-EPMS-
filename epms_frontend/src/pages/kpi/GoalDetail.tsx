@@ -16,6 +16,7 @@ import KpiRevisionModal from '../../components/kpi/KpiRevisionModal';
 import KpiAuditLogModal from '../../components/kpi/KpiAuditLogModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
 import { ChevronLeft, CheckCircle2, AlertCircle, Lock, Award, ShieldCheck, History, Archive } from 'lucide-react';
+import { Can } from '../../components/Can';
 
 const STEPS = [
   { id: 'DRAFT', label: 'Draft', icon: CheckCircle2 },
@@ -188,34 +189,37 @@ const GoalDetail: React.FC = () => {
           )}
           {isPrivileged && !isReadOnly && (
             <>
-              {(goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
-                <button
-                   onClick={() => navigate(`/kpi/assign/${employeeId}?cycleId=${effectiveCycleId}&mode=edit`)}
-                  style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none' }}>
-                  Modify Goals
-                </button>
-              )}
+              <Can permission="KPI_CREATE">
+                {(goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
+                  <button
+                     onClick={() => navigate(`/kpi/assign/${employeeId}?cycleId=${effectiveCycleId}&mode=edit`)}
+                    style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+                    Modify Goals
+                  </button>
+                )}
+              </Can>
 
-              {goalSet.status === 'DRAFT' && (
-                <button onClick={handleApprove}
-                  style={{ background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
-                  Approve Goals
-                </button>
-              )}
+              <Can permission="KPI_APPROVE">
+                {goalSet.status === 'DRAFT' && (
+                  <button onClick={handleApprove}
+                    style={{ background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
+                    Approve Goals
+                  </button>
+                )}
 
-              {goalSet.status === 'APPROVED' && (
-                <button onClick={handleRevert}
-                  style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
-                  Revert to Draft
-                </button>
-              )}
-
-              {goalSet.status === 'APPROVED' && (
-                <button onClick={handleLock}
-                  style={{ background: '#F1EFE8', color: '#444441', border: '0.5px solid #DDDBD2', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
-                  Lock Goals
-                </button>
-              )}
+                {goalSet.status === 'APPROVED' && (
+                  <button onClick={handleRevert}
+                    style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
+                    Revert to Draft
+                  </button>
+                )}
+                {goalSet.status === 'APPROVED' && (
+                  <button onClick={handleLock}
+                    style={{ background: '#F1EFE8', color: '#444441', border: '0.5px solid #DDDBD2', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
+                    Lock Goals
+                  </button>
+                )}
+              </Can>
             </>
           )}
         </div>
@@ -383,14 +387,16 @@ const GoalDetail: React.FC = () => {
                     <td style={{ padding: '12px 18px', textAlign: 'right', background: rowBg }}>
                       <div className="flex justify-end gap-2">
                         {/* Employee update button - for regular goals */}
-                        {isOwner && goalSet.status === 'APPROVED' && !item.isCompliance && !isArchivedCycle && (
-                          <button
-                            onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
-                            style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
-                            className="hover:bg-blue-100 transition">
-                            UPDATE
-                          </button>
-                        )}
+                        <Can permission="KPI_CREATE">
+                          {isOwner && goalSet.status === 'APPROVED' && !item.isCompliance && (
+                            <button
+                              onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
+                              style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                              className="hover:bg-blue-100 transition">
+                              UPDATE
+                            </button>
+                          )}
+                        </Can>
                         {/* Employee locked state - for compliance goals */}
                         {isOwner && goalSet.status === 'APPROVED' && item.isCompliance && (
                           <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg" title="Requires manager verification">
@@ -400,31 +406,35 @@ const GoalDetail: React.FC = () => {
                         )}
 
                         {/* Manager verify button - for compliance items */}
-                        {isPrivileged && item.isCompliance && goalSet.status === 'APPROVED' && !isArchivedCycle && (
-                          item.verifiedAt ? (
-                            <div style={{ fontSize: 10, color: '#27500A', background: '#EAF3DE', border: '0.5px solid #B8DCA0', borderRadius: 6, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <ShieldCheck size={11} />
-                              Verified {item.verifiedBy ? `by ${item.verifiedBy}` : ''} {new Date(item.verifiedAt).toLocaleDateString()}
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
-                              style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
-                              className="hover:bg-amber-200 transition">
-                              VERIFY
-                            </button>
-                          )
-                        )}
+                        <Can permission="KPI_APPROVE">
+                          {isPrivileged && item.isCompliance && goalSet.status === 'APPROVED' && !isArchivedCycle && (
+                            item.verifiedAt ? (
+                              <div style={{ fontSize: 10, color: '#27500A', background: '#EAF3DE', border: '0.5px solid #B8DCA0', borderRadius: 6, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <ShieldCheck size={11} />
+                                Verified {item.verifiedBy ? `by ${item.verifiedBy}` : ''} {new Date(item.verifiedAt).toLocaleDateString()}
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
+                                style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                                className="hover:bg-amber-200 transition">
+                                VERIFY
+                              </button>
+                            )
+                          )}
+                        </Can>
 
                         {/* Manager revise button - for all items */}
-                        {isPrivileged && !isReadOnly && goalSet.status !== 'LOCKED' && (
-                          <button
-                            onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
-                            style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
-                            className="hover:bg-gray-100 transition">
-                            REVISE
-                          </button>
-                        )}
+                        <Can permission="KPI_CREATE">
+                          {isPrivileged && !isReadOnly && goalSet.status !== 'LOCKED' && (
+                            <button
+                              onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
+                              style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                              className="hover:bg-gray-100 transition">
+                              REVISE
+                            </button>
+                          )}
+                        </Can>
                       </div>
                     </td>
                   </tr>

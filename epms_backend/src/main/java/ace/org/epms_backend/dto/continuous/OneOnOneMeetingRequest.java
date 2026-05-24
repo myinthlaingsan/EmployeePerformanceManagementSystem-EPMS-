@@ -15,6 +15,8 @@ public class OneOnOneMeetingRequest {
     @NotNull(message = "Manager ID is required")
     private Long managerId;
 
+    private String meetingTitle;
+
     @NotNull(message = "Meeting date is required")
     private LocalDate meetingDate;
 
@@ -23,7 +25,7 @@ public class OneOnOneMeetingRequest {
 
     private String discussionPoints;
     private String keyIssues;
-    private java.util.List<String> actionItems;
+    private java.util.List<MeetingActionItemRequest> actionItems;
     private LocalDate followUpDate;
 
     private ContinuousStatus status;

@@ -1,19 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Users, CheckCircle2, AlertCircle, HelpCircle, TrendingUp } from 'lucide-react';
+import { Users, CheckCircle2, AlertCircle, HelpCircle, TrendingUp, Layers, Briefcase, AlertTriangle } from 'lucide-react';
 import { useGetManagerDashboardQuery } from '../features/dashboard/dashboardApi';
 import DashboardStatCard from '../components/dashboard/DashboardStatCard';
 import ChartCard from '../components/dashboard/ChartCard';
 import TaskPanel from '../components/dashboard/TaskPanel';
+import { scoreToColor, progressToColor} from '../constants/dashboardColors';
+import EmployeeDashboard from './EmployeeDashboard';
 
 const ManagerDashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'team' | 'personal'>('team');
   const { data, isLoading, error } = useGetManagerDashboardQuery();
 
-  if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading team overview…</div>;
+  if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading dashboard...</div>;
   if (error) return <div className="py-16 text-center" style={{ color: "#791F1F", fontSize: 13 }}>Error loading manager dashboard.</div>;
 
   return (
     <div className="space-y-4">
+      {/* Premium Tab Selector */}
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-1.5 flex gap-2 w-fit shadow-sm">
+        <button
+          onClick={() => setActiveTab('team')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold tracking-tight transition-all duration-300 ${
+            activeTab === 'team'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+          }`}
+        >
+          <Layers size={14} />
+          Team Overview
+        </button>
+        <button
+          onClick={() => setActiveTab('personal')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold tracking-tight transition-all duration-300 ${
+            activeTab === 'personal'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+          }`}
+        >
+          <Briefcase size={14} />
+          My Performance
+        </button>
+      </div>
+
+      {activeTab === 'personal' ? (
+        <EmployeeDashboard />
+      ) : (
+        <div className="space-y-4 animate-in fade-in duration-300">
       <div>
         <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Team management</h1>
         <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Manage your direct reports and their performance cycles.</p>
@@ -39,7 +72,7 @@ const ManagerDashboard: React.FC = () => {
                 <Tooltip cursor={{ fill: "#F5F6F8" }} contentStyle={{ borderRadius: 8, border: "0.5px solid #E4E6EC", boxShadow: "none", fontSize: 12 }} />
                 <Bar dataKey="score" radius={[4, 4, 0, 0]}>
                   {data?.teamPerformance.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.score > 90 ? '#639922' : entry.score > 80 ? '#1A56DB' : '#BA7517'} />
+                    <Cell key={`cell-${index}`} fill={scoreToColor(entry.score)} />
                   ))}
                 </Bar>
               </BarChart>
@@ -65,7 +98,7 @@ const ManagerDashboard: React.FC = () => {
                       height: "100%",
                       width: `${kpi.progress}%`,
                       borderRadius: 3,
-                      background: kpi.progress >= 80 ? "#639922" : kpi.progress >= 65 ? "#1A56DB" : kpi.progress >= 50 ? "#BA7517" : "#E24B4A",
+                      background: progressToColor(kpi.progress),
                     }}
                   />
                 </div>
@@ -78,6 +111,54 @@ const ManagerDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Team vs Company Comparison */}
+      {(data?.teamAvgScore !== undefined || data?.companyAvgScore !== undefined) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <DashboardStatCard
+            title="Team average score"
+            value={data?.teamAvgScore?.toFixed(1) ?? 'N/A'}
+            icon={<TrendingUp size={15} />}
+            color="blue"
+          />
+          <DashboardStatCard
+            title="Company average score"
+            value={data?.companyAvgScore?.toFixed(1) ?? 'N/A'}
+            icon={<TrendingUp size={15} />}
+            color="green"
+          />
+        </div>
+      )}
+
+      {/* At-Risk Employees */}
+      {data?.atRiskEmployees && data.atRiskEmployees.length > 0 && (
+        <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+          <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
+            <AlertTriangle size={15} style={{ color: "#E24B4A" }} aria-hidden="true" />
+            <p style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>At-risk employees</p>
+          </div>
+          <div className="space-y-2">
+            {data.atRiskEmployees.map((emp, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2 rounded" style={{ background: "#FCEBEB" }}>
+                <span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>{emp.name}</span>
+                <span style={{ fontSize: 11, color: "#E24B4A", fontWeight: 600 }}>↓ {Math.abs(emp.delta || 0).toFixed(1)} pts</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pending Self-Assessments */}
+      {data?.pendingSelfAssessmentNames && data.pendingSelfAssessmentNames.length > 0 && (
+        <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Awaiting self-assessments ({data.pendingSelfAssessmentNames.length})</p>
+          <div className="space-y-1">
+            {data.pendingSelfAssessmentNames.map((name, idx) => (
+              <div key={idx} style={{ fontSize: 12, color: "#5A6070", paddingLeft: 8 }}>• {name}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Tasks */}
       <TaskPanel
         title="Urgent team reviews"
@@ -88,6 +169,8 @@ const ManagerDashboard: React.FC = () => {
           priority: t.priority as 'High' | 'Medium' | 'Low',
         })) ?? []}
       />
+      </div>
+      )}
     </div>
   );
 };

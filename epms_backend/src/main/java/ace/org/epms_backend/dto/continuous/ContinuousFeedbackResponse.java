@@ -12,6 +12,7 @@ public class ContinuousFeedbackResponse {
     private String employeeName;
     private Long managerId;
     private String managerName;
+    private String managerPositionName;
     private FeedbackType feedbackType;
     private FeedbackTagResponse tag;
     private String description;
@@ -21,6 +22,5 @@ public class ContinuousFeedbackResponse {
     private Integer replyCount;
     private Instant createdAt;
     private java.time.LocalDateTime publishedAt;
-    private boolean isPrivate;
 }
 

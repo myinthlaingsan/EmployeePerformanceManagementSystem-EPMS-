@@ -12,4 +12,5 @@ public class FeedbackReplyResponse {
     private String replyText;
     private Long parentId;
     private Instant createdAt;
+    private java.util.List<FeedbackReplyResponse> children;
 }

@@ -28,6 +28,8 @@ import ace.org.epms_backend.dto.AuditRequest;
 import ace.org.epms_backend.enums.AuditAction;
 import ace.org.epms_backend.enums.AuditStatus;
 import ace.org.epms_backend.service.AuditService;
+import ace.org.epms_backend.repository.employee.ReportingLineRepository;
+import ace.org.epms_backend.model.employee.ReportingLine;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +50,7 @@ public class PipServiceImpl implements PipService {
     private final AuditService auditService;
     private final AuthService authService;
     private final EmployeeRoleService employeeRoleService;
+    private final ReportingLineRepository reportingLineRepo;
 
     @Override
     public PipResponse createPip(PipCreateRequest request) {
@@ -55,8 +58,17 @@ public class PipServiceImpl implements PipService {
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new UserNotFoundException("Employee not found"));
 
-        Employee manager = employeeRepository.findById(request.getManagerId())
-                .orElseThrow(() -> new UserNotFoundException("Manager not found"));
+        Employee manager;
+        if (request.getManagerId() != null && request.getManagerId() > 0) {
+            manager = employeeRepository.findById(request.getManagerId())
+                    .orElseThrow(() -> new UserNotFoundException("Manager not found"));
+        } else {
+            manager = reportingLineRepo.findFirstByEmployee_IdAndIsActiveTrue(employee.getId())
+                    .map(ReportingLine::getManager)
+                    .orElseThrow(() -> new InvalidStateException(
+                            "Cannot create PIP — no active reporting line found for "
+                            + employee.getStaffName() + ". Set the reporting line first."));
+        }
 
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new InvalidStateException("End date cannot be before start date");
@@ -77,17 +89,6 @@ public class PipServiceImpl implements PipService {
                 .action(AuditAction.INSERT)
                 .newState(pip)
                 .status(AuditStatus.SUCCESS)
-                .build());
-
-        eventPublisher.publishEvent(NotificationEvent.builder()
-                .recipientId(employee.getId())
-                .senderId(manager.getId())
-                .type(NotificationType.PIP_CREATED)
-                .title("New PIP Created")
-                .message("A Performance Improvement Plan (PIP) has been drafted for you.")
-                .referenceType(ReferenceType.PIP)
-                .referenceId(pip.getPipId())
-                .actionUrl("/pips/" + pip.getPipId())
                 .build());
 
         return pipMapper.toResponse(pip);

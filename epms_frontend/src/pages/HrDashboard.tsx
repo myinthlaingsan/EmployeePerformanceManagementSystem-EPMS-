@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Users, CheckSquare, ClipboardList, AlertTriangle, Star, Building2, Bell, FileText, UserPlus, TrendingDown } from 'lucide-react';
 import { useGetHrDashboardQuery } from '../features/dashboard/dashboardApi';
@@ -7,20 +8,22 @@ import ChartCard from '../components/dashboard/ChartCard';
 import TaskPanel from '../components/dashboard/TaskPanel';
 import ProgressBarCard from '../components/dashboard/ProgressBarCard';
 import QuickActionPanel, { type Action } from '../components/dashboard/QuickActionPanel';
+import { alertColors } from '../constants/dashboardColors';
 
 const HrDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { data, isLoading, error } = useGetHrDashboardQuery();
 
   if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading HR insights…</div>;
   if (error) return <div className="py-16 text-center" style={{ color: "#791F1F", fontSize: 13 }}>Error loading dashboard data.</div>;
 
   const quickActions: Action[] = [
-    { id: '1', label: 'Launch cycle', icon: <TrendingDown size={16} />, onClick: () => {}, color: 'bg-blue-100 text-blue-600' },
-    { id: '2', label: 'Add employee', icon: <UserPlus size={16} />, onClick: () => {}, color: 'bg-green-100 text-green-600' },
-    { id: '3', label: 'Generate report', icon: <FileText size={16} />, onClick: () => {}, color: 'bg-purple-100 text-purple-600' },
-    { id: '4', label: 'Review PIPs', icon: <AlertTriangle size={16} />, onClick: () => {}, color: 'bg-red-100 text-red-600' },
-    { id: '5', label: 'Send reminder', icon: <Bell size={16} />, onClick: () => {}, color: 'bg-orange-100 text-orange-600' },
-    { id: '6', label: 'Manage roles', icon: <Building2 size={16} />, onClick: () => {}, color: 'bg-indigo-100 text-indigo-600' },
+    { id: '1', label: 'Launch cycle', icon: <TrendingDown size={16} />, onClick: () => navigate('/hr/cycles/new'), color: 'bg-blue-100 text-blue-600' },
+    { id: '2', label: 'Add employee', icon: <UserPlus size={16} />, onClick: () => navigate('/hr/employees/new'), color: 'bg-green-100 text-green-600' },
+    { id: '3', label: 'Generate report', icon: <FileText size={16} />, onClick: () => navigate('/hr/reports'), color: 'bg-purple-100 text-purple-600' },
+    { id: '4', label: 'Review PIPs', icon: <AlertTriangle size={16} />, onClick: () => navigate('/hr/pips'), color: 'bg-red-100 text-red-600' },
+    { id: '5', label: 'Send reminder', icon: <Bell size={16} />, onClick: () => navigate('/hr/reminders'), color: 'bg-orange-100 text-orange-600' },
+    { id: '6', label: 'Manage roles', icon: <Building2 size={16} />, onClick: () => navigate('/hr/roles'), color: 'bg-indigo-100 text-indigo-600' },
   ];
 
   return (
@@ -87,6 +90,82 @@ const HrDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Cycle phase progress */}
+      {data?.currentCyclePhase && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+            <div style={{ marginBottom: 12 }}>
+              <span style={{ fontSize: 11, color: "#9EA3B0", display: "block", marginBottom: 4 }}>Current phase</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>
+                {data.currentCyclePhase?.replace(/_/g, ' ')}
+              </span>
+            </div>
+            <div>
+              <div className="flex justify-between" style={{ marginBottom: 5 }}>
+                <span style={{ fontSize: 12, color: "#5A6070" }}>Progress</span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "#111827" }}>{(data.cyclePhaseProgress ?? 0).toFixed(0)}%</span>
+              </div>
+              <div style={{ height: 6, background: "#EEF0F6", borderRadius: 3, overflow: "hidden" }}>
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${data.cyclePhaseProgress ?? 0}%`,
+                    borderRadius: 3,
+                    background: "#1A56DB",
+                  }}
+                />
+              </div>
+            </div>
+            {data.daysUntilCycleEnd !== undefined && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "0.5px solid #E4E6EC" }}>
+                <span style={{ fontSize: 11, color: "#9EA3B0" }}>Days remaining: </span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{data.daysUntilCycleEnd}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Non-compliant managers */}
+          {data?.nonCompliantManagers && data.nonCompliantManagers.length > 0 && (
+            <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>
+                {data.nonCompliantManagers.length} Managers Haven't Submitted Reviews
+              </p>
+              <div className="space-y-2">
+                {data.nonCompliantManagers.map((manager, idx) => (
+                  <div key={idx} className="flex items-center" style={{ fontSize: 12, color: "#5A6070", paddingLeft: 8 }}>
+                    • {manager}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* PIPs by department */}
+      {data?.pipByDepartment && Object.keys(data.pipByDepartment).length > 0 && (
+        <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>PIPs by department</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {Object.entries(data.pipByDepartment).map(([dept, summary], idx) => (
+              <div key={idx} style={{ background: "#F5F6F8", borderRadius: 8, padding: 12 }}>
+                <p style={{ fontSize: 12, color: "#5A6070", marginBottom: 8 }}>{dept}</p>
+                <div className="flex gap-3">
+                  <div>
+                    <span style={{ fontSize: 11, color: "#9EA3B0", display: "block" }}>Active</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "#E24B4A" }}>{summary.active}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "#9EA3B0", display: "block" }}>Closed</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "#639922" }}>{summary.closed}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick actions */}
       <QuickActionPanel actions={quickActions} />
 
@@ -106,11 +185,7 @@ const HrDashboard: React.FC = () => {
           <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 14 }}>System alerts</p>
           <div className="space-y-3">
             {data?.alerts.map((alert, idx) => {
-              const style = alert.type === 'danger'
-                ? { bg: "#FCEBEB", text: "#791F1F", border: "#F5C2C2" }
-                : alert.type === 'warning'
-                ? { bg: "#FAEEDA", text: "#633806", border: "#F0D4A4" }
-                : { bg: "#EEF3FD", text: "#0C447C", border: "#B5D4F4" };
+              const style = alertColors[alert.type] || alertColors.info;
               return (
                 <div key={idx} className="flex gap-3" style={{ background: style.bg, border: `0.5px solid ${style.border}`, borderRadius: 8, padding: "10px 12px" }}>
                   <AlertTriangle size={14} style={{ color: style.text, flexShrink: 0, marginTop: 1 }} />
