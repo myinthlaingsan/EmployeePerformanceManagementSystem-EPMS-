@@ -16,4 +16,6 @@ public interface AuthService {
     EmployeeResponse getCurrentUserProfile();
     void forgotPassword(ForgotPasswordRequest request);
     void resetPassword(ResetPasswordRequest request);
+    boolean validateToken(String token);
+    void revokeUserSessions(Long employeeId);
 }

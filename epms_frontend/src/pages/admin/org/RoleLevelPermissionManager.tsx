@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useGetRolesQuery } from "../../../features/org/roleApi";
 import { useGetJobLevelsQuery } from "../../../features/org/jobLevelApi";
-import { 
-  useGetPermissionsQuery, 
-  useGetAssignedPermissionsQuery, 
-  useAssignPermissionMutation, 
-  useRemoveAssignedPermissionMutation 
+import {
+  useGetPermissionsQuery,
+  useGetAssignedPermissionsQuery,
+  useUpdatePermissionMatrixMutation
 } from "../../../features/org/permissionApi";
+import { getLevelsForRole } from "../../../utils/roleLevel";
+
+const inputStyle: React.CSSProperties = { background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' };
+const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 };
 
 const RoleLevelPermissionManager = () => {
   const { data: roles } = useGetRolesQuery();
@@ -16,114 +19,124 @@ const RoleLevelPermissionManager = () => {
   const [selectedRoleId, setSelectedRoleId] = useState<number>(0);
   const [selectedLevelId, setSelectedLevelId] = useState<number>(0);
 
-  // Skip query if IDs are 0
   const { data: assignments, isLoading: loadingAssignments } = useGetAssignedPermissionsQuery(
     { roleId: selectedRoleId, levelId: selectedLevelId },
     { skip: selectedRoleId === 0 || selectedLevelId === 0 }
   );
 
-  const [assignPermission] = useAssignPermissionMutation();
-  const [removeAssignment] = useRemoveAssignedPermissionMutation();
+  const [updateMatrix] = useUpdatePermissionMatrixMutation();
+
+  const getRelevantLevelsForRole = (roleName: string | undefined) => {
+    if (!roleName || !levels) return [];
+    return getLevelsForRole(roleName, levels);
+  };
+
+  const selectedRoleName = roles?.find(r => r.roleId === selectedRoleId)?.roleName;
+  const filteredLevels = getRelevantLevelsForRole(selectedRoleName);
+
+  const handleRoleChange = (roleId: number) => {
+    setSelectedRoleId(roleId);
+    setSelectedLevelId(0);
+  };
 
   const handleTogglePermission = async (permissionId: number) => {
     if (selectedRoleId === 0 || selectedLevelId === 0) return;
-
-    const existingAssignment = assignments?.find(a => a.permissionId === permissionId);
-
+    const currentPermissionIds = assignments?.map(a => a.permissionId) || [];
+    const newPermissionIds = currentPermissionIds.includes(permissionId)
+      ? currentPermissionIds.filter(id => id !== permissionId)
+      : [...currentPermissionIds, permissionId];
     try {
-      if (existingAssignment) {
-        await removeAssignment(existingAssignment.id).unwrap();
-      } else {
-        await assignPermission({
-          roleId: selectedRoleId,
-          levelId: selectedLevelId,
-          permissionId
-        }).unwrap();
-      }
+      await updateMatrix({ roleId: selectedRoleId, levelId: selectedLevelId, permissionIds: newPermissionIds }).unwrap();
     } catch (err) {
-      console.error("Failed to toggle permission", err);
+      console.error("Failed to update permissions", err);
     }
   };
 
+  const hasSelection = selectedRoleId > 0 && selectedLevelId > 0;
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <header>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Role-Level Access Matrix</h1>
-        <p className="text-gray-500 mt-2 text-lg">Define exactly what each role can do at specific job seniority levels.</p>
-      </header>
+    <div className="space-y-4 pb-8">
+      <div>
+        <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Assign Permissions</h1>
+        <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Select a role and its valid seniority levels to manage access.</p>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">1. Select Target Role</label>
-          <select 
-            className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition font-bold text-gray-700"
-            value={selectedRoleId}
-            onChange={(e) => setSelectedRoleId(Number(e.target.value))}
-          >
-            <option value={0}>Choose a Role...</option>
-            {roles?.map(role => <option key={role.roleId} value={role.roleId}>{role.roleName}</option>)}
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">2. Select Job Level</label>
-          <select 
-            className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition font-bold text-gray-700"
-            value={selectedLevelId}
-            onChange={(e) => setSelectedLevelId(Number(e.target.value))}
-          >
-            <option value={0}>Choose a Seniority Level...</option>
-            {levels?.map(level => <option key={level.levelId} value={level.levelId}>{level.levelName} ({level.levelCode})</option>)}
-          </select>
+      {/* Selectors */}
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label style={labelStyle}>1. Select Target Role</label>
+            <select style={inputStyle} value={selectedRoleId} onChange={e => handleRoleChange(Number(e.target.value))}>
+              <option value={0}>Choose a Role...</option>
+              {roles?.map(role => <option key={role.roleId} value={role.roleId}>{role.roleName}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>2. Select Valid Job Level</label>
+            <select
+              style={{ ...inputStyle, opacity: selectedRoleId === 0 ? 0.5 : 1, cursor: selectedRoleId === 0 ? 'not-allowed' : 'pointer' }}
+              value={selectedLevelId}
+              disabled={selectedRoleId === 0}
+              onChange={e => setSelectedLevelId(Number(e.target.value))}>
+              <option value={0}>{selectedRoleId === 0 ? "Select a Role first" : "Choose a Level..."}</option>
+              {filteredLevels.map(level => (
+                <option key={level.levelId} value={level.levelId}>{level.levelName} ({level.levelCode})</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {selectedRoleId > 0 && selectedLevelId > 0 ? (
-        <section className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
+      {/* Permission Matrix */}
+      {hasSelection ? (
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '0.5px solid #E4E6EC', background: '#F5F6F8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Permission Matrix</h2>
-              <p className="text-sm text-gray-400 mt-0.5">Toggle permissions to update access instantly.</p>
+              <h2 style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>Permission Matrix</h2>
+              <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Toggle permissions to update access instantly.</p>
             </div>
-            <div className="flex gap-2">
-              <span className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase rounded-full">
+            <div style={{ display: 'flex', gap: 6 }}>
+              <span style={{ background: '#1A56DB', color: '#FFFFFF', fontSize: 10, fontWeight: 500, padding: '3px 8px', borderRadius: 20, textTransform: 'uppercase' }}>
                 {roles?.find(r => r.roleId === selectedRoleId)?.roleName}
               </span>
-              <span className="px-3 py-1 bg-gray-900 text-white text-[10px] font-black uppercase rounded-full">
+              <span style={{ background: '#111827', color: '#FFFFFF', fontSize: 10, fontWeight: 500, padding: '3px 8px', borderRadius: 20, textTransform: 'uppercase' }}>
                 {levels?.find(l => l.levelId === selectedLevelId)?.levelName}
               </span>
             </div>
           </div>
 
-          <div className="p-8">
+          <div style={{ padding: '16px 18px' }}>
             {loadingAssignments ? (
-              <div className="py-12 text-center text-gray-400 italic">Syncing assignments...</div>
+              <div style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Syncing assignments...</div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {allPermissions?.map(perm => {
                   const isActive = assignments?.some(a => a.permissionId === perm.permissionId);
                   return (
                     <button
                       key={perm.permissionId}
                       onClick={() => handleTogglePermission(perm.permissionId)}
-                      className={`group relative flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200 text-left ${
-                        isActive 
-                          ? 'bg-blue-50 border-blue-600 shadow-md shadow-blue-100' 
-                          : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div>
-                        <span className={`text-xs font-black uppercase tracking-wider ${isActive ? 'text-blue-700' : 'text-gray-400 group-hover:text-gray-600'}`}>
-                          {perm.permissionName}
-                        </span>
-                      </div>
-                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-300'}`}>
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 12px', borderRadius: 8, textAlign: 'left', cursor: 'pointer',
+                        background: isActive ? '#EEF3FD' : '#F5F6F8',
+                        border: `0.5px solid ${isActive ? '#B5D4F4' : '#E4E6EC'}`,
+                        fontFamily: 'inherit', transition: 'all 0.15s',
+                      }}>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: isActive ? '#0C447C' : '#5A6070', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        {perm.permissionName}
+                      </span>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        background: isActive ? '#1A56DB' : '#E4E6EC',
+                        color: isActive ? '#FFFFFF' : '#9EA3B0',
+                      }}>
                         {isActive ? (
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         ) : (
-                          <div className="w-2 h-2 rounded-full bg-current" />
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
                         )}
                       </div>
                     </button>
@@ -132,16 +145,16 @@ const RoleLevelPermissionManager = () => {
               </div>
             )}
           </div>
-        </section>
+        </div>
       ) : (
-        <div className="bg-gray-50/50 border-2 border-dashed border-gray-200 rounded-3xl p-16 text-center">
-          <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div style={{ border: '2px dashed #E4E6EC', borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
+          <div style={{ width: 40, height: 40, background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <svg width="20" height="20" fill="none" stroke="#9EA3B0" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Selection Required</h3>
-          <p className="text-gray-400 mt-2">Choose a role and level above to manage their specific permissions.</p>
+          <h3 style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 6 }}>Selection Required</h3>
+          <p style={{ fontSize: 13, color: '#9EA3B0' }}>Choose a role and level above to manage their specific permissions.</p>
         </div>
       )}
     </div>

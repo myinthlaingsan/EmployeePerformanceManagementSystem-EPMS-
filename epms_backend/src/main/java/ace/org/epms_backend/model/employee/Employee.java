@@ -1,6 +1,5 @@
 package ace.org.epms_backend.model.employee;
 
-
 import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,6 +7,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import ace.org.epms_backend.enums.Gender;
 import ace.org.epms_backend.enums.MaritalStatus;
@@ -32,7 +32,7 @@ public class Employee extends BaseEntity {
 
     private String staffName;
     private String otherName;
-//    private String nrcNo;
+    // private String nrcNo;
     private Integer stateCode;
     private String township;
     private String nrcType;
@@ -61,6 +61,10 @@ public class Employee extends BaseEntity {
 
     private String spouseName;
     private String fatherName;
+
+    @Column(name = "profile_image")
+    private String profileImage;
+
     @ManyToOne
     @JoinColumn(name = "position_id")
     private Position position;
@@ -86,5 +90,6 @@ public class Employee extends BaseEntity {
     @Column(name = "account_locked", columnDefinition = "BOOLEAN DEFAULT false")
     private boolean accountLocked = false;
     private LocalDateTime lockTime;
+    private LocalDateTime lastLogoutTime;
 
 }

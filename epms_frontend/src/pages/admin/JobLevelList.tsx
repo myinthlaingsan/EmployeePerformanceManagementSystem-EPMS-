@@ -1,101 +1,107 @@
 import { useGetJobLevelsQuery, useCreateJobLevelMutation, useDeleteJobLevelMutation } from "../../features/org/jobLevelApi";
 import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { Can } from "../../components/Can";
+
+const inputStyle: React.CSSProperties = {
+  background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8,
+  padding: "7px 12px", fontSize: 13, color: "#111827", fontFamily: "inherit", outline: "none", width: "100%",
+};
 
 const JobLevelList = () => {
   const { data: levels, isLoading, error } = useGetJobLevelsQuery();
   const [createLevel] = useCreateJobLevelMutation();
   const [deleteLevel] = useDeleteJobLevelMutation();
-  
   const [newLevelName, setNewLevelName] = useState("");
   const [newLevelCode, setNewLevelCode] = useState("");
-  const [newLevelRank, setNewLevelRank] = useState<number>(1);
+  const [newLevelRank, setNewLevelRank] = useState<number | "">(1);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLevelName.trim() || !newLevelCode.trim()) return;
+    if (!newLevelName.trim() || !newLevelCode.trim() || newLevelRank === "") return;
     try {
-      await createLevel({ 
-        levelName: newLevelName,
-        levelCode: newLevelCode,
-        levelRank: newLevelRank
-      }).unwrap();
-      setNewLevelName("");
-      setNewLevelCode("");
-      setNewLevelRank(1);
+      await createLevel({ levelName: newLevelName, levelCode: newLevelCode, levelRank: Number(newLevelRank) }).unwrap();
+      setNewLevelName(""); setNewLevelCode(""); setNewLevelRank(1);
     } catch (err) {
       console.error("Failed to create job level", err);
     }
   };
 
-  if (isLoading) return <div className="p-8 text-center">Loading job levels...</div>;
-  if (error) return <div className="p-8 text-red-500">Error loading job levels.</div>;
+  if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading job levels…</div>;
+  if (error) return <div className="py-16 text-center" style={{ color: "#791F1F", fontSize: 13 }}>Error loading job levels.</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Job Levels</h1>
+    <div className="space-y-4">
+      <div>
+        <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Job levels</h1>
+        <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Define seniority levels used across positions.</p>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <input
-            type="text"
-            placeholder="Level Name (e.g. Senior)"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            value={newLevelName}
-            onChange={(e) => setNewLevelName(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Code (e.g. L04)"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            value={newLevelCode}
-            onChange={(e) => setNewLevelCode(e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder="Rank"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            value={newLevelRank}
-            onChange={(e) => setNewLevelRank(parseInt(e.target.value))}
-          />
+      <Can permission="ORG_LEVEL_MANAGE">
+      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Add level</p>
+        <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <input style={inputStyle} placeholder="Level name (e.g. Senior)" value={newLevelName} onChange={(e) => setNewLevelName(e.target.value)} />
+          <input style={inputStyle} placeholder="Code (e.g. L04)" value={newLevelCode} onChange={(e) => setNewLevelCode(e.target.value)} />
+          <input style={{ ...inputStyle, textAlign: "right" }} type="number" min="1" placeholder="Rank" value={newLevelRank === "" ? "" : newLevelRank}
+            onKeyDown={e => {
+              if (e.key === '-' || e.key === '.' || e.key === 'e') {
+                e.preventDefault();
+              }
+            }}
+            onChange={(e) => {
+              const val = e.target.value;
+              setNewLevelRank(val === "" ? "" : Math.max(1, parseInt(val)));
+            }} />
           <button
             type="submit"
-            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+            className="flex items-center justify-center gap-2 transition-colors"
+            style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
           >
-            Add Level
+            <Plus size={14} aria-hidden="true" /> Add
           </button>
         </form>
       </div>
+      </Can>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider">Code</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider">Rank</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {levels?.map((level) => (
-              <tr key={level.levelId} className="hover:bg-gray-50 transition">
-                <td className="px-6 py-4 text-sm font-mono text-blue-600">{level.levelCode}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{level.levelName}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{level.levelRank}</td>
-                <td className="px-6 py-4 text-sm text-right">
-                  <button
-                    onClick={() => deleteLevel(level.levelId)}
-                    className="text-red-600 hover:text-red-800 font-medium"
-                  >
-                    Delete
-                  </button>
-                </td>
+      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, overflow: "hidden" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left" style={{ minWidth: 420 }}>
+            <thead>
+              <tr style={{ borderBottom: "0.5px solid #E4E6EC" }}>
+                {["Code", "Name", "Rank", "Actions"].map((h, i) => (
+                  <th key={h} style={{ padding: "10px 18px", fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: i === 3 ? "right" : "left" }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {levels?.map((level, idx) => (
+                <tr key={level.levelId} style={{ borderBottom: idx < levels.length - 1 ? "0.5px solid #F0F2F6" : "none" }}
+                  className="hover:bg-[#FAFBFF] transition-colors">
+                  <td style={{ padding: "11px 18px", fontSize: 12, color: "#1A56DB", fontFamily: "monospace" }}>{level.levelCode}</td>
+                  <td style={{ padding: "11px 18px", fontSize: 13, fontWeight: 500, color: "#111827" }}>{level.levelName}</td>
+                  <td style={{ padding: "11px 18px", fontSize: 13, color: "#5A6070" }}>{level.levelRank}</td>
+                  <td style={{ padding: "11px 18px", textAlign: "right" }}>
+                    <Can permission="ORG_LEVEL_MANAGE">
+                      <button
+                        onClick={() => deleteLevel(level.levelId)}
+                        className="inline-flex items-center gap-1 transition-colors"
+                        style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
+                      >
+                        <Trash2 size={12} aria-hidden="true" /> Delete
+                      </button>
+                    </Can>
+                  </td>
+                </tr>
+              ))}
+              {levels?.length === 0 && (
+                <tr><td colSpan={4} style={{ padding: "24px 18px", textAlign: "center", fontSize: 13, color: "#9EA3B0" }}>No job levels yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

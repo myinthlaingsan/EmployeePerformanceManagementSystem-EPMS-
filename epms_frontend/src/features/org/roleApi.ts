@@ -6,20 +6,20 @@ import type { EmployeeResponse } from "../employee/employeeTypes";
 export const roleApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getRoles: builder.query<RoleResponse[], void>({
-      query: () => "/org/roles",
+      query: () => "/roles",
       transformResponse: (res: ApiResponse<RoleResponse[]>) => res.data,
       providesTags: ["Role"],
     }),
 
     getRoleById: builder.query<RoleResponse, number>({
-      query: (id) => `/org/roles/${id}`,
+      query: (id) => `/roles/${id}`,
       transformResponse: (res: ApiResponse<RoleResponse>) => res.data,
       providesTags: (_result, _error, id) => [{ type: "Role", id }],
     }),
 
     createRole: builder.mutation<RoleResponse, RoleRequest>({
       query: (body) => ({
-        url: "/org/roles",
+        url: "/roles",
         method: "POST",
         body,
       }),
@@ -28,7 +28,7 @@ export const roleApi = api.injectEndpoints({
 
     updateRole: builder.mutation<RoleResponse, { id: number; body: RoleRequest }>({
       query: ({ id, body }) => ({
-        url: `/org/roles/${id}`,
+        url: `/roles/${id}`,
         method: "PUT",
         body,
       }),
@@ -37,7 +37,7 @@ export const roleApi = api.injectEndpoints({
 
     deleteRole: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/org/roles/${id}`,
+        url: `/roles/${id}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Role"],

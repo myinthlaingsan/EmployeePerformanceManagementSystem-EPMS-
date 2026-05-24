@@ -5,7 +5,7 @@ import type { DepartmentRequest, DepartmentResponse } from "./orgTypes";
 export const departmentApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getDepartments: builder.query<DepartmentResponse[], void>({
-      query: () => "/org/departments",
+      query: () => "/departments",
       transformResponse: (res: ApiResponse<DepartmentResponse[]>) => res.data,
       providesTags: ["Department"],
     }),
@@ -18,7 +18,7 @@ export const departmentApi = api.injectEndpoints({
 
     createDepartment: builder.mutation<DepartmentResponse, DepartmentRequest>({
       query: (body) => ({
-        url: "/org/departments",
+        url: "/departments",
         method: "POST",
         body,
       }),
@@ -30,7 +30,7 @@ export const departmentApi = api.injectEndpoints({
       { id: number; body: DepartmentRequest }
     >({
       query: ({ id, body }) => ({
-        url: `/org/departments/${id}`,
+        url: `/departments/${id}`,
         method: "PUT",
         body,
       }),
@@ -42,16 +42,29 @@ export const departmentApi = api.injectEndpoints({
 
     deleteDepartment: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/org/departments/${id}`,
+        url: `/departments/${id}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Department"],
+    }),
+
+    getActiveDepartments: builder.query<DepartmentResponse[], void>({
+      query: () => "/departments/active",
+      transformResponse: (res: ApiResponse<DepartmentResponse[]>) => res.data,
+      providesTags: ["Department"],
+    }),
+
+    getDepartmentHeadcount: builder.query<number, number>({
+      query: (id) => `/departments/${id}/headcount`,
+      transformResponse: (res: ApiResponse<number>) => res.data,
     }),
   }),
 });
 
 export const {
   useGetDepartmentsQuery,
+  useGetActiveDepartmentsQuery,
+  useGetDepartmentHeadcountQuery,
   useGetDepartmentByIdQuery,
   useCreateDepartmentMutation,
   useUpdateDepartmentMutation,

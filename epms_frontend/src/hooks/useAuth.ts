@@ -1,7 +1,8 @@
 import type { RootState } from "../app/store";
 import { logout } from "../features/auth/authSlice";
 import { useAppDispatch, useAppSelector } from "./reduxHooks";
-import { useLogoutUserApiMutation } from "../features/auth/authApi";
+import { useLogoutUserApiMutation, useGetMeQuery } from "../features/auth/authApi";
+import { useGetActiveCycleQuery } from "../services/kpiApi";
 
 const normalizeRole = (role: string) => role.replace("ROLE_", "");
 
@@ -12,6 +13,14 @@ export const useAuth = () => {
   const { user, isAuthenticated, accessToken, refreshToken } = useAppSelector(
     (state: RootState) => state.auth,
   );
+
+  const { isLoading: isLoadingUser } = useGetMeQuery(undefined, {
+    skip: !accessToken || !!user,
+  });
+
+  const { data: cycleResponse, isLoading: isLoadingCycle, error: cycleError } = useGetActiveCycleQuery(undefined, {
+    skip: !isAuthenticated,
+  });
 
   const logoutUser = async () => {
     try {
@@ -56,5 +65,16 @@ export const useAuth = () => {
     // ABAC Helpers
     isSenior: user ? user.levelRank <= 4 : false,
     isJunior: user ? user.levelRank >= 7 : false,
+    isTopManagement: user ? user.levelRank <= 3 : false,   // L01–L03: Chairman, CEO, COO, ED, GM
+    isDeptHead: user ? user.levelRank === 4 : false,       // L04: Dept heads & senior officers
+    isMidLevel: user ? (user.levelRank >= 5 && user.levelRank <= 6) : false, // L05–L06: Managers, team leads
+    isOperational: user ? user.levelRank >= 7 : false,     // L07–L09: Juniors, OJT, support staff
+    // Cycle Info
+    activeCycleId: cycleResponse?.data?.cycleId,
+    activeCycleName: cycleResponse?.data?.cycleName || 'No Active Cycle',
+    hasCycle: !!cycleResponse?.data?.cycleId,
+    isLoading: isLoadingUser || isLoadingCycle,
+    isLoadingCycle,
+    cycleError,
   };
 };

@@ -1,5 +1,6 @@
 package ace.org.epms_backend.service;
 
+import ace.org.epms_backend.dto.PagedResponse;
 import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.model.employee.Employee;
 
@@ -15,6 +16,10 @@ public interface EmployeeService {
 
     List<EmployeeResponse> getAll();
 
+    PagedResponse<EmployeeResponse> getAllPaginated(int page, int size, Boolean excludeSelf);
+
+    PagedResponse<EmployeeResponse> search(String query, Long departmentId, Long teamId, int page, int size, Boolean excludeSelf);
+
     EmployeeResponse updateEmployee(Long id, UpdateEmployeeRequest request);
 
     void deleteEmployee(Long id);
@@ -24,10 +29,17 @@ public interface EmployeeService {
 
     void deactivateEmployee(Long id);
 
+    // HIERARCHY
+    List<EmployeeResponse> getDirectReports(Long managerId);
+
+    EmployeeResponse getManager(Long employeeId);
+
     // AUTH SUPPORT
     Employee findByEmail(String email);
 
     EmployeeResponse updateProfile(UpdateProfileRequest request);
+
+    void uploadProfileImage(Long id, org.springframework.web.multipart.MultipartFile file);
 
     void changePassword(Long id, ChangePasswordRequest request);
 }

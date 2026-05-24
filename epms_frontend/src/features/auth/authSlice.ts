@@ -2,11 +2,22 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { AuthResponse, AuthState } from "./authTypes";
 import type { EmployeeResponse } from "../employee/employeeTypes";
 
-const accessToken = localStorage.getItem("accessToken");
-const refreshToken = localStorage.getItem("refreshToken");
+const getStoredToken = (key: string) => {
+  const token = localStorage.getItem(key);
+  if (token === "undefined" || token === "null" || !token) return null;
+  return token;
+};
+
+const accessToken = getStoredToken("accessToken");
+const refreshToken = getStoredToken("refreshToken");
+
+const storedUser = localStorage.getItem("user");
+const parsedUser = storedUser && storedUser !== "null" && storedUser !== "undefined"
+  ? JSON.parse(storedUser)
+  : null;
 
 const initialState: AuthState = {
-  user: null,
+  user: parsedUser,
   accessToken,
   refreshToken,
   isAuthenticated: !!accessToken,
@@ -33,6 +44,7 @@ const authSlice = createSlice({
     },
     setUser: (state, action: PayloadAction<EmployeeResponse>) => {
       state.user = action.payload;
+      localStorage.setItem("user", JSON.stringify(action.payload));
     },
     logout: (state) => {
       state.user = null;
@@ -42,6 +54,7 @@ const authSlice = createSlice({
 
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
     },
   },
 });

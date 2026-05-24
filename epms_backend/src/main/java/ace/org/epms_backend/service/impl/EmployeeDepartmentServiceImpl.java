@@ -14,6 +14,10 @@ import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.service.AuthService;
 import ace.org.epms_backend.service.EmployeeDepartmentService;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +34,7 @@ public class EmployeeDepartmentServiceImpl implements EmployeeDepartmentService 
     private final DepartmentRepository departmentRepository;
     private final EmployeeDepartmentMapper mapper;
     private final AuthService authService;
+    private final AuditService auditService;
     @Override
     public EmployeeDepartmentResponse assignDepartment(AssignDepartmentRequest request) {
         Employee employee = employeeRepository.findById(request.getEmployeeId())
@@ -69,6 +74,15 @@ public class EmployeeDepartmentServiceImpl implements EmployeeDepartmentService 
         newAssignment.setIsCurrent(true);
         newAssignment.setCreatedBy(authService.getCurrentUser().getId());
         newAssignment = employeeDepartmentRepository.save(newAssignment);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("employee_departments")
+                .recordId(newAssignment.getId())
+                .action(AuditAction.UPDATE) // It's technically an update to the employee's location
+                .newState(newAssignment)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return mapper.toResponse(newAssignment);
     }
 

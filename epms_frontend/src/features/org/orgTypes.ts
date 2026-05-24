@@ -91,3 +91,48 @@ export interface RoleLevelPermissionResponse {
   permissionName: string;
 }
 
+export interface TeamRequest {
+  teamName: string;
+  departmentId: number;
+}
+
+export interface TeamResponse {
+  teamId: number;
+  teamName: string;
+  departmentName: string;
+  departmentId: number;
+}
+
+export interface TeamAssignmentRequest {
+  employeeId: number;
+  teamId: number;
+  isPrimary: boolean;
+}
+
+export interface TeamMemberResponse {
+  employeeId: number;
+  staffName: string;
+  positionName: string | null;
+  isPrimary: boolean;
+}
+
+export interface RoleLevelMapping {
+  roleId: number;
+  levelId: number;
+  permissionIds: number[];
+}
+
+export interface PermissionMatrixResponse {
+  roles: RoleResponse[];
+  levels: JobLevelResponse[];
+  permissions: PermissionResponse[];
+  matrix: RoleLevelMapping[];
+}
+
+export interface UpdatePermissionMatrixRequest {
+  roleId: number;
+  levelId: number;
+  permissionIds: number[];
+}
+
+

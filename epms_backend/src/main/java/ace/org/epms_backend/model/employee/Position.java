@@ -24,8 +24,5 @@ public class Position extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "level_id")
     private JobLevel level;
-//
-//    @ManyToOne
-//    @JoinColumn(name = "department_id")
-//    private Department department;
+
 }

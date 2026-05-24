@@ -27,7 +27,16 @@ public class ApiResponse<T> {
         return new ApiResponse<T>(HttpStatus.OK.value(), "success", data);
     }
 
+    public static <T> ApiResponse<T> success(String message, T data) {
+        return new ApiResponse<T>(HttpStatus.OK.value(), message, data);
+    }
+
     public static <T> ApiResponse<T> success(){
         return new ApiResponse<T>(HttpStatus.OK.value(), "success", null);
+    }
+    //you can delete if u don't need just api test
+
+    public static <T> ApiResponse<T> error(String message) {
+        return new ApiResponse<T>(HttpStatus.BAD_REQUEST.value(), message, null);
     }
 }

@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { 
-  useGetPermissionsQuery, 
-  useCreatePermissionMutation, 
-  useUpdatePermissionMutation, 
-  useDeletePermissionMutation 
+import {
+  useGetPermissionsQuery,
+  useCreatePermissionMutation,
+  useUpdatePermissionMutation,
+  useDeletePermissionMutation
 } from "../../features/org/permissionApi";
+import { Can } from "../../components/Can";
+
+const inputStyle: React.CSSProperties = { background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', textTransform: 'uppercase' };
 
 const PermissionList = () => {
   const { data: permissions, isLoading, error } = useGetPermissionsQuery();
@@ -22,110 +25,93 @@ const PermissionList = () => {
     try {
       await createPermission({ permissionName: newPermissionName.toUpperCase() }).unwrap();
       setNewPermissionName("");
-    } catch (err) {
-      console.error("Failed to create permission", err);
-    }
+    } catch (err) { console.error("Failed to create permission", err); }
   };
 
   const handleUpdate = async (id: number) => {
     try {
       await updatePermission({ id, body: { permissionName: editName.toUpperCase() } }).unwrap();
       setEditingId(null);
-    } catch (err) {
-      console.error("Failed to update permission", err);
-    }
+    } catch (err) { console.error("Failed to update permission", err); }
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this permission?")) {
-      try {
-        await deletePermission(id).unwrap();
-      } catch (err) {
+      try { await deletePermission(id).unwrap(); }
+      catch (err) {
         console.error("Failed to delete permission", err);
         alert("Cannot delete permission. It might be assigned to roles/levels.");
       }
     }
   };
 
-  if (isLoading) return <div className="p-8 text-center">Loading permissions...</div>;
-  if (error) return <div className="p-8 text-red-500 text-center">Error loading permissions.</div>;
+  if (isLoading) return <div style={{ padding: '48px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading permissions...</div>;
+  if (error) return <div style={{ padding: '48px', textAlign: 'center', fontSize: 13, color: '#791F1F' }}>Error loading permissions.</div>;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Permission Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Define granular system permissions that can be assigned to roles and levels.</p>
+    <div className="space-y-4 pb-8">
+      <div>
+        <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Permission Management</h1>
+        <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Define granular system permissions that can be assigned to roles and levels.</p>
+      </div>
+
+      {/* Create */}
+      <Can permission="PERMISSION_MANAGE">
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+          <h2 style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Create New Permission</h2>
+          <form onSubmit={handleCreate} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <input type="text" placeholder="e.g. MANAGE_USERS" value={newPermissionName}
+              onChange={e => setNewPermissionName(e.target.value)}
+              style={{ ...inputStyle, flex: '1 1 200px' }} />
+            <button type="submit"
+              style={{ padding: '7px 18px', fontSize: 13, fontWeight: 500, background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              className="hover:opacity-90 transition-opacity">
+              Add Permission
+            </button>
+          </form>
         </div>
-      </div>
+      </Can>
 
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Create New Permission</h2>
-        <form onSubmit={handleCreate} className="flex gap-4">
-          <input
-            type="text"
-            placeholder="e.g. MANAGE_USERS"
-            className="flex-1 px-4 py-2.5 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition uppercase"
-            value={newPermissionName}
-            onChange={(e) => setNewPermissionName(e.target.value)}
-          />
-          <button
-            type="submit"
-            className="px-6 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-lg shadow-gray-200"
-          >
-            Add Permission
-          </button>
-        </form>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      {/* Table */}
+      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr className="bg-gray-50/50 border-b border-gray-100">
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">ID</th>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Permission Name</th>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+            <tr style={{ borderBottom: '0.5px solid #E4E6EC', background: '#F5F6F8' }}>
+              <th style={{ padding: '9px 16px', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', width: 60 }}>ID</th>
+              <th style={{ padding: '9px 16px', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left' }}>Permission Name</th>
+              <th style={{ padding: '9px 16px', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
-            {permissions?.map((perm) => (
-              <tr key={perm.permissionId} className="hover:bg-gray-50/50 transition-colors">
-                <td className="px-6 py-4 text-sm text-gray-500 font-mono">{perm.permissionId}</td>
-                <td className="px-6 py-4">
+          <tbody>
+            {permissions?.map((perm, idx) => (
+              <tr key={perm.permissionId} style={{ borderBottom: idx < (permissions.length - 1) ? '0.5px solid #F0F2F6' : 'none' }}
+                className="hover:bg-[#FAFBFF] transition-colors">
+                <td style={{ padding: '10px 16px', fontSize: 12, color: '#9EA3B0', fontFamily: 'monospace' }}>{perm.permissionId}</td>
+                <td style={{ padding: '10px 16px' }}>
                   {editingId === perm.permissionId ? (
-                    <input
-                      type="text"
-                      className="w-full px-3 py-1.5 bg-white border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none uppercase font-bold text-blue-600"
+                    <input type="text" autoFocus
+                      style={{ ...inputStyle, textTransform: 'uppercase', width: 'auto', minWidth: 200 }}
                       value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
+                      onChange={e => setEditName(e.target.value)}
                       onBlur={() => handleUpdate(perm.permissionId)}
-                      onKeyDown={(e) => e.key === "Enter" && handleUpdate(perm.permissionId)}
-                      autoFocus
-                    />
+                      onKeyDown={e => e.key === "Enter" && handleUpdate(perm.permissionId)} />
                   ) : (
-                    <span className="text-sm font-bold text-gray-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">
+                    <span style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 6 }}>
                       {perm.permissionName}
                     </span>
                   )}
                 </td>
-                <td className="px-6 py-4 text-sm text-right">
-                  <div className="flex justify-end items-center gap-3">
-                    <button
-                      onClick={() => {
-                        setEditingId(perm.permissionId);
-                        setEditName(perm.permissionName);
-                      }}
-                      className="text-blue-600 hover:text-blue-800 font-bold transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(perm.permissionId)}
-                      className="text-red-500 hover:text-red-700 font-bold transition"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                  <Can permission="PERMISSION_MANAGE">
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                      <button onClick={() => { setEditingId(perm.permissionId); setEditName(perm.permissionName); }}
+                        style={{ fontSize: 12, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                        className="hover:underline">Edit</button>
+                      <button onClick={() => handleDelete(perm.permissionId)}
+                        style={{ fontSize: 12, color: '#791F1F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                        className="hover:underline">Delete</button>
+                    </div>
+                  </Can>
                 </td>
               </tr>
             ))}

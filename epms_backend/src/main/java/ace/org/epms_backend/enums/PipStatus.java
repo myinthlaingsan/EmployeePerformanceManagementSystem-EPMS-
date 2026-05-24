@@ -1,8 +1,10 @@
 package ace.org.epms_backend.enums;
 
 public enum PipStatus {
+    DRAFT,
     ACTIVE,
-    COMPLETED,
+    IN_PROGRESS,
     EXTENDED,
-    FAILED
+    COMPLETED,
+    CLOSED
 }

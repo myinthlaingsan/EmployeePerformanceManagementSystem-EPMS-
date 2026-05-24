@@ -1,13 +1,45 @@
 import { Outlet } from "react-router-dom";
-import Navbar from "./Navbar";
+import { useState } from "react";
+import Sidebar from "./Sidebar";
+import Header from "./Header";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 const MainLayout = () => {
+  useWebSocket();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <Outlet />
-      </main>
+    <div className="flex h-screen" style={{ background: "#F5F6F8" }}>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar — always visible on md+, drawer on mobile */}
+      <div
+        className={[
+          "fixed inset-y-0 left-0 z-50 md:static md:z-auto md:translate-x-0 transition-transform duration-200",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
+      >
+        <Sidebar onClose={() => setSidebarOpen(false)} />
+      </div>
+
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <main
+          className="flex-1 overflow-y-auto"
+          style={{ padding: "16px 16px" }}
+        >
+          <div className="max-w-full md:px-2">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

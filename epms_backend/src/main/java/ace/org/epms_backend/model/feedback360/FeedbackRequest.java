@@ -2,11 +2,14 @@ package ace.org.epms_backend.model.feedback360;
 import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.enums.FeedbackStatus;
 import ace.org.epms_backend.model.BaseEntity;
+import ace.org.epms_backend.model.appraisal.AppraisalForm;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+
+import java.time.Instant;
 
 @Entity
 @Table(
@@ -39,11 +42,29 @@ public class FeedbackRequest extends BaseEntity {
     @JoinColumn(name = "cycle_id", nullable = false)
     private AppraisalCycle cycle;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "form_id")
+    private AppraisalForm form;
+
     @Enumerated(EnumType.STRING)
     private FeedbackRelationship relationship;
 
-    private Boolean isAnonymous = true;
+    private Boolean isAnonymous;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    @Builder.Default
     private FeedbackStatus status = FeedbackStatus.PENDING;
+
+    private Instant dueDate;
+    private Instant startedAt;
+    private Instant lastReminderSentAt;
+
+    // Anonymity is derived from relationship; callers cannot override it.
+    @PrePersist
+    @PreUpdate
+    private void deriveAnonymity() {
+        this.isAnonymous = (relationship == FeedbackRelationship.PEER
+                || relationship == FeedbackRelationship.SUBORDINATE);
+    }
 }

@@ -24,6 +24,10 @@ public class PerformanceHistory extends BaseEntity {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
+    @ManyToOne
+    @JoinColumn(name = "manager_id")
+    private Employee manager;
+
     @Enumerated(EnumType.STRING)
     private SourceType sourceType;
 
@@ -33,6 +37,17 @@ public class PerformanceHistory extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+
+
+    @ManyToOne
+    @JoinColumn(name = "performer_id")
+    private Employee performer;
+
+    @Enumerated(EnumType.STRING)
+    private ace.org.epms_backend.enums.FeedbackType feedbackType;
+
+    private String tagName;
 
     private Long createdBy;
 }

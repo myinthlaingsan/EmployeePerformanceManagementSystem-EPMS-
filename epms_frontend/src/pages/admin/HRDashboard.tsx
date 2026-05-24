@@ -1,85 +1,128 @@
-import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
+import { useGetAllEmployeesQuery } from "../../features/employee/employeeapi";
 import { useGetDepartmentsQuery } from "../../features/org/departmentApi";
+import { Link } from "react-router-dom";
+
+const panelStyle = { background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' };
 
 const HRDashboard = () => {
-  const { data: employees } = useGetEmployeesQuery();
+  const { data: employees } = useGetAllEmployeesQuery();
   const { data: departments } = useGetDepartmentsQuery();
 
-  return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold text-gray-900">HR Management Dashboard</h1>
-        <p className="text-gray-500 mt-1">Overview of organizational personnel and structure.</p>
-      </header>
+  const stats = [
+    { label: 'Total Employees', value: employees?.length || 0, accent: '#1A56DB' },
+    { label: 'Departments',     value: departments?.length || 0, accent: '#1A56DB' },
+    { label: 'Active Talent',   value: employees?.filter(e => e.id).length || 0, accent: '#27500A' },
+    { label: 'System Alerts',   value: 0, accent: '#633806' },
+  ];
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="text-sm font-medium text-gray-500 uppercase">Total Employees</div>
-          <div className="text-4xl font-bold text-blue-600 mt-2">{employees?.length || 0}</div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="text-sm font-medium text-gray-500 uppercase">Departments</div>
-          <div className="text-4xl font-bold text-indigo-600 mt-2">{departments?.length || 0}</div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="text-sm font-medium text-gray-500 uppercase">Active Status</div>
-          <div className="text-4xl font-bold text-green-600 mt-2">
-            {employees?.filter(e => e.id).length || 0}
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="text-sm font-medium text-gray-500 uppercase">Pending Actions</div>
-          <div className="text-4xl font-bold text-amber-600 mt-2">0</div>
-        </div>
+  const quickActions = [
+    { label: 'Add New Staff',   desc: 'Register new employee' },
+    { label: 'Assign Roles',    desc: 'Update permissions' },
+    { label: 'View Reports',    desc: 'Export personnel data' },
+    { label: 'Policy Updates',  desc: 'Manage documents' },
+  ];
+
+  return (
+    <div className="space-y-4 pb-8">
+      <div>
+        <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>HR Management</h1>
+        <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Orchestrate organizational growth and performance intelligence.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Hires / Changes */}
-        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Personnel Changes</h2>
-          <div className="space-y-4">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {stats.map(s => (
+          <div key={s.label} style={panelStyle}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: s.accent, marginTop: 6 }}>{s.value}</div>
+            <div style={{ marginTop: 10, height: 2, width: 32, background: s.accent, borderRadius: 2 }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Recent Talent Changes */}
+        <div style={panelStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>Recent Talent Changes</h2>
+            <button style={{ fontSize: 11, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+              className="hover:underline">
+              See Directory
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {employees?.slice(0, 5).map(emp => (
-              <div key={emp.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+              <div key={emp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: '#EEF3FD', border: '0.5px solid #B5D4F4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: '#1A56DB', flexShrink: 0 }}>
                     {emp.staffName.charAt(0)}
                   </div>
                   <div>
-                    <div className="text-sm font-bold text-gray-900">{emp.staffName}</div>
-                    <div className="text-xs text-gray-500">{emp.positionName}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{emp.staffName}</div>
+                    <div style={{ fontSize: 11, color: '#9EA3B0', marginTop: 1 }}>{emp.positionName}</div>
                   </div>
                 </div>
-                <div className="text-xs font-medium text-gray-400">
+                <span style={{ fontSize: 11, color: '#9EA3B0', background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 6, padding: '2px 8px', fontWeight: 500 }}>
                   {emp.employeeCode}
-                </div>
+                </span>
               </div>
             ))}
           </div>
-        </section>
+        </div>
 
         {/* Quick Actions */}
-        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">HR Quick Actions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button className="flex flex-col items-center justify-center p-6 bg-blue-50 rounded-2xl border border-blue-100 hover:bg-blue-100 transition group">
-              <span className="text-blue-600 font-bold">Add New Staff</span>
-              <span className="text-xs text-blue-400 mt-1">Register new employee</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-6 bg-purple-50 rounded-2xl border border-purple-100 hover:bg-purple-100 transition group">
-              <span className="text-purple-600 font-bold">Assign Roles</span>
-              <span className="text-xs text-purple-400 mt-1">Update permissions</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-6 bg-green-50 rounded-2xl border border-green-100 hover:bg-green-100 transition group">
-              <span className="text-green-600 font-bold">View Reports</span>
-              <span className="text-xs text-green-400 mt-1">Export personnel data</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-6 bg-amber-50 rounded-2xl border border-amber-100 hover:bg-amber-100 transition group">
-              <span className="text-amber-600 font-bold">Policy Updates</span>
-              <span className="text-xs text-amber-400 mt-1">Manage documents</span>
-            </button>
+        <div style={panelStyle}>
+          <h2 style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 14 }}>HR Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {quickActions.map(a => (
+              <button key={a.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '12px 14px', background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 8, cursor: 'pointer', textAlign: 'left' }}
+                className="hover:border-[#1A56DB] hover:bg-[#EEF3FD] transition-colors">
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{a.label}</span>
+                <span style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>{a.desc}</span>
+              </button>
+            ))}
           </div>
-        </section>
+        </div>
+      </div>
+
+      {/* Appraisal Orchestration */}
+      <div style={panelStyle}>
+        <h2 style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 14 }}>Appraisal Orchestration</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div style={{ padding: '14px', border: '0.5px solid #E4E6EC', borderRadius: 10, background: '#F5F6F8', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}
+            className="hover:border-[#1A56DB] transition-colors">
+            <div>
+              <h3 style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginBottom: 4 }}>Form Frameworks</h3>
+              <p style={{ fontSize: 12, color: '#9EA3B0', lineHeight: 1.5 }}>Design specialized appraisal schemas and metric weights.</p>
+            </div>
+            <Link to="/appraisal-forms" style={{ fontSize: 12, color: '#1A56DB', fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              className="hover:underline">
+              Configure Systems →
+            </Link>
+          </div>
+
+          <div style={{ padding: '14px', border: '0.5px solid #E4E6EC', borderRadius: 10, background: '#F5F6F8', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}
+            className="hover:border-[#1A56DB] transition-colors">
+            <div>
+              <h3 style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginBottom: 4 }}>Active Cycles</h3>
+              <p style={{ fontSize: 12, color: '#9EA3B0', lineHeight: 1.5 }}>Monitor ongoing performance evaluations and check-ins.</p>
+            </div>
+            <Link to="/appraisal-management" style={{ fontSize: 12, color: '#1A56DB', fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              className="hover:underline">
+              Monitor Live →
+            </Link>
+          </div>
+
+          <div style={{ padding: '14px', border: '0.5px solid #E4E6EC', borderRadius: 10, background: '#F5F6F8', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}>
+            <div>
+              <h3 style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginBottom: 4 }}>Analytical Insights</h3>
+              <p style={{ fontSize: 12, color: '#9EA3B0', lineHeight: 1.5 }}>Synthesize finalized performance results into actionable data.</p>
+            </div>
+            <span style={{ fontSize: 12, color: '#9EA3B0', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'not-allowed' }} title="Feature coming soon">
+              Generate Reports (Coming Soon)
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

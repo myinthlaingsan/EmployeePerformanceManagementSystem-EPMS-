@@ -20,11 +20,11 @@ public class KpiLibraryDetails extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "library_id")
     private KpiLibrary library;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private KpiCategory category;
 
@@ -34,5 +34,6 @@ public class KpiLibraryDetails extends BaseEntity {
 
     private BigDecimal weightPercent;
 
+    private Boolean isCompliance = false;
     private Boolean isActive = true;
 }

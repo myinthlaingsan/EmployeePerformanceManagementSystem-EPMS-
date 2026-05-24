@@ -7,8 +7,16 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Instant;
+
 @Entity
-@Table(name = "notification")
+@Table(
+        name = "notifications",
+        indexes = {
+                @Index(name = "idx_notification_recipient", columnList = "recipient_id"),
+                @Index(name = "idx_notification_read", columnList = "readAt")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,7 +38,7 @@ public class Notification extends BaseEntity {
     private Employee sender;
 
     @Enumerated(EnumType.STRING)
-    private NotificationType type;
+    private NotificationType notificationType;
 
     private String title;
 
@@ -41,8 +49,10 @@ public class Notification extends BaseEntity {
     private ReferenceType referenceType;
 
     private Long referenceId;
+    private String actionUrl;
+    private Instant readAt;
 
-    private Boolean isRead = false;
 
-    private Boolean isDeleted = false;
+
+
 }

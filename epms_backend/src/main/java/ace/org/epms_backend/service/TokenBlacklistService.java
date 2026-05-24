@@ -5,6 +5,9 @@ import ace.org.epms_backend.repository.BlacklistedTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -28,5 +31,11 @@ public class TokenBlacklistService {
 
     public boolean isBlacklisted(String token) {
         return repository.existsById(token);
+    }
+
+    @Scheduled(cron = "0 0 0 * * ?") // Every day at midnight
+    @Transactional
+    public void cleanupExpiredTokens() {
+        repository.deleteByExpiryDateBefore(LocalDateTime.now());
     }
 }

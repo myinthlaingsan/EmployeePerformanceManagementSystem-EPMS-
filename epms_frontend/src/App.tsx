@@ -5,27 +5,23 @@ import { useGetMeQuery } from "./features/auth/authApi";
 import { setUser } from "./features/auth/authSlice";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
-import LoginPage from "./pages/LoginPage";
-import Dashboard from "./pages/Dashboard";
-import UnauthorizedPage from "./pages/UnauthorizedPage";
-import ProfilePage from "./pages/ProfilePage";
-import SetPasswordPage from "./pages/SetPasswordPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
+// Routes
+import {
+  publicRoutes,
+  appraisalRoutes,
+  adminRoutes,
+  pipRoutes,
+  generalRoutes,
+  kpiRoutes,
+  continuousRoutes,
+  feedback360Routes,
+} from "./routes";
+import { ActiveCycleProvider } from "./context/ActiveCycleContext";
+import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-// Admin Pages
-import EmployeeList from "./pages/admin/EmployeeList";
-import EmployeeForm from "./pages/admin/EmployeeForm";
-import DepartmentList from "./pages/admin/DepartmentList";
-import RoleList from "./pages/admin/RoleList";
-import JobLevelList from "./pages/admin/JobLevelList";
-import PositionList from "./pages/admin/PositionList";
-import HRDashboard from "./pages/admin/HRDashboard";
-import EmployeeDepartmentHistory from "./pages/admin/org/EmployeeDepartmentHistory";
-import PermissionList from "./pages/admin/PermissionList";
-import RoleLevelPermissionManager from "./pages/admin/org/RoleLevelPermissionManager";
-
-// Mock Components for other specialized pages
+// Specialized Manager Component (Temporary here, can be moved later)
 const ApprovalPage = () => <div className="p-6"><h1 className="text-2xl font-bold">Manager Approval Page</h1></div>;
 
 const App = () => {
@@ -42,49 +38,99 @@ const App = () => {
     }
   }, [isSuccess, userData, dispatch]);
 
+  // Sync logout across tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "accessToken" && !e.newValue) {
+        dispatch({ type: "auth/logout" });
+        window.location.href = "/login";
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [dispatch]);
+
   return (
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/unauthorized" element={<UnauthorizedPage />} />
-        <Route path="/set-password" element={<SetPasswordPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        {publicRoutes.map((route) => (
+          <Route key={route.path} path={route.path} element={route.element} />
+        ))}
 
         {/* Protected Routes Wrapper */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<ProfilePage />} />
+          <Route element={<ActiveCycleProvider><MainLayout /></ActiveCycleProvider>}>
+            {/* General Routes (Dashboard, Profile, etc.) */}
+            {generalRoutes.map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* Continuous Feedback & Performance History Routes */}
+            {continuousRoutes.map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* 360 Feedback — general (all authenticated users) */}
+            {feedback360Routes.filter(r => !r.adminOnly).map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* Appraisal Workflow Routes */}
+            {appraisalRoutes.map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* PIP Routes */}
+            {pipRoutes.filter(r => !r.adminOnly).map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* KPI General Routes */}
+            {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId', '/kpi/team'].includes(r.path)).map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
+            {/* Manager & Admin/HR KPI Management Routes */}
+            <Route element={<ProtectedRoute allowedRoles={["MANAGER", "ADMIN", "HR"]} />}>
+              {kpiRoutes.filter(r => ['/kpi/team', '/kpi/manage', '/kpi/assign/:employeeId'].includes(r.path)).map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+            </Route>
 
             {/* HR/Admin Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN", "HR"]} />}>
-              <Route path="/hr" element={<HRDashboard />} />
-              <Route path="/employees" element={<EmployeeList />} />
-              <Route path="/employees/new" element={<EmployeeForm />} />
-              <Route path="/employees/edit/:id" element={<EmployeeForm />} />
-              <Route path="/employees/:id/departments" element={<EmployeeDepartmentHistory />} />
-              
-              <Route path="/permissions" element={<PermissionList />} />
-              <Route path="/permissions/matrix" element={<RoleLevelPermissionManager />} />
-              
-              <Route path="/departments" element={<DepartmentList />} />
-              <Route path="/roles" element={<RoleList />} />
-              <Route path="/job-levels" element={<JobLevelList />} />
-              <Route path="/positions" element={<PositionList />} />
+              {/* 360 Feedback Admin */}
+              {feedback360Routes.filter(r => r.adminOnly).map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+
+              {/* Shared HR + Admin routes (employees, departments, org, etc.) */}
+              {adminRoutes.filter(r => !['/roles', '/permissions', '/permissions/matrix', '/permissions/assign'].includes(r.path)).map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+
+              {/* ADMIN-only routes — Roles & Permissions management */}
+              <Route element={<ProtectedRoute requiredPermissions={["PERMISSION_MANAGE"]} />}>
+                {adminRoutes.filter(r => ['/roles', '/permissions', '/permissions/matrix', '/permissions/assign'].includes(r.path)).map((route) => (
+                  <Route key={route.path} path={route.path} element={route.element} />
+                ))}
+              </Route>
+
+              {/* PIP Creation Route (Restricted) */}
+              {pipRoutes.filter(r => r.adminOnly).map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+
+              {/* KPI Administrative Routes (Library Management) */}
+              {kpiRoutes.filter(r => ['/kpi/library', '/kpi/library/new', '/kpi/library/edit/:id'].includes(r.path)).map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+              <Route path="/kpi/categories" element={<KpiCategoryManager />} />
             </Route>
 
-            {/* Specialized Manager Routes (Level L01-L04 + Specific Permission) */}
-            <Route
-              element={
-                <ProtectedRoute
-                  allowedRoles={["MANAGER"]}
-                  maxLevel={4}
-                  requiredPermissions={["APPROVAL_CREATE"]}
-                />
-              }
-            >
+            {/* Approvals — requires calibrate permission */}
+            <Route element={<ProtectedRoute requiredPermissions={["APPRAISAL_CALIBRATE"]} />}>
               <Route path="/approvals" element={<ApprovalPage />} />
             </Route>
           </Route>
@@ -94,6 +140,7 @@ const App = () => {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<div className="p-6 text-center mt-20 font-bold text-gray-400">404 | Page Not Found</div>} />
       </Routes>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
     </BrowserRouter>
   );
 };
