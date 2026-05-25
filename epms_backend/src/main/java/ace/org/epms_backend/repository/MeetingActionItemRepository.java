@@ -17,4 +17,22 @@ public interface MeetingActionItemRepository extends JpaRepository<MeetingAction
     java.util.List<MeetingActionItem> findAllByDepartmentOrEmployee(
             @org.springframework.data.repository.query.Param("deptId") Long deptId,
             @org.springframework.data.repository.query.Param("empId") Long empId);
+
+    /**
+     * Find all non-deleted action items that:
+     *  - belong to a PUBLISHED meeting
+     *  - have a dueDate strictly before today
+     *  - are NOT yet DONE
+     * Used by the daily overdue notification scheduler.
+     */
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT ai FROM MeetingActionItem ai " +
+        "JOIN FETCH ai.meeting m " +
+        "WHERE m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED " +
+        "AND ai.isDeleted = false " +
+        "AND ai.dueDate IS NOT NULL " +
+        "AND ai.dueDate < :today " +
+        "AND ai.status <> ace.org.epms_backend.enums.ActionItemStatus.DONE")
+    java.util.List<MeetingActionItem> findOverdueActionItems(
+            @org.springframework.data.repository.query.Param("today") java.time.LocalDate today);
 }
