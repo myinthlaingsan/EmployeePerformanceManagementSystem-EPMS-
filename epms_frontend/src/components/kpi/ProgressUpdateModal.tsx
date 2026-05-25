@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { calculateProgressPercent, calculateWeightedScore } from '../../utils/kpiCalculations';
 import { useUpdateProgressMutation } from '../../services/kpiApi';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
 
@@ -12,15 +13,19 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
   const [actualValue, setActualValue] = useState<number | "">(item.currentProgress || 0);
   const [note, setNote] = useState('');
 
+  // Derived KPI preview values (zero-tolerance handled in utilities)
+  const safeActual = actualValue === '' ? 0 : Number(actualValue);
+  const previewScore = calculateProgressPercent(safeActual, item.targetValue);
+  const previewWeighted = calculateWeightedScore(safeActual, item.targetValue, item.weightPercent);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const finalActualValue = actualValue === '' ? 0 : actualValue;
-      const progressPercent = (finalActualValue / item.targetValue) * 100;
       await updateProgress({
         goalItemId: item.id,
         actualValue: finalActualValue,
-        progressPercent: Math.min(progressPercent, 100),
+        progressPercent: calculateProgressPercent(finalActualValue, item.targetValue),
         evidenceNote: note,
       }).unwrap();
       onClose();
@@ -118,13 +123,13 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
                 <div className="flex justify-between text-xs font-bold mb-1.5">
                   <span className="text-blue-700">Calculated Completion</span>
                   <span className="text-blue-700">
-                    {Math.floor(((actualValue === '' ? 0 : actualValue) / item.targetValue) * 100)}%
+                    {previewScore}%
                   </span>
                 </div>
                 <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
                   <div
                     className="bg-blue-600 h-full transition-all duration-500"
-                    style={{ width: `${Math.min(((actualValue === '' ? 0 : actualValue) / item.targetValue) * 100, 100)}%` }}
+                    style={{ width: `${previewScore}%` }}
                   />
                 </div>
               </div>
@@ -133,13 +138,13 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-blue-500 font-bold">Score</p>
                   <p className="text-lg font-black text-blue-700">
-                    {(((actualValue === '' ? 0 : actualValue) / item.targetValue) * 100).toFixed(2)}%
+                    {previewScore}%
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-blue-500 font-bold">Weighted Score</p>
                   <p className="text-lg font-black text-blue-700">
-                    {((((actualValue === '' ? 0 : actualValue) / item.targetValue) * 100) * (item.weightPercent / 100)).toFixed(2)}
+                    {previewWeighted.toFixed(2)}
                   </p>
                 </div>
               </div>

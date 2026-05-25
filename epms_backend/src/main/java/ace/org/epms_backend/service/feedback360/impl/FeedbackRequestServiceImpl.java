@@ -18,13 +18,12 @@ import ace.org.epms_backend.dto.feedback360.FeedbackRequestGenerateDTO;
 import ace.org.epms_backend.repository.feedback360.FeedbackRequestRepository;
 import ace.org.epms_backend.service.feedback360.FeedbackRequestService;
 import ace.org.epms_backend.service.feedback360.EvaluatorRotationService;
+import ace.org.epms_backend.service.feedback360.SecurityHelper;
 import ace.org.epms_backend.model.feedback360.DepartmentFeedbackConfig;
 import ace.org.epms_backend.repository.feedback360.DepartmentFeedbackConfigRepository;
-import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.model.appraisal.AppraisalForm;
 import ace.org.epms_backend.repository.AppraisalFormRepository;
-import ace.org.epms_backend.enums.FormType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import ace.org.epms_backend.enums.NotificationType;
@@ -34,9 +33,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -55,6 +52,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     private final DepartmentFeedbackConfigRepository deptConfigRepository;
     private final AppraisalFormRepository formRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final SecurityHelper securityHelper;
 
     @Override
     @Transactional
@@ -67,7 +65,10 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         List<FeedbackRequestResponse> preview = process360Generation(cycleId, previousCycleId, globalMaxLimit, false, excludeLongTermLeave);
         // Sort by Target Department Name
         preview.sort(java.util.Comparator.comparing(r -> r.getTargetDepartmentName() != null ? r.getTargetDepartmentName() : ""));
-        return preview;
+        Long viewerId = securityHelper.currentUserId();
+        return preview.stream()
+                .map(r -> maskIfNeeded(r, viewerId))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -75,6 +76,13 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     public void regenerateUserFeedbackRequests(Long targetEmployeeId, Long cycleId, Long previousCycleId, int globalMaxLimit) {
         AppraisalCycle cycle = cycleRepository.findById(cycleId)
                 .orElseThrow(() -> new NotFoundException("Cycle not found"));
+
+        if (!requestRepository.existsByCycleCycleId(cycleId)) {
+            throw new IllegalArgumentException(
+                    "Cycle " + cycleId + " has no generated requests yet. " +
+                    "Click 'Generate' first before using per-employee Regen.");
+        }
+
         Employee target = employeeRepository.findById(targetEmployeeId)
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
 
@@ -83,14 +91,14 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         log.info("Deleted pending requests for employee {} to prepare for regeneration", targetEmployeeId);
 
         // 2. Initialize workload map from existing records
-        java.util.Map<Long, Integer> workloadMap = new java.util.HashMap<>();
+        Map<Long, Integer> workloadMap = new HashMap<>();
         requestRepository.findByCycleCycleId(cycleId).forEach(req -> {
             Long evalId = req.getEvaluator().getId();
             workloadMap.put(evalId, workloadMap.getOrDefault(evalId, 0) + 1);
         });
 
         // 3. Fetch configs
-        java.util.Map<String, DepartmentFeedbackConfig> deptConfigs = deptConfigRepository.findAll().stream()
+        Map<String, DepartmentFeedbackConfig> deptConfigs = deptConfigRepository.findAll().stream()
                 .filter(c -> c.getDepartment() != null && c.getJobLevel() != null)
                 .collect(Collectors.toMap(
                         c -> c.getDepartment().getId() + ":" + c.getJobLevel().getLevelId(),
@@ -98,17 +106,17 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                         (a, b) -> a));
 
         // 4. Fetch previous cycle assignments for rotation
-        java.util.Map<Long, java.util.Set<Long>> excludedEvaluatorsMap = new java.util.HashMap<>();
+        Map<Long, Set<Long>> excludedEvaluatorsMap = new HashMap<>();
         if (previousCycleId != null) {
             requestRepository.findByCycleCycleId(previousCycleId).forEach(req -> {
                 Long tid = req.getTargetUser().getId();
                 Long eid = req.getEvaluator().getId();
-                excludedEvaluatorsMap.computeIfAbsent(tid, k -> new java.util.HashSet<>()).add(eid);
+                excludedEvaluatorsMap.computeIfAbsent(tid, k -> new HashSet<>()).add(eid);
             });
         }
 
         // 5. Resolve forms per relationship
-        java.util.Map<FeedbackRelationship, AppraisalForm> formByRel = resolveFeedbackForms(cycle);
+        Map<FeedbackRelationship, AppraisalForm> formByRel = resolveFeedbackForms(cycle);
 
         // 6. Regenerate for this one employee
         generateRequestsForEmployee(cycle, target, cycleId, previousCycleId, globalMaxLimit, workloadMap, deptConfigs, true, new ArrayList<>(), excludedEvaluatorsMap, formByRel);
@@ -118,6 +126,11 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     private List<FeedbackRequestResponse> process360Generation(Long cycleId, Long previousCycleId, int globalMaxLimit, boolean persist, boolean excludeLongTermLeave) {
         AppraisalCycle cycle = cycleRepository.findById(cycleId)
                 .orElseThrow(() -> new NotFoundException("Cycle not found"));
+
+        if (!Boolean.TRUE.equals(cycle.getIsActive())) {
+            throw new IllegalArgumentException("Cycle " + cycleId + " is not active (status: " + cycle.getStatus()
+                    + "). Only active cycles can have feedback generated or previewed.");
+        }
 
         log.info("{} 360 feedback generation for cycle: {}. Global Max Limit: {}. Exclude Long Term Leave: {}",
                 persist ? "Starting" : "Previewing", cycleId, globalMaxLimit, excludeLongTermLeave);
@@ -132,7 +145,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             });
         }
 
-        java.util.Map<String, DepartmentFeedbackConfig> deptConfigs = deptConfigRepository.findAll().stream()
+        Map<String, DepartmentFeedbackConfig> deptConfigs = deptConfigRepository.findAll().stream()
                 .filter(c -> c.getDepartment() != null && c.getJobLevel() != null)
                 .collect(Collectors.toMap(
                         c -> c.getDepartment().getId() + ":" + c.getJobLevel().getLevelId(),
@@ -145,18 +158,18 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                 .filter(e -> e.getStatus() != ace.org.epms_backend.enums.EmployeeStatus.RESIGNED)
                 .collect(Collectors.toList());
 
-        java.util.Map<Long, java.util.Set<Long>> excludedEvaluatorsMap = new java.util.HashMap<>();
+        Map<Long, Set<Long>> excludedEvaluatorsMap = new HashMap<>();
         if (previousCycleId != null) {
             requestRepository.findByCycleCycleId(previousCycleId).forEach(req -> {
                 Long targetId = req.getTargetUser().getId();
                 Long evalId = req.getEvaluator().getId();
-                excludedEvaluatorsMap.computeIfAbsent(targetId, k -> new java.util.HashSet<>()).add(evalId);
+                excludedEvaluatorsMap.computeIfAbsent(targetId, k -> new HashSet<>()).add(evalId);
             });
             log.info("Loaded {} previous assignments to enforce rotation rules.", excludedEvaluatorsMap.size());
         }
 
         // Resolve forms per relationship
-        java.util.Map<FeedbackRelationship, AppraisalForm> formByRel = resolveFeedbackForms(cycle);
+        Map<FeedbackRelationship, AppraisalForm> formByRel = resolveFeedbackForms(cycle);
 
         for (Employee target : allEmployees) {
             generateRequestsForEmployee(cycle, target, cycleId, previousCycleId, globalMaxLimit, workloadMap, deptConfigs, persist, previewResults, excludedEvaluatorsMap, formByRel);
@@ -164,12 +177,12 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         return previewResults;
     }
 
-    private java.util.Map<FeedbackRelationship, AppraisalForm> resolveFeedbackForms(ace.org.epms_backend.model.appraisal.AppraisalCycle cycle) {
+    private Map<FeedbackRelationship, AppraisalForm> resolveFeedbackForms(AppraisalCycle cycle) {
         // Load all FEEDBACK forms for this cycle from the DB
-        List<ace.org.epms_backend.model.appraisal.AppraisalForm> feedbackForms =
+        List<AppraisalForm> feedbackForms =
                 formRepository.findByCycleCycleIdAndFormType(cycle.getCycleId(), FormType.FEEDBACK);
 
-        java.util.Map<FeedbackRelationship, AppraisalForm> byRel = new java.util.EnumMap<>(FeedbackRelationship.class);
+        Map<FeedbackRelationship, AppraisalForm> byRel = new EnumMap<>(FeedbackRelationship.class);
         AppraisalForm fallback = null;
         for (AppraisalForm f : feedbackForms) {
             if (f.getTargetRelationship() != null) {
@@ -448,7 +461,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
             isReciprocal = requestRepository.existsByTargetUserIdAndEvaluatorIdAndCycleCycleId(evaluator.getId(), target.getId(), cycle.getCycleId());
         } else {
             isReciprocal = previewResults.stream()
-                    .anyMatch(r -> r.getTargetUserId().equals(evaluator.getId()) && r.getEvaluatorId().equals(target.getId()));
+                    .anyMatch(r -> r.getTargetUserId().equals(evaluator.getId()) && Objects.equals(r.getEvaluatorId(), target.getId()));
         }
 
         // List B logic: If it's reciprocal but we don't allow it in this pass, skip it
@@ -459,7 +472,8 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         if (!persist) {
             // Check if already in preview to avoid duplicates
             boolean existsInPreview = previewResults.stream()
-                    .anyMatch(r -> r.getTargetUserId().equals(target.getId()) && r.getEvaluatorId().equals(evaluator.getId()));
+                    .anyMatch(r -> r.getTargetUserId().equals(target.getId())
+                            && Objects.equals(r.getEvaluatorId(), evaluator.getId()));
             if (existsInPreview) return false;
 
             String targetDept = departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(target.getId())
@@ -561,6 +575,15 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
 
         if (!requestRepository.existsByTargetUserIdAndEvaluatorIdAndCycleCycleId(target.getId(), evaluator.getId(),
                 cycle.getCycleId())) {
+            java.time.Instant dueDate = null;
+            if (cycle.getSelfAssessmentDeadline() != null) {
+                dueDate = cycle.getSelfAssessmentDeadline().atTime(23, 59, 59)
+                        .atZone(java.time.ZoneId.systemDefault()).toInstant();
+            } else if (cycle.getEndDate() != null) {
+                dueDate = cycle.getEndDate().atTime(23, 59, 59)
+                        .atZone(java.time.ZoneId.systemDefault()).toInstant();
+            }
+
             FeedbackRequest request = FeedbackRequest.builder()
                     .targetUser(target)
                     .evaluator(evaluator)
@@ -569,8 +592,9 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     .form(form)
                     .isAnonymous(anon)
                     .status(FeedbackStatus.PENDING)
+                    .startedAt(java.time.Instant.now())
+                    .dueDate(dueDate)
                     .build();
-//            requestRepository.save(request);
             requestRepository.save(request);
             // Update workload map
             workloadMap.put(evaluator.getId(), currentWorkload + 1);
@@ -608,8 +632,28 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
         if (request.getStatus() == FeedbackStatus.COMPLETED) {
             throw new IllegalStateException("Cannot cancel a completed feedback request.");
         }
+        Long viewerId = securityHelper.currentUserId();
+        if (viewerId != null && viewerId.equals(request.getTargetUser().getId())
+                && Boolean.TRUE.equals(request.getIsAnonymous())
+                && (request.getRelationship() == FeedbackRelationship.PEER
+                    || request.getRelationship() == FeedbackRelationship.SUBORDINATE)) {
+            throw new IllegalStateException(
+                    "You cannot cancel your own anonymous evaluators. Ask another HR member or admin.");
+        }
         request.setStatus(FeedbackStatus.CANCELLED);
         requestRepository.save(request);
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(request.getEvaluator().getId())
+                .type(NotificationType.FEEDBACK_REQUESTED)
+                .title("Feedback Request Cancelled")
+                .message("The feedback request for "
+                        + (Boolean.TRUE.equals(request.getIsAnonymous()) ? "a colleague" : request.getTargetUser().getStaffName())
+                        + " has been cancelled.")
+                .referenceType(ReferenceType.FEEDBACK)
+                .referenceId(request.getId())
+                .actionUrl("/feedback/my-pending")
+                .build());
     }
 
     @Override
@@ -617,18 +661,101 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     public void reassignFeedbackRequest(Long requestId, Long newEvaluatorId) {
         FeedbackRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException("Feedback request not found: " + requestId));
+        Long viewerId = securityHelper.currentUserId();
+        if (viewerId != null && viewerId.equals(request.getTargetUser().getId())
+                && Boolean.TRUE.equals(request.getIsAnonymous())
+                && (request.getRelationship() == FeedbackRelationship.PEER
+                    || request.getRelationship() == FeedbackRelationship.SUBORDINATE)) {
+            throw new IllegalStateException(
+                    "You cannot reassign your own anonymous evaluators. Ask another HR member or admin.");
+        }
         Employee newEvaluator = employeeRepository.findById(newEvaluatorId)
                 .orElseThrow(() -> new NotFoundException("Employee not found: " + newEvaluatorId));
+
+        Long oldEvaluatorId = request.getEvaluator().getId();
+        
+        // Notify the old evaluator that their request is reassigned/cancelled
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(oldEvaluatorId)
+                .type(NotificationType.FEEDBACK_REQUESTED)
+                .title("Feedback Request Reassigned")
+                .message("Your feedback request for "
+                        + (Boolean.TRUE.equals(request.getIsAnonymous()) ? "a colleague" : request.getTargetUser().getStaffName())
+                        + " has been reassigned to another employee.")
+                .referenceType(ReferenceType.FEEDBACK)
+                .referenceId(request.getId())
+                .actionUrl("/feedback/my-pending")
+                .build());
+
         request.setEvaluator(newEvaluator);
         request.setStatus(FeedbackStatus.PENDING);
         requestRepository.save(request);
+
+        // Notify the new evaluator
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(newEvaluator.getId())
+                .type(NotificationType.FEEDBACK_REQUESTED)
+                .title("Feedback Requested")
+                .message("You have been requested to provide 360 feedback for "
+                        + (Boolean.TRUE.equals(request.getIsAnonymous()) ? "a colleague" : request.getTargetUser().getStaffName())
+                        + ".")
+                .referenceType(ReferenceType.FEEDBACK)
+                .referenceId(request.getId())
+                .actionUrl("/feedback/my-pending")
+                .build());
     }
 
     @Override
     public List<FeedbackRequestResponse> listByCycle(Long cycleId) {
+        Long viewerId = securityHelper.currentUserId();
         return requestRepository.findByCycleCycleId(cycleId).stream()
-                .map(feedbackMapper::toRequestResponse)
+                .map(req -> toMaskedRequestResponse(req, viewerId))
                 .collect(Collectors.toList());
+    }
+
+    private FeedbackRequestResponse toMaskedRequestResponse(FeedbackRequest req, Long viewerId) {
+        boolean mask = shouldMaskEvaluator(req, viewerId);
+        String targetDept = departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(req.getTargetUser().getId())
+                .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                .orElse("N/A");
+        String evalDept = mask ? null :
+                departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(req.getEvaluator().getId())
+                        .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                        .orElse("N/A");
+        return FeedbackRequestResponse.builder()
+                .id(req.getId())
+                .targetUserId(req.getTargetUser().getId())
+                .targetUserName(req.getTargetUser().getStaffName())
+                .targetDepartmentName(targetDept)
+                .evaluatorId(mask ? null : req.getEvaluator().getId())
+                .evaluatorName(mask ? "Anonymous" : req.getEvaluator().getStaffName())
+                .evaluatorDepartmentName(evalDept)
+                .cycleId(req.getCycle().getCycleId())
+                .relationship(req.getRelationship())
+                .status(req.getStatus())
+                .isAnonymous(req.getIsAnonymous())
+                .build();
+    }
+
+    private FeedbackRequestResponse maskIfNeeded(FeedbackRequestResponse r, Long viewerId) {
+        if (viewerId == null) return r;
+        if (!viewerId.equals(r.getTargetUserId())) return r;
+        if (!Boolean.TRUE.equals(r.getIsAnonymous())) return r;
+        FeedbackRelationship rel = r.getRelationship();
+        if (rel != FeedbackRelationship.PEER && rel != FeedbackRelationship.SUBORDINATE) return r;
+        return r.toBuilder()
+                .evaluatorId(null)
+                .evaluatorName("Anonymous")
+                .evaluatorDepartmentName(null)
+                .build();
+    }
+
+    private static boolean shouldMaskEvaluator(FeedbackRequest req, Long viewerId) {
+        if (viewerId == null) return false;
+        if (!viewerId.equals(req.getTargetUser().getId())) return false;
+        if (!Boolean.TRUE.equals(req.getIsAnonymous())) return false;
+        FeedbackRelationship rel = req.getRelationship();
+        return rel == FeedbackRelationship.PEER || rel == FeedbackRelationship.SUBORDINATE;
     }
 
     /*

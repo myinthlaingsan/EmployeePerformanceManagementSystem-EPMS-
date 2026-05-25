@@ -5,6 +5,7 @@ import {
   useUpdatePermissionMutation,
   useDeletePermissionMutation
 } from "../../features/org/permissionApi";
+import { Can } from "../../components/Can";
 
 const inputStyle: React.CSSProperties = { background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', textTransform: 'uppercase' };
 
@@ -55,19 +56,21 @@ const PermissionList = () => {
       </div>
 
       {/* Create */}
-      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
-        <h2 style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Create New Permission</h2>
-        <form onSubmit={handleCreate} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <input type="text" placeholder="e.g. MANAGE_USERS" value={newPermissionName}
-            onChange={e => setNewPermissionName(e.target.value)}
-            style={{ ...inputStyle, flex: '1 1 200px' }} />
-          <button type="submit"
-            style={{ padding: '7px 18px', fontSize: 13, fontWeight: 500, background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap' }}
-            className="hover:opacity-90 transition-opacity">
-            Add Permission
-          </button>
-        </form>
-      </div>
+      <Can permission="PERMISSION_MANAGE">
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px' }}>
+          <h2 style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Create New Permission</h2>
+          <form onSubmit={handleCreate} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <input type="text" placeholder="e.g. MANAGE_USERS" value={newPermissionName}
+              onChange={e => setNewPermissionName(e.target.value)}
+              style={{ ...inputStyle, flex: '1 1 200px' }} />
+            <button type="submit"
+              style={{ padding: '7px 18px', fontSize: 13, fontWeight: 500, background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              className="hover:opacity-90 transition-opacity">
+              Add Permission
+            </button>
+          </form>
+        </div>
+      </Can>
 
       {/* Table */}
       <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
@@ -99,14 +102,16 @@ const PermissionList = () => {
                   )}
                 </td>
                 <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                    <button onClick={() => { setEditingId(perm.permissionId); setEditName(perm.permissionName); }}
-                      style={{ fontSize: 12, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
-                      className="hover:underline">Edit</button>
-                    <button onClick={() => handleDelete(perm.permissionId)}
-                      style={{ fontSize: 12, color: '#791F1F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
-                      className="hover:underline">Delete</button>
-                  </div>
+                  <Can permission="PERMISSION_MANAGE">
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                      <button onClick={() => { setEditingId(perm.permissionId); setEditName(perm.permissionName); }}
+                        style={{ fontSize: 12, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                        className="hover:underline">Edit</button>
+                      <button onClick={() => handleDelete(perm.permissionId)}
+                        style={{ fontSize: 12, color: '#791F1F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                        className="hover:underline">Delete</button>
+                    </div>
+                  </Can>
                 </td>
               </tr>
             ))}

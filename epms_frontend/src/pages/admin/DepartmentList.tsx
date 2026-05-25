@@ -1,6 +1,7 @@
 import { useGetDepartmentsQuery, useCreateDepartmentMutation, useDeleteDepartmentMutation } from "../../features/org/departmentApi";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { Can } from "../../components/Can";
 
 const inputStyle: React.CSSProperties = {
   background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 8,
@@ -37,22 +38,24 @@ const DepartmentList = () => {
       </div>
 
       {/* Create form */}
-      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
-        <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Add department</p>
-        <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <input style={inputStyle} placeholder="Code (e.g. IT)" value={newDeptCode} onChange={(e) => setNewDeptCode(e.target.value)} />
-          <input style={inputStyle} placeholder="Department name" value={newDeptName} onChange={(e) => setNewDeptName(e.target.value)} />
-          <button
-            type="submit"
-            className="flex items-center justify-center gap-2 transition-colors"
-            style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
-          >
-            <Plus size={14} aria-hidden="true" /> Add
-          </button>
-        </form>
-      </div>
+      <Can permission="ORG_DEPT_MANAGE">
+        <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Add department</p>
+          <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input style={inputStyle} placeholder="Code (e.g. IT)" value={newDeptCode} onChange={(e) => setNewDeptCode(e.target.value)} />
+            <input style={inputStyle} placeholder="Department name" value={newDeptName} onChange={(e) => setNewDeptName(e.target.value)} />
+            <button
+              type="submit"
+              className="flex items-center justify-center gap-2 transition-colors"
+              style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+            >
+              <Plus size={14} aria-hidden="true" /> Add
+            </button>
+          </form>
+        </div>
+      </Can>
 
       {/* Table */}
       <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, overflow: "hidden" }}>
@@ -72,13 +75,15 @@ const DepartmentList = () => {
                   <td style={{ padding: "11px 18px", fontSize: 12, color: "#1A56DB", fontFamily: "monospace" }}>{dept.departmentCode}</td>
                   <td style={{ padding: "11px 18px", fontSize: 13, fontWeight: 500, color: "#111827" }}>{dept.departmentName}</td>
                   <td style={{ padding: "11px 18px", textAlign: "right" }}>
-                    <button
-                      onClick={() => deleteDepartment(dept.id)}
-                      className="inline-flex items-center gap-1 transition-colors"
-                      style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
-                    >
-                      <Trash2 size={12} aria-hidden="true" /> Delete
-                    </button>
+                    <Can permission="ORG_DEPT_MANAGE">
+                      <button
+                        onClick={() => deleteDepartment(dept.id)}
+                        className="inline-flex items-center gap-1 transition-colors"
+                        style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
+                      >
+                        <Trash2 size={12} aria-hidden="true" /> Delete
+                      </button>
+                    </Can>
                   </td>
                 </tr>
               ))}

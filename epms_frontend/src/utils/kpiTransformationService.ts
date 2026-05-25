@@ -34,15 +34,30 @@ export const calculateGoalSetMetrics = (goalSet: GoalSetResponse): KpiMetrics =>
   let totalCompletion = 0;
 
   items.forEach(item => {
-    const progress = item.currentProgress || 0;
-    const target = item.targetValue || 1;
     const weight = item.weightPercent || 0;
 
-    // Calculate completion for this specific item (capped at 100%)
-    const itemCompletion = Math.min((progress / target) * 100, 100);
-    totalCompletion += itemCompletion;
+    // Prefer backend-computed values when available (post-progress-update state)
+    // This avoids divergence after reviseKpi changes targetValue
+    if (item.scorePercent != null && item.weightedScore != null) {
+      const storedScore = Math.min(Number(item.scorePercent), 100);
+      totalCompletion += storedScore;
+      totalWeightedScore += Number(item.weightedScore);
+      return;
+    }
 
-    // Weighted contribution to the final score
+    // Fallback: recompute from raw progress (pre-first-update or missing stored values)
+    const progress = item.currentProgress || 0;
+    const target = item.targetValue;
+
+    // Zero-tolerance rule: mirrors backend KpiProgressServiceImpl logic
+    let itemCompletion: number;
+    if (target === 0 || target == null) {
+      itemCompletion = progress === 0 ? 100 : 0;
+    } else {
+      itemCompletion = Math.min((progress / target) * 100, 100);
+    }
+
+    totalCompletion += itemCompletion;
     totalWeightedScore += (itemCompletion * weight) / 100;
   });
 

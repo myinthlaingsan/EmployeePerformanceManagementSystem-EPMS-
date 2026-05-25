@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetAllLibrariesQuery, useGetGoalSetByEmployeeQuery } from '../../services/kpiApi';
 import { Target, Layers, Activity, ChevronRight } from 'lucide-react';
+import { Can } from '../../components/Can';
 
 const KpiHub: React.FC = () => {
   const navigate = useNavigate();
@@ -125,28 +126,32 @@ const KpiHub: React.FC = () => {
             <div style={{ background: '#111827', borderRadius: 12, padding: '16px 18px' }}>
               <p style={{ fontSize: 11, fontWeight: 500, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>Strategic Control</p>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => navigate('/kpi/manage')}
-                  className="flex flex-col gap-2 text-left transition-colors"
-                  style={{ padding: '12px', background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: 8 }}>
-                  <div style={{ width: 28, height: 28, background: '#1A56DB', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Target size={13} style={{ color: '#FFFFFF' }} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>Assign Goals</p>
-                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Allocate library templates</p>
-                  </div>
-                </button>
-                <button onClick={() => navigate('/kpi/library/new')}
-                  className="flex flex-col gap-2 text-left transition-colors"
-                  style={{ padding: '12px', background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: 8 }}>
-                  <div style={{ width: 28, height: 28, background: '#27500A', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Layers size={13} style={{ color: '#FFFFFF' }} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>Create Template</p>
-                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Define new KPI models</p>
-                  </div>
-                </button>
+                <Can permission="KPI_CREATE">
+                  <button onClick={() => navigate('/kpi/manage')}
+                    className="flex flex-col gap-2 text-left transition-colors"
+                    style={{ padding: '12px', background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: 8 }}>
+                    <div style={{ width: 28, height: 28, background: '#1A56DB', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Target size={13} style={{ color: '#FFFFFF' }} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>Assign Goals</p>
+                      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Allocate library templates</p>
+                    </div>
+                  </button>
+                </Can>
+                <Can permission="KPI_LIBRARY_MANAGE">
+                  <button onClick={() => navigate('/kpi/library/new')}
+                    className="flex flex-col gap-2 text-left transition-colors"
+                    style={{ padding: '12px', background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: 8 }}>
+                    <div style={{ width: 28, height: 28, background: '#27500A', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Layers size={13} style={{ color: '#FFFFFF' }} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>Create Template</p>
+                      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Define new KPI models</p>
+                    </div>
+                  </button>
+                </Can>
               </div>
             </div>
           )}

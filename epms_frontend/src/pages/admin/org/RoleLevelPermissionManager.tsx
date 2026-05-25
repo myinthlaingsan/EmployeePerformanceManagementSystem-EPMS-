@@ -6,6 +6,7 @@ import {
   useGetAssignedPermissionsQuery,
   useUpdatePermissionMatrixMutation
 } from "../../../features/org/permissionApi";
+import { getLevelsForRole } from "../../../utils/roleLevel";
 
 const inputStyle: React.CSSProperties = { background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' };
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 };
@@ -27,13 +28,7 @@ const RoleLevelPermissionManager = () => {
 
   const getRelevantLevelsForRole = (roleName: string | undefined) => {
     if (!roleName || !levels) return [];
-    switch (roleName.toUpperCase()) {
-      case 'ADMIN':   return levels.filter(l => [1, 2, 3].includes(l.levelRank));
-      case 'HR':      return levels.filter(l => [4, 7].includes(l.levelRank));
-      case 'MANAGER': return levels.filter(l => [4, 5, 6].includes(l.levelRank));
-      case 'EMPLOYEE': return levels.filter(l => [7, 8, 9].includes(l.levelRank));
-      default:        return levels;
-    }
+    return getLevelsForRole(roleName, levels);
   };
 
   const selectedRoleName = roles?.find(r => r.roleId === selectedRoleId)?.roleName;

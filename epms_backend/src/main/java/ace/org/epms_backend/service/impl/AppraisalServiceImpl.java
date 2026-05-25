@@ -4,6 +4,8 @@ import ace.org.epms_backend.dto.AuditRequest;
 import ace.org.epms_backend.dto.appraisal.*;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.*;
+import ace.org.epms_backend.exception.AlreadyAssignException;
+import ace.org.epms_backend.exception.InvalidStateException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.AppraisalMapper;
 import ace.org.epms_backend.model.appraisal.*;
@@ -65,7 +67,7 @@ public class AppraisalServiceImpl implements AppraisalService {
 
         private AppraisalResponse assignSingle(Long employeeId, Long cycleId, Long formId, Long formSetId) {
                 if (appraisalRepo.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId).isPresent()) {
-                        throw new RuntimeException("Appraisal already assigned to this employee for the given cycle");
+                        throw new AlreadyAssignException("Appraisal already assigned to this employee for the given cycle");
                 }
 
                 Employee employee = employeeRepo.findById(employeeId)
@@ -256,8 +258,22 @@ public class AppraisalServiceImpl implements AppraisalService {
         @Override
         @Transactional(readOnly = true)
         public ScoreBreakdownResponse getScoreBreakdown(Long id) {
+                Appraisal appraisal = appraisalRepo.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Appraisal not found"));
+
+                Long currentUserId = getCurrentUserId();
+                boolean isOwner = appraisal.getEmployee().getId().equals(currentUserId);
+                boolean isManager = appraisal.getManager() != null && appraisal.getManager().getId().equals(currentUserId);
+                boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_HR") || a.getAuthority().equals("ROLE_ADMIN"));
+
+                if (!isOwner && !isManager && !isHrOrAdmin) {
+                        throw new org.springframework.security.access.AccessDeniedException("Not allowed to view this score breakdown.");
+                }
+
                 return calculationService.getScoreBreakdown(id);
         }
+
 
         @Override
         @Transactional
@@ -317,11 +333,25 @@ public class AppraisalServiceImpl implements AppraisalService {
                 Appraisal appraisal = appraisalRepo.findById(id)
                                 .orElseThrow(() -> new NotFoundException("Appraisal not found"));
 
-                // Guard: must be HR_APPROVED before finalization
+                // Guard 1: must be HR_APPROVED before finalization
                 if (appraisal.getStatus() != AppraisalStatus.HR_APPROVED) {
                         throw new RuntimeException(
                                 "Cannot finalize: appraisal must be HR_APPROVED first. Current status: "
                                 + appraisal.getStatus());
+                }
+
+                // Guard 2: both signatures must be captured before finalization
+                if (appraisal.getEmployeeSignedAt() == null && appraisal.getManagerSignedAt() == null) {
+                        throw new InvalidStateException(
+                                "Cannot finalize: employee and manager have not signed off yet.");
+                }
+                if (appraisal.getEmployeeSignedAt() == null) {
+                        throw new InvalidStateException(
+                                "Cannot finalize: awaiting employee signature.");
+                }
+                if (appraisal.getManagerSignedAt() == null) {
+                        throw new InvalidStateException(
+                                "Cannot finalize: awaiting manager signature.");
                 }
 
                 appraisal.setStatus(AppraisalStatus.FINALIZED);

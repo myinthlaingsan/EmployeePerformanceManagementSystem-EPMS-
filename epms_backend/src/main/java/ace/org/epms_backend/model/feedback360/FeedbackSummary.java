@@ -1,5 +1,6 @@
 package ace.org.epms_backend.model.feedback360;
 
+import ace.org.epms_backend.enums.CalibrationStatus;
 import ace.org.epms_backend.model.BaseEntity;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
@@ -48,6 +49,16 @@ public class FeedbackSummary extends BaseEntity {
     private String managerSummary;
 
     private BigDecimal calibratedFinalScore;
+
+    @Enumerated(EnumType.STRING)
+    private CalibrationStatus calibrationStatus;
+
+    @Column(columnDefinition = "TEXT")
+    private String calibrationReason;
+
+    private Instant calibrationDate;
+    private Long calibratedBy;
+
     private Instant finalizedAt;
     private Long finalizedBy;
 }

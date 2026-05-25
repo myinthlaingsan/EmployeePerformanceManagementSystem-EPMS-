@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Shield, Users, LayoutDashboard, Lock, Activity, Calendar, Server, Key, Database, Settings } from 'lucide-react';
 import { useGetAdminDashboardQuery } from '../features/dashboard/dashboardApi';
@@ -6,10 +7,12 @@ import DashboardStatCard from '../components/dashboard/DashboardStatCard';
 import ChartCard from '../components/dashboard/ChartCard';
 import ActivityFeed from '../components/dashboard/ActivityFeed';
 import QuickActionPanel, { type Action } from '../components/dashboard/QuickActionPanel';
+import { alertColors } from '../constants/dashboardColors';
 
 const PIE_COLORS = ['#639922', '#E24B4A', '#BA7517'];
 
 const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { data, isLoading, error } = useGetAdminDashboardQuery();
 
   if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading admin controls…</div>;
@@ -22,12 +25,12 @@ const AdminDashboard: React.FC = () => {
   ];
 
   const quickActions: Action[] = [
-    { id: '1', label: 'System logs', icon: <Server size={16} />, onClick: () => {}, color: 'bg-gray-100 text-gray-600' },
-    { id: '2', label: 'User management', icon: <Users size={16} />, onClick: () => {}, color: 'bg-blue-100 text-blue-600' },
-    { id: '3', label: 'Security', icon: <Shield size={16} />, onClick: () => {}, color: 'bg-red-100 text-red-600' },
-    { id: '4', label: 'DB backup', icon: <Database size={16} />, onClick: () => {}, color: 'bg-green-100 text-green-600' },
-    { id: '5', label: 'Auth config', icon: <Key size={16} />, onClick: () => {}, color: 'bg-orange-100 text-orange-600' },
-    { id: '6', label: 'Settings', icon: <Settings size={16} />, onClick: () => {}, color: 'bg-indigo-100 text-indigo-600' },
+    { id: '1', label: 'System logs', icon: <Server size={16} />, onClick: () => navigate('/admin/audit-logs'), color: 'bg-gray-100 text-gray-600' },
+    { id: '2', label: 'User management', icon: <Users size={16} />, onClick: () => navigate('/admin/users'), color: 'bg-blue-100 text-blue-600' },
+    { id: '3', label: 'Security', icon: <Shield size={16} />, onClick: () => navigate('/admin/security'), color: 'bg-red-100 text-red-600' },
+    { id: '4', label: 'DB backup', icon: <Database size={16} />, onClick: () => navigate('/admin/backup'), color: 'bg-green-100 text-green-600' },
+    { id: '5', label: 'Auth config', icon: <Key size={16} />, onClick: () => navigate('/admin/auth-config'), color: 'bg-orange-100 text-orange-600' },
+    { id: '6', label: 'Settings', icon: <Settings size={16} />, onClick: () => navigate('/admin/settings'), color: 'bg-indigo-100 text-indigo-600' },
   ];
 
   return (
@@ -73,11 +76,7 @@ const AdminDashboard: React.FC = () => {
           </div>
           <div className="space-y-3 overflow-y-auto max-h-64">
             {data?.securityAlerts.map((alert, idx) => {
-              const colors = alert.severity === 'HIGH'
-                ? { bg: "#FCEBEB", text: "#791F1F", border: "#F5C2C2" }
-                : alert.severity === 'MEDIUM'
-                ? { bg: "#FAEEDA", text: "#633806", border: "#F0D4A4" }
-                : { bg: "#EEF3FD", text: "#0C447C", border: "#B5D4F4" };
+              const colors = alertColors[alert.severity] || alertColors.LOW;
               return (
                 <div key={idx} className="flex items-start gap-3" style={{ background: colors.bg, border: `0.5px solid ${colors.border}`, borderRadius: 8, padding: "10px 12px" }}>
                   <div style={{ background: colors.bg, borderRadius: 6, padding: 4, flexShrink: 0 }}>
@@ -99,6 +98,51 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Active cycle info */}
+      {data?.activeCycleName && (
+        <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>Active appraisal cycle</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <span style={{ fontSize: 11, color: "#9EA3B0", display: "block", marginBottom: 4 }}>Cycle name</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{data.activeCycleName}</span>
+            </div>
+            <div>
+              <span style={{ fontSize: 11, color: "#9EA3B0", display: "block", marginBottom: 4 }}>Start date</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{data.cycleStartDate}</span>
+            </div>
+            <div>
+              <span style={{ fontSize: 11, color: "#9EA3B0", display: "block", marginBottom: 4 }}>End date</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{data.cycleEndDate}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Security metrics */}
+      {(data?.failedLoginsLast24h !== undefined || data?.accountsCreatedThisMonth !== undefined) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <DashboardStatCard
+            title="Failed logins (24h)"
+            value={data?.failedLoginsLast24h ?? 0}
+            icon={<Activity size={15} />}
+            color="red"
+          />
+          <DashboardStatCard
+            title="Accounts created (this month)"
+            value={data?.accountsCreatedThisMonth ?? 0}
+            icon={<Users size={15} />}
+            color="green"
+          />
+          <DashboardStatCard
+            title="Accounts deactivated (this month)"
+            value={data?.accountsDeactivatedThisMonth ?? 0}
+            icon={<Lock size={15} />}
+            color="orange"
+          />
+        </div>
+      )}
 
       {/* Quick actions */}
       <QuickActionPanel actions={quickActions} />

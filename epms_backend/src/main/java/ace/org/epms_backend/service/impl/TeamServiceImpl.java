@@ -78,6 +78,7 @@ public class TeamServiceImpl implements TeamService {
                     res.setTeamId(et.getTeam().getTeamId());
                     res.setTeamName(et.getTeam().getTeamName());
                     res.setDepartmentName(et.getTeam().getDepartment().getDepartmentName());
+                    res.setDepartmentId(et.getTeam().getDepartment().getId());
                     return res;
                 }).collect(Collectors.toList());
     }
@@ -91,6 +92,7 @@ public class TeamServiceImpl implements TeamService {
                     res.setTeamId(team.getTeamId());
                     res.setTeamName(team.getTeamName());
                     res.setDepartmentName(team.getDepartment().getDepartmentName());
+                    res.setDepartmentId(team.getDepartment().getId());
                     return res;
                 }).collect(Collectors.toList());
     }

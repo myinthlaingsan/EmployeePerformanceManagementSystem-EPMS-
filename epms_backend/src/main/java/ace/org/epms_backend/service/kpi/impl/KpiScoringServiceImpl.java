@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 
@@ -56,7 +57,9 @@ public class KpiScoringServiceImpl implements KpiScoringService {
 
                 if (!isHrOrAdmin) {
                         // If Manager, must be the assigned manager for this goal set
-                        if (!goalSet.getManager().getId().equals(currentUser.getId())) {
+                        // Guard against null manager (HR/Admin-assigned goals with no reporting line)
+                        if (goalSet.getManager() == null
+                                        || !goalSet.getManager().getId().equals(currentUser.getId())) {
                                 throw new SecurityException(
                                                 "You are not authorized to calculate or view scores for this employee");
                         }
@@ -68,11 +71,9 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                 // appraisal cycle is still active.");
                 // }
 
-                // Precondition 2: Has the manager locked the goal set?
-                if (!goalSet.getStatus().equals(KpiGoalStatus.LOCKED) &&
-                                !goalSet.getStatus().equals(KpiGoalStatus.APPROVED)) {
-                        throw new IllegalStateException(
-                                        "Goal set must be APPROVED or LOCKED before finalizing the score.");
+                // Precondition 2: Block ARCHIVED status only
+                if (goalSet.getStatus().equals(KpiGoalStatus.ARCHIVED)) {
+                        throw new IllegalStateException("Cannot calculate score for an archived goal set.");
                 }
 
                 // Precondition 3: Is the employee still active?
@@ -80,10 +81,7 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                         throw new IllegalStateException("Cannot calculate score for an inactive employee.");
                 }
 
-                // Precondition 4: Has this score already been finalized?
-                if (finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId).isPresent()) {
-                        throw new IllegalStateException("KPI Score has already been finalized for this cycle.");
-                }
+
 
                 List<KpiGoalItem> items = goalItemRepository.findByGoalSetIdAndIsActiveTrue(goalSet.getId());
 
@@ -104,12 +102,27 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                                                 : BigDecimal.ZERO)
                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                KpiFinalScore finalScore = new KpiFinalScore();
+                // Unweighted average: sum of individual scorePercents / item count
+                // Represents raw completion rate regardless of weight distribution
+                BigDecimal totalAchievementPercent = items.isEmpty() ? BigDecimal.ZERO
+                                : items.stream()
+                                                .map(item -> item.getScorePercent() != null
+                                                                ? item.getScorePercent().min(new BigDecimal("100"))
+                                                                : BigDecimal.ZERO)
+                                                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                                                .divide(new BigDecimal(items.size()), 2, RoundingMode.HALF_UP);
+
+                // UPSERT: find existing score or create new one
+                KpiFinalScore finalScore = finalScoreRepository
+                                .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+                                .orElse(new KpiFinalScore());
+
+                boolean isNew = (finalScore.getId() == null);
 
                 finalScore.setEmployee(goalSet.getEmployee());
                 finalScore.setGoalSet(goalSet);
                 finalScore.setWeightedScore(totalWeightedScore);
-                finalScore.setTotalAchievementPercent(totalWeightedScore);
+                finalScore.setTotalAchievementPercent(totalAchievementPercent);
                 finalScore.setCalculatedAt(Instant.now());
                 finalScore.setFinalizedBy(getCurrentEmployee().getId());
 
@@ -135,15 +148,23 @@ public class KpiScoringServiceImpl implements KpiScoringService {
                                         .build());
                 }
 
-                // Log Audit
+                // Log Audit — correctly use isNew flag
                 auditService.log(AuditRequest.builder()
                                 .tableName("kpi_final_score")
                                 .recordId(savedScore.getId())
-                                .action(savedScore.getId() == null ? AuditAction.INSERT : AuditAction.UPDATE)
+                                .action(isNew ? AuditAction.INSERT : AuditAction.UPDATE)
                                 .newState(savedScore)
                                 .status(AuditStatus.SUCCESS)
                                 .build());
                 return kpiMapper.toScoreResponse(savedScore);
+        }
+
+        @Override
+        public KpiScoreResponse getFinalScore(Long employeeId, Long cycleId) {
+                return finalScoreRepository
+                        .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+                        .map(kpiMapper::toScoreResponse)
+                        .orElse(null);
         }
 
         private Employee getCurrentEmployee() {

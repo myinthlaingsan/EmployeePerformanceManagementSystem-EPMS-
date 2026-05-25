@@ -22,6 +22,10 @@ const CYCLE_STATUS_STYLE: Record<string, { background: string; color: string; bo
   Active: { background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4' },
   Closed: { background: '#F1EFE8', color: '#444441', border: '0.5px solid #DDDBD2' },
   Draft: { background: '#FAEEDA', color: '#633806', border: '0.5px solid #F0D4A4' },
+  PLANNING: { background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC' },
+  IN_PROGRESS: { background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4' },
+  EVALUATION: { background: '#FAEEDA', color: '#633806', border: '0.5px solid #F0D4A4' },
+  ARCHIVED: { background: '#64748B', color: '#FFFFFF', border: '0.5px solid #475569' },
 };
 
 const AppraisalAdminDashboard = () => {

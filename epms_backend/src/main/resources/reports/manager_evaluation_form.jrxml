@@ -1,0 +1,220 @@
+<!-- Manager Evaluation Form — main datasource = List<ManagerEvaluationReportQuestionDTO> -->
+<jasperReport name="manager_evaluation_form" language="java"
+              pageWidth="595" pageHeight="842"
+              columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20"
+              uuid="f1e2d3c4-b5a6-7890-fedc-ba9876543210">
+
+    <!-- ===================== PARAMETERS (header metadata) ===================== -->
+    <parameter name="reportTitle"    class="java.lang.String"/>
+    <parameter name="cycleName"      class="java.lang.String"/>
+    <parameter name="employeeName"   class="java.lang.String"/>
+    <parameter name="employeeCode"   class="java.lang.String"/>
+    <parameter name="departmentName" class="java.lang.String"/>
+    <parameter name="positionName"   class="java.lang.String"/>
+    <parameter name="managerName"    class="java.lang.String"/>
+    <parameter name="totalScore"     class="java.lang.String"/>
+    <parameter name="finalComment"   class="java.lang.String"/>
+    <parameter name="submittedAt"    class="java.lang.String"/>
+
+    <!-- ===================== FIELDS (one row = one ManagerEvaluationReportQuestionDTO) ===================== -->
+    <field name="categoryName"    class="java.lang.String"/>
+    <field name="questionText"    class="java.lang.String"/>
+    <field name="employeeRating"  class="java.lang.String"/>
+    <field name="employeeComment" class="java.lang.String"/>
+    <field name="managerRating"   class="java.lang.String"/>
+    <field name="managerComment"  class="java.lang.String"/>
+
+    <!-- ===================== TITLE ===================== -->
+    <title height="185">
+        <!-- Heading -->
+        <element kind="staticText" uuid="bb000001-0001-0001-0001-000000000001"
+                 x="0" y="0" width="555" height="28"
+                 fontSize="18.0" bold="true" hTextAlign="Center" vTextAlign="Middle" forecolor="#1F2937">
+            <text><![CDATA[Manager Evaluation Form]]></text>
+        </element>
+        <element kind="textField" uuid="bb000002-0001-0001-0001-000000000002"
+                 x="0" y="28" width="555" height="15"
+                 fontSize="10.0" hTextAlign="Center" forecolor="#4B5563">
+            <expression><![CDATA["Appraisal Cycle: " + $P{cycleName}]]></expression>
+        </element>
+
+        <!-- Info box background -->
+        <element kind="rectangle" uuid="bb000003-0001-0001-0001-000000000003"
+                 x="0" y="52" width="555" height="125" backcolor="#F9FAFB">
+            <pen lineWidth="0.5" lineColor="#D1D5DB"/>
+        </element>
+
+        <!-- Row 1: Employee | Department -->
+        <element kind="staticText" uuid="bb000010-0001-0001-0001-000000000010"
+                 x="10" y="62" width="100" height="14" fontSize="9.0" bold="true" forecolor="#374151">
+            <text><![CDATA[Employee Name:]]></text>
+        </element>
+        <element kind="textField" uuid="bb000011-0001-0001-0001-000000000011"
+                 x="112" y="62" width="175" height="14" fontSize="9.0" forecolor="#111827">
+            <expression><![CDATA[$P{employeeName} + " (" + $P{employeeCode} + ")"]]></expression>
+        </element>
+        <element kind="staticText" uuid="bb000012-0001-0001-0001-000000000012"
+                 x="300" y="62" width="85" height="14" fontSize="9.0" bold="true" forecolor="#374151">
+            <text><![CDATA[Department:]]></text>
+        </element>
+        <element kind="textField" uuid="bb000013-0001-0001-0001-000000000013"
+                 x="387" y="62" width="158" height="14" fontSize="9.0" forecolor="#111827">
+            <expression><![CDATA[$P{departmentName}]]></expression>
+        </element>
+
+        <!-- Row 2: Position | Manager -->
+        <element kind="staticText" uuid="bb000014-0001-0001-0001-000000000014"
+                 x="10" y="82" width="100" height="14" fontSize="9.0" bold="true" forecolor="#374151">
+            <text><![CDATA[Position:]]></text>
+        </element>
+        <element kind="textField" uuid="bb000015-0001-0001-0001-000000000015"
+                 x="112" y="82" width="175" height="14" fontSize="9.0" forecolor="#111827">
+            <expression><![CDATA[$P{positionName}]]></expression>
+        </element>
+        <element kind="staticText" uuid="bb000016-0001-0001-0001-000000000016"
+                 x="300" y="82" width="85" height="14" fontSize="9.0" bold="true" forecolor="#374151">
+            <text><![CDATA[Evaluating Manager:]]></text>
+        </element>
+        <element kind="textField" uuid="bb000017-0001-0001-0001-000000000017"
+                 x="387" y="82" width="158" height="14" fontSize="9.0" forecolor="#111827">
+            <expression><![CDATA[$P{managerName}]]></expression>
+        </element>
+
+        <!-- Row 3: Submitted At | Total Score -->
+        <element kind="staticText" uuid="bb000018-0001-0001-0001-000000000018"
+                 x="10" y="102" width="100" height="14" fontSize="9.0" bold="true" forecolor="#374151">
+            <text><![CDATA[Submitted At:]]></text>
+        </element>
+        <element kind="textField" uuid="bb000019-0001-0001-0001-000000000019"
+                 x="112" y="102" width="175" height="14" fontSize="9.0" forecolor="#111827">
+            <expression><![CDATA[$P{submittedAt}]]></expression>
+        </element>
+        <element kind="staticText" uuid="bb000020-0001-0001-0001-000000000020"
+                 x="300" y="102" width="85" height="14" fontSize="9.0" bold="true" forecolor="#374151">
+            <text><![CDATA[Total Score:]]></text>
+        </element>
+        <element kind="textField" uuid="bb000021-0001-0001-0001-000000000021"
+                 x="387" y="102" width="158" height="14" fontSize="9.0" bold="true" forecolor="#1F2937">
+            <expression><![CDATA[$P{totalScore}]]></expression>
+        </element>
+
+        <!-- Row 4: Final Comment -->
+        <element kind="staticText" uuid="bb000022-0001-0001-0001-000000000022"
+                 x="10" y="122" width="100" height="14" fontSize="9.0" bold="true" forecolor="#374151">
+            <text><![CDATA[Final Comment:]]></text>
+        </element>
+        <element kind="textField" uuid="bb000023-0001-0001-0001-000000000023"
+                 x="112" y="122" width="433" height="28" fontSize="9.0" forecolor="#4B5563"
+                 textAdjust="StretchHeight">
+            <expression><![CDATA[$P{finalComment} != null && !$P{finalComment}.isEmpty() ? $P{finalComment} : "\u2014"]]></expression>
+        </element>
+    </title>
+
+    <!-- Column headers -->
+    <columnHeader height="18">
+        <element kind="rectangle" uuid="bb000030-0001-0001-0001-000000000030"
+                 x="0" y="0" width="555" height="18" backcolor="#1F2937">
+            <pen lineWidth="0"/>
+        </element>
+        <element kind="staticText" uuid="bb000031-0001-0001-0001-000000000031"
+                 x="5" y="2" width="230" height="14" fontSize="9.0" bold="true"
+                 forecolor="#FFFFFF" vTextAlign="Middle">
+            <text><![CDATA[Question]]></text>
+        </element>
+        <element kind="staticText" uuid="bb000032-0001-0001-0001-000000000032"
+                 x="240" y="2" width="155" height="14" fontSize="9.0" bold="true"
+                 forecolor="#FFFFFF" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[Employee Rating / Comment]]></text>
+        </element>
+        <element kind="staticText" uuid="bb000033-0001-0001-0001-000000000033"
+                 x="400" y="2" width="150" height="14" fontSize="9.0" bold="true"
+                 forecolor="#FFFFFF" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[Manager Rating / Comment]]></text>
+        </element>
+    </columnHeader>
+
+    <!-- ===================== DETAIL (one band per question row) ===================== -->
+    <detail>
+        <band height="56" splitType="Stretch">
+            <!-- Alternating row shading -->
+            <element kind="rectangle" uuid="bb000040-0001-0001-0001-000000000040"
+                     x="0" y="0" width="555" height="56" backcolor="#F9FAFB">
+                <pen lineWidth="0"/>
+                <printWhenExpression><![CDATA[$V{REPORT_COUNT} % 2 == 0]]></printWhenExpression>
+            </element>
+
+            <!-- Category label -->
+            <element kind="textField" uuid="bb000041-0001-0001-0001-000000000041"
+                     x="5" y="2" width="230" height="12" fontSize="8.0" bold="true" forecolor="#6B7280">
+                <expression><![CDATA["[" + $F{categoryName} + "]"]]></expression>
+            </element>
+
+            <!-- Question text -->
+            <element kind="textField" uuid="bb000042-0001-0001-0001-000000000042"
+                     x="5" y="14" width="230" height="14" fontSize="10.0"
+                     forecolor="#111827" textAdjust="StretchHeight">
+                <expression><![CDATA[$F{questionText}]]></expression>
+            </element>
+
+            <!-- Employee rating -->
+            <element kind="textField" uuid="bb000043-0001-0001-0001-000000000043"
+                     x="240" y="14" width="155" height="14" fontSize="9.0"
+                     forecolor="#1D4ED8" textAdjust="StretchHeight">
+                <expression><![CDATA[($F{employeeRating} != null ? $F{employeeRating} : "-") + " / 5"]]></expression>
+            </element>
+
+            <!-- Employee comment -->
+            <element kind="textField" uuid="bb000044-0001-0001-0001-000000000044"
+                     x="240" y="28" width="155" height="14" fontSize="8.0"
+                     forecolor="#4B5563" textAdjust="StretchHeight">
+                <expression><![CDATA[$F{employeeComment} != null && !$F{employeeComment}.trim().isEmpty() ? $F{employeeComment} : "\u2014"]]></expression>
+            </element>
+
+            <!-- Manager rating -->
+            <element kind="textField" uuid="bb000045-0001-0001-0001-000000000045"
+                     x="400" y="14" width="150" height="14" fontSize="9.0"
+                     forecolor="#065F46" textAdjust="StretchHeight">
+                <expression><![CDATA[($F{managerRating} != null ? $F{managerRating} : "-") + " / 5"]]></expression>
+            </element>
+
+            <!-- Manager comment -->
+            <element kind="textField" uuid="bb000046-0001-0001-0001-000000000046"
+                     x="400" y="28" width="150" height="14" fontSize="8.0"
+                     forecolor="#4B5563" textAdjust="StretchHeight">
+                <expression><![CDATA[$F{managerComment} != null && !$F{managerComment}.trim().isEmpty() ? $F{managerComment} : "\u2014"]]></expression>
+            </element>
+
+            <!-- Row divider -->
+            <element kind="line" uuid="bb000047-0001-0001-0001-000000000047"
+                     x="0" y="54" width="555" height="1" forecolor="#E5E7EB">
+                <pen lineWidth="0.5"/>
+            </element>
+
+            <!-- Vertical column separator -->
+            <element kind="line" uuid="bb000048-0001-0001-0001-000000000048"
+                     x="238" y="0" width="1" height="54" forecolor="#E5E7EB">
+                <pen lineWidth="0.5"/>
+            </element>
+            <element kind="line" uuid="bb000049-0001-0001-0001-000000000049"
+                     x="398" y="0" width="1" height="54" forecolor="#E5E7EB">
+                <pen lineWidth="0.5"/>
+            </element>
+        </band>
+    </detail>
+
+    <!-- ===================== PAGE FOOTER ===================== -->
+    <pageFooter height="30">
+        <element kind="line" uuid="bb000050-0001-0001-0001-000000000050"
+                 x="0" y="5" width="555" height="1" forecolor="#E5E7EB"/>
+        <element kind="textField" uuid="bb000051-0001-0001-0001-000000000051"
+                 x="0" y="10" width="300" height="15" fontSize="8.0" forecolor="#9CA3AF">
+            <expression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date())]]></expression>
+        </element>
+        <element kind="textField" uuid="bb000052-0001-0001-0001-000000000052"
+                 x="455" y="10" width="100" height="15" fontSize="8.0"
+                 forecolor="#9CA3AF" hTextAlign="Right">
+            <expression><![CDATA["Page " + $V{PAGE_NUMBER}]]></expression>
+        </element>
+    </pageFooter>
+
+</jasperReport>

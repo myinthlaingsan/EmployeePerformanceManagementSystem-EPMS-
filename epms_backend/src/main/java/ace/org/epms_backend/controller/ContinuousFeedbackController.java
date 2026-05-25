@@ -27,9 +27,13 @@ public class ContinuousFeedbackController {
     @GetMapping("/feedbacks")
     public ResponseEntity<ApiResponse<PagedResponse<ContinuousFeedbackResponse>>> getAllFeedbacks(
             @RequestParam(required = false) ace.org.epms_backend.enums.ContinuousStatus status,
+            @RequestParam(required = false) ace.org.epms_backend.enums.FeedbackType feedbackType,
+            @RequestParam(required = false) Long tagId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate createdAfter,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate createdBefore,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getAllFeedbacks(status, page, size);
+        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getAllFeedbacks(status, feedbackType, tagId, createdAfter, createdBefore, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -51,9 +55,13 @@ public class ContinuousFeedbackController {
     @GetMapping("/feedbacks/employee/{employeeId}")
     public ResponseEntity<ApiResponse<PagedResponse<ContinuousFeedbackResponse>>> getFeedbacksByEmployee(
             @PathVariable Long employeeId,
+            @RequestParam(required = false) ace.org.epms_backend.enums.FeedbackType feedbackType,
+            @RequestParam(required = false) Long tagId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate createdAfter,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate createdBefore,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getFeedbacksByEmployee(employeeId, page, size);
+        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getFeedbacksByEmployee(employeeId, feedbackType, tagId, createdAfter, createdBefore, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -61,9 +69,13 @@ public class ContinuousFeedbackController {
     public ResponseEntity<ApiResponse<PagedResponse<ContinuousFeedbackResponse>>> getFeedbacksByManager(
             @PathVariable Long managerId,
             @RequestParam(required = false) ace.org.epms_backend.enums.ContinuousStatus status,
+            @RequestParam(required = false) ace.org.epms_backend.enums.FeedbackType feedbackType,
+            @RequestParam(required = false) Long tagId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate createdAfter,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate createdBefore,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getFeedbacksByManager(managerId, status, page, size);
+        PagedResponse<ContinuousFeedbackResponse> responses = feedbackService.getFeedbacksByManager(managerId, status, feedbackType, tagId, createdAfter, createdBefore, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 

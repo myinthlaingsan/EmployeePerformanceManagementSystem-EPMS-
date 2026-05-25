@@ -3,7 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { Trophy, Target, Clock, ClipboardList, MessageSquare } from 'lucide-react';
+import { Trophy, Target, Clock, ClipboardList, MessageSquare, AlertTriangle, TrendingUp } from 'lucide-react';
 import { useGetEmployeeDashboardQuery } from '../features/dashboard/dashboardApi';
 import DashboardStatCard from '../components/dashboard/DashboardStatCard';
 import ChartCard from '../components/dashboard/ChartCard';
@@ -99,6 +99,68 @@ const EmployeeDashboard: React.FC = () => {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* New Employee fields */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* PIP Warning */}
+        {data?.onPip && (
+          <div className="lg:col-span-2" style={{ background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 12, padding: "16px 18px", display: "flex", gap: 12 }}>
+            <AlertTriangle size={18} style={{ color: "#E24B4A", flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 500, color: "#791F1F" }}>Performance Improvement Plan</p>
+              <p style={{ fontSize: 12, color: "#791F1F", opacity: 0.8, marginTop: 4 }}>
+                You are currently on a Performance Improvement Plan. Review the plan details and work with your manager on the agreed objectives.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Team Rank & Days Left */}
+        <div>
+          <div className="grid grid-cols-2 gap-3">
+            {data?.teamRank !== undefined && (
+              <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "12px 14px", textAlign: "center" }}>
+                <span style={{ fontSize: 11, color: "#9EA3B0", display: "block", marginBottom: 4 }}>Your rank</span>
+                <span style={{ fontSize: 16, fontWeight: 500, color: "#1A56DB" }}>
+                  #{data.teamRank}
+                </span>
+                <span style={{ fontSize: 11, color: "#9EA3B0", display: "block", marginTop: 4 }}>of {data.teamSize}</span>
+              </div>
+            )}
+            {data?.daysUntilNextDeadline !== undefined && data.daysUntilNextDeadline >= 0 && (
+              <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "12px 14px", textAlign: "center" }}>
+                <span style={{ fontSize: 11, color: "#9EA3B0", display: "block", marginBottom: 4 }}>Days until</span>
+                <span style={{ fontSize: 16, fontWeight: 500, color: data.daysUntilNextDeadline <= 3 ? "#E24B4A" : "#1A56DB" }}>
+                  {data.daysUntilNextDeadline}
+                </span>
+                <span style={{ fontSize: 11, color: "#9EA3B0", display: "block", marginTop: 4 }}>next deadline</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Manager Feedback */}
+        {data?.managerLastScore !== undefined && (
+          <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
+              <MessageSquare size={15} style={{ color: "#1A56DB" }} aria-hidden="true" />
+              <p style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Manager feedback</p>
+            </div>
+            <div>
+              <p style={{ fontSize: 13, color: "#5A6070", marginBottom: 6 }}>Last evaluation score</p>
+              <p style={{ fontSize: 16, fontWeight: 500, color: "#1A56DB", marginBottom: 12 }}>
+                {data.managerLastScore?.toFixed(1) ?? 'N/A'}
+              </p>
+              {data.managerLastComment && (
+                <div style={{ paddingTop: 12, borderTop: "0.5px solid #E4E6EC" }}>
+                  <p style={{ fontSize: 11, color: "#9EA3B0", marginBottom: 6 }}>Comment</p>
+                  <p style={{ fontSize: 12, color: "#5A6070", lineHeight: 1.5 }}>{data.managerLastComment}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

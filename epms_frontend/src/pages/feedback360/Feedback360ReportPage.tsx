@@ -7,19 +7,24 @@ import {
 } from 'recharts';
 import {
   BarChart3, MessageSquare, Star, Users, AlertCircle, Loader2,
-  Lock, FileText, Info,
-  TrendingUp,
+  Lock, FileText, Info, TrendingUp, ChevronDown,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth';
-import { useGetFeedbackSummaryQuery } from '../../features/feedback360/feedback360Api';
+import {
+  useGetFeedbackSummaryQuery,
+  useGetReceivedFeedbackQuery,
+} from '../../features/feedback360/feedback360Api';
 import { useDownloadReportMutation } from '../../features/report/reportApi';
+import SuppressionNotice from '../../components/feedback360/SuppressionNotice';
 import type {
   CategoryScore,
   FeedbackSummaryResponse,
   CategoryGap,
   ParticipationStat,
+  FeedbackDetailsResponse,
+  PooledFeedbackSection,
 } from '../../features/feedback360/feedback360Types';
 import { FeedbackRelationship } from '../../features/feedback360/feedback360Types';
 
@@ -210,6 +215,148 @@ const TabBtn = ({ active, children, onClick }: { active: boolean; children: Reac
   </button>
 );
 
+// ── ExpandableSubmissionCard ───────────────────────────────────────────────────
+
+const REL_CARD_LABEL: Record<string, string> = {
+  SELF: 'Self',
+  DIRECT_MANAGER: 'Direct Manager',
+  PEER: 'Peer',
+  SUBORDINATE: 'Subordinate',
+};
+const REL_CARD_COLOR: Record<string, string> = {
+  SELF: '#D97706',
+  DIRECT_MANAGER: '#1A56DB',
+  PEER: '#7C3AED',
+  SUBORDINATE: '#059669',
+};
+
+const ExpandableSubmissionCard = ({ submission }: { submission: FeedbackDetailsResponse }) => {
+  const [expanded, setExpanded] = useState(false);
+  const rel = submission.relationship ?? '';
+  const color = REL_CARD_COLOR[rel] ?? '#5A6070';
+  return (
+    <div style={{ border: '0.5px solid #E4E6EC', borderRadius: 10, marginBottom: 10, overflow: 'hidden' }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: '#FAFBFC', cursor: 'pointer', flexWrap: 'wrap' }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', background: `${color}18`, color, letterSpacing: '0.04em' }}>
+          {REL_CARD_LABEL[rel] ?? rel}
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', flex: 1 }}>
+          {submission.evaluatorName ?? '—'}
+        </span>
+        {submission.averageScore != null && (
+          <span style={{ fontSize: 12, color: '#D97706', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Star size={11} fill="#D97706" />{Number(submission.averageScore).toFixed(2)}
+          </span>
+        )}
+        <ChevronDown size={14} color="#9EA3B0" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+      </div>
+      {expanded && (
+        <div style={{ padding: '12px 14px', borderTop: '0.5px solid #E4E6EC' }}>
+          {submission.responses.map((r) => (
+            <div key={r.questionId} style={{ padding: '8px 0', borderBottom: '0.5px solid #F0F2F8' }}>
+              <p style={{ fontSize: 12, color: '#5A6070', margin: 0 }}>{r.questionText}</p>
+              <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+                {r.score != null && (
+                  <span style={{ fontSize: 12, color: '#D97706', display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Star size={11} fill="#D97706" />{r.score}/5
+                  </span>
+                )}
+                {r.comment && (
+                  <span style={{ fontSize: 12, color: '#374151', fontStyle: 'italic' }}>"{r.comment}"</span>
+                )}
+              </div>
+            </div>
+          ))}
+          {submission.overallComment && (
+            <div style={{ marginTop: 10, padding: '8px 10px', background: '#F5F6F8', borderRadius: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase' }}>Overall comment</span>
+              <p style={{ fontSize: 13, color: '#374151', margin: '4px 0 0' }}>{submission.overallComment}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── CategoryAverageTable ───────────────────────────────────────────────────────
+
+const CategoryAverageTable = ({ rows }: { rows: CategoryScore[] }) => (
+  <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+      <thead>
+        <tr style={{ borderBottom: '1px solid #E4E6EC' }}>
+          <th style={{ textAlign: 'left', padding: '5px 8px', fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', fontSize: 11 }}>Category</th>
+          <th style={{ textAlign: 'right', padding: '5px 8px', fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', fontSize: 11 }}>Avg Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={r.categoryName} style={{ background: i % 2 === 0 ? '#FAFBFC' : '#FFFFFF', borderBottom: '0.5px solid #F0F2F8' }}>
+            <td style={{ padding: '6px 8px', color: '#111827' }}>{r.categoryName}</td>
+            <td style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600, color: '#1A56DB' }}>{r.averageScore.toFixed(2)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+// ── AnonymousCommentList ───────────────────────────────────────────────────────
+
+const AnonymousCommentList = ({ comments }: { comments: string[] }) => (
+  <div>
+    <p style={{ fontSize: 11, color: '#9EA3B0', marginBottom: 8 }}>
+      Comments are shuffled to protect anonymity. No name or order is shown.
+    </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {comments.map((c, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: '#FAFBFC', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '10px 12px' }}>
+          <MessageSquare size={12} color="#9EA3B0" style={{ marginTop: 2, flexShrink: 0 }} />
+          <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, margin: 0 }}>{c}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// ── PooledSection ──────────────────────────────────────────────────────────────
+
+const PooledSection = ({
+  title, pool, accentColor,
+}: {
+  title: string;
+  pool: PooledFeedbackSection | null | undefined;
+  accentColor: string;
+}) => (
+  <div style={panel}>
+    <p style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <Users size={15} color={accentColor} />
+      {title}
+      <span style={{ fontSize: 12, fontWeight: 400, color: '#9EA3B0', marginLeft: 4 }}>
+        ({pool?.submissionCount ?? 0} submission{(pool?.submissionCount ?? 0) !== 1 ? 's' : ''})
+      </span>
+    </p>
+    {!pool || pool.suppressed ? (
+      <SuppressionNotice message={pool?.suppressionMessage} />
+    ) : (
+      <>
+        {pool.averages && pool.averages.length > 0 && (
+          <CategoryAverageTable rows={pool.averages} />
+        )}
+        {pool.shuffledComments && pool.shuffledComments.length > 0 ? (
+          <AnonymousCommentList comments={pool.shuffledComments} />
+        ) : (
+          <p style={{ fontSize: 13, color: '#9EA3B0' }}>No comments submitted.</p>
+        )}
+      </>
+    )}
+  </div>
+);
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 const Feedback360ReportPage = () => {
@@ -225,6 +372,11 @@ const Feedback360ReportPage = () => {
 
   const { data: summary, isLoading, isError } = useGetFeedbackSummaryQuery(
     { targetUserId: targetId!, cycleId: activeCycleId! },
+    { skip: !targetId || !activeCycleId || !canView },
+  );
+
+  const { data: individualSubmissions = [] } = useGetReceivedFeedbackQuery(
+    { employeeId: targetId!, cycleId: activeCycleId! },
     { skip: !targetId || !activeCycleId || !canView },
   );
 
@@ -566,6 +718,33 @@ const Feedback360ReportPage = () => {
           </div>
         </div>
       )}
+
+      {/* Individual Submissions — Manager + Self only (peers/subordinates filtered by backend) */}
+      {individualSubmissions.length > 0 && (
+        <div style={panel}>
+          <p style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileText size={15} color="#5A6070" />
+            Individual Submissions
+          </p>
+          {individualSubmissions.map((sub) => (
+            <ExpandableSubmissionCard key={sub.feedbackId} submission={sub} />
+          ))}
+        </div>
+      )}
+
+      {/* Pooled Peer Feedback */}
+      <PooledSection
+        title="Peer Feedback"
+        pool={summary.pooledPeerFeedback}
+        accentColor="#7C3AED"
+      />
+
+      {/* Pooled Subordinate Feedback */}
+      <PooledSection
+        title="Subordinate Feedback"
+        pool={summary.pooledSubordinateFeedback}
+        accentColor="#059669"
+      />
     </div>
   );
 };

@@ -1,8 +1,6 @@
 package ace.org.epms_backend.model.auth;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,6 +16,18 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class BlacklistedToken {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 1000) // or TEXT
     private String token;
+
+    @Column(nullable = false)
     private LocalDateTime expiryDate;
+
+    public BlacklistedToken(String token, LocalDateTime expiryDate) {
+        this.token = token;
+        this.expiryDate = expiryDate;
+        // id will be auto-generated
+    }
 }

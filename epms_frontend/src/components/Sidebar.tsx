@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
 import {
@@ -40,25 +40,25 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Appraisals", to: "/appraisal", icon: ClipboardCheck, end: true },
   { label: "Performance Pulse", to: "/performance-history/admin", icon: History, adminOnly: true },
   { label: "Team Pulse", to: "/performance-history/manager", icon: History, privilegedOnly: true, hideForAdmin: true },
-  { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true },
-  { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true },
-  { label: "PIP", to: "/pip", icon: TrendingUp },
+  { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true, hideForAdmin: true },
+  { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true, hideForAdmin: true },
+  { label: "PIP", to: "/pip", icon: TrendingUp, end: true },
   { label: "Analytics", to: "/analytics", icon: BarChart3, adminOnly: true },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
   { label: "Employees", to: "/employees", icon: Users },
   { label: "Departments", to: "/departments", icon: Building2 },
-  { label: "Roles", to: "/roles", icon: ShieldCheck },
   { label: "Job Levels", to: "/job-levels", icon: Zap },
   { label: "Positions", to: "/positions", icon: Briefcase },
   { label: "Teams", to: "/teams", icon: Users },
-  { label: "Permissions", to: "/permissions", icon: ShieldCheck, end: true },
-  { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck },
-  { label: "Assign Permissions", to: "/permissions/assign", icon: Zap },
   { label: "Financial Years", to: "/financial-years", icon: Calendar },
   { label: "Performance Categories", to: "/performance-categories", icon: Layers },
   { label: "Strategic Analytics", to: "/analytics", icon: TrendingUp },
+  { label: "Roles", to: "/roles", icon: ShieldCheck, adminOnly: true },
+  { label: "Permissions", to: "/permissions", icon: ShieldCheck, adminOnly: true, end: true },
+  { label: "Permissions Matrix", to: "/permissions/matrix", icon: ShieldCheck, adminOnly: true },
+  { label: "Assign Permissions", to: "/permissions/assign", icon: Zap, adminOnly: true },
 ];
 
 const AVATAR_COLORS = [
@@ -82,18 +82,23 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ onClose }: SidebarProps) => {
-  const { logout, isAdmin, isHR, isManager, user } = useAuth();
+  const { logout, isAdmin, isHR, user, hasPermission } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
   const [perfOpen, setPerfOpen] = useState(false);
   const [feedback360Open, setFeedback360Open] = useState(false);
 
   const filteredNav = NAV_ITEMS.filter((item) => {
-    if (item.adminOnly && !isAdmin && !isHR) return false;
-    if (item.privilegedOnly && !isAdmin && !isHR && !isManager) return false;
-    if (item.hideForPrivileged && (isAdmin || isHR) && !isManager) return false;
-    if (item.hideForAdmin && (isAdmin || isHR)) return false;
-    return true;
+    switch (item.label) {
+      case "Performance Pulse":   return hasPermission("REPORT_VIEW_ALL");
+      case "Team Pulse":          return hasPermission("APPRAISAL_VIEW_TEAM") && !isAdmin && !isHR;
+      case "Continuous Feedback": return hasPermission("CONTINUOUS_FEEDBACK");
+      case "1-on-1 Meetings":     return hasPermission("MEETING_MANAGE");
+      case "PIP":                 return hasPermission("PIP_VIEW_OWN") || hasPermission("PIP_CREATE");
+      case "Analytics":           return hasPermission("REPORT_VIEW_ALL");
+      default:                    return true;
+    }
   });
 
   const avatarColor =
@@ -101,10 +106,10 @@ const Sidebar = ({ onClose }: SidebarProps) => {
 
   const perfSubItems: Array<{ to: string; label: string; end?: boolean }> = [
     { to: "/kpi", label: "KPI Intelligence Hub", end: true },
-    { to: "/kpi/my", label: "My Goals" },
-    ...(isManager ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
-    ...(user ? [{ to: `/kpi/history/${user.id}`, label: "KPI Journey" }] : []),
-    ...((isAdmin || isHR)
+    ...(hasPermission("KPI_VIEW_OWN") ? [{ to: "/kpi/my", label: "My Goals" }] : []),
+    ...(hasPermission("KPI_VIEW_TEAM") ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
+    ...(hasPermission("KPI_VIEW_OWN") && user ? [{ to: `/kpi/history/${user.id}`, label: "My KPI Journey" }] : []),
+    ...(hasPermission("KPI_LIBRARY_MANAGE")
       ? [
           { to: "/kpi/manage", label: "Goal Management" },
           { to: "/kpi/library", label: "KPI Library" },
@@ -151,19 +156,22 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       <nav className="flex-1 overflow-y-auto" style={{ padding: "20px 10px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
           {/* Main nav items */}
-          {filteredNav.map((item) => (
-            <NavLink
-              key={item.label}
-              to={item.to}
-              end={item.end}
-              style={{ padding: "8px 10px" }}
-              className={({ isActive }) => navCls(isActive)}
-              onClick={handleNavClick}
-            >
-              <item.icon size={16} aria-hidden="true" />
-              {item.label}
-            </NavLink>
-          ))}
+          {filteredNav.map((item) => {
+            const isActive = item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
+
+            return (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                style={{ padding: "8px 10px" }}
+                className={navCls(isActive)}
+                onClick={handleNavClick}
+              >
+                <item.icon size={16} aria-hidden="true" />
+                {item.label}
+              </NavLink>
+            );
+          })}
 
           {/* 360 Feedback accordion */}
           <div>
@@ -184,31 +192,37 @@ const Sidebar = ({ onClose }: SidebarProps) => {
 
             {feedback360Open && (
               <div style={{ paddingLeft: 8, marginTop: 1 }}>
-                <NavLink
-                  to="/360-feedback/pending"
-                  style={{ padding: "7px 10px" }}
-                  className={({ isActive }) => navCls(isActive)}
-                  onClick={handleNavClick}
-                >
-                  My Pending
-                </NavLink>
-                <NavLink
-                  to="/360-feedback/my-report"
-                  style={{ padding: "7px 10px" }}
-                  className={({ isActive }) => navCls(isActive)}
-                  onClick={handleNavClick}
-                >
-                  My Report
-                </NavLink>
-                <NavLink
-                  to="/360-feedback/nominations"
-                  style={{ padding: "7px 10px" }}
-                  className={({ isActive }) => navCls(isActive)}
-                  onClick={handleNavClick}
-                >
-                  Nominations
-                </NavLink>
-                {(isAdmin || isHR) && (
+                {hasPermission("FEEDBACK360_PARTICIPATE") && (
+                  <NavLink
+                    to="/360-feedback/pending"
+                    style={{ padding: "7px 10px" }}
+                    className={({ isActive }) => navCls(isActive)}
+                    onClick={handleNavClick}
+                  >
+                    My Pending
+                  </NavLink>
+                )}
+                {hasPermission("FEEDBACK360_VIEW_REPORT") && (
+                  <NavLink
+                    to="/360-feedback/my-report"
+                    style={{ padding: "7px 10px" }}
+                    className={({ isActive }) => navCls(isActive)}
+                    onClick={handleNavClick}
+                  >
+                    My Report
+                  </NavLink>
+                )}
+                {hasPermission("FEEDBACK360_NOMINATE") && (
+                  <NavLink
+                    to="/360-feedback/nominations"
+                    style={{ padding: "7px 10px" }}
+                    className={({ isActive }) => navCls(isActive)}
+                    onClick={handleNavClick}
+                  >
+                    Nominations
+                  </NavLink>
+                )}
+                {hasPermission("FEEDBACK360_MANAGE") && (
                   <NavLink
                     to="/360-feedback/admin"
                     end
@@ -219,7 +233,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                     Admin Panel
                   </NavLink>
                 )}
-                {(isAdmin || isHR) && (
+                {hasPermission("FEEDBACK360_MANAGE") && (
                   <NavLink
                     to="/360-feedback/admin/competencies"
                     style={{ padding: "7px 10px" }}
@@ -288,7 +302,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
 
               {mgmtOpen && (
                 <div style={{ paddingLeft: 8, marginTop: 1 }}>
-                  {ADMIN_ITEMS.map((item) => (
+                  {ADMIN_ITEMS.filter(item => !item.adminOnly || isAdmin).map((item) => (
                     <NavLink
                       key={item.label}
                       to={item.to}

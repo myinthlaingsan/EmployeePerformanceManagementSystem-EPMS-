@@ -9,6 +9,8 @@ public class MeetingActionItemResponse {
     private String content;
     private ActionItemStatus status;
     private java.time.LocalDateTime completedAt;
-    private java.time.Instant assignedAt;
     private String reopenReason;
+    private Long assignedToId;
+    private String assignedToName;
+    private java.time.LocalDate dueDate;
 }

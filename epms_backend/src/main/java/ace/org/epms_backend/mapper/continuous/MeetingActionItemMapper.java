@@ -6,6 +6,7 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface MeetingActionItemMapper {
-    @org.mapstruct.Mapping(target = "assignedAt", source = "meeting.createdAt")
+    @org.mapstruct.Mapping(source = "assignedTo.id", target = "assignedToId")
+    @org.mapstruct.Mapping(source = "assignedTo.staffName", target = "assignedToName")
     MeetingActionItemResponse toResponse(MeetingActionItem item);
 }

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   useGetGoalSetByEmployeeQuery,
@@ -13,28 +13,29 @@ import {
   useAssignKpiToEmployeeMutation,
 } from '../../services/kpiApi';
 import { useGetEmployeeByIdQuery } from '../../features/employee/employeeapi';
+import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
 import {
   Search, Plus, Trash2, Lock, LayoutTemplate, Target, Save, Edit3, History, ChevronLeft
 } from 'lucide-react';
 import React from 'react';
-
-const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
-  APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
-  DRAFT: { bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
-  LOCKED: { bg: '#111827', text: '#FFFFFF', border: '#111827' },
-};
+import { KPI_STATUS_STYLE, KPI_STATUS_FALLBACK } from '../../utils/kpiStatusStyles';
 
 const GoalAssignmentWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAdmin, isHR, activeCycleId, activeCycleName, isLoadingCycle: isLoadingActiveCycle } = useAuth();
+
+  const urlCycleId = searchParams.get('cycleId');
+  const resolvedCycleId = urlCycleId ? Number(urlCycleId) : activeCycleId;
+  const isHistoricalCycle = !!resolvedCycleId && activeCycleId !== undefined && resolvedCycleId !== activeCycleId;
 
   const { data: employee } = useGetEmployeeByIdQuery(Number(employeeId), { skip: !employeeId });
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
     employeeId: Number(employeeId),
-    cycleId: activeCycleId!
-  }, { skip: !employeeId || !activeCycleId });
+    cycleId: resolvedCycleId!
+  }, { skip: !employeeId || !resolvedCycleId });
 
   const { data: librariesResponse } = useGetAllLibrariesQuery();
   const libraries = librariesResponse?.data || [];
@@ -42,18 +43,38 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const { data: categoriesResponse } = useGetKpiCategoriesQuery();
   const categories = categoriesResponse?.data || [];
 
+  const { data: cyclesData } = useGetCyclesQuery();
+  const cycles = cyclesData || [];
+
+  // goalSet must be declared before any hook or useMemo that references it.
+  // Guard against stale cache: if the returned goal-set belongs to a different cycle
+  // (e.g. RTK cache hasn't flushed yet after a cycle switch), treat it as undefined so
+  // the UI renders the "no goals assigned" empty state instead of showing old data.
+  const rawGoalSet = goalSetResponse?.data;
+  const goalSet = rawGoalSet && resolvedCycleId && rawGoalSet.appraisalCycleId !== resolvedCycleId
+    ? undefined
+    : rawGoalSet;
+
+  // Compute a friendly cycle name: goalSet label -> cycles lookup -> activeCycleName
+  const cycleName = useMemo(() => {
+    if (goalSet?.appraisalCycleName) return goalSet.appraisalCycleName;
+    const found = cycles.find((c: any) => (c.cycleId || c.id) === resolvedCycleId);
+    if (found?.cycleName) return found.cycleName;
+    return activeCycleName;
+  }, [goalSet?.appraisalCycleName, cycles, resolvedCycleId, activeCycleName]);
+
   const [addGoalItem] = useAddGoalItemMutation();
   const [deleteGoalItem] = useDeleteGoalItemMutation();
   const [bulkUpdateItems] = useBulkUpdateGoalItemsMutation();
   const [approveGoalSet] = useApproveGoalSetMutation();
   const [revertToDraft] = useRevertGoalSetMutation();
   const [assignLibrary] = useAssignKpiToEmployeeMutation();
-
-  const goalSet = goalSetResponse?.data;
+  const isInputDisabled = isHistoricalCycle || goalSet?.status === 'APPROVED' || goalSet?.status === 'LOCKED';
   const [localItems, setLocalItems] = React.useState<any[]>([]);
   const [isModified, setIsModified] = useState(false);
-  const [overwriteExisting, setOverwriteExisting] = useState(false);
+  const [assignmentMode, setAssignmentMode] = useState<'append'|'replace'>('append');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tempIdCounter, setTempIdCounter] = useState(-1);
 
@@ -90,18 +111,19 @@ const GoalAssignmentWorkspace: React.FC = () => {
   );
 
   const handleUseTemplate = async (library: any) => {
-    if (!activeCycleId) return;
+    if (!resolvedCycleId) return;
     setIsSubmitting(true);
     try {
-      if (!goalSet || overwriteExisting) {
-        await assignLibrary({ employeeId: Number(employeeId), libraryId: library.id, appraisalCycleId: activeCycleId, overwriteExisting }).unwrap();
+      const overwrite = assignmentMode === 'replace';
+      if (!goalSet || overwrite) {
+        await assignLibrary({ employeeId: Number(employeeId), libraryId: library.id, appraisalCycleId: resolvedCycleId, overwriteExisting: overwrite }).unwrap();
       } else {
         for (const detail of library.details) {
           await addGoalItem({ goalSetId: goalSet.id, data: { title: detail.goalTitle, unit: detail.unit || 'Percent', targetValue: detail.targetValue, weightPercent: detail.weightPercent, categoryId: detail.categoryId } }).unwrap();
         }
       }
       refetchGoals();
-      toast.success(overwriteExisting ? 'Goals replaced successfully!' : 'Template items appended successfully!');
+      toast.success(overwrite ? 'Goals replaced successfully!' : 'Template items appended successfully!');
     } catch (err: any) {
       toast.error(`Failed to apply template: ${err?.data?.message || err?.message || 'Check network/permissions'}`);
     } finally {
@@ -132,7 +154,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   };
 
   const handleSaveDraft = async () => {
-    if (!activeCycleId) return;
+    if (!resolvedCycleId) return;
     setIsSubmitting(true);
     try {
       let currentGoalSetId = goalSet?.id;
@@ -141,7 +163,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
       if (!currentGoalSetId) {
         const newGoalSet = await assignLibrary({
           employeeId: Number(employeeId),
-          appraisalCycleId: activeCycleId,
+          appraisalCycleId: resolvedCycleId,
         }).unwrap();
         currentGoalSetId = newGoalSet.data.id;
       }
@@ -162,7 +184,8 @@ const GoalAssignmentWorkspace: React.FC = () => {
             }
           }).unwrap();
           // replace temp item with real one from API response
-          const realItem = created.data?.items?.find((it: any) => it.title === item.title) || item;
+          // Use the last item returned by the API (newly appended) instead of matching by title
+          const realItem = created.data?.items?.at(-1) || item;
           savedItems[i] = { ...realItem, _isNew: false };
         }
       }
@@ -191,9 +214,14 @@ const GoalAssignmentWorkspace: React.FC = () => {
     }
   };
 
-  const handleEdit = async () => {
+  const handleEdit = () => {
     if (!goalSet) return;
-    if (!window.confirm('This will revert the status to DRAFT so you can make changes. Continue?')) return;
+    setShowEditConfirm(true);
+  };
+
+  const handleEditConfirmed = async () => {
+    if (!goalSet) return;
+    setShowEditConfirm(false);
     setIsSubmitting(true);
     try { await revertToDraft(goalSet.id).unwrap(); }
     catch (err: any) { toast.error(`Failed to revert: ${err?.data?.message || err.message}`); }
@@ -222,8 +250,9 @@ const GoalAssignmentWorkspace: React.FC = () => {
     try {
       await approveGoalSet(goalSet.id).unwrap();
       toast.success('Goals approved and locked!');
-      navigate(isAdmin || isHR ? '/kpi/manage' : '/kpi/team');
-    } catch { /* handled by RTK */ }
+      const dest = isAdmin || isHR ? '/kpi/manage' : '/kpi/team';
+      navigate(isHistoricalCycle ? `${dest}?cycleId=${resolvedCycleId}` : dest);
+    } catch (err: any) { toast.error(`Failed to approve: ${err?.data?.message || err.message}`); }
     finally { setIsSubmitting(false); }
   };
 
@@ -231,20 +260,20 @@ const GoalAssignmentWorkspace: React.FC = () => {
     <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Resolving active cycle…</div>
   );
 
-  if (!activeCycleId) return (
+  if (!resolvedCycleId) return (
     <div className="space-y-4 pb-8">
       <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '48px 24px', textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
         <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#FCEBEB', color: '#791F1F', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
           <Target size={24} />
         </div>
-        <h2 style={{ fontSize: 16, fontWeight: 500, color: '#111827', marginBottom: 8 }}>No Active Cycle</h2>
-        <p style={{ fontSize: 13, color: '#9EA3B0', marginBottom: 20, lineHeight: 1.6 }}>An active appraisal cycle is required to assign or view KPIs. Please contact your system administrator to open a new cycle.</p>
-        <button onClick={() => navigate(-1)} style={{ background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 20px', fontSize: 13, fontWeight: 500 }}>Go Back</button>
+        <h2 style={{ fontSize: 16, fontWeight: 500, color: '#111827', marginBottom: 8 }}>No Cycle Specified</h2>
+        <p style={{ fontSize: 13, color: '#9EA3B0', marginBottom: 20, lineHeight: 1.6 }}>An appraisal cycle is required to assign or view KPIs. Please contact your system administrator to open a new cycle or select a cycle to view.</p>
+        <button onClick={() => navigate(-1)} style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 20px', fontSize: 13, fontWeight: 500 }} className="hover:bg-[#1648C0] transition-colors">Go Back</button>
       </div>
     </div>
   );
 
-  const ss = goalSet?.status ? (STATUS_STYLE[goalSet.status] || { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8' }) : null;
+  const ss = goalSet?.status ? (KPI_STATUS_STYLE[goalSet.status] || KPI_STATUS_FALLBACK) : null;
 
   return (
     <div className="space-y-4 pb-8">
@@ -266,14 +295,14 @@ const GoalAssignmentWorkspace: React.FC = () => {
               <h1 style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>{employee?.staffName}</h1>
               {ss && (
                 <span style={{ fontSize: 10, fontWeight: 500, background: ss.bg, color: ss.text, border: `0.5px solid ${ss.border}`, borderRadius: 20, padding: '2px 8px' }}>
-                  {goalSet?.status}
+                  {ss?.label}
                 </span>
               )}
               {!goalSet && (
                 <span style={{ fontSize: 10, fontWeight: 500, background: '#F5F6F8', color: '#9EA3B0', border: '0.5px solid #E0E2E8', borderRadius: 20, padding: '2px 8px' }}>Not Assigned</span>
               )}
             </div>
-            <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>{employee?.employeeCode} &bull; {employee?.positionName} &bull; Cycle: {activeCycleName}</p>
+            <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 2 }}>{employee?.employeeCode} &bull; {employee?.positionName} &bull; Cycle: {cycleName}</p>
           </div>
           <button onClick={() => navigate(`/kpi/history/${employeeId}`)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500 }}
@@ -282,82 +311,186 @@ const GoalAssignmentWorkspace: React.FC = () => {
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {goalSet?.status === 'APPROVED' ? (
-            <button onClick={handleEdit} disabled={isSubmitting}
-              style={{ background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
-              className="disabled:opacity-50">
-              <Edit3 size={13} /> Edit Goals
-            </button>
-          ) : (
-            <>
-              <button onClick={handleSaveDraft} disabled={isSubmitting || !isModified}
-                style={{ background: isModified ? '#1A56DB' : '#F5F6F8', color: isModified ? '#FFFFFF' : '#9EA3B0', border: isModified ? 'none' : '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
-                className="disabled:opacity-50">
-                <Save size={13} /> {isModified ? 'Save Draft' : 'Draft Saved'}
-              </button>
-              <button onClick={handleApprove} disabled={isSubmitting || totalWeight !== 100 || isModified}
-                style={{ background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
-                className="disabled:opacity-50 disabled:cursor-not-allowed">
-                <Lock size={13} /> Approve Goal Set
-              </button>
-            </>
-          )}
+          {!isHistoricalCycle && (() => {
+            const readOnlyStatuses = ['LOCKED', 'SCORED', 'ARCHIVED'];
+            if (goalSet && readOnlyStatuses.includes(goalSet.status)) {
+              // Terminal/read-only states: no buttons
+              return null;
+            }
+            if (goalSet?.status === 'APPROVED') {
+              // APPROVED: can revert to edit
+              return (
+                <button onClick={handleEdit} disabled={isSubmitting}
+                  style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
+                  className="disabled:opacity-50 hover:bg-[#1648C0] transition-colors">
+                  <Edit3 size={13} /> Edit Goals
+                </button>
+              );
+            }
+            // DRAFT or no goalSet: show save + approve
+            return (
+              <>
+                <button onClick={handleSaveDraft} disabled={isSubmitting || !isModified}
+                  style={{ background: isModified ? '#1A56DB' : '#F5F6F8', color: isModified ? '#FFFFFF' : '#9EA3B0', border: isModified ? 'none' : '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
+                  className="disabled:opacity-50">
+                  <Save size={13} /> {isModified ? 'Save Draft' : 'Draft Saved'}
+                </button>
+                <button onClick={handleApprove} disabled={isSubmitting || totalWeight !== 100 || isModified}
+                  style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
+                  className="disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1648C0] transition-colors">
+                  <Lock size={13} /> Approve Goal Set
+                </button>
+              </>
+            );
+          })()}
         </div>
       </div>
 
+      {isHistoricalCycle && (
+        <div style={{
+          background: '#FFFBEB',
+          border: '0.5px solid #FCD34D',
+          borderRadius: 12,
+          padding: '10px 14px',
+          color: '#B45309',
+          fontSize: 13,
+          fontWeight: 500,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#B45309' }}></span>
+          Viewing historical cycle — no assignments can be made
+        </div>
+      )}
+
+      {/* Assignment Info Callout */}
+      {goalSet && (
+        <div style={{ background: '#F8FAFC', border: '0.5px solid #E2E8F0', borderRadius: 12, padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: '16px 24px', alignItems: 'center' }}>
+          <div>
+            <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned Manager</span>
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>
+              {goalSet.managerName
+                ? <>{goalSet.managerName} <span style={{ color: '#94A3B8', fontWeight: 400 }}>(ID: {goalSet.managerId})</span></>
+                : <span style={{ color: '#94A3B8', fontWeight: 400 }}>Not Assigned</span>}
+            </p>
+          </div>
+          {goalSet.assignedByName && (
+            <>
+              <div style={{ width: 1, height: 24, background: '#E2E8F0', alignSelf: 'center' }} />
+              <div>
+                <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned By</span>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>{goalSet.assignedByName} <span style={{ color: '#94A3B8', fontWeight: 400 }}>(ID: {goalSet.assignedBy})</span></p>
+              </div>
+            </>
+          )}
+          {goalSet.assignedAt && (
+            <>
+              <div style={{ width: 1, height: 24, background: '#E2E8F0', alignSelf: 'center' }} />
+              <div>
+                <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned At</span>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>{new Date(goalSet.assignedAt).toLocaleString()}</p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Sidebar */}
-        <aside style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px' }} className="w-full lg:w-72 shrink-0">
-          <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
-            <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>KPI Templates</p>
-            <LayoutTemplate size={13} style={{ color: '#9EA3B0' }} />
-          </div>
-
-          {goalSet && (
-            <div style={{ background: '#FAEEDA', border: '0.5px solid #F0D4A4', borderRadius: 8, padding: '8px 10px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input type="checkbox" id="overwriteToggle" style={{ accentColor: '#633806', width: 13, height: 13 }}
-                checked={overwriteExisting} onChange={e => setOverwriteExisting(e.target.checked)} />
-              <label htmlFor="overwriteToggle" style={{ fontSize: 10, fontWeight: 500, color: '#633806', textTransform: 'uppercase', letterSpacing: '0.5px', cursor: 'pointer' }}>Replace Existing Goals</label>
+        {!isHistoricalCycle && (
+          <aside style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px' }} className="w-full lg:w-72 shrink-0">
+            <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>KPI Templates</p>
+              <LayoutTemplate size={13} style={{ color: '#9EA3B0' }} />
             </div>
-          )}
 
-          <div className="relative" style={{ marginBottom: 12 }}>
-            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
-            <input type="text" placeholder="Search templates…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-              style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 10px 7px 28px', fontSize: 12, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-          </div>
-
-          <div style={{ maxHeight: 380, overflowY: 'auto' }} className="space-y-2">
-            {filteredLibraries.map(lib => (
-              <div key={lib.id} onClick={() => handleUseTemplate(lib)}
-                style={{ border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}
-                className="hover:border-[#1A56DB] hover:bg-[#EEF3FD] transition-colors">
-                <div className="flex justify-between items-start" style={{ marginBottom: 4 }}>
-                  <span style={{ fontSize: 9, fontWeight: 500, background: '#F5F6F8', color: '#9EA3B0', border: '0.5px solid #E0E2E8', borderRadius: 4, padding: '1px 6px', textTransform: 'uppercase' }}>{lib.positionName || 'General'}</span>
-                  <Plus size={12} style={{ color: '#1A56DB' }} />
+            {goalSet && (
+              <div style={{ marginBottom: 12, width: '100%' }}>
+                <div style={{ display: 'flex', width: '100%', background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: 4 }} role="tablist" aria-label="Assignment mode">
+                  <button
+                    type="button"
+                    onClick={() => setAssignmentMode('append')}
+                    aria-pressed={assignmentMode === 'append'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 14px',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      background: assignmentMode === 'append' ? '#EAF3DE' : '#FFFFFF',
+                      color: assignmentMode === 'append' ? '#27500A' : '#111827',
+                      border: assignmentMode === 'append' ? 'none' : '0.5px solid #E4E6EC',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Append
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAssignmentMode('replace')}
+                    aria-pressed={assignmentMode === 'replace'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 14px',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      background: assignmentMode === 'replace' ? '#FAEEDA' : '#FFFFFF',
+                      color: assignmentMode === 'replace' ? '#633806' : '#111827',
+                      border: assignmentMode === 'replace' ? 'none' : '0.5px solid #E4E6EC',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Replace
+                  </button>
                 </div>
-                <p style={{ fontSize: 12, fontWeight: 500, color: '#111827' }}>{lib.title}</p>
+                <div style={{ marginTop: 8 }}>
+                  <p style={{ fontSize: 11, color: '#9EA3B0', margin: 0 }}>
+                    {assignmentMode === 'replace' ? 'Replace will archive existing draft goals and create a new set.' : 'Append will add template items to the current draft without overwriting.'}
+                  </p>
+                </div>
               </div>
-            ))}
-          </div>
+            )}
 
-          {!goalSet && localItems.length === 0 && (
-            <button onClick={() => {
-              // Just show a local empty row — no API call until Save Draft
-              handleAddCustomGoal();
-            }}
-              style={{ width: '100%', marginTop: 16, padding: '9px', border: '0.5px dashed #E0E2E8', borderRadius: 8, fontSize: 11, fontWeight: 500, color: '#9EA3B0', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-              className="hover:bg-[#F5F6F8] transition-colors">
-              <Target size={12} /> Start Blank Session
+            <div className="relative" style={{ marginBottom: 12 }}>
+              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+              <input type="text" placeholder="Search templates…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 10px 7px 28px', fontSize: 12, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+            </div>
+
+            <div style={{ maxHeight: 380, overflowY: 'auto' }} className="space-y-2">
+              {filteredLibraries.map(lib => (
+                <div key={lib.id} onClick={() => handleUseTemplate(lib)}
+                  style={{ border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}
+                  className="hover:border-[#1A56DB] hover:bg-[#EEF3FD] transition-colors">
+                  <div className="flex justify-between items-start" style={{ marginBottom: 4 }}>
+                    <span style={{ fontSize: 9, fontWeight: 500, background: '#F5F6F8', color: '#9EA3B0', border: '0.5px solid #E0E2E8', borderRadius: 4, padding: '1px 6px', textTransform: 'uppercase' }}>{lib.positionName || 'General'}</span>
+                    <Plus size={12} style={{ color: '#1A56DB' }} />
+                  </div>
+                  <p style={{ fontSize: 12, fontWeight: 500, color: '#111827' }}>{lib.title}</p>
+                </div>
+              ))}
+            </div>
+
+            {!goalSet && localItems.length === 0 && (
+              <button onClick={() => {
+                // Just show a local empty row — no API call until Save Draft
+                handleAddCustomGoal();
+              }}
+                style={{ width: '100%', marginTop: 16, padding: '9px', border: '0.5px dashed #E0E2E8', borderRadius: 8, fontSize: 11, fontWeight: 500, color: '#9EA3B0', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                className="hover:bg-[#F5F6F8] transition-colors">
+                <Target size={12} /> Start Blank Session
+              </button>
+            )}
+
+            <button onClick={handleAddCustomGoal}
+              style={{ width: '100%', marginTop: goalSet ? 16 : 8, padding: '9px', border: '0.5px dashed #B5D4F4', borderRadius: 8, fontSize: 11, fontWeight: 500, color: '#0C447C', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              className="hover:bg-[#EEF3FD] transition-colors">
+              <Plus size={12} /> Add Custom Goal
             </button>
-          )}
-
-          <button onClick={handleAddCustomGoal}
-            style={{ width: '100%', marginTop: goalSet ? 16 : 8, padding: '9px', border: '0.5px dashed #B5D4F4', borderRadius: 8, fontSize: 11, fontWeight: 500, color: '#0C447C', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-            className="hover:bg-[#EEF3FD] transition-colors">
-            <Plus size={12} /> Add Custom Goal
-          </button>
-        </aside>
+          </aside>
+        )}
 
         {/* Goal Table */}
         <main className="flex-1 min-w-0">
@@ -384,14 +517,14 @@ const GoalAssignmentWorkspace: React.FC = () => {
                           style={{ background: 'transparent', border: 'none', padding: 0, fontSize: 13, fontWeight: 500, color: '#111827', outline: 'none', width: '100%' }}
                           value={item.title}
                           onChange={e => handleLocalUpdate(item.id, { title: e.target.value })}
-                          disabled={goalSet?.status === 'APPROVED'} />
+                          disabled={isInputDisabled} />
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                         <select
                           style={{ fontSize: 11, background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '3px 6px', color: '#5A6070', outline: 'none' }}
                           value={item.categoryId}
                           onChange={e => handleLocalUpdate(item.id, { categoryId: Number(e.target.value) })}
-                          disabled={goalSet?.status === 'APPROVED'}>
+                          disabled={isInputDisabled}>
                           {categories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                         </select>
                       </td>
@@ -408,14 +541,14 @@ const GoalAssignmentWorkspace: React.FC = () => {
                             const val = e.target.value;
                             handleLocalUpdate(item.id, { targetValue: val === '' ? '' : Math.max(0, Number(val)) });
                           }}
-                          disabled={goalSet?.status === 'APPROVED'} />
+                          disabled={isInputDisabled} />
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                         <input type="text"
                           style={{ background: 'transparent', border: 'none', padding: 0, fontSize: 12, color: '#5A6070', textAlign: 'center', outline: 'none', width: '100%' }}
                           value={item.unit}
                           onChange={e => handleLocalUpdate(item.id, { unit: e.target.value })}
-                          disabled={goalSet?.status === 'APPROVED'} />
+                          disabled={isInputDisabled} />
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                         <div className="flex items-center justify-center gap-1">
@@ -431,7 +564,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                               const val = e.target.value;
                               handleLocalUpdate(item.id, { weightPercent: val === '' ? '' : Math.max(0, Number(val)) });
                             }}
-                            disabled={goalSet?.status === 'APPROVED'} />
+                            disabled={isInputDisabled} />
                           <span style={{ fontSize: 11, color: Number(item.weightPercent) > 35 ? '#791F1F' : '#0C447C' }}>%</span>
                         </div>
                         {Number(item.weightPercent) > 35 && (
@@ -439,7 +572,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                         )}
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                        <button onClick={() => handleDeleteItem(item.id)} disabled={goalSet?.status === 'APPROVED'}
+                        <button onClick={() => handleDeleteItem(item.id)} disabled={isInputDisabled}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E0E2E8', padding: 4 }}
                           className="hover:text-[#791F1F] transition-colors disabled:opacity-0">
                           <Trash2 size={14} />
@@ -447,32 +580,34 @@ const GoalAssignmentWorkspace: React.FC = () => {
                       </td>
                     </tr>
                   ))}
-                  <tr>
-                    <td colSpan={6} style={{ padding: 0, borderTop: '0.5px solid #F0F2F6' }}>
-                      <button onClick={handleAddCustomGoal}
-                        style={{ width: '100%', padding: '10px', fontSize: 12, fontWeight: 500, color: '#1A56DB', background: '#FAFBFF', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}
-                        className="hover:bg-[#EEF3FD] transition-colors">
-                        <Plus size={13} /> Add New Goal Row
-                      </button>
-                    </td>
-                  </tr>
+                  {!isHistoricalCycle && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 0, borderTop: '0.5px solid #F0F2F6' }}>
+                        <button onClick={handleAddCustomGoal}
+                          style={{ width: '100%', padding: '10px', fontSize: 12, fontWeight: 500, color: '#1A56DB', background: '#FAFBFF', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}
+                          className="hover:bg-[#EEF3FD] transition-colors">
+                          <Plus size={13} /> Add New Goal Row
+                        </button>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '14px 20px', background: totalWeight > 100 || overweightItems.length > 0 ? '#1F0A0A' : '#111827', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div style={{ padding: '14px 20px', background: '#FFFFFF', borderTop: '0.5px solid #E4E6EC', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
               <div>
                 <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Aggregate Weight</p>
                 <div className="flex items-center gap-3">
-                  <div style={{ width: 160, height: 6, background: '#374151', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 3, transition: 'width 0.5s', width: `${Math.min(totalWeight, 100)}%`, background: totalWeight === 100 ? '#27500A' : totalWeight > 100 ? '#791F1F' : '#1A56DB' }} />
+                  <div style={{ width: 160, height: 6, background: '#EEF0F6', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 3, transition: 'width 0.5s', width: `${Math.min(totalWeight, 100)}%`, background: totalWeight === 100 ? '#27500A' : totalWeight > 100 ? '#F87171' : '#1A56DB' }} />
                   </div>
-                  <span style={{ fontSize: 22, fontWeight: 500, color: totalWeight > 100 ? '#F87171' : '#FFFFFF' }}>{totalWeight}%</span>
+                  <span style={{ fontSize: 22, fontWeight: 500, color: '#111827' }}>{totalWeight}%</span>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: 12, fontWeight: 500, color: totalWeight === 100 && overweightItems.length === 0 ? '#B8DCA0' : totalWeight > 100 || overweightItems.length > 0 ? '#F87171' : '#B5D4F4' }}>
+                <p style={{ fontSize: 12, fontWeight: 500, color: totalWeight === 100 && overweightItems.length === 0 ? '#B8DCA0' : totalWeight > 100 || overweightItems.length > 0 ? '#F87171' : '#111827' }}>
                   {totalWeight === 100 && overweightItems.length === 0 ? 'Verified' : totalWeight > 100 ? `Exceeded by ${totalWeight - 100}%` : `${100 - totalWeight}% Remaining`}
                 </p>
                 {overweightItems.length > 0 && (
@@ -485,6 +620,39 @@ const GoalAssignmentWorkspace: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {showEditConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: 28, maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Edit3 size={22} color="#D97706" />
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: '#111827', textAlign: 'center', marginBottom: 8 }}>Edit Goals</h2>
+            <p style={{ fontSize: 13, color: '#5A6070', textAlign: 'center', marginBottom: 16, lineHeight: 1.6 }}>
+              This will revert the goal set back to <strong>DRAFT</strong> status so you can make changes.
+            </p>
+            <div style={{ background: '#FEF9EC', border: '0.5px solid #FCD34D', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
+              <p style={{ fontSize: 12, color: '#92400E', fontWeight: 500, marginBottom: 6 }}>This action will:</p>
+              <ul style={{ fontSize: 12, color: '#92400E', paddingLeft: 16, margin: 0, lineHeight: 1.8 }}>
+                <li>Revert status from APPROVED → DRAFT</li>
+                <li>Allow goal items to be edited or added</li>
+                <li>Require re-approval before scoring</li>
+              </ul>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowEditConfirm(false)}
+                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '0.5px solid #E0E2E8', background: '#F5F6F8', color: '#374151', fontSize: 13, fontWeight: 500 }}>
+                Cancel
+              </button>
+              <button onClick={handleEditConfirmed} disabled={isSubmitting}
+                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: '#D97706', color: '#FFFFFF', fontSize: 13, fontWeight: 500 }}
+                className="disabled:opacity-50 hover:bg-[#B45309] transition-colors">
+                {isSubmitting ? 'Reverting…' : 'Revert to Draft'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

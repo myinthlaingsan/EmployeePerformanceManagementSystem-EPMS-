@@ -9,5 +9,6 @@ public interface FeedbackSubmissionService {
     FeedbackDetailsResponse getFeedbackByRequest(Long requestId);
     List<FeedbackDetailsResponse> getMySubmittedFeedbacks(Long evaluatorId);
     List<FeedbackDetailsResponse> getFeedbackReceivedByEmployee(Long employeeId, Long cycleId);
+    List<FeedbackDetailsResponse> getAllFeedbackForAudit(Long employeeId, Long cycleId);
     void deleteFeedback(Long feedbackId);
 }

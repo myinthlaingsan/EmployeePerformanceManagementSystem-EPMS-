@@ -35,6 +35,15 @@ public class KpiGoals extends BaseEntity {
     @JoinColumn(name = "manager_id")
     private Employee manager;
 
+    @Column(name = "assigned_by")
+    private Long assignedBy;
+
+    @Column(name = "assigned_by_name")
+    private String assignedByName;
+
+    @Column(name = "assigned_at")
+    private Instant assignedAt;
+
     @ManyToOne
     @JoinColumn(name = "cycle_id")
     private AppraisalCycle cycle;

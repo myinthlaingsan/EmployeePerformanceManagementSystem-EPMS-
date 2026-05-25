@@ -29,4 +29,8 @@ public class EmployeePerformanceSummaryDTO {
     private String managerComments;
     private String hrComments;
     private String selfComments;
+    
+    // Signatures
+    private String employeeSignatureUrl;
+    private String managerSignatureUrl;
 }

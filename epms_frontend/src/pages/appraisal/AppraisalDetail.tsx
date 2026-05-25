@@ -62,6 +62,17 @@ const AppraisalDetail: React.FC = () => {
   const canViewSelfAssessment = isEmployee || isManager || isPrivileged;
   const canViewManagerEvaluation = isManager || isPrivileged || (isEmployee && !!appraisal.managerSubmittedAt);
 
+  // Signature gate for finalize
+  const hasEmployeeSigned = !!appraisal.employeeSignedAt;
+  const hasManagerSigned  = !!appraisal.managerSignedAt;
+  const canFinalize = appraisal.status === 'HR_APPROVED' && hasEmployeeSigned && hasManagerSigned;
+  const finalizeBlockedReason =
+    appraisal.status !== 'HR_APPROVED' ? 'Appraisal must be HR-approved first.'
+    : !hasEmployeeSigned && !hasManagerSigned ? 'Awaiting employee and manager signatures.'
+    : !hasEmployeeSigned ? 'Awaiting employee signature.'
+    : !hasManagerSigned  ? 'Awaiting manager signature.'
+    : '';
+
   const handleCalculate = async () => {
     try { await calculateScore(id!).unwrap(); toast.success('Scores calculated!'); }
     catch (err: any) { toast.error(err?.data?.message || 'Calculation failed'); }
@@ -72,7 +83,7 @@ const AppraisalDetail: React.FC = () => {
   };
   const handleFinalize = async () => {
     try { await finalizeAppraisal(id!).unwrap(); toast.success('Finalized!'); }
-    catch (err: any) { toast.error(err?.data?.message || 'Finalization failed'); }
+    catch (err: any) { toast.error(err?.data?.message || 'Failed to finalize.'); }
   };
 
   const statusInfo = STATUS_INFO[appraisal.status] ?? STATUS_INFO['PENDING'];
@@ -177,19 +188,44 @@ const AppraisalDetail: React.FC = () => {
             </div>
 
             {/* Finalize */}
-            <div style={{ border: `0.5px solid ${appraisal.status === 'HR_APPROVED' ? '#B8DCA0' : '#E4E6EC'}`, borderRadius: 10, padding: '14px', background: appraisal.status === 'HR_APPROVED' ? '#EAF3DE' : '#F5F6F8', opacity: appraisal.status === 'HR_APPROVED' ? 1 : 0.6 }}>
+            <div style={{ border: `0.5px solid ${canFinalize ? '#B8DCA0' : '#E4E6EC'}`, borderRadius: 10, padding: '14px', background: canFinalize ? '#EAF3DE' : '#F5F6F8', opacity: canFinalize ? 1 : 0.6 }}>
               <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
                 <Flag size={14} style={{ color: '#27500A' }} />
                 <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>Finalize & Lock</p>
               </div>
               <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 10 }}>Complete the cycle and archive the record.</p>
-              <button disabled={isFinalizing || appraisal.status !== 'HR_APPROVED'} onClick={handleFinalize}
-                className="w-full transition-colors disabled:opacity-50"
+              {!canFinalize && appraisal.status === 'HR_APPROVED' && (
+                <p style={{ fontSize: 11, color: '#791F1F', marginBottom: 8 }}>⚠ {finalizeBlockedReason}</p>
+              )}
+              <button
+                disabled={isFinalizing || !canFinalize}
+                onClick={handleFinalize}
+                title={canFinalize ? 'Finalize and lock this appraisal' : finalizeBlockedReason}
+                className="w-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: '#FFFFFF', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 8, padding: '7px', fontSize: 12, fontWeight: 500 }}>
                 {isFinalizing ? 'Finalizing…' : 'Close Appraisal'}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Score Preview Banner (when not finalized) */}
+      {appraisal.status !== 'FINALIZED' && (
+        <div onClick={() => navigate(`/appraisal/${id}/score`)} style={{ background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 12, padding: '16px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
+          className="hover:opacity-90 transition-opacity">
+          <div className="flex items-center gap-3">
+            <Calculator size={20} style={{ color: '#0C447C', flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#0C447C' }}>
+                View Score Preview
+              </p>
+              <p style={{ fontSize: 12, color: '#5A6070', marginTop: 2 }}>
+                See your provisional score breakdown based on currently submitted data.
+              </p>
+            </div>
+          </div>
+          <ArrowRight size={16} style={{ color: '#0C447C', flexShrink: 0 }} />
         </div>
       )}
 
@@ -211,6 +247,23 @@ const AppraisalDetail: React.FC = () => {
           <ArrowRight size={16} style={{ color: '#FFFFFF', flexShrink: 0 }} />
         </div>
       )}
+
+      {/* When finalized, we also offer the live breakdown as a secondary preview */}
+      {appraisal.status === 'FINALIZED' && (
+        <div onClick={() => navigate(`/appraisal/${id}/score`)} style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 12, padding: '12px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
+          className="hover:bg-[#EEF0F4] transition-colors">
+          <div className="flex items-center gap-3">
+            <Calculator size={16} style={{ color: '#5A6070', flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 500, color: '#5A6070' }}>
+                Compare with Live Score Breakdown
+              </p>
+            </div>
+          </div>
+          <ArrowRight size={14} style={{ color: '#5A6070', flexShrink: 0 }} />
+        </div>
+      )}
+
 
       {/* Form cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

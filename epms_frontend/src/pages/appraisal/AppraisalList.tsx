@@ -24,17 +24,17 @@ import {
   Calendar,
   FileText,
   ChevronRight,
-  Clock,
   Target,
   Users,
   CheckCircle2,
   Circle,
   Search,
   Mail,
-  Share2,
-  Trash2
+  Trash2,
+  Calculator
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { Can } from '../../components/Can';
 
 const panelStyle: React.CSSProperties = {
   background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12,
@@ -54,7 +54,7 @@ const getStatusStyle = (status: string) =>
 const AppraisalList: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAdmin, isHR, isManager, user } = useAuth();
+  const { isAdmin, isHR, isManager } = useAuth();
   const isPrivileged = isAdmin || isHR;
 
   const [activeTab, setActiveTab] = React.useState<'appraisals' | 'team' | 'cycles' | 'forms'>(
@@ -126,10 +126,17 @@ const AppraisalList: React.FC = () => {
             </div>
             <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{appraisal.employeeName}</p>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 12 }}>Performance Assessment</p>
-            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
-              <div style={{ flex: 1, height: 4, background: '#F0F2F6', borderRadius: 4, marginRight: 10 }}>
-                <div style={{ height: '100%', borderRadius: 4, background: '#1A56DB', width: appraisal.status === 'FINALIZED' ? '100%' : appraisal.status === 'PENDING' ? '15%' : '60%' }} />
-              </div>
+            <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6', marginTop: 10 }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/appraisal/${appraisal.appraisalId}/score`);
+                }}
+                style={{ fontSize: 12, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                className="hover:underline flex items-center gap-1 font-medium"
+              >
+                <Calculator size={12} /> Preview Score
+              </button>
               <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
             </div>
           </div>
@@ -157,10 +164,16 @@ const AppraisalList: React.FC = () => {
             <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>{appraisal.employeeName}</p>
             <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 12 }}>Team Performance Evaluation</p>
             <div className="flex items-center justify-between" style={{ paddingTop: 10, borderTop: '0.5px solid #F0F2F6' }}>
-              <span style={{ fontSize: 11, color: '#9EA3B0' }}>
-                <Clock size={11} style={{ display: 'inline', marginRight: 4 }} />
-                {appraisal.updatedAt ? safeFormatDate(appraisal.updatedAt) : 'Recently'}
-              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/appraisal/${appraisal.appraisalId}/score`);
+                }}
+                style={{ fontSize: 12, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                className="hover:underline flex items-center gap-1 font-medium"
+              >
+                <Calculator size={12} /> Preview Score
+              </button>
               <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
             </div>
           </div>
@@ -208,10 +221,8 @@ const AppraisalList: React.FC = () => {
               </p>
             </div>
 
+            <Can permission="APPRAISAL_CYCLE_MANAGE">
             <div className="flex items-center gap-3">
-              <button className="px-6 py-3 bg-white text-slate-700 font-bold rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:bg-slate-50 transition-all flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-slate-400" /> Export Status
-              </button>
               <button
                 onClick={async () => {
                   if (selectedCycleId) {
@@ -229,13 +240,13 @@ const AppraisalList: React.FC = () => {
               >
                 <Mail className="w-4 h-4" /> {isSendingReminders ? 'Sending...' : 'Send Reminders'}
               </button>
-              {isPrivileged && !cycle?.isAssigned && (
+              {isPrivileged && !cycle?.isAssigned && !cycle?.isActive && cycle?.status !== 'ARCHIVED' && (
                 <button
                   onClick={() => {
                     setConfirmModal({
                       isOpen: true,
                       title: 'Delete Appraisal Cycle',
-                      message: `Are you sure you want to permanently delete the cycle "${cycle.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
+                      message: `Are you sure you want to permanently delete the cycle "${cycle?.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
                       onConfirm: async () => {
                         try {
                           await deleteCycle(Number(selectedCycleId)).unwrap();
@@ -253,7 +264,7 @@ const AppraisalList: React.FC = () => {
                   <Trash2 className="w-4 h-4" /> Delete Cycle
                 </button>
               )}
-              {!cycle?.isActive ? (
+              {!cycle?.isActive && cycle?.status !== 'ARCHIVED' ? (
                 <button
                   onClick={async () => {
                     try {
@@ -269,7 +280,7 @@ const AppraisalList: React.FC = () => {
                 >
                   {isActivating ? 'Activating...' : 'Activate Cycle'}
                 </button>
-              ) : isAdmin && (
+              ) : isAdmin && cycle?.isActive ? (
                 <button
                   onClick={() => {
                     setConfirmModal({
@@ -287,8 +298,13 @@ const AppraisalList: React.FC = () => {
                 >
                   {isClosing ? 'Closing...' : 'Emergency Close'}
                 </button>
-              )}
+              ) : cycle?.status === 'ARCHIVED' ? (
+                <div className="px-4 py-2 bg-slate-100 text-slate-500 text-xs font-bold rounded-xl border border-slate-200 flex items-center gap-2 uppercase tracking-wide">
+                  Archived — closed permanently
+                </div>
+              ) : null}
             </div>
+            </Can>
           </div>
 
           {/* Completion rates */}
@@ -377,9 +393,11 @@ const AppraisalList: React.FC = () => {
                         <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 500, color: '#111827' }}>
                           {appraisal.finalScore != null ? `${Number(appraisal.finalScore).toFixed(1)}%` : '—'}
                         </td>
-                        <td style={{ padding: '10px 16px' }}>
+                        <td style={{ padding: '10px 16px', display: 'flex', gap: 12 }}>
                           <button onClick={() => navigate(`/appraisal/${appraisal.appraisalId}`)}
-                            style={{ fontSize: 12, color: '#1A56DB' }}>View</button>
+                            style={{ fontSize: 12, color: '#1A56DB' }} className="hover:underline font-medium">Detail</button>
+                          <button onClick={() => navigate(`/appraisal/${appraisal.appraisalId}/score`)}
+                            style={{ fontSize: 12, color: '#0C447C' }} className="hover:underline font-medium">Preview</button>
                         </td>
                       </tr>
                     );
@@ -408,31 +426,33 @@ const AppraisalList: React.FC = () => {
                 {cycle.status?.replace('_', ' ') || (cycle.isActive ? 'ACTIVE' : 'INACTIVE')}
               </div>
               <div className="flex items-center gap-2">
-                {isPrivileged && !cycle.isAssigned && (
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      setConfirmModal({
-                        isOpen: true,
-                        title: 'Delete Appraisal Cycle',
-                        message: `Are you sure you want to permanently delete the cycle "${cycle.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
-                        onConfirm: async () => {
-                          try {
-                            await deleteCycle(cycle.cycleId).unwrap();
-                            toast.success('Appraisal Cycle deleted successfully!');
-                          } catch (err: any) {
-                            const errorMsg = err?.data?.message || 'Failed to delete cycle';
-                            toast.error(`Error: ${errorMsg}`);
+                <Can permission="APPRAISAL_CYCLE_MANAGE">
+                  {isPrivileged && !cycle.isAssigned && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setConfirmModal({
+                          isOpen: true,
+                          title: 'Delete Appraisal Cycle',
+                          message: `Are you sure you want to permanently delete the cycle "${cycle.cycleName}"? This will delete the cycle itself, all of its linked Form Sets, and all associated templates, categories, and questions. This action is irreversible.`,
+                          onConfirm: async () => {
+                            try {
+                              await deleteCycle(cycle.cycleId).unwrap();
+                              toast.success('Appraisal Cycle deleted successfully!');
+                            } catch (err: any) {
+                              const errorMsg = err?.data?.message || 'Failed to delete cycle';
+                              toast.error(`Error: ${errorMsg}`);
+                            }
                           }
-                        }
-                      });
-                    }}
-                    className="w-10 h-10 rounded-xl bg-slate-50 text-rose-500 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center transition-all duration-300 relative z-20"
-                    title="Delete Cycle"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
+                        });
+                      }}
+                      className="w-10 h-10 rounded-xl bg-slate-50 text-rose-500 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center transition-all duration-300 relative z-20"
+                      title="Delete Cycle"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
+                </Can>
                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                   <Calendar className="w-5 h-5" />
                 </div>
@@ -525,26 +545,30 @@ const AppraisalList: React.FC = () => {
                         style={{ background: '#F5F6F8', color: '#111827', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
                         View Template
                       </button>
-                      {!form.isAssigned && (
-                        <div className="flex gap-2">
-                          <button onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formId=${form.formId}&edit=true`)}
-                            className="flex-1 transition-colors"
-                            style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
-                            Edit
-                          </button>
-                          <button onClick={() => setConfirmModal({ isOpen: true, title: 'Delete Template', message: 'Delete this template? This cannot be undone.', onConfirm: async () => { try { await deleteForm(form.formId).unwrap(); toast.success('Deleted'); } catch { toast.error('Failed'); } } })}
-                            style={{ background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5C2C2', borderRadius: 8, padding: '8px 12px' }}>
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      )}
+                      <Can permission="APPRAISAL_FORM_DESIGN">
+                        {!form.isAssigned && (
+                          <div className="flex gap-2">
+                            <button onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formId=${form.formId}&edit=true`)}
+                              className="flex-1 transition-colors"
+                              style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
+                              Edit
+                            </button>
+                            <button onClick={() => setConfirmModal({ isOpen: true, title: 'Delete Template', message: 'Delete this template? This cannot be undone.', onConfirm: async () => { try { await deleteForm(form.formId).unwrap(); toast.success('Deleted'); } catch { toast.error('Failed'); } } })}
+                              style={{ background: '#FCEBEB', color: '#791F1F', border: '0.5px solid #F5C2C2', borderRadius: 8, padding: '8px 12px' }}>
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        )}
+                      </Can>
                     </>
                   ) : (
-                    <button onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}`)}
-                      className="w-full transition-colors"
-                      style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
-                      <Plus size={13} style={{ display: 'inline', marginRight: 4 }} /> Design Template
-                    </button>
+                    <Can permission="APPRAISAL_FORM_DESIGN">
+                      <button onClick={() => navigate(`/appraisal/design-form?cycleId=${cycleData?.cycleId}&type=${type}&setName=${encodeURIComponent(expandedSet)}&formSetId=${thisSet.id}`)}
+                        className="w-full transition-colors"
+                        style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}>
+                        <Plus size={13} style={{ display: 'inline', marginRight: 4 }} /> Design Template
+                      </button>
+                    </Can>
                   )}
                 </div>
               </div>
@@ -570,11 +594,13 @@ const AppraisalList: React.FC = () => {
               </nav>
               <h2 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Form Sets</h2>
             </div>
-            <button onClick={() => { setShowNewSetModal(true); setNewSetName(''); }}
-              className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
-              style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
-              <Plus size={14} /> Create Form Set
-            </button>
+            <Can permission="APPRAISAL_FORM_DESIGN">
+              <button onClick={() => { setShowNewSetModal(true); setNewSetName(''); }}
+                className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+                style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+                <Plus size={14} /> Create Form Set
+              </button>
+            </Can>
           </div>
 
           {showNewSetModal && (
@@ -623,12 +649,14 @@ const AppraisalList: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center justify-between" style={{ marginTop: 12 }}>
-                    {!set.isAssigned ? (
-                      <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error(err?.data?.message || 'Delete failed'); } } }); }}
-                        style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-[#791F1F] transition-colors">
-                        <Trash2 size={13} />
-                      </button>
-                    ) : <div />}
+                    <Can permission="APPRAISAL_FORM_DESIGN">
+                      {!set.isAssigned ? (
+                        <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error(err?.data?.message || 'Delete failed'); } } }); }}
+                          style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-[#791F1F] transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      ) : <div />}
+                    </Can>
                     <ChevronRight size={14} style={{ color: '#9EA3B0' }} />
                   </div>
                 </div>
@@ -674,18 +702,20 @@ const AppraisalList: React.FC = () => {
           <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Appraisal Hub</h1>
           <p style={{ fontSize: 13, color: '#9EA3B0', marginTop: 2 }}>Organisation performance & evaluation management</p>
         </div>
-        {isPrivileged && (
-          <div className="flex flex-wrap gap-2 self-start sm:self-auto">
-            <button onClick={() => navigate('/appraisal/create-cycle')} className="inline-flex items-center gap-2 transition-colors"
-              style={{ background: '#FFFFFF', color: '#111827', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500 }}>
-              <Calendar size={14} style={{ color: '#1A56DB' }} /> New Cycle
-            </button>
-            <button onClick={() => navigate('/appraisal/assign')} className="inline-flex items-center gap-2 transition-colors"
-              style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
-              <Plus size={14} /> Bulk Assign
-            </button>
-          </div>
-        )}
+        <Can permission="APPRAISAL_CYCLE_MANAGE">
+          {isPrivileged && (
+            <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+              <button onClick={() => navigate('/appraisal/create-cycle')} className="inline-flex items-center gap-2 transition-colors"
+                style={{ background: '#FFFFFF', color: '#111827', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500 }}>
+                <Calendar size={14} style={{ color: '#1A56DB' }} /> New Cycle
+              </button>
+              <button onClick={() => navigate('/appraisal/assign')} className="inline-flex items-center gap-2 transition-colors"
+                style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+                <Plus size={14} /> Bulk Assign
+              </button>
+            </div>
+          )}
+        </Can>
       </div>
 
       {/* Tab navigation */}

@@ -27,6 +27,7 @@ public class AppraisalFormSetServiceImpl implements AppraisalFormSetService {
     private final AppraisalFormRepository formRepo;
     private final AppraisalCycleRepository cycleRepo;
     private final AppraisalRepository appraisalRepo;
+    private final ace.org.epms_backend.service.AppraisalFormService appraisalFormService;
 
     @Override
     public List<AppraisalFormSetResponse> getAllFormSets() {
@@ -134,11 +135,23 @@ public class AppraisalFormSetServiceImpl implements AppraisalFormSetService {
     }
 
     @Override
+    @Transactional
     public void deleteFormSet(Long id) {
+        AppraisalFormSet set = formSetRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Form set not found: " + id));
+
         if (appraisalRepo.existsByFormSet_Id(id)) {
             throw new RuntimeException("Cannot delete form set as it is already assigned to appraisals.");
         }
-        formSetRepo.deleteById(id);
+
+        if (set.getSelfAssessmentForm() != null) {
+            appraisalFormService.deleteForm(set.getSelfAssessmentForm().getFormId());
+        }
+        if (set.getManagerEvaluationForm() != null) {
+            appraisalFormService.deleteForm(set.getManagerEvaluationForm().getFormId());
+        }
+
+        formSetRepo.delete(set);
     }
 
     private AppraisalFormSetResponse toResponse(AppraisalFormSet set) {

@@ -1,7 +1,9 @@
 package ace.org.epms_backend.service.feedback360.impl;
 
 import ace.org.epms_backend.dto.feedback360.*;
+import ace.org.epms_backend.enums.FeedbackRelationship;
 import ace.org.epms_backend.enums.FeedbackStatus;
+import ace.org.epms_backend.exception.AccessDeniedException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.FeedbackMapper;
 import ace.org.epms_backend.model.appraisal.Question;
@@ -9,6 +11,7 @@ import ace.org.epms_backend.model.feedback360.*;
 import ace.org.epms_backend.repository.QuestionRepository;
 import ace.org.epms_backend.repository.feedback360.*;
 import ace.org.epms_backend.service.feedback360.FeedbackSubmissionService;
+import ace.org.epms_backend.service.feedback360.SecurityHelper;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
@@ -36,6 +39,7 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
     private final QuestionRepository questionRepository;
     private final FeedbackMapper feedbackMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final SecurityHelper securityHelper;
 
     @Override
     @Transactional
@@ -146,7 +150,41 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
 
     @Override
     public List<FeedbackDetailsResponse> getFeedbackReceivedByEmployee(Long employeeId, Long cycleId) {
-        return feedbackRepository.findByRequestTargetUserIdAndRequestCycleCycleId(employeeId, cycleId).stream()
+        Long viewerId = securityHelper.currentUserId();
+        boolean isTargetViewingSelf = viewerId != null && viewerId.equals(employeeId);
+        boolean isPrivileged = securityHelper.hasAnyRole("HR", "ADMIN") && !isTargetViewingSelf;
+
+        return feedbackRepository
+                .findByRequestTargetUserIdAndRequestCycleCycleId(employeeId, cycleId)
+                .stream()
+                .filter(f -> {
+                    FeedbackRelationship rel = f.getRequest().getRelationship();
+                    if (isPrivileged) return true;
+                    if (isTargetViewingSelf) {
+                        return rel == FeedbackRelationship.SELF
+                                || rel == FeedbackRelationship.DIRECT_MANAGER;
+                    }
+                    return false;
+                })
+                .map(f -> {
+                    FeedbackDetailsResponse res = feedbackMapper.toFeedbackDetails(f);
+                    res.setResponses(responseRepository.findByFeedbackId(f.getId()).stream()
+                            .map(feedbackMapper::toResponseDetails)
+                            .collect(Collectors.toList()));
+                    return res;
+                }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<FeedbackDetailsResponse> getAllFeedbackForAudit(Long employeeId, Long cycleId) {
+        Long viewerId = securityHelper.currentUserId();
+        if (viewerId != null && viewerId.equals(employeeId)) {
+            throw new AccessDeniedException(
+                    "You cannot audit your own peer/subordinate feedback. Ask another HR member.");
+        }
+        return feedbackRepository
+                .findByRequestTargetUserIdAndRequestCycleCycleId(employeeId, cycleId)
+                .stream()
                 .map(f -> {
                     FeedbackDetailsResponse res = feedbackMapper.toFeedbackDetails(f);
                     res.setResponses(responseRepository.findByFeedbackId(f.getId()).stream()
