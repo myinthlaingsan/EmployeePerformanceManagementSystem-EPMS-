@@ -1,484 +1,458 @@
-# KPI Frontend Flow — Pages & Components
+# KPI Frontend Flow - Current Pages and Components
 
 ## Overview
 
-The KPI frontend is a role-driven React module built with RTK Query, React Router, and inline Tailwind/style props. It covers the full KPI lifecycle — from library creation, goal assignment, progress tracking, to final score calculation — with different views for **Employees**, **Managers**, and **HR/Admins**.
+The KPI frontend is a React/RTK Query module for KPI library setup, goal assignment, progress tracking, goal history, and score calculation. It is role-aware through `useAuth`, `Can`, and the active cycle context.
+
+Primary data API: `src/services/kpiApi.ts`
+
+Primary routes: `src/routes/kpiRoutes.tsx`
 
 ---
 
 ## Route Map
 
-| Route | Page Component | Accessible By |
+| Route | Component | Main audience |
 |---|---|---|
 | `/kpi` | `KpiHub` | All roles |
-| `/kpi/library` | `KpiLibraryDashboard` | HR / Admin |
-| `/kpi/library/new` | `KpiLibraryEntry` | HR / Admin |
-| `/kpi/library/edit/:id` | `KpiLibraryEntry` (edit mode) | HR / Admin |
-| `/kpi/manage` | `GoalManagement` | Manager / HR / Admin |
-| `/kpi/assign/:employeeId` | `GoalAssignmentWorkspace` | Manager / HR / Admin |
-| `/kpi/goals/:employeeId` | `GoalDetail` | Manager / HR / Admin |
 | `/kpi/my` | `MyKpiDashboard` | Employee |
-| `/kpi/team` | `TeamKpiDashboard` | Manager |
-| `/kpi/history/:employeeId` | `EmployeeKpiHistory` | All roles |
-| `/admin/kpi/categories` | `KpiCategoryManager` | Admin only |
+| `/kpi/team` | `TeamKpiDashboard` | Manager, HR/Admin |
+| `/kpi/library` | `KpiLibraryDashboard` | HR/Admin |
+| `/kpi/library/new` | `KpiLibraryEntry` | HR/Admin |
+| `/kpi/library/edit/:id` | `KpiLibraryEntry` | HR/Admin |
+| `/kpi/manage` | `GoalManagement` | Manager, HR/Admin |
+| `/kpi/assign/:employeeId` | `GoalAssignmentWorkspace` | Manager, HR/Admin |
+| `/kpi/goals/:employeeId` | `GoalDetail` | Manager, HR/Admin, owner where allowed |
+| `/kpi/history/:employeeId` | `EmployeeKpiHistory` | Self, HR/Admin, direct manager |
+| `/admin/kpi/categories` | `KpiCategoryManager` | Admin/HR by permissions; delete is admin-only in backend |
 
-> **Note:** `GoalDetail` accepts an optional `?cycleId=` query param to view a specific cycle. If omitted it falls back to `activeCycleId`. `GoalAssignmentWorkspace` also accepts `?cycleId=` for historical cycle viewing.
+`GoalDetail` and `GoalAssignmentWorkspace` accept `?cycleId=`.
+`GoalDetail` opens assignment editing with `?mode=edit`, which lets the assignment workspace treat an approved historical-cycle view as editable after revert.
 
 ---
 
 ## Pages
 
-### 1. `KpiHub.tsx` — System Intelligence Hub
+### `KpiHub.tsx`
 
-**Route:** `/kpi`  
-**Access:** All roles  
-**Purpose:** Landing dashboard for the KPI module. Gives every user a high-level picture of the current appraisal cycle.
+Route: `/kpi`
 
-**Layout (3 stat cards + 2-column grid):**
+Landing page for the KPI module.
 
-- **Header** — breadcrumb label ("Enterprise / Performance"), page title "System Intelligence Hub", and active cycle name badge.
-- **Stat Row (3 cards):**
-  1. *My Performance* — shows the logged-in user's computed overall progress percentage with a thin progress bar. Calculated as `sum(currentProgress / targetValue × weightPercent)` across all non-DRAFT goal items.
-  2. *KPI Templates* (HR/Admin only) / *Assigned KPIs* (Employee) — for HR/Admin shows total active library count with a clickable card that navigates to `/kpi/library`. For employees shows the number of active goal items for this cycle.
-  3. *Goal Status* — shows the current `KpiGoals.status` string (DRAFT / APPROVED / LOCKED) or "No Active Goals".
-- **Active Goals panel (left)** — lists up to 3 goal items as compact rows showing title, weight %, current completion %, and a micro progress bar. Clicking any row or the "View All" button navigates to `/kpi/my`. Shows an empty-state placeholder with a `Target` icon when no goals exist.
-- **Right column:**
-  - *Strategic Control panel* (HR/Admin only) — dark (#111827) card with two action buttons: **Assign Goals** (→ `/kpi/manage`) and **Create Template** (→ `/kpi/library/new`).
-  - *System Sync card* — static info card indicating last data sync time.
+Key behavior:
 
-**API calls:**
-- `useGetAllLibrariesQuery` — fetches active KPI library count.
-- `useGetGoalSetByEmployeeQuery({ employeeId, cycleId })` — fetches logged-in user's current goal set.
+- Fetches active libraries and the logged-in user's goal set for `activeCycleId`.
+- Shows personal weighted progress based on non-draft goal items.
+- Shows active library count for HR/Admin or assigned KPI count for employees.
+- Shows goal-set status or "No Active Goals".
+- Lists up to three active goal items and links to `/kpi/my`.
+- HR/Admin see quick actions to `/kpi/manage` and `/kpi/library/new`.
+
+API hooks:
+
+- `useGetAllLibrariesQuery`
+- `useGetGoalSetByEmployeeQuery`
 
 ---
 
-### 2. `KpiLibraryDashboard.tsx` — Library Management
+### `KpiLibraryDashboard.tsx`
 
-**Route:** `/kpi/library`  
-**Access:** HR / Admin  
-**Purpose:** Browse, activate/deactivate, clone, delete, and import KPI library templates.
+Route: `/kpi/library`
 
-**Layout:**
+Library browsing page for KPI templates.
 
-- **Header** with title + "New Library" button (→ `/kpi/library/new`) and "Import" button that opens `KpiImportModal`.
-- **Filter bar** — position dropdown and keyword search input to filter the library grid.
-- **Grid / List toggle** — switches between card grid view and compact list view.
-- **Library cards** — each card shows: template title, linked position name, number of KPI items, active/inactive status badge, and action buttons (Edit, Clone, Activate/Deactivate, History, Delete).
-  - *Activate* calls `PATCH /library/{id}/toggle-history-status` which exclusively deactivates all other libraries for that position.
-  - *Clone* creates a copy via `POST /library/{id}/clone?newTitle=`.
-  - *History icon* opens `KpiLibraryHistoryModal` for that position.
-- **`KpiImportModal`** — opened by the Import button; accepts `.xlsx` file upload and calls `POST /library/import`.
-- **`KpiLibraryHistoryModal`** — shows all versions of libraries for a given position with activate/deactivate/delete actions per version.
+Current behavior:
 
-**API calls:**
-- `useGetAllLibrariesQuery` / `useGetAllLibrariesWithInactiveQuery` (incl. inactive).
-- `useToggleHistoryStatusMutation`, `useDeleteLibraryMutation`.
+- Uses `useGetAllLibrariesWithInactiveQuery`, so active and inactive libraries are visible.
+- Filters by position, status, and keyword.
+- Supports grid/list view toggle.
+- Paginates six libraries per page.
+- Cards/rows show position, active state, title, and KPI count.
+- Current direct card actions are Edit and History. Clone/delete/toggle are not exposed directly on this page.
+- Import button opens `KpiImportModal`.
+- History button opens `KpiLibraryHistoryModal`, where activate/deactivate/delete actions are available per library version.
 
----
+API hooks:
 
-### 3. `KpiLibraryEntry.tsx` — Create / Edit Library Template
-
-**Route:** `/kpi/library/new` or `/kpi/library/edit/:id`  
-**Access:** HR / Admin  
-**Purpose:** Form page for creating or editing a KPI library template, combining basic metadata with a detailed KPI items table.
-
-**Layout (2-section form):**
-
-- **`LibraryBasicInfo` component (top section)** — three fields:
-  1. Template title (text input).
-  2. Target position (select dropdown, fetched from positions API).
-  3. Description (textarea).
-- **`LibrarySyncInfo` component** — amber alert banner showing the two validation rules that the form will enforce before save: total weight must equal 100%, no single item weight may exceed 35%.
-- **`LibraryKpiTable` component (main section)** — editable table of KPI items (see component docs below).
-- **Footer action bar** — "Cancel" button + "Save Library" button. Save triggers weight validation; on error, highlights the failing rule in the `LibrarySyncInfo` banner.
-
-**API calls:**
-- `useCreateLibraryMutation` (new) / `useUpdateLibraryMutation` (edit).
-- `useGetLibraryByIdQuery` (pre-fills form in edit mode).
-- `useGetAllPositionsQuery` (position dropdown).
-- `useGetKpiCategoriesQuery` (category dropdown inside `LibraryKpiTable`).
+- `useGetAllLibrariesWithInactiveQuery`
+- `useGetPositionsQuery`
+- Modal hooks: import, history, toggle history status, delete library
 
 ---
 
-### 4. `GoalManagement.tsx` — Organisation-Wide Goal Assignment
+### `KpiLibraryEntry.tsx`
 
-**Route:** `/kpi/manage`  
-**Access:** Manager / HR / Admin  
-**Purpose:** Overview page for filtering employees by department, position, or cycle, viewing goal statuses, and bulk-assigning KPI library templates.
+Routes:
 
-**Layout:**
+- `/kpi/library/new`
+- `/kpi/library/edit/:id`
 
-- **Header** — page title, active cycle badge, and **Bulk Assign Templates** button (enabled only when employees are selected and viewing the active cycle; disabled in historical mode).
-- **Filter bar** — keyword search, Department dropdown, Position dropdown, and Appraisal Cycle dropdown. The cycle dropdown groups cycles into "Active Cycle" and "Historical / Other Cycles" optgroups.
-- **Historical cycle banner** — amber warning strip shown when viewing any cycle other than the active one; assignments are blocked in this mode.
-- **Employee table** — paginated (10 per page). Columns: checkbox (hidden in historical mode), Employee (name + email), Department, Position, Goal Status badge. Clicking a row navigates to:
-  - `/kpi/goals/:employeeId?cycleId=...` when status is `APPROVED` or `LOCKED`.
-  - `/kpi/assign/:employeeId?cycleId=...` for all other statuses.
-  - ARCHIVED employees are not clickable.
-- **Pagination footer** — shows "X–Y of Z" count and Previous / Next buttons.
+Create/edit form for a library template.
 
-**API calls:**
-- `useGetEmployeesQuery({ page, size })` — paginated employee list.
-- `useGetDepartmentGoalSetsQuery({ cycleId })` (HR/Admin) / `useGetTeamGoalSetsQuery({ managerId, cycleId })` (Manager) — for goal status per employee.
-- `useGetDepartmentsQuery`, `useGetPositionsQuery`, `useGetCyclesQuery` — filter dropdowns.
+Main pieces:
 
----
+- `LibraryBasicInfo`: title, target position, description.
+- `LibrarySyncInfo`: weight validation hints.
+- `LibraryKpiTable`: editable KPI item table.
+- Save validates total weight and item caps before calling create/update.
 
-### 5. `GoalAssignmentWorkspace.tsx` — Per-Employee Goal Assignment Editor
+API hooks:
 
-**Route:** `/kpi/assign/:employeeId`  
-**Access:** Manager / HR / Admin  
-**Purpose:** The main workspace for building or editing a specific employee's goal set for the active (or a historical) cycle. Combines a template sidebar with an inline-editable goal table.
-
-**Historical cycle mode:** When `?cycleId=` points to a past cycle (`isHistoricalCycle=true`), the sidebar is hidden, all inputs are disabled, and an amber banner reads "Viewing historical cycle — no assignments can be made."
-
-**Layout (back button + header card + optional sidebar + table):**
-
-- **Back button** — `safeNavigate(-1)` with an unsaved-changes guard (`window.confirm`).
-- **Header card** — employee avatar (initial letter), full name, employee code, position, cycle name, current goal-set status badge (from `KPI_STATUS_STYLE`), and a "View History" button (→ `/kpi/history/:employeeId`). Right side shows context-sensitive action buttons:
-  - When `APPROVED` → **Edit Goals** button (calls `revertToDraft`; guarded by `window.confirm`).
-  - When `DRAFT` or no goal set → **Save Draft** button (blue when `isModified=true`, grey otherwise) + **Approve Goal Set** button (disabled unless `totalWeight === 100` and `!isModified`; calls `approveGoalSet` then navigates to `/kpi/manage` or `/kpi/team`).
-  - When `LOCKED`, `SCORED`, or `ARCHIVED` → no action buttons shown.
-- **Assignment Info Callout** — displayed when a goal set exists; shows three separate fields:
-  - *Assigned Manager* — `goalSet.managerName (ID: managerId)`. Displays **"Not Assigned"** when null.
-  - *Assigned By* — `goalSet.assignedByName (ID: assignedBy)` — shown only when present.
-  - *Assigned At* — ISO timestamp formatted to `toLocaleString()`.
-- **No Cycle Specified guard** — if `resolvedCycleId` is null (no active cycle and no `?cycleId=` param), renders a centred error card with a "Go Back" button.
-- **Template Sidebar (left, 288px — hidden in historical mode):**
-  - "Replace Existing Goals" checkbox — when checked, clicking a template calls `assignLibrary` with `overwriteExisting=true` (archives old goal set); when unchecked, appends the template's items.
-  - Template search input (live filters `filteredLibraries`).
-  - Scrollable list of library cards — each shows position badge, template title, and `+` icon. Clicking calls `handleUseTemplate`.
-  - "Start Blank Session" button — shown only when no goal set exists **and** `localItems` is empty; creates an empty row via `handleAddCustomGoal`.
-  - "Add Custom Goal" button — always visible; calls `handleAddCustomGoal` which adds a local temp row with `_isNew=true`. Nothing is saved until "Save Draft" is clicked.
-- **Goal Assignments Table (main area):**
-  - Columns: Goal Title, Category, Target, Unit, Weight %, (delete).
-  - All cells are **inline-editable inputs** while status is `DRAFT` and not a historical cycle; they become read-only when `APPROVED`, `LOCKED`, or `isHistoricalCycle`.
-  - Weight input turns red/highlighted with "Max 35%" warning text when > 35%.
-  - Category cell is a `<select>` populated from `useGetKpiCategoriesQuery`.
-  - Delete button (trash icon) removes temp items locally (`_isNew=true`); for persisted items calls `deleteGoalItem`. Hidden/disabled when inputs are disabled.
-  - "Add New Goal Row" button at the bottom of the table (hidden in historical mode).
-- **Aggregate Weight footer:**
-  - Live `totalWeight` percentage calculated from `localItems`.
-  - Progress bar turns green at exactly 100%, red above 100%, blue below.
-  - Status label: "Verified" / "Exceeded by X%" / "X% Remaining".
-  - Over-cap warning: "N items exceed 35% cap".
-
-**State management:**
-- `localItems` — local copy of `goalSet.items` that drives the table; synced from API on mount/refetch. New rows have `_isNew: true` and a negative temp ID.
-- `isModified` — set `true` on any inline edit or new row addition; cleared after a successful save.
-- `overwriteExisting` — checkbox state for template application mode.
-- `isHistoricalCycle` — true when `resolvedCycleId !== activeCycleId`.
-- `isInputDisabled` — true when `isHistoricalCycle || status === 'APPROVED' || status === 'LOCKED'`.
-- Browser `beforeunload` event warns the user when there are unsaved changes.
-
-**Save Draft flow (multi-step):**
-1. If no goal set exists, create one via `assignLibrary` with no `libraryId`.
-2. For each `_isNew` item, call `addGoalItem` and replace the temp row with the real API response.
-3. Bulk-update all persisted items via `bulkUpdateItems`.
-4. Refetch and clear `isModified`.
-
-**API calls:**
-- `useGetGoalSetByEmployeeQuery`, `useGetAllLibrariesQuery`, `useGetKpiCategoriesQuery`.
-- `useGetEmployeeByIdQuery` (employee details for header).
-- `useGetCyclesQuery` (cycle name lookup).
-- `useAssignKpiToEmployeeMutation`, `useAddGoalItemMutation`, `useDeleteGoalItemMutation`.
-- `useBulkUpdateGoalItemsMutation`, `useApproveGoalSetMutation`, `useRevertGoalSetMutation`.
+- `useCreateLibraryMutation`
+- `useUpdateLibraryMutation`
+- `useGetLibraryByIdQuery`
+- `useGetAllPositionsQuery`
+- `useGetKpiCategoriesQuery`
 
 ---
 
-### 6. `GoalDetail.tsx` — Goal Set Detail View
+### `GoalManagement.tsx`
 
-**Route:** `/kpi/goals/:employeeId` + optional `?cycleId=` query param  
-**Access:** Manager / HR / Admin (owner employee can also view and update progress)  
-**Purpose:** Read/manage view for a single employee's goal set for a given cycle. Fetches by `employeeId` + `cycleId`. Provides the full lifecycle actions: approve, revert, lock, calculate score, and item-level revisions.
+Route: `/kpi/manage`
 
-**Layout:**
+Organization-wide assignment and tracking page.
 
-- **Header row:**
-  - Back button (`navigate(-1)`).
-  - Title: `{employeeName}'s Performance Goals`.
-  - Metadata subtitle: Cycle ID, Manager (or "Not Assigned"), Assigned By (if present), Assigned At date — separated by `•` characters.
-  - Action buttons (right side):
-    - **History** button — opens `KpiAuditLogModal` (visible to privileged users and the owner).
-    - **Modify Goals** button (→ `/kpi/assign/:employeeId?cycleId=`) — shown when status is `DRAFT` or `APPROVED`.
-    - **Approve Goals** button — shown when status is `DRAFT`; calls `approveGoalSet`.
-    - **Revert to Draft** button — shown when status is `APPROVED`; opens a custom confirmation modal that lists the consequences (KPI_REJECTED notification, re-approval required, progress preserved); calls `revertGoal` on confirm.
-    - **Lock Goals** button — shown when status is `APPROVED`; guarded by `window.confirm`; calls `lockGoal`.
-    - **Calculate Score** button — shown when status is `LOCKED`; calls `calculateScores`.
-- **Visual Stepper** — horizontal step indicator showing four stages: `DRAFT → APPROVED → LOCKED → SCORED`. Current stage is highlighted (blue border); completed stages are filled blue. `SCORED` is a derived state: true when a `KpiFinalScore` record exists (`isScoredState = !!finalScore`), not an enum value. If status is `ARCHIVED`, the stepper is replaced by an archived-state banner.
-- **Summary cards (3):**
-  - *Total Weight* — sum of all item `weightPercent`; blue when 100%, red otherwise.
-  - *KPI Count* — total number of goal items.
-  - *Execution Status* — "Active" (APPROVED), "Locked" (LOCKED), "Scored" (isScoredState), or "Pending".
-- **Final Score Card** — shown only when `isScoredState=true`; green gradient card displaying `finalScore.weightedScore`, `totalAchievementPercent`, and calculation date.
-- **KPI Items Table** — inline table (not `LibraryKpiTable` component). Compliance items have a yellow (#FEFCE8) row background and a `ShieldCheck` icon. Columns: KPI Item (title + category), Weight, Target, Progress (bar + %), Actions.
-  - Employee owner sees **UPDATE** button for non-compliance items (APPROVED status only) and a **MANAGER ONLY** locked badge for compliance items.
-  - Privileged users see **VERIFY** button for unverified compliance items (shows verified date/by when already verified) and **REVISE** button for all non-LOCKED/non-ARCHIVED items.
-  - Progress update opens `ProgressUpdateModal`; revision opens `KpiRevisionModal`.
+Current behavior:
 
-**API calls:**
-- `useGetGoalSetByEmployeeQuery({ employeeId, cycleId })` — primary data fetch.
-- `useGetFinalScoreQuery({ employeeId, cycleId })` — skipped unless status is `LOCKED`.
-- `useApproveGoalSetMutation`, `useRevertGoalSetMutation`, `useLockGoalSetMutation`, `useCalculateScoresMutation`.
-- `useReviseKpiMutation` (via `KpiRevisionModal`).
+- Resolves selected cycle from query string or active cycle.
+- Fetches employees plus goal sets for either department-wide HR/Admin view or manager team view.
+- Filters by keyword, department, position, and cycle.
+- Historical/non-active cycle mode disables assignment controls.
+- Selected employees can be passed into `BulkAssignModal`.
+- Row navigation:
+  - Existing approved/locked/scored-like view states go to `/kpi/goals/:employeeId?cycleId=...`.
+  - Draft/not assigned paths go to `/kpi/assign/:employeeId?cycleId=...`.
+
+API hooks:
+
+- Employee, department, position, and cycle queries from their feature APIs.
+- `useGetDepartmentGoalSetsQuery`
+- `useGetTeamGoalSetsQuery`
 
 ---
 
-### 7. `MyKpiDashboard.tsx` — Employee Personal KPI Dashboard
+### `GoalAssignmentWorkspace.tsx`
 
-**Route:** `/kpi/my`  
-**Access:** Employee (own data only)  
-**Purpose:** Employee-facing view showing their current cycle's goals, individual progress, and recent update history. Goal items are hidden from the employee when the goal set is in `DRAFT` status.
+Route: `/kpi/assign/:employeeId`
 
-**Layout:**
+Workspace for creating or editing one employee's goal set.
 
-- **Header** — page title, cycle name, and two `KpiSummaryCard` widgets: Overall Progress (`color="blue"`) and Active Goals count (`color="indigo"`).
-- **Overall progress** — displayed in the `KpiSummaryCard`; computed by `(Σ progressPercent × weightPercent) / Σ weightPercent` (weight-normalized, not raw sum).
-- **Goal cards list (2/3 width)** — one `KpiGoalCard` per goal item showing: title, category badge, weight %, target, actual value, score %, weighted score, unit, item status, and a progress bar.
-  - Non-compliance items show a **"Start Goal"** / **"Update Progress"** button that opens `ProgressUpdateModal`.
-  - Compliance items show a **"Verified by Manager"** badge (no update button for employee).
-- **Empty states:**
-  - DRAFT status → "Goals are being drafted / Your manager is working on your goals for this cycle."
-  - No goals → "No goals assigned yet / Wait for your manager to set up your objectives."
-- **`KpiUpdateHistoryCard`** (sidebar, 1/3 width) — recent progress entries fetched with `limit=3`.
+Cycle behavior:
 
-**API calls:**
-- `useGetGoalSetByEmployeeQuery({ employeeId: self, cycleId })`.
-- `useGetProgressHistoryQuery({ employeeId: self, limit: 3 })`.
+- `resolvedCycleId` comes from `?cycleId=` or `activeCycleId`.
+- Archived cycles are read-only.
+- Non-active cycles are historical/read-only unless `mode=edit` is present.
+- If no cycle can be resolved, a guard card is shown.
+- Stale cached goal sets for a different cycle are ignored.
 
----
+Header behavior:
 
-### 8. `TeamKpiDashboard.tsx` — Manager's Team Overview
+- Shows employee, position, cycle, status, and View History.
+- DRAFT or no goal set: Save Draft and Approve Goal Set.
+- APPROVED: Edit Goals opens a confirmation and then calls revert-to-draft.
+- LOCKED/ARCHIVED/read-only states: no edit buttons.
 
-**Route:** `/kpi/team`  
-**Access:** Manager (and HR/Admin who see all employees)  
-**Purpose:** Dashboard showing all direct reports (or all employees for HR/Admin) and their KPI goal status for the current cycle.
+Template sidebar:
 
-**Data source:** HR/Admin use `useGetAllEmployeesQuery`; Managers use `useGetDirectReportsQuery`. Team goal sets from `useGetTeamGoalSetsQuery`.
+- Hidden in historical mode.
+- Uses a segmented assignment mode:
+  - Append: adds template items to current draft without overwriting.
+  - Replace: archives existing draft goals and creates a new set.
+- Replace with an existing goal set opens a confirmation modal.
+- Template search filters active libraries.
+- Add Custom Goal creates a local temp row.
 
-**Layout:**
+Goal table:
 
-- **Header** — page title, cycle subtitle, search input, Download Report button (static), **Bulk Assign Team** button.
-- **Coverage stats (3 cards):**
-  1. *Goal Assignment* — coverage percentage with progress bar, showing assigned-of-total count.
-  2. *Assigned* — count of active goal sets.
-  3. *Pending* — count of employees without goals.
-- **Sort control** — filter dropdown to sort the table by Name (A-Z), High Progress, or Low Progress.
-- **Goal tracking table** — one row per team member. Columns: checkbox (for bulk assign), Direct Report (avatar initials + name + position), Goal Status badge, KPI Items count, Cycle name, Progress (bar + %). Clicking a row navigates to:
-  - `/kpi/goals/:employeeId` when status is `APPROVED` or `LOCKED`.
-  - `/kpi/assign/:employeeId` for all other statuses.
-- **Bulk Assign button** — opens `BulkAssignModal` for selected employees.
+- Inline editable while draft/editable.
+- Disabled for archived, locked, archived-status, and approved states unless `mode=edit`.
+- Columns include title, category, target, unit, weight, and delete.
+- Weight values over 35% show warnings.
+- Temp rows are local until Save Draft.
+- Persisted row deletion calls the API and can fail if progress records exist.
 
-**API calls:**
-- `useGetAllEmployeesQuery` (HR/Admin) or `useGetDirectReportsQuery` (Manager).
-- `useGetTeamGoalSetsQuery({ managerId, cycleId })`.
-- `useBulkAssignKpiMutation` (via `BulkAssignModal`).
+Save Draft flow:
 
----
+1. If no goal set exists, create a blank draft assignment.
+2. Create each temp item with `addGoalItem`.
+3. Bulk-update all persisted items with cleaned values.
+4. Refetch and clear modified state.
 
-### 9. `EmployeeKpiHistory.tsx` — KPI History Timeline
+API hooks:
 
-**Route:** `/kpi/history/:employeeId`  
-**Access:** All roles  
-**Purpose:** Historical view of all KPI cycles for a given employee — past goal sets, performance scores, and the full audit trail per cycle.
-
-**Layout:**
-
-- **Header** — back button, page title "KPI Performance History", subtitle.
-- **Cycle Selector** — a `<select>` dropdown listing all historical goal sets formatted as `{cycleName} ({status}) — {score}%`. Selection drives the detail pane below. Uses `calculateGoalSetMetrics` utility to compute the score shown in each option.
-- **Empty state** — shown when the employee has no history records.
-- **Selected cycle detail pane (3 sections):**
-  - *Metric cards (3):* Cycle Performance Score (weighted, from `calculateGoalSetMetrics`), Goal Completion Rate (average item completion %), and Cycle Status badge.
-  - *Assigned Objectives list* — one row per goal item showing title, weight %, current progress value, and a progress bar. Ordered as returned from API.
-  - *Goal Journey audit trail* — vertical timeline of `KpiHistoryLog` entries. Each entry shows: action badge (colour-coded by type), timestamp (formatted `dd/MM/yyyy, h:mm a`), change details string, and change reason in a quoted note box. Uses `useGetGoalSetAuditTrailQuery` triggered when a cycle is selected.
-
-**API calls:**
-- `useGetEmployeeKpiHistoryQuery(employeeId)` — fetches all historical goal sets via `/api/v1/kpi-history/employee/{employeeId}`.
-- `useGetGoalSetAuditTrailQuery(goalSetId)` — fetches audit log entries via `/api/v1/kpi-history/goal-set/{goalSetId}/audit`. Skipped until a cycle is selected.
+- `useGetGoalSetByEmployeeQuery`
+- `useGetAllLibrariesQuery`
+- `useGetKpiCategoriesQuery`
+- `useGetEmployeeByIdQuery`
+- `useGetCyclesQuery`
+- `useAssignKpiToEmployeeMutation`
+- `useAddGoalItemMutation`
+- `useDeleteGoalItemMutation`
+- `useBulkUpdateGoalItemsMutation`
+- `useApproveGoalSetMutation`
+- `useRevertGoalSetMutation`
 
 ---
 
-### 10. `KpiCategoryManager.tsx` — KPI Category Management (Admin)
+### `GoalDetail.tsx`
 
-**Route:** `/admin/kpi/categories`  
-**Access:** Admin only  
-**Purpose:** Full CRUD management of KPI categories used to classify goal items across all libraries and goal sets.
+Route: `/kpi/goals/:employeeId`
 
-**Layout:**
+Detail page for one employee/cycle goal set.
 
-- **Header** — breadcrumb "Framework › Categories", page title, "Create New Category" button.
-- **Search bar** — live keyword filter over the category list.
-- **Category table** — lists all categories with name and action buttons (Edit, Delete).
-- **Create/Edit modal** — single text field for category name with Save/Cancel. Validates that name is non-empty. On save calls `createCategory` or `updateCategory`.
-- **Delete** — `window.confirm` guard then calls `deleteCategory`.
+Current behavior:
 
-**API calls:**
-- `useGetKpiCategoriesQuery`, `useCreateKpiCategoryMutation`, `useUpdateKpiCategoryMutation`, `useDeleteKpiCategoryMutation`.
+- Fetches the goal set by employee + effective cycle.
+- Fetches final score whenever a goal set exists, not only when locked.
+- Treats `isScoredState` as `!!finalScore`.
+- Uses active cycle fallback when no `?cycleId=` is supplied.
+- Archived cycles or archived goal sets are read-only.
+- History button opens `KpiAuditLogModal`.
+- Modify Goals navigates to `/kpi/assign/:employeeId?cycleId=...&mode=edit`.
+- Draft goals can be approved.
+- Approved goals can be reverted or locked.
+- Score sidebar allows Calculate Score or Recalculate Score for privileged users when cycle is not archived.
+
+Item table behavior:
+
+- Compliance rows use a highlighted background and shield icon.
+- Owner can update non-compliance items only when goals are approved and not read-only.
+- Compliance items show "MANAGER ONLY" to employees.
+- Privileged users can verify compliance items when approved and not archived.
+- Privileged users can revise items when not read-only and status is not locked.
+
+Modals:
+
+- `ProgressUpdateModal`
+- `KpiRevisionModal`
+- `KpiAuditLogModal`
+- Custom revert confirmation
+- Custom lock confirmation
+
+API hooks:
+
+- `useGetGoalSetByEmployeeQuery`
+- `useGetFinalScoreQuery`
+- `useApproveGoalSetMutation`
+- `useRevertGoalSetMutation`
+- `useLockGoalSetMutation`
+- `useCalculateScoresMutation`
+- `useGetCyclesQuery`
+
+---
+
+### `MyKpiDashboard.tsx`
+
+Route: `/kpi/my`
+
+Employee personal KPI dashboard.
+
+Current behavior:
+
+- Fetches the user's active-cycle goal set and recent progress history.
+- Draft goals are hidden from the employee.
+- Overall progress is weight-normalized.
+- Goal cards show progress, target, actual, score, weighted score, status, and update controls.
+- Compliance items do not expose employee progress update.
+- Sidebar shows recent progress entries through `KpiUpdateHistoryCard`.
+
+API hooks:
+
+- `useGetGoalSetByEmployeeQuery`
+- `useGetProgressHistoryQuery`
+
+---
+
+### `TeamKpiDashboard.tsx`
+
+Route: `/kpi/team`
+
+Manager/HR/Admin team overview.
+
+Current behavior:
+
+- HR/Admin use all employees; managers use direct reports.
+- Fetches team goal sets for active cycle.
+- Search by name/code and sort by name, high progress, or low progress.
+- Shows coverage, assigned, and pending stats.
+- Bulk Assign Team opens `BulkAssignModal`.
+- Row navigation:
+  - APPROVED/LOCKED goes to `/kpi/goals/:employeeId`.
+  - Other statuses go to `/kpi/assign/:employeeId`.
+
+API hooks:
+
+- `useGetAllEmployeesQuery`
+- `useGetDirectReportsQuery`
+- `useGetTeamGoalSetsQuery`
+- `useBulkAssignKpiMutation` through modal
+
+---
+
+### `EmployeeKpiHistory.tsx`
+
+Route: `/kpi/history/:employeeId`
+
+Historical KPI view.
+
+Current behavior:
+
+- Fetches all goal sets for the employee.
+- Select dropdown lists cycles with status and calculated local score.
+- Displays selected-cycle performance, completion rate, status, and objective list.
+- Uses `KpiAuditTable` for the audit trail rather than an inline timeline.
+- Audit table supports action filters, date presets, pagination, and a detail modal.
+
+API hooks:
+
+- `useGetEmployeeKpiHistoryQuery`
+- `useGetGoalSetAuditTrailQuery`
+
+---
+
+### `KpiCategoryManager.tsx`
+
+Route: `/admin/kpi/categories`
+
+Category CRUD page.
+
+Current behavior:
+
+- Lists categories.
+- Supports search.
+- Modal create/edit with validation.
+- Delete is guarded by confirm and backend requires ADMIN.
+
+API hooks:
+
+- `useGetKpiCategoriesQuery`
+- `useCreateKpiCategoryMutation`
+- `useUpdateKpiCategoryMutation`
+- `useDeleteKpiCategoryMutation`
 
 ---
 
 ## Components
 
-### `LibraryBasicInfo.tsx`
+### `BulkAssignModal.tsx`
 
-A controlled form section rendered inside `KpiLibraryEntry`. Contains three fields — Title (text input), Target Position (select from positions API), and Description (textarea). Props: `value` object + `onChange` handler. Stateless — parent owns form state.
+Modal for assigning one active library to selected employees.
 
----
+Current behavior:
 
-### `LibrarySyncInfo.tsx`
+- Searches active libraries by title or position.
+- Has `overwriteExisting` checkbox.
+- Uses active cycle from context for assignment. If opened while viewing another cycle, it shows a notice that assignment targets the current active cycle.
+- After mutation, shows success/skipped/failed counts and result rows.
 
-Static informational `<div>` (amber/warning style) displayed at the top of `KpiLibraryEntry`. Lists the two validation rules for library submission:
-1. Total weight of all items must equal exactly **100%**.
-2. No single item weight may exceed **35%**.
-
-No props. No interactivity.
-
----
-
-### `LibraryKpiTable.tsx`
-
-Reusable editable table for KPI items. Used in `KpiLibraryEntry` (write mode). **Not used in `GoalDetail`** — that page has its own inline table.
-
-**Columns:** Title, Category (select), Target Value (number), Unit (text), Weight % (number), Is Compliance (toggle), Actions (delete).
-
-**Props:**
-- `items` — array of KPI item objects.
-- `categories` — list for the category dropdown.
-- `readOnly` — boolean; disables all inputs when `true`.
-- `onChange(items)` — callback fired on any cell edit.
-- `onDelete(index)` — callback for row deletion.
-
-**Validation indicators:**
-- Weight field turns red when value > 35.
-- Footer row shows live total weight sum with colour coding (green = 100%, red = over, blue = under).
-
----
-
-### `KpiGoalCard.tsx`
-
-Card component used in `MyKpiDashboard`. Renders a single goal item as a styled card (Tailwind classes) with: category badge, weight %, title, description placeholder, target, actual, score %, weighted score, unit, and item status indicator.
-
-- Non-compliance items: shows **"Start Goal"** (if `progress === 0`) or **"Update Progress"** button that fires `onUpdate(kpi)`.
-- Compliance items: shows a static **"Verified by Manager"** badge (no update button for employee).
-
-**Props:** `kpi: GoalItemResponse`, `idx: number`, `onUpdate: (kpi) => void`.
-
----
-
-### `ProgressUpdateModal.tsx`
-
-Modal dialog for submitting a KPI progress update.
-
-**Fields:**
-- Actual Value (number input, bounded 0 → targetValue).
-- Evidence / Notes (textarea, optional).
-
-**Computed display:**
-- Score % preview: `(actualValue / targetValue) × 100`.
-- Weighted score preview.
-
-On submit, calls `POST /api/v1/kpi/progress`. Shows toast on success/failure. Closes modal after successful save.
-
----
-
-### `KpiRevisionModal.tsx`
-
-Modal for revising a goal item's metadata. Accessible from `GoalDetail` for non-LOCKED/non-ARCHIVED goal sets.
-
-**Fields:**
-- Goal Title (text).
-- Category (select).
-- Target Value (number).
-- Weight % (number).
-- Change Reason (textarea, **required** for audit trail).
-
-On submit, calls `PUT /api/v1/kpi/revise/{itemId}`. API will reject if no field actually changed (no-op guard). Bumps `KpiGoals.version` on success.
+Important note: the `effectiveCycleId` prop is currently used for the historical-cycle notice, but `handleConfirm` submits `activeCycleId`.
 
 ---
 
 ### `KpiAuditLogModal.tsx`
 
-Timeline modal showing the full revision history of a goal set from `KpiHistoryLog`. Opened from `GoalDetail` via the **History** button.
+Compact modal opened from `GoalDetail`.
 
-**Each entry shows:**
-- Event type badge (e.g. `KPI_ASSIGNED`, `ITEM_REVISED`, `PROGRESS_UPDATE`, `KPI_APPROVED`).
-- Timestamp (formatted date + time).
-- Actor name (who made the change).
-- Diff string — parsed old→new field values for revision events.
-- Change reason (for `ITEM_REVISED` events).
-
-Entries are sorted newest-first. Modal is scrollable for long histories.
+- Fetches audit trail for a goal set.
+- Shows history entries with action, timestamp, actor, summary, and reason where present.
 
 ---
 
-### `BulkAssignModal.tsx`
+### `KpiAuditTable.tsx`
 
-Multi-step modal for bulk assigning a KPI library template to multiple employees at once.
+Audit trail table used by `EmployeeKpiHistory`.
 
-**Step 1 — Employee selection:**
-- Checkbox list of employees (pre-selected from the calling page's filter).
-- Select All / Deselect All toggle.
+- Filters by All, Progress Updates, Goal Changes, and Status Events.
+- Filters by last 7 days, last 30 days, or all time.
+- Paginates 15 rows per page.
+- Opens `KpiLogDetailModal` when a log row is clicked.
 
-**Step 2 — Template selection:**
-- Dropdown of active KPI libraries.
-- "Overwrite existing goals" checkbox (APPROVED/LOCKED employees are always skipped regardless).
+---
 
-**Step 3 — Result report:**
-- After `POST /kpi/bulk-assign`, shows per-employee success / skipped / failed rows.
-- Skipped = employee already had APPROVED or LOCKED goals and overwrite was off.
-- Failed = API error for that employee.
+### `KpiLogDetailModal.tsx`
 
-**Props:** `selectedEmployeeIds`, `effectiveCycleId` (optional), `onClose`, `onSuccess`.
+Detail modal for one `KpiHistoryLog` entry.
+
+- Shows event details, change details, and change reason.
+
+---
+
+### `ProgressUpdateModal.tsx`
+
+Progress update modal.
+
+- Inputs actual value and optional evidence/notes.
+- Shows score and weighted-score previews using calculation utilities.
+- Calls `useUpdateProgressMutation`.
+
+---
+
+### `KpiRevisionModal.tsx`
+
+Revision modal for privileged users.
+
+- Edits title, category, target value, and weight.
+- Requires change reason.
+- Calls `useReviseKpiMutation`.
 
 ---
 
 ### `KpiImportModal.tsx`
 
-File upload modal for importing KPI library templates from an Excel file (`.xlsx` only).
+Excel import modal.
 
-**UI:**
-- Drag-and-drop zone with a dashed border and upload icon.
-- File name preview after selection.
-- "Import" button calls `POST /library/import`.
-
-**Result display:**
-- Success count.
-- Failed count with per-row error descriptions.
+- Accepts `.xlsx`.
+- Calls `useImportLibrariesMutation`.
+- Shows import success/failure result details.
 
 ---
 
 ### `KpiLibraryHistoryModal.tsx`
 
-Expandable modal showing all versions of KPI libraries ever created for a given position. Displayed as a vertical list ordered newest-first.
+Position-level library history modal.
 
-**Each version row shows:**
-- Library title and creation date.
-- Status badge (ACTIVE / INACTIVE).
-- Action buttons: Activate (exclusive → deactivates others), Deactivate, Delete.
+- Fetches all libraries for a position.
+- Allows activate/deactivate through `toggleHistoryStatus`.
+- Allows delete.
+- Activation is exclusive on the backend for the position.
 
-Activate calls `PATCH /library/{id}/toggle-history-status` which ensures only one version is active per position.
+---
+
+### `LibraryKpiTable.tsx`
+
+Editable table used by `KpiLibraryEntry`.
+
+- Columns: title, category, target value, unit, weight, compliance toggle, actions.
+- Read-only mode disables inputs.
+- Shows weight cap and total-weight feedback.
+
+---
+
+### `KpiGoalCard.tsx`
+
+Employee dashboard goal card.
+
+- Shows title, category, weight, target, actual, score, weighted score, unit, and status.
+- Non-compliance items can open progress update.
+- Compliance items show manager verification messaging instead of employee update.
 
 ---
 
 ### `KpiSummaryCard.tsx`
 
-Small metric display card. **Props:** `label` (string), `value` (string | number), `icon` (Lucide icon component), `color` (string, defaults to `"blue"` — used as Tailwind colour prefix for background/text). Used in `MyKpiDashboard` header stat row. Purely presentational.
+Small metric card used by `MyKpiDashboard`.
 
 ---
 
 ### `KpiUpdateHistoryCard.tsx`
 
-Sidebar card rendered in `MyKpiDashboard` showing the N most recent progress update entries for the logged-in employee.
-
-**Each entry:** goal item title, submitted actual value, date/time of submission. Fetched via `GET /api/v1/kpi/progress/history?employeeId=&limit=`.
+Recent progress card used by `MyKpiDashboard`.
 
 ---
 
 ### `KpiTimeline.tsx`
 
-Generic vertical timeline visualisation component. Each milestone entry takes a `label`, `date`, `status` (done / active / pending), and optional `description`. Renders a vertical line with circle nodes; active node is filled blue, done nodes are filled green with a checkmark, pending nodes are grey.
-
-> **Note:** This component is **not currently used** by `EmployeeKpiHistory` — that page now uses an inline audit trail rendering instead of `KpiTimeline`.
+Generic vertical timeline component. It is available but the current history page uses `KpiAuditTable`.
 
 ---
 
@@ -486,94 +460,51 @@ Generic vertical timeline visualisation component. Each milestone entry takes a 
 
 ### `kpiStatusStyles.ts`
 
-Canonical badge style tokens imported by every component that renders a goal-set status badge.
+Defines shared badge tokens:
 
 ```ts
-KPI_STATUS_STYLE: Record<string, KpiStatusStyle>
-// Keys: DRAFT | APPROVED | LOCKED | SCORED | ARCHIVED
-// Each: { bg, text, border, label }
-
-KPI_STATUS_FALLBACK: KpiStatusStyle
-// Used for unknown/undefined statuses
+KPI_STATUS_STYLE
+KPI_STATUS_FALLBACK
 ```
 
-Used in: `GoalManagement`, `GoalAssignmentWorkspace`, and `KpiCategoryManager`.
-
----
+Includes keys for frontend display such as `DRAFT`, `APPROVED`, `LOCKED`, `SCORED`, and `ARCHIVED`. `SCORED` is a UI-derived display state.
 
 ### `kpiTransformationService.ts`
 
-Shared calculation utilities for enriching goal set data.
-
-- `calculateGoalSetMetrics(goalSet)` → `{ finalScore, completionRate }` — computes weighted final score and average item completion from `items`. Used in `EmployeeKpiHistory`.
-- `enrichGoalSet(goalSet)` → `EnrichedGoalSet` — spreads metrics onto the response object.
-- `enrichGoalSets(goalSets[])` → maps `enrichGoalSet` over an array.
-
----
+- `calculateGoalSetMetrics(goalSet)` returns local `finalScore` and `completionRate`.
+- Used by `EmployeeKpiHistory`.
 
 ### `kpiCalculations.ts`
 
-Low-level calculation helpers.
-
-- `calculateProgressPercent(actual, target)` — returns `min(round(actual/target × 100), 100)`.
-- `calculateWeightedScore(actual, target, weight)` — returns `(actual/target) × weight`.
-- `validateKpiWeights(items)` → `{ totalWeight, isValid, errors[] }` — enforces total = 100%, each item ≥ 5% and ≤ 35%.
-- `PRIORITY_MAP` — maps priority tiers (CRITICAL / HIGH / MEDIUM / LOWER) to weight ranges and Tailwind colour strings.
-- `getPriorityFromWeight(weight)` — derives a priority tier from a weight number.
-- `getStatusColor(progress)` — returns Tailwind colour classes based on progress percentage.
+- `calculateProgressPercent(actual, target)`
+- `calculateWeightedScore(actual, target, weight)`
+- `validateKpiWeights(items)`
+- Priority/status helper functions
 
 ---
 
-## Data Flow Summary
+## Frontend State Mapping
 
-```
-User Action
-    │
-    ▼
-RTK Query mutation / query  ──▶  Spring Boot REST API
-    │                                    │
-    │◀── API response (ApiResponse<T>) ──┘
-    │
-    ▼
-Redux store / component local state
-    │
-    ▼
-Re-render → updated UI (toast notification on mutation success/error)
-```
-
-**Auth context (`useAuth`)** provides: `user.id`, `isHR`, `isAdmin`, `isManager`, `activeCycleId`, `activeCycleName`, `hasCycle`, `cycleError`, `isLoadingCycle` — used by every page to gate role-specific UI sections and skip irrelevant queries.
-
----
-
-## Goal Status → UI State Mapping
-
-| Goal Status | GoalAssignmentWorkspace | GoalDetail | MyKpiDashboard |
+| Status | Assignment workspace | Goal detail | My dashboard |
 |---|---|---|---|
-| `(none)` | "Not Assigned" badge; sidebar active | 404 / empty state | Empty state |
-| `DRAFT` | Inline table editable; Save + Approve btns | Approve + Modify Goals btns | Items hidden — "Goals are being drafted" |
-| `APPROVED` | Table read-only; "Edit Goals" btn to revert | Revert + Lock + Modify Goals btns | Goal cards visible; Update Progress active |
-| `LOCKED` | Table read-only; no edit btns | Calculate Score btn | Goal cards visible; Update Progress disabled |
-| `SCORED` | Read-only (no btns) | Final Score Card shown; stepper at SCORED | Final score visible |
-| `ARCHIVED` | Not shown (historical only) | Archived banner shown; no action btns | Not shown |
-
-> **SCORED** is a derived UI state (not a `KpiGoalStatus` enum value). It is true when `useGetFinalScoreQuery` returns a `KpiFinalScore` record for the employee + cycle.
+| No goal set | Can create blank/template draft when active cycle | Empty/not-found state | Empty state |
+| DRAFT | Editable table; save and approve controls | Approve and modify controls | Items hidden |
+| APPROVED | Read-only unless `mode=edit`; Edit Goals can revert | Progress, revise, revert, lock, calculate/recalculate | Goal cards visible; employee updates non-compliance items |
+| LOCKED | Read-only | No progress; score can be calculated/recalculated | Visible but update disabled by backend |
+| ARCHIVED | Read-only / historical | Archived/read-only banner | Not normally shown as current |
+| SCORED | Derived from final score, not backend enum | Final score shown; recalculate available to privileged users | Score data can be displayed where mapped |
 
 ---
 
-## Manager vs Assigned By — Field Distinction
+## Data Flow
 
-These two fields serve different purposes and must not be confused:
+```text
+User action
+  -> RTK Query query/mutation
+  -> Spring Boot REST endpoint
+  -> ApiResponse<T>
+  -> RTK cache/local component state
+  -> UI refresh and toast/modal feedback
+```
 
-| Field | Source | Meaning |
-|---|---|---|
-| `manager` / `managerId` / `managerName` | Employee's active `ReportingLine.manager` | The employee's direct reporting manager — responsible for approving goals |
-| `assignedBy` / `assignedByName` | Currently authenticated user at time of assignment | The person who created the goal assignment (may be HR, Admin, or Manager) |
-
-**Rules (enforced in `KpiGoalServiceImpl`):**
-- When a **Manager** assigns and the employee has no reporting line → `manager` falls back to the assigning manager (same person).
-- When **HR or Admin** assigns and the employee has no reporting line → `manager` is left `null`. HR is never stored as the employee's manager.
-- `assignedBy` always records who performed the action, regardless of role.
-
-**UI behaviour:**
-- Both `GoalDetail` and `GoalAssignmentWorkspace` display Manager and Assigned By as separate labelled fields.
-- A null `manager` renders as **"Not Assigned"** in both pages.
+`useAuth` provides user identity, role flags, and active-cycle context used throughout the KPI pages.
