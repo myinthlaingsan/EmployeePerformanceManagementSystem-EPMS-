@@ -103,3 +103,64 @@ export interface PerformanceRankingReportDTO {
   trend: string;
   isHighPerformer: boolean;
 }
+
+export interface PerformanceDistributionBinDTO {
+  range: string;
+  count: number;
+  percentage: number;
+}
+
+export interface PerformanceDistributionReportDTO {
+  bins: PerformanceDistributionBinDTO[];
+  mean: number;
+  median: number;
+  standardDeviation: number;
+  skewness: number;
+  sampleSize: number;
+}
+
+export interface DepartmentAnalyticsDTO {
+  departmentId?: number;
+  departmentName: string;
+  avgScore: number;
+  completionRate: number;
+  pipCount: number;
+  employeeCount: number;
+  rank: number;
+}
+
+export interface PerformanceTrendPointDTO {
+  period: string;
+  avgScore: number;
+  completionRate: number;
+  pipResolutionRate: number;
+  engagementScore: number;
+}
+
+export interface PerformancePotentialMatrixDTO {
+  employeeId: number;
+  employeeName: string;
+  departmentName: string;
+  performanceScore: number;
+  potentialScore: number;
+  quadrant: string;
+}
+
+export interface GoalCompletionReportDTO {
+  total: number;
+  completed: number;
+  inProgress: number;
+  notStarted: number;
+  offTrack: number;
+  completionRate: number;
+}
+
+export interface Feedback360SummaryAnalyticsDTO {
+  totalRequests: number;
+  completedResponses: number;
+  participationRate: number;
+  avgResponseTimeDays: number;
+  mostCommonFeedbackTheme: string;
+  selfPerceptionGap: number;
+  commonThemes: string[];
+}

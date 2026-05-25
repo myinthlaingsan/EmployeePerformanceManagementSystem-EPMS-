@@ -1,169 +1,141 @@
 package ace.org.epms_backend.exception;
 
 import ace.org.epms_backend.dto.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandlerAdvice {
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<?>> handleException(Exception ex) {
-        ex.printStackTrace();
-        String detailedMessage = ex.getClass().getName() + ": " + ex.getMessage();
-        if (ex.getCause() != null) {
-            detailedMessage += " | Cause: " + ex.getCause().getClass().getName() + ": " + ex.getCause().getMessage();
-        }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse<>(500, detailedMessage, null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<?>> handleIllegalArgumentException(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse<>(400, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-//    @ExceptionHandler(MethodArgumentNotValidException.class)
-//    public ResponseEntity<Map<String,String>> handleValidationException(MethodArgumentNotValidException ex){
-//        Map<String,String> errors = new HashMap<>();
-//        ex.getBindingResult().getFieldErrors()
-//                .forEach(error-> errors.put(error.getField(),error.getDefaultMessage()));
-//        return ResponseEntity.badRequest().body(errors);
-//    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<?>> handleValidationException(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-
-        ex.getBindingResult().getFieldErrors()
-                .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
-
-        return ResponseEntity.badRequest()
-                .body(new ApiResponse<>(400, "Validation failed", errors, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ApiResponse<?>> UserNotFoundException(UserNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ApiResponse<>(404, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(EmailExistException.class)
-    public ResponseEntity<ApiResponse<?>> EmailExistException(EmailExistException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(CodeAlreadyExistsException.class)
-    public ResponseEntity<ApiResponse<?>> CodeAlreadyExistsException(CodeAlreadyExistsException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(LockedException.class)
-    public ResponseEntity<ApiResponse<?>> LockedException(LockedException ex) {
-        return ResponseEntity.status(HttpStatus.LOCKED)
-                .body(new ApiResponse<>(423, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(InvalidTokenException.class)
-    public ResponseEntity<ApiResponse<?>> InvalidRefreshTokenException(InvalidTokenException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse<>(401, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(CannotDeleteException.class)
-    public ResponseEntity<ApiResponse<?>> handleCannotDelete(CannotDeleteException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(CannotAssignException.class)
-    public ResponseEntity<ApiResponse<?>> handleCannotAssign(CannotAssignException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(AlreadyActiveException.class)
-    public ResponseEntity<ApiResponse<?>> handleAlreadyActive(AlreadyActiveException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(AlreadyAssignException.class)
-    public ResponseEntity<ApiResponse<?>> handleAlreadyAssign(AlreadyAssignException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(PasswordIncorrectException.class)
-    public ResponseEntity<ApiResponse<?>> handlePasswordIncorrect(PasswordIncorrectException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSpringAccessDenied(
+            org.springframework.security.access.AccessDeniedException ex) {
+        log.warn("Access denied: {}", ex.getMessage());
+        return error(HttpStatus.FORBIDDEN,
+                "You do not have permission to perform this action. Contact your administrator if you believe this is a mistake.");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<?>> handleAccessDenied(AccessDeniedException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiResponse<>(403, ex.getMessage(), null, LocalDateTime.now()));
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+        log.warn("Access denied: {}", ex.getMessage());
+        return error(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
-    @ExceptionHandler(SecurityException.class)
-    public ResponseEntity<ApiResponse<?>> handleSecurityException(SecurityException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiResponse<>(403, ex.getMessage(), null, LocalDateTime.now()));
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthentication(AuthenticationException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return error(HttpStatus.UNAUTHORIZED, "Authentication failed. Please log in again.");
     }
 
-    @ExceptionHandler({NotFoundException.class, ResourceNotFoundException.class})
-    public ResponseEntity<ApiResponse<?>> handleNotFound(Exception ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ApiResponse<>(404, ex.getMessage(), null, LocalDateTime.now()));
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
+        return error(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
     }
 
-    @ExceptionHandler(TokenExpiredException.class)
-    public ResponseEntity<ApiResponse<?>> handleTokenExpired(TokenExpiredException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse<>(401, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(UnauthorizedActionException.class)
-    public ResponseEntity<ApiResponse<?>> handleUnauthorizedAction(UnauthorizedActionException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiResponse<>(403, ex.getMessage(), null, LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiResponse<?>> handleIllegalState(IllegalStateException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
+    @ExceptionHandler(LockedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleLocked(LockedException ex) {
+        return error(HttpStatus.LOCKED, ex.getMessage());
     }
 
     @ExceptionHandler({
+            NotFoundException.class,
+            ResourceNotFoundException.class,
+            UserNotFoundException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(RuntimeException ex) {
+        return error(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler({
+            CodeAlreadyExistsException.class,
+            EmailExistException.class,
+            AlreadyActiveException.class,
+            AlreadyAssignException.class,
+            CannotAssignException.class,
+            PasswordIncorrectException.class,
             LevelAlreadyExists.class,
             AppraisalLockedException.class,
             InvalidAppraisalStateException.class,
             InvalidStateException.class,
-            AppraisalException.class
+            AppraisalException.class,
+            IllegalStateException.class
     })
-    public ResponseEntity<ApiResponse<?>> handleConflictExceptions(Exception ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ApiResponse<>(409, ex.getMessage(), null, LocalDateTime.now()));
+    public ResponseEntity<ApiResponse<Void>> handleConflict(RuntimeException ex) {
+        return error(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(CannotDeleteException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCannotDelete(CannotDeleteException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler({
+            InvalidTokenException.class,
+            TokenExpiredException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleInvalidToken(RuntimeException ex) {
+        return error(HttpStatus.UNAUTHORIZED, "Your session has expired. Please log in again.");
+    }
+
+    @ExceptionHandler(UnauthorizedActionException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnauthorizedAction(UnauthorizedActionException ex) {
+        return error(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSecurityException(SecurityException ex) {
+        return error(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, String> fieldErrors = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach(err -> {
+            if (err instanceof FieldError fieldError) {
+                fieldErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
+            }
+        });
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ApiResponse<>(
+                        HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                        "Validation failed. Please check the highlighted fields.",
+                        fieldErrors));
     }
 
     @ExceptionHandler(BulkImportValidationException.class)
-    public ResponseEntity<Map<String, Object>> handleBulkImportValidationException(BulkImportValidationException ex) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleBulkImportValidationException(
+            BulkImportValidationException ex) {
         Map<String, Object> body = new HashMap<>();
-        body.put("code", 400);
-        body.put("message", ex.getMessage());
         body.put("errors", ex.getErrors());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse<>(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), body));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
+        log.error("Unexpected error", ex);
+        return error(HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred. Please try again or contact support.");
+    }
+
+    private ResponseEntity<ApiResponse<Void>> error(HttpStatus status, String message) {
+        return ResponseEntity.status(status).body(ApiResponse.error(status, message));
     }
 }

@@ -44,17 +44,35 @@ const ProtectedRoute = ({
 
   // Role check
   if (allowedRoles && !hasAnyRole(allowedRoles)) {
-    return <Navigate to="/unauthorized" replace />;
+    return (
+      <Navigate
+        to="/unauthorized"
+        replace
+        state={{ reason: `This page requires one of the following roles: ${allowedRoles.join(", ")}.` }}
+      />
+    );
   }
 
   // Level check (ABAC)
   if (user) {
     if (minLevel && user.levelRank > minLevel) {
-      return <Navigate to="/unauthorized" replace />;
+      return (
+        <Navigate
+          to="/unauthorized"
+          replace
+          state={{ reason: `This page requires a minimum seniority level of L0${minLevel}.` }}
+        />
+      );
     }
 
     if (maxLevel && user.levelRank < maxLevel) {
-      return <Navigate to="/unauthorized" replace />;
+      return (
+        <Navigate
+          to="/unauthorized"
+          replace
+          state={{ reason: `This page is limited to seniority level L0${maxLevel} or below.` }}
+        />
+      );
     }
   }
 
@@ -63,7 +81,14 @@ const ProtectedRoute = ({
     requiredPermissions &&
     !requiredPermissions.every((p) => hasPermission(p))
   ) {
-    return <Navigate to="/unauthorized" replace />;
+    const missing = requiredPermissions.filter((permission) => !hasPermission(permission));
+    return (
+      <Navigate
+        to="/unauthorized"
+        replace
+        state={{ reason: `Missing required permission(s): ${missing.join(", ")}.` }}
+      />
+    );
   }
 
   return <Outlet />;
