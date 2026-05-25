@@ -801,6 +801,9 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         if (cycleId == null) {
             throw new IllegalArgumentException("Appraisal Cycle ID must be provided.");
         }
+        // Fetch employee details first
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NotFoundException("Employee not found with ID: " + employeeId));
         // First try finding for the specific cycle provided
         List<KpiGoals> goals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
         
@@ -813,7 +816,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         }
 
         if (goals.isEmpty()) {
-            throw new NotFoundException("Current goal set not found for employee ID: " + employeeId);
+            throw new NotFoundException(String.format("Current goal set not found for employee: %s (ID: %s)",
+                    employee.getStaffName(), employeeId));
         }
         
         return kpiMapper.toGoalSetResponse(goals.get(0));
