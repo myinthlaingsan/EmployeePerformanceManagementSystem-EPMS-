@@ -69,6 +69,8 @@ public enum NotificationType {
     MEETING_SCHEDULED,
     MEETING_UPDATED,
     ACTION_ITEM_COMPLETED,
+    MEETING_FOLLOWUP_OVERDUE,
+    ACTION_ITEM_OVERDUE,
 
     // Employee & System
     ACCOUNT_ACTIVATED,
