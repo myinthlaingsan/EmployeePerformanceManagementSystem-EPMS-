@@ -5,7 +5,6 @@ import {
   ClipboardList, CheckCircle2, Clock, AlertCircle, Star,
   X, Loader2, Save, Calendar,
 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
 import {
   useGetMyFeedbackRequestsQuery,
   useGetFormQuestionsQuery,
@@ -19,7 +18,7 @@ import type {
   FeedbackResponseRequest,
   CategoryDTO,
 } from '../../features/feedback360/feedback360Types';
-import { FeedbackRelationship, FeedbackStatus } from '../../features/feedback360/feedback360Types';
+import { FeedbackStatus } from '../../features/feedback360/feedback360Types';
 
 // ── Style constants ────────────────────────────────────────────────────────────
 
@@ -113,7 +112,7 @@ interface StarRatingProps {
   questionId: number;
 }
 
-const StarRating = ({ value, onChange, disabled, questionId }: StarRatingProps) => (
+const StarRating = ({ value, onChange, disabled}: StarRatingProps) => (
   <div
     role="radiogroup"
     aria-label="Rating 1 to 5"

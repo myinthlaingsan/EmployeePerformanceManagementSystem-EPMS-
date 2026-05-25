@@ -58,6 +58,15 @@ export const permissionApi = api.injectEndpoints({
       invalidatesTags: ["RoleLevelPermission"],
     }),
 
+    togglePermission: builder.mutation<void, AssignPermissionRequest>({
+      query: (body) => ({
+        url: "/permissions/assign/toggle",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["RoleLevelPermission"],
+    }),
+
     removeAssignedPermission: builder.mutation<void, number>({
       query: (assignmentId) => ({
         url: `/permissions/assign/${assignmentId}`,
@@ -90,6 +99,7 @@ export const {
   useDeletePermissionMutation,
   useGetAssignedPermissionsQuery,
   useAssignPermissionMutation,
+  useTogglePermissionMutation,
   useRemoveAssignedPermissionMutation,
   useGetPermissionMatrixQuery,
   useUpdatePermissionMatrixMutation,
