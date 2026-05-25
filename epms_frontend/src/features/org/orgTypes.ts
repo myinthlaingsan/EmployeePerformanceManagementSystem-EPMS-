@@ -100,6 +100,7 @@ export interface TeamResponse {
   teamId: number;
   teamName: string;
   departmentName: string;
+  departmentId: number;
 }
 
 export interface TeamAssignmentRequest {

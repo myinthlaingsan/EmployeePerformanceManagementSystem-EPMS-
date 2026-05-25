@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreatePipMutation, useCreateObjectiveMutation, useActivatePipMutation } from '../../services/pipApi';
-import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetEmployeesQuery, useGetManagerQuery } from '../../features/employee/employeeapi';
 import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
 import { PipSeverity } from '../../features/pip/types';
 import type { PipCreateRequest } from '../../features/pip/types';
@@ -74,7 +74,7 @@ const PipCreatePage: React.FC = () => {
   };
 
   const [formData, setFormData] = useState<PipCreateRequest>({
-    employeeId: 0, managerId: 0, startDate: '', endDate: '',
+    employeeId: 0, startDate: '', endDate: '',
     severity: PipSeverity.STANDARD, reason: '', scheduledReviewDates: []
   });
   const [objectives, setObjectives] = useState<LocalObjective[]>([
@@ -84,8 +84,12 @@ const PipCreatePage: React.FC = () => {
 
   const submitForm = async (isDraft: boolean) => {
     setError(null);
-    if (!formData.employeeId || !formData.managerId || !formData.startDate || !formData.endDate || !formData.reason) {
-      setError('Please complete all required fields in the Identification section (Employee, Manager, Dates, Reason).');
+    if (!formData.employeeId || !formData.startDate || !formData.endDate || !formData.reason) {
+      setError('Please complete all required fields: Employee, Dates, Reason.');
+      scrollToStep(1); return;
+    }
+    if (!directManager) {
+      setError('Cannot create PIP — this employee has no active reporting line. Set the reporting line first.');
       scrollToStep(1); return;
     }
     if (objectives.length === 0) { setError('Please add at least one improvement objective.'); scrollToStep(3); return; }
@@ -130,11 +134,17 @@ const PipCreatePage: React.FC = () => {
 
   const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedDepartmentId(parseInt(e.target.value));
-    setFormData(prev => ({ ...prev, employeeId: 0, managerId: 0 }));
+    setFormData(prev => ({ ...prev, employeeId: 0 }));
   };
 
   const filteredEmployees = useMemo(() => !employees ? [] : employees.filter(emp => selectedDepartmentId === 0 || emp.currentDepartmentId === selectedDepartmentId), [employees, selectedDepartmentId]);
-  const filteredManagers = useMemo(() => !employees ? [] : employees.filter(emp => (selectedDepartmentId === 0 || emp.currentDepartmentId === selectedDepartmentId) && emp.roles.some(r => r.toUpperCase().includes('MANAGER'))), [employees, selectedDepartmentId]);
+
+  // Auto-resolve direct manager from reporting line when employee is selected
+  const { data: directManager, isFetching: isResolvingManager } = useGetManagerQuery(
+    formData.employeeId,
+    { skip: !formData.employeeId || formData.employeeId === 0 }
+  );
+  const canSubmit = !!directManager;
 
   if (isEmployeesLoading || isDepartmentsLoading) return (
     <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading data…</div>
@@ -203,13 +213,18 @@ const PipCreatePage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>Reviewing Manager</label>
-                <select style={inputStyle} name="managerId" value={formData.managerId} onChange={handleChange}>
-                  <option value={0}>{selectedDepartmentId === 0 ? 'Select a department first…' : filteredManagers.length === 0 ? 'No managers found in this dept' : 'Select a manager…'}</option>
-                  {filteredManagers.map(mgr => <option key={mgr.id} value={mgr.id}>{mgr.staffName} ({mgr.employeeCode})</option>)}
-                </select>
-                {selectedDepartmentId !== 0 && filteredManagers.length === 0 && (
-                  <p style={{ fontSize: 11, color: '#633806', marginTop: 4 }}>No users with MANAGER role found in this department.</p>
+                <label style={labelStyle}>Direct Manager (auto-resolved)</label>
+                <div style={{ ...inputStyle, background: '#F0F2F6', color: directManager ? '#111827' : '#9EA3B0', cursor: 'not-allowed', display: 'flex', alignItems: 'center', minHeight: 36 }}>
+                  {!formData.employeeId || formData.employeeId === 0
+                    ? 'Pick an employee first…'
+                    : isResolvingManager
+                      ? 'Resolving…'
+                      : directManager
+                        ? `${directManager.staffName} (${directManager.employeeCode})`
+                        : '⚠ No active reporting line — set one before creating a PIP'}
+                </div>
+                {formData.employeeId > 0 && !isResolvingManager && !directManager && (
+                  <p style={{ fontSize: 11, color: '#791F1F', marginTop: 4 }}>Cannot create PIP until a reporting line is assigned for this employee.</p>
                 )}
               </div>
               <div>
@@ -372,12 +387,12 @@ const PipCreatePage: React.FC = () => {
               Discard Draft
             </button>
             <div className="flex gap-2">
-              <button type="button" onClick={() => submitForm(true)} disabled={isCreating || isActivating}
+              <button type="button" onClick={() => submitForm(true)} disabled={isCreating || isActivating || !canSubmit}
                 style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500 }}
                 className="disabled:opacity-50 hover:bg-[#E0E2E8] transition-colors">
                 {isCreating && !isActivating ? 'Saving…' : 'Save Draft'}
               </button>
-              <button type="button" onClick={() => submitForm(false)} disabled={isCreating || isActivating}
+              <button type="button" onClick={() => submitForm(false)} disabled={isCreating || isActivating || !canSubmit}
                 style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 20px', fontSize: 13, fontWeight: 500 }}
                 className="disabled:opacity-50 hover:opacity-90 transition-opacity">
                 {isActivating ? 'Activating…' : 'Activate Performance Plan'}

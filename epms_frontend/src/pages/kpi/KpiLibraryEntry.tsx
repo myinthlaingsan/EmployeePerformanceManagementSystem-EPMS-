@@ -74,14 +74,14 @@ const KpiLibraryEntry: React.FC = () => {
 
   const handleDetailChange = (index: number, field: keyof FormKpiDetail, value: any) => {
     const newDetails = [...details];
-  
-    let updatedItem = {
+
+    let updatedItem: FormKpiDetail = {
       ...newDetails[index],
       [field]: field === 'categoryId' ? parseInt(value) || 0
         : field === 'isCompliance' ? !!value
           : ['targetValue', 'weightPercent'].includes(field as string) ? (value === '' ? '' : parseFloat(value) || 0)
             : value
-    };
+    } as FormKpiDetail;
 
     if (field === 'isCompliance') {
       if (value === true) {

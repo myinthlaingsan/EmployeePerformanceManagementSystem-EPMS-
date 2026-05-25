@@ -1,9 +1,13 @@
 package ace.org.epms_backend.dto.feedback360;
 
+import ace.org.epms_backend.enums.CalibrationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 @Data
@@ -28,4 +32,19 @@ public class FeedbackSummaryResponse {
     private List<DetailedComment> detailedComments;
     private Double totalAverageScore;
     private Boolean isFinalized;
+
+    // Calibration fields
+    private String managerSummary;
+    private BigDecimal calibratedFinalScore;
+    private CalibrationStatus calibrationStatus;
+    private String calibrationReason;
+    private Instant calibrationDate;
+    private Long calibratedBy;
+    private Instant finalizedAt;
+    private Long finalizedBy;
+
+    // Target-view pooled sections
+    private PooledFeedbackSection pooledPeerFeedback;
+    private PooledFeedbackSection pooledSubordinateFeedback;
+    private Integer suppressionThreshold;
 }

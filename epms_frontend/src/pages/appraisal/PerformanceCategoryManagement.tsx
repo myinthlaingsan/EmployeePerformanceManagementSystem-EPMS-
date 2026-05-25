@@ -8,6 +8,7 @@ import {
 } from '../../features/appraisal/performanceCategoryApi';
 import type { PerformanceCategory, PerformanceGrade } from '../../types/appraisal';
 import { Plus, Trash2, Edit2, Layers, Target, BarChart3, X, Check } from 'lucide-react';
+import { Can } from '../../components/Can';
 
 const GRADES: PerformanceGrade[] = [
   'OUTSTANDING', 'EXCEEDS_EXPECTATIONS', 'MEETS_EXPECTATIONS', 'NEEDS_IMPROVEMENT', 'UNSATISFACTORY'
@@ -65,10 +66,12 @@ const PerformanceCategoryManagement: React.FC = () => {
           <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Performance Categories</h1>
           <p style={{ fontSize: 13, color: '#9EA3B0', marginTop: 2 }}>Define grading bands and score ranges for final appraisals.</p>
         </div>
-        <button onClick={handleOpenAdd} className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
-          style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
-          <Plus size={14} /> Add Category
-        </button>
+        <Can permission="CYCLE_CONFIG_MANAGE">
+          <button onClick={handleOpenAdd} className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
+            style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
+            <Plus size={14} /> Add Category
+          </button>
+        </Can>
       </div>
 
       {/* Stats */}
@@ -132,18 +135,20 @@ const PerformanceCategoryManagement: React.FC = () => {
                     </span>
                   </td>
                   <td style={{ padding: '11px 18px', textAlign: 'right' }}>
-                    <div className="flex justify-end items-center gap-1">
-                      <button onClick={() => handleOpenEdit(cat)} title="Edit"
-                        style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
-                        className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
-                        <Edit2 size={13} />
-                      </button>
-                      <button onClick={() => handleDelete(cat.id!)} title="Delete"
-                        style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
-                        className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
+                    <Can permission="CYCLE_CONFIG_MANAGE">
+                      <div className="flex justify-end items-center gap-1">
+                        <button onClick={() => handleOpenEdit(cat)} title="Edit"
+                          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
+                          className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
+                          <Edit2 size={13} />
+                        </button>
+                        <button onClick={() => handleDelete(cat.id!)} title="Delete"
+                          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
+                          className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </Can>
                   </td>
                 </tr>
               ))}

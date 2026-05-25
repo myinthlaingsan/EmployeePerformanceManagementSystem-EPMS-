@@ -47,7 +47,7 @@ export interface PipResponse {
 
 export interface PipCreateRequest {
     employeeId: number;
-    managerId: number;
+    managerId?: number; // Optional — auto-resolved from ReportingLine by backend
     startDate: string;
     endDate: string;
     severity: PipSeverity;

@@ -1,4 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import {
   useGetEmployeeAssessmentQuery,
@@ -7,13 +9,15 @@ import {
   useGetScoreBreakdownQuery,
   useCalculateScoreMutation
 } from '../../features/appraisal/appraisalApi';
+import { useGetFeedbackSummaryQuery } from '../../features/feedback360/feedback360Api';
 import { format } from 'date-fns';
 import {
   ChevronLeft, Award, User, CheckCircle2, ShieldCheck, MessageSquare,
-  Download, Target, Clock, Calculator
+  Download, Target, Clock, Calculator, Sliders, Loader2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import SignaturePad from '../../components/appraisal/SignaturePad';
+import type { RootState } from '../../app/store';
 
 const panelStyle: React.CSSProperties = {
   background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px',
@@ -26,9 +30,49 @@ const ResultPage: React.FC = () => {
 
   const { data: appraisal, isLoading } = useGetEmployeeAssessmentQuery(id || '', { skip: !id });
   const { data: breakdown } = useGetScoreBreakdownQuery(id || '', { skip: !id });
+  const { data: feedbackSummary } = useGetFeedbackSummaryQuery(
+    { targetUserId: appraisal?.employeeId ?? 0, cycleId: appraisal?.cycleId ?? 0 },
+    { skip: !appraisal?.employeeId || !appraisal?.cycleId }
+  );
   const [calculateScore, { isLoading: isCalculating }] = useCalculateScoreMutation();
   const [uploadEmployeeSignature, { isLoading: isSigningEmployee }] = useUploadEmployeeSignatureMutation();
   const [uploadManagerSignature, { isLoading: isSigningManager }] = useUploadManagerSignatureMutation();
+  const accessToken = useSelector((state: RootState) => state.auth.accessToken);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPdf = async () => {
+    if (!appraisal?.employeeId || !appraisal?.cycleId) {
+      toast.error('Missing employee or cycle information');
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const res = await fetch(
+        `http://localhost:8080/api/v1/reports/performance-summary/download?employeeId=${appraisal.employeeId}&cycleId=${appraisal.cycleId}&format=pdf`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'ngrok-skip-browser-warning': 'true',
+          },
+        }
+      );
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Performance_Summary_${appraisal.employeeName?.replace(/\s+/g, '_') || 'Report'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('PDF downloaded successfully!');
+    } catch (err) {
+      toast.error('Failed to export PDF');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (isLoading) return <div className="py-16 text-center" style={{ color: '#9EA3B0', fontSize: 13 }}>Loading…</div>;
   if (!appraisal) return (
@@ -87,9 +131,9 @@ const ResultPage: React.FC = () => {
               <Calculator size={13} /> {isCalculating ? 'Calculating…' : 'Recalculate'}
             </button>
           )}
-          <button className="inline-flex items-center gap-2 transition-colors"
-            style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none' }}>
-            <Download size={13} /> Export PDF
+          <button onClick={handleExportPdf} disabled={isExporting} className="inline-flex items-center gap-2 transition-colors disabled:opacity-50"
+            style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none', cursor: isExporting ? 'not-allowed' : 'pointer' }}>
+            {isExporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} {isExporting ? 'Exporting…' : 'Export PDF'}
           </button>
         </div>
       </div>
@@ -165,10 +209,19 @@ const ResultPage: React.FC = () => {
                 { label: 'Key Performance Indicators', raw: breakdown?.kpiRawScore, weight: breakdown?.kpiWeight, weighted: breakdown?.kpiWeightedScore },
                 { label: 'Manager Evaluation', raw: breakdown?.managerRawScore, weight: breakdown?.managerWeight, weighted: breakdown?.managerWeightedScore },
                 { label: 'Self Assessment', raw: breakdown?.selfRawScore, weight: breakdown?.selfWeight, weighted: breakdown?.selfWeightedScore },
-                { label: '360° Peer Feedback', raw: breakdown?.feedbackRawScore, weight: breakdown?.feedbackWeight, weighted: breakdown?.feedbackWeightedScore },
+                { label: '360° Peer Feedback', raw: breakdown?.feedbackRawScore, weight: breakdown?.feedbackWeight, weighted: breakdown?.feedbackWeightedScore, calibrated: feedbackSummary?.calibratedFinalScore != null },
               ].map((row, idx) => (
                 <tr key={idx} style={{ borderBottom: '0.5px solid #F0F2F6' }} className="hover:bg-[#FAFBFF] transition-colors">
-                  <td style={{ padding: '10px 18px', fontSize: 13, color: '#111827' }}>{row.label}</td>
+                  <td style={{ padding: '10px 18px', fontSize: 13, color: '#111827' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {row.label}
+                      {(row as any).calibrated && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, color: '#0C447C', background: '#EEF3FD', border: '0.5px solid #BFD4F5', borderRadius: 20, padding: '2px 7px' }}>
+                          <Sliders size={9} /> Calibrated by HR
+                        </span>
+                      )}
+                    </span>
+                  </td>
                   <td style={{ padding: '10px 18px', textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#5A6070' }}>
                     {row.raw !== undefined ? Number(row.raw).toFixed(2) : '—'}
                   </td>

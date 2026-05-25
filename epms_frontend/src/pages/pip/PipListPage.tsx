@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetPipsQuery, useGetPipsByInvolvedUserQuery } from '../../services/pipApi';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetActiveDepartmentsQuery } from '../../features/org/departmentApi';
 import { format, parseISO, isAfter, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { CheckCircle2, AlertCircle, Plus, ChevronRight, Activity, Target, User } from 'lucide-react';
+import { Can } from '../../components/Can';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   ACTIVE:      { bg: "#EEF3FD", text: "#0C447C", border: "#B5D4F4" },
@@ -36,28 +38,53 @@ const selectStyle: React.CSSProperties = {
 
 const PipListPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isHR, isAdmin, isManager, user } = useAuth();
+
+  const scope = searchParams.get('scope') === 'mine' ? 'MINE' : 'ALL';
+  const setScope = (newScope: 'ALL' | 'MINE') => {
+    if (newScope === 'MINE') {
+      setSearchParams({ scope: 'mine' });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const handleScopeChange = (next: 'ALL' | 'MINE') => {
+    setScope(next);
+    if (next === 'MINE') setDeptFilter('All Departments');
+  };
 
   const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000 });
   const employees = employeeData?.content;
+  const { data: allDepartments = [] } = useGetActiveDepartmentsQuery();
 
   const [deptFilter, setDeptFilter] = useState('All Departments');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [severityFilter, setSeverityFilter] = useState('All Severities');
 
   const { data: allPipsResponse, isLoading: isLoadingAll } = useGetPipsQuery(undefined, { skip: !isHR && !isAdmin });
-  const { data: involvedPipsResponse, isLoading: isLoadingInvolved } = useGetPipsByInvolvedUserQuery(user?.id || 0, { skip: isHR || isAdmin || !user?.id });
+  const shouldFetchInvolved = !!user?.id && (!isHR && !isAdmin || scope === 'MINE');
+  const { data: involvedPipsResponse, isLoading: isLoadingInvolved } = useGetPipsByInvolvedUserQuery(user?.id || 0, { skip: !shouldFetchInvolved });
 
-  const pipsResponse = (isHR || isAdmin) ? allPipsResponse : involvedPipsResponse;
-  const isLoading = (isHR || isAdmin) ? isLoadingAll : isLoadingInvolved;
-  const allPips = pipsResponse?.data || [];
+  const isLoading = (isHR || isAdmin)
+    ? (isLoadingAll || (scope === 'MINE' && isLoadingInvolved))
+    : isLoadingInvolved;
+  const allPips = (isHR || isAdmin) ? (allPipsResponse?.data || []) : (involvedPipsResponse?.data || []);
+  const myPips = (involvedPipsResponse?.data || []).filter(pip => pip.employeeId === user?.id);
+  const visiblePips = scope === 'MINE' ? myPips : allPips;
 
   const getEmployee = (id: number) => employees?.find(e => e.id === id);
 
-  const departmentsWithPips = allPips.map(pip => getEmployee(pip.employeeId)?.currentDepartmentName).filter(Boolean) as string[];
-  const departments = ['All Departments', ...new Set(departmentsWithPips)];
+  const departments = [
+    'All Departments',
+    ...allDepartments
+      .map(d => d.departmentName)
+      .filter((name): name is string => typeof name === 'string' && name.trim() !== '')
+      .sort((a, b) => a.localeCompare(b))
+  ];
 
-  const pips = allPips.filter(pip => {
+  const pips = visiblePips.filter(pip => {
     const employee = getEmployee(pip.employeeId);
     const matchesDept = deptFilter === 'All Departments' || employee?.currentDepartmentName === deptFilter;
     let matchesStatus = true;
@@ -72,8 +99,8 @@ const PipListPage: React.FC = () => {
     return matchesDept && matchesStatus && matchesSeverity;
   });
 
-  const completedCount = allPips.filter(p => p.status === 'COMPLETED').length;
-  const closedCount = allPips.filter(p => p.status === 'CLOSED').length;
+  const completedCount = visiblePips.filter(p => p.status === 'COMPLETED').length;
+  const closedCount = visiblePips.filter(p => p.status === 'CLOSED').length;
   const totalFinished = completedCount + closedCount;
   const successRate = totalFinished > 0 ? Math.round((completedCount / totalFinished) * 100) : 0;
 
@@ -84,7 +111,7 @@ const PipListPage: React.FC = () => {
   );
 
   const metrics = [
-    { label: 'Active plans', value: allPips.filter(p => ['ACTIVE','IN_PROGRESS','EXTENDED'].includes(p.status)).length, icon: <Activity size={15} />, color: "blue" as const },
+    { label: scope === 'MINE' ? 'My active plans' : 'Active plans', value: visiblePips.filter(p => ['ACTIVE','IN_PROGRESS','EXTENDED'].includes(p.status)).length, icon: <Activity size={15} />, color: "blue" as const },
     { label: 'Successful', value: completedCount, icon: <CheckCircle2 size={15} />, color: "green" as const },
     { label: 'Unsuccessful', value: closedCount, icon: <AlertCircle size={15} />, color: "red" as const },
   ];
@@ -103,7 +130,7 @@ const PipListPage: React.FC = () => {
           <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>PIPs overview</h1>
           <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Managing growth and accountability across your organisation.</p>
         </div>
-        {isHR && (
+        <Can permission="PIP_CREATE">
           <button
             onClick={() => navigate('/pip/new')}
             className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
@@ -113,8 +140,44 @@ const PipListPage: React.FC = () => {
           >
             <Plus size={14} aria-hidden="true" /> Launch new PIP
           </button>
-        )}
+        </Can>
       </div>
+
+      {/* Scope navigation */}
+      {(isHR || isAdmin || isManager) && (
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '4px', display: 'inline-flex', flexWrap: 'wrap', gap: 2 }}>
+          <button
+            onClick={() => handleScopeChange('ALL')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              border: 'none',
+              cursor: 'pointer',
+              background: scope === 'ALL' ? '#EEF3FD' : 'transparent',
+              color: scope === 'ALL' ? '#1A56DB' : '#5A6070'
+            }}
+          >
+            {isHR || isAdmin ? 'All PIPs' : 'Team PIPs'}
+          </button>
+          <button
+            onClick={() => handleScopeChange('MINE')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              border: 'none',
+              cursor: 'pointer',
+              background: scope === 'MINE' ? '#EEF3FD' : 'transparent',
+              color: scope === 'MINE' ? '#1A56DB' : '#5A6070'
+            }}
+          >
+            My PIPs
+          </button>
+        </div>
+      )}
 
       {/* Metric cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -137,7 +200,7 @@ const PipListPage: React.FC = () => {
       {/* Filters */}
       <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "12px 16px" }}>
         <div className="flex flex-wrap gap-2">
-          {(isHR || isAdmin || isManager) && (
+          {(isHR || isAdmin || isManager) && scope === 'ALL' && (
             <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} style={selectStyle}>
               {departments.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
@@ -235,7 +298,7 @@ const PipListPage: React.FC = () => {
                       <button
                         onClick={() => navigate(`/pip/${pip.pipId}`)}
                         style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 6, color: "#5A6070" }}
-                        className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors"
+                        className="hover:bg-info-fill hover:text-[#1A56DB] transition-colors"
                       >
                         <ChevronRight size={14} aria-hidden="true" />
                       </button>
@@ -249,12 +312,12 @@ const PipListPage: React.FC = () => {
           </table>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2" style={{ borderTop: "0.5px solid #E4E6EC", padding: "10px 16px" }}>
-          <p style={{ fontSize: 12, color: "#9EA3B0" }}>Showing {pips.length} of {allPips.length} records</p>
+          <p style={{ fontSize: 12, color: "#9EA3B0" }}>Showing {pips.length} of {visiblePips.length} records</p>
         </div>
       </div>
 
       {/* Insights panel */}
-      {(isHR || isAdmin || isManager) && (
+      {(isHR || isAdmin || isManager) && scope === 'ALL' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Chart */}
           <div className="lg:col-span-2" style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
@@ -264,7 +327,7 @@ const PipListPage: React.FC = () => {
                 const date = subMonths(new Date(), monthsAgo);
                 const monthStart = startOfMonth(date);
                 const monthEnd = endOfMonth(date);
-                const count = allPips.filter(p => { const d = parseISO(p.startDate); return d >= monthStart && d <= monthEnd; }).length;
+                const count = visiblePips.filter(p => { const d = parseISO(p.startDate); return d >= monthStart && d <= monthEnd; }).length;
                 const height = Math.min(100, (count / 10) * 100);
                 return (
                   <div key={monthsAgo} className="flex-1 flex flex-col items-center gap-1">

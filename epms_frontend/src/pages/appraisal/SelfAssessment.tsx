@@ -7,7 +7,9 @@ import {
   useSubmitSelfAssessmentMutation,
   useSaveDraftMutation,
 } from '../../features/appraisal/appraisalApi';
-import { User, ChevronLeft, Target, Save } from 'lucide-react';
+import { useGetEmployeeAssessmentQuery } from '../../features/appraisal/appraisalApi';
+import { useDownloadReportMutation } from '../../features/report/reportApi';
+import { User, ChevronLeft, Target, Save, Download } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 const RATING_SCALE = [
@@ -32,6 +34,9 @@ const SelfAssessment = () => {
   const [saveAnswers, { isLoading: isSaving }] = useSaveSelfAssessmentAnswersMutation();
   const [submitSelfAssessment, { isLoading: isSubmitting }] = useSubmitSelfAssessmentMutation();
   const [saveDraftMutation, { isLoading: isDrafting }] = useSaveDraftMutation();
+  const [downloadReport, { isLoading: isExporting }] = useDownloadReportMutation();
+
+  const { data: appraisalDetail } = useGetEmployeeAssessmentQuery(id || '', { skip: !id });
 
   const [responses, setResponses] = useState<Record<string, { ratingValue: number; isCompleted: boolean | null; comment?: string }>>({});
   const [comment, setComment] = useState('');
@@ -101,6 +106,7 @@ const SelfAssessment = () => {
   const isOwner = Number(user?.id) === Number(formData.employeeId);
   const isReadOnly = !!formData.submitted || !isOwner;
   const isDisabled = isSubmitting || isReadOnly;
+  const canExport = appraisalDetail?.status === 'HR_APPROVED' || appraisalDetail?.status === 'FINALIZED' || appraisalDetail?.status === 'ARCHIVED';
 
   if (!isOwner && !formData.submitted) return (
     <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '32px 24px', textAlign: 'center', maxWidth: 480, margin: '40px auto' }}>
@@ -140,6 +146,26 @@ const SelfAssessment = () => {
           {formData.submitted && (
             <span style={{ fontSize: 11, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 20, padding: '4px 10px' }}>Submitted</span>
           )}
+          {/* Export PDF button — always visible, disabled until FINALIZED */}
+          <button
+            onClick={async () => {
+              try {
+                await downloadReport({
+                  endpoint: 'self-assessment',
+                  params: { appraisalId: Number(id), format: 'pdf' },
+                  fileName: `Self_Assessment_${formData.employeeName ?? 'Form'}.pdf`,
+                }).unwrap();
+              } catch (err: any) {
+                toast.error(err?.data?.message || 'Export failed');
+              }
+            }}
+            disabled={!canExport || isExporting}
+            title={canExport ? 'Export this form as PDF' : 'Available after the appraisal is approved'}
+            className="inline-flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none', cursor: canExport ? 'pointer' : 'not-allowed' }}
+          >
+            <Download size={13} /> {isExporting ? 'Exporting…' : 'Export PDF'}
+          </button>
           {!isReadOnly && (
             <>
               <button onClick={handleSaveDraft} disabled={isSaving || isDrafting} className="flex items-center gap-1 transition-colors disabled:opacity-50"

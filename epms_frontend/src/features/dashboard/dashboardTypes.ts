@@ -8,6 +8,11 @@ export interface HrDashboardResponse {
   departmentPerformance: DepartmentPerformance[];
   topPerformers: TopPerformer[];
   alerts: DashboardAlert[];
+  currentCyclePhase?: string;
+  cyclePhaseProgress?: number;
+  nonCompliantManagers?: string[];
+  pipByDepartment?: Record<string, PipSummary>;
+  daysUntilCycleEnd?: number;
 }
 
 export interface DepartmentPerformance {
@@ -39,6 +44,12 @@ export interface AdminDashboardResponse {
   activeCycles: number;
   recentActivities: RecentActivity[];
   securityAlerts: SecurityAlert[];
+  failedLoginsLast24h?: number;
+  accountsCreatedThisMonth?: number;
+  accountsDeactivatedThisMonth?: number;
+  activeCycleName?: string;
+  cycleStartDate?: string;
+  cycleEndDate?: string;
 }
 
 export interface RecentActivity {
@@ -64,6 +75,12 @@ export interface EmployeeDashboardResponse {
   kpiStatus: KpiProgress[];
   appraisalTimeline: UpcomingPhase[];
   tasks: DashboardTask[];
+  managerLastScore?: number;
+  managerLastComment?: string;
+  daysUntilNextDeadline?: number;
+  teamRank?: number;
+  teamSize?: number;
+  onPip?: boolean;
 }
 
 export interface ScoreTrend {
@@ -99,6 +116,11 @@ export interface ManagerDashboardResponse {
   teamPerformance: TeamMemberPerformance[];
   teamKpis: TeamKpiProgress[];
   urgentReviews: DashboardTask[];
+  teamAvgScore?: number;
+  companyAvgScore?: number;
+  pendingSelfAssessmentNames?: string[];
+  atRiskEmployees?: AtRiskEmployee[];
+  overdueReviews?: OverdueReview[];
 }
 
 export interface TeamMemberPerformance {
@@ -110,4 +132,22 @@ export interface TeamKpiProgress {
   name: string;
   progress: number;
   color: string;
+}
+
+export interface AtRiskEmployee {
+  name: string;
+  currentScore: number;
+  previousScore: number;
+  delta: number;
+}
+
+export interface OverdueReview {
+  employeeId: number;
+  employeeName: string;
+  daysOverdue: number;
+}
+
+export interface PipSummary {
+  active: number;
+  closed: number;
 }

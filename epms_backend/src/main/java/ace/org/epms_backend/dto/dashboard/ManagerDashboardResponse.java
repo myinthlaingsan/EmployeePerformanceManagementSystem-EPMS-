@@ -20,6 +20,11 @@ public class ManagerDashboardResponse {
     private List<TeamMemberPerformance> teamPerformance;
     private List<TeamKpiProgress> teamKpis;
     private List<EmployeeDashboardResponse.DashboardTask> urgentReviews;
+    private Double teamAvgScore;
+    private Double companyAvgScore;
+    private List<String> pendingSelfAssessmentNames;
+    private List<AtRiskEmployee> atRiskEmployees;
+    private List<OverdueReview> overdueReviews;
 
     @Data
     @Builder
@@ -38,5 +43,26 @@ public class ManagerDashboardResponse {
         private String name;
         private int progress;
         private String color;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AtRiskEmployee {
+        private String name;
+        private Double currentScore;
+        private Double previousScore;
+        private Double delta;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OverdueReview {
+        private Long employeeId;
+        private String employeeName;
+        private Long daysOverdue;
     }
 }

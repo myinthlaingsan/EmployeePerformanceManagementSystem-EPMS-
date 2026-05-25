@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -113,9 +114,23 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             }
         }
 
+        Employee employeeManager = null;
+        ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(employee).orElse(null);
+        if (rl != null) {
+            employeeManager = rl.getManager();
+        }
+        // Only fall back to the assigning user as manager when they are a MANAGER role.
+        // HR/Admin assigning on behalf should not overwrite the manager field with themselves.
+        if (employeeManager == null && isManager) {
+            employeeManager = currentManager;
+        }
+
         KpiGoals goalSet = KpiGoals.builder()
                 .employee(employee)
-                .manager(currentManager)
+                .manager(employeeManager)
+                .assignedBy(currentManager.getId())
+                .assignedByName(currentManager.getStaffName())
+                .assignedAt(Instant.now())
                 .cycle(cycle)
                 .status(KpiGoalStatus.DRAFT)
                 .version(1)
@@ -195,6 +210,11 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         Employee currentManager = getCurrentEmployee();
 
+        var bulkAuthorities = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .collect(Collectors.toSet());
+        boolean bulkIsManager = bulkAuthorities.contains("ROLE_MANAGER");
+
         BulkAssignmentResponse response = new BulkAssignmentResponse();
         response.setResults(new java.util.ArrayList<>());
         response.setTotalProcessed(request.getEmployeeIds().size());
@@ -251,10 +271,22 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     }
                 }
 
+                Employee employeeManager = null;
+                ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(employee).orElse(null);
+                if (rl != null) {
+                    employeeManager = rl.getManager();
+                }
+                if (employeeManager == null && bulkIsManager) {
+                    employeeManager = currentManager;
+                }
+
                 // Create Draft Goal Set
                 KpiGoals goalSet = KpiGoals.builder()
                         .employee(employee)
-                        .manager(currentManager)
+                        .manager(employeeManager)
+                        .assignedBy(currentManager.getId())
+                        .assignedByName(currentManager.getStaffName())
+                        .assignedAt(Instant.now())
                         .cycle(cycle)
                         .status(KpiGoalStatus.DRAFT)
                         .version(1)
@@ -394,6 +426,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .orElseThrow(() -> new NotFoundException("Category not found")));
         item.setIsCompliance(request.getIsCompliance());
 
+        recalculateItemScores(item);
+
         goalItemRepository.save(item);
         return kpiMapper.toGoalSetResponse(goalSet);
     }
@@ -451,6 +485,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             item.setWeightPercent(update.getWeightPercent());
             item.setCategory(categoryRepository.findById(update.getCategoryId())
                     .orElseThrow(() -> new NotFoundException("Category not found")));
+
+            recalculateItemScores(item);
 
             goalItemRepository.save(item);
         }
@@ -551,6 +587,14 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         if (goalSet.getStatus() == KpiGoalStatus.ARCHIVED) {
             throw new IllegalStateException("Cannot revert archived goals");
+        }
+
+        boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_HR")
+                        || a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (goalSet.getStatus() == KpiGoalStatus.LOCKED && !isHrOrAdmin) {
+            throw new IllegalStateException("Cannot revert a LOCKED goal set. Contact HR/Admin.");
         }
 
         goalSet.setStatus(KpiGoalStatus.DRAFT);
@@ -713,6 +757,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             throw new IllegalArgumentException("No changes detected in the revision request.");
         }
 
+        recalculateItemScores(item);
+
         // Save the in-place updated item — progress history stays intact
         goalItemRepository.save(item);
 
@@ -755,6 +801,9 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         if (cycleId == null) {
             throw new IllegalArgumentException("Appraisal Cycle ID must be provided.");
         }
+        // Fetch employee details first
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NotFoundException("Employee not found with ID: " + employeeId));
         // First try finding for the specific cycle provided
         List<KpiGoals> goals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
         
@@ -767,7 +816,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         }
 
         if (goals.isEmpty()) {
-            throw new NotFoundException("Current goal set not found for employee ID: " + employeeId);
+            throw new NotFoundException(String.format("Current goal set not found for employee: %s (ID: %s)",
+                    employee.getStaffName(), employeeId));
         }
         
         return kpiMapper.toGoalSetResponse(goals.get(0));
@@ -820,5 +870,39 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Current user not found"));
+    }
+
+    private void recalculateItemScores(KpiGoalItem item) {
+        if (item.getActualValue() == null) return;
+
+        BigDecimal scorePercent = BigDecimal.ZERO;
+        if (item.getTargetValue() != null) {
+            if (item.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
+                scorePercent = item.getActualValue().compareTo(BigDecimal.ZERO) == 0
+                        ? new BigDecimal("100") : BigDecimal.ZERO;
+            } else {
+                scorePercent = item.getActualValue()
+                        .divide(item.getTargetValue(), 4, RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"))
+                        .min(new BigDecimal("100"));  // cap — also fixes Bug 2
+            }
+        }
+        item.setScorePercent(scorePercent);
+
+        BigDecimal weightedScore = BigDecimal.ZERO;
+        if (item.getWeightPercent() != null) {
+            weightedScore = scorePercent.multiply(
+                    item.getWeightPercent().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+        }
+        item.setWeightedScore(weightedScore);
+
+        // Fixes Bug 4: reset status from server-computed score
+        if (scorePercent.compareTo(new BigDecimal("100")) >= 0) {
+            item.setStatus(KpiItemStatus.COMPLETED);
+        } else if (item.getActualValue().compareTo(BigDecimal.ZERO) > 0) {
+            item.setStatus(KpiItemStatus.IN_PROGRESS);
+        } else {
+            item.setStatus(KpiItemStatus.NOT_STARTED);
+        }
     }
 }

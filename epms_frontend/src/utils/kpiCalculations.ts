@@ -4,13 +4,17 @@
  */
 
 export const calculateProgressPercent = (actual: number, target: number): number => {
-  if (!target || target === 0) return 0;
+  // Zero-tolerance rule: target=0 with actual=0 → 100%, actual>0 → 0%
+  if (target === 0 || target == null) return actual === 0 ? 100 : 0;
   const percent = (actual / target) * 100;
   return Math.min(Math.round(percent), 100);
 };
 
 export const calculateWeightedScore = (actual: number, target: number, weight: number): number => {
-  if (!target || target === 0) return 0;
+  // Zero-tolerance rule: mirrors backend KpiProgressServiceImpl logic
+  if (target === 0 || target == null) {
+    return actual === 0 ? Number(weight.toFixed(2)) : 0;
+  }
   const progress = actual / target;
   return Number((progress * weight).toFixed(2));
 };
@@ -48,9 +52,9 @@ export const validateKpiWeights = (items: { weightPercent: number, priority?: st
 
 export const PRIORITY_MAP = {
   CRITICAL: { label: 'Critical', min: 20, max: 35, color: 'text-red-600 bg-red-50 border-red-200' },
-  HIGH: { label: 'High', min: 10, max: 15, color: 'text-orange-600 bg-orange-50 border-orange-200' },
-  MEDIUM: { label: 'Medium', min: 10, max: 10, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-  LOWER: { label: 'Lower', min: 5, max: 5, color: 'text-gray-600 bg-gray-50 border-gray-200' },
+  HIGH:     { label: 'High',     min: 10, max: 19, color: 'text-orange-600 bg-orange-50 border-orange-200' },
+  MEDIUM:   { label: 'Medium',   min: 7,  max: 9,  color: 'text-blue-600 bg-blue-50 border-blue-200' },
+  LOWER:    { label: 'Lower',    min: 5,  max: 6,  color: 'text-gray-600 bg-gray-50 border-gray-200' },
 };
 
 export const getPriorityFromWeight = (weight: number) => {

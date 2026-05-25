@@ -39,4 +39,12 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> error(String message) {
         return new ApiResponse<T>(HttpStatus.BAD_REQUEST.value(), message, null);
     }
+
+    public static <T> ApiResponse<T> error(Integer code, String message) {
+        return new ApiResponse<T>(code, message, null);
+    }
+
+    public static <T> ApiResponse<T> error(HttpStatus status, String message) {
+        return new ApiResponse<T>(status.value(), message, null);
+    }
 }

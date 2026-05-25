@@ -110,6 +110,8 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     @Transactional
     public AppraisalCycleResponse update(Long id, AppraisalCycleRequest request) {
         AppraisalCycle cycle = getCycleById(id);
+        
+        rejectIfArchived(cycle, "edit");
 
         if (Boolean.TRUE.equals(request.getIsActive()) && !Boolean.TRUE.equals(cycle.getIsActive())) {
             checkForActiveCycles(id);
@@ -164,6 +166,16 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     public void delete(Long id) {
         AppraisalCycle cycle = getCycleById(id);
 
+        // Reject deletion of active cycles
+        if (Boolean.TRUE.equals(cycle.getIsActive())) {
+            throw new RuntimeException("Cannot delete an active cycle. Close it first.");
+        }
+
+        // Reject deletion of archived cycles (permanent records)
+        if (cycle.getStatus() == CycleStatus.ARCHIVED) {
+            throw new RuntimeException("Cannot delete an archived cycle. Archived cycles are permanent records.");
+        }
+
         // Check if cycle has any appraisals assigned
         if (!appraisalRepository.findByCycle_CycleId(id).isEmpty()) {
             throw new RuntimeException(
@@ -191,6 +203,8 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     @Transactional
     public AppraisalCycleResponse activate(Long id) {
         AppraisalCycle cycle = getCycleById(id);
+        
+        rejectIfArchived(cycle, "activate");
 
         checkForActiveCycles(id);
 
@@ -228,6 +242,8 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     @Transactional
     public AppraisalCycleResponse advanceToEvaluation(Long id) {
         AppraisalCycle cycle = getCycleById(id);
+        
+        rejectIfArchived(cycle, "advance");
 
         if (cycle.getStatus() != CycleStatus.IN_PROGRESS) {
             throw new RuntimeException(
@@ -263,6 +279,9 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     @Transactional
     public AppraisalCycleResponse close(Long id) {
         AppraisalCycle cycle = getCycleById(id);
+        
+        rejectIfArchived(cycle, "close");
+        
         cycle.setIsActive(false);
         cycle.setStatus(CycleStatus.ARCHIVED);
         cycle = appraisalCycleRepository.save(cycle);
@@ -314,6 +333,21 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .orElseThrow(() -> new ResourceNotFoundException("AppraisalCycle not found with id: " + id));
     }
 
+    private void rejectIfArchived(AppraisalCycle cycle, String actionLabel) {
+        if (cycle.getStatus() == CycleStatus.ARCHIVED) {
+            auditService.log(AuditRequest.builder()
+                    .tableName("appraisal_cycle")
+                    .recordId(cycle.getCycleId())
+                    .action(AuditAction.UPDATE)
+                    .newState(cycle)
+                    .status(AuditStatus.FAILED)
+                    .build());
+            throw new IllegalStateException(
+                "Cannot " + actionLabel + " cycle '" + cycle.getCycleName()
+                + "'. Archived cycles are permanently closed and cannot be reopened or modified.");
+        }
+    }
+
     private void checkForActiveCycles(Long excludeCycleId) {
         List<AppraisalCycle> activeCycles = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
         for (AppraisalCycle c : activeCycles) {
@@ -357,6 +391,8 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     @org.springframework.transaction.annotation.Transactional
     public void schedulerDrivenClose(Long cycleId) {
         AppraisalCycle cycle = getCycleById(cycleId);
+        
+        if (cycle.getStatus() == CycleStatus.ARCHIVED) { return; }
 
         // 1. Bulk-archive all FINALIZED appraisals in this cycle
         List<Appraisal> finalized = appraisalRepository

@@ -163,6 +163,7 @@ public class AppraisalCalculationServiceImpl implements AppraisalCalculationServ
         private PerformanceCategory determineCategory(BigDecimal score) {
                 List<PerformanceCategory> categories = performanceCategoryRepo.findAll();
                 for (PerformanceCategory cat : categories) {
+                        if (cat.getMinScore() == null || cat.getMaxScore() == null) continue;
                         if (score.compareTo(cat.getMinScore()) >= 0 && score.compareTo(cat.getMaxScore()) <= 0) {
                                 return cat;
                         }

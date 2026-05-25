@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+// useNavigate imported above — ensure it is used inside the main component
 import { toast } from 'react-toastify';
 import {
   RefreshCw, Play, Eye, CheckCircle, Loader2, AlertCircle,
@@ -18,21 +19,24 @@ import {
   useRegenerateUserRequestsMutation,
   useCancelFeedbackRequestMutation,
   useReassignFeedbackRequestMutation,
+  useSendFeedbackCycleRemindersMutation,
+  useSendIndividualFeedbackReminderMutation,
   usePostManagerSummaryMutation,
+  useAdjustSummaryScoreMutation,
   useGetScoringPoliciesQuery,
   useUpsertScoringPolicyMutation,
   useListRequestsByCycleQuery,
   useGetFeedbackCycleDashboardQuery,
 } from '../../features/feedback360/feedback360Api';
 import {
-  Users, Mail, Clock, FileText, CheckCircle2, BarChart3,
+  Users, Mail, Clock, FileText, CheckCircle2, BarChart3, AlertTriangle, Sliders,
 } from 'lucide-react';
 import type {
   FeedbackSummaryResponse,
   FeedbackRequestResponse,
   ScoringPolicy,
 } from '../../features/feedback360/feedback360Types';
-import { FeedbackStatus } from '../../features/feedback360/feedback360Types';
+import { FeedbackStatus, CalibrationStatus } from '../../features/feedback360/feedback360Types';
 import RelBadge from '../../components/feedback360/RelBadge';
 import StatusBadge from '../../components/feedback360/StatusBadge';
 import { useGetAllEmployeesQuery } from '../../features/employee/employeeapi';
@@ -237,25 +241,55 @@ interface CalibrateModalProps {
   onClose: () => void;
 }
 
+const CAL_STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  NOT_STARTED:  { bg: '#F5F6F8', text: '#5A6070', border: '#E4E6EC' },
+  UNDER_REVIEW: { bg: '#FFF8E6', text: '#633806', border: '#F5D48A' },
+  ADJUSTED:     { bg: '#EEF3FD', text: '#0C447C', border: '#BFD4F5' },
+  APPROVED:     { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
+  LOCKED:       { bg: '#F0F1F5', text: '#9EA3B0', border: '#D0D3DC' },
+};
+
+const CalStatusBadge = ({ status }: { status?: CalibrationStatus | null }) => {
+  if (!status) return null;
+  const c = CAL_STATUS_COLORS[status] ?? CAL_STATUS_COLORS.NOT_STARTED;
+  return (
+    <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: c.bg, color: c.text, border: `0.5px solid ${c.border}`, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+      {status.replace('_', ' ')}
+    </span>
+  );
+};
+
 const CalibrateModal = ({ summary, onClose }: CalibrateModalProps) => {
   const [calibratedScore, setCalibratedScore] = useState<string>(
     summary.calibratedFinalScore != null ? String(summary.calibratedFinalScore) : '',
   );
   const [managerSummaryText, setManagerSummaryText] = useState(summary.managerSummary ?? '');
-  const [postManagerSummary, { isLoading }] = usePostManagerSummaryMutation();
+  const [reason, setReason] = useState(summary.calibrationReason ?? '');
+  const [postManagerSummary, { isLoading: isSavingManagerSummary }] = usePostManagerSummaryMutation();
+  const [adjustScore, { isLoading: isAdjusting }] = useAdjustSummaryScoreMutation();
+  const isLoading = isSavingManagerSummary || isAdjusting;
 
   const handleSave = async () => {
     if (!summary.summaryId) return;
+    const hasScore = calibratedScore !== '';
+    const parsed = hasScore ? parseFloat(calibratedScore) : NaN;
+    if (hasScore && (isNaN(parsed) || parsed < 0 || parsed > 100)) {
+      toast.error('Score must be between 0 and 100'); return;
+    }
+    if (hasScore && !reason.trim()) {
+      toast.error('Calibration reason is required when setting a score'); return;
+    }
     try {
-      await postManagerSummary({
-        summaryId: summary.summaryId,
-        managerSummary: managerSummaryText,
-        calibratedFinalScore: calibratedScore ? parseFloat(calibratedScore) : undefined,
-      }).unwrap();
+      if (hasScore) {
+        await adjustScore({ summaryId: summary.summaryId, calibratedFinalScore: parsed, calibrationReason: reason.trim() }).unwrap();
+      }
+      if (managerSummaryText !== (summary.managerSummary ?? '')) {
+        await postManagerSummary({ summaryId: summary.summaryId, managerSummary: managerSummaryText }).unwrap();
+      }
       toast.success('Calibration saved.');
       onClose();
-    } catch {
-      toast.error('Failed to save calibration.');
+    } catch (e: any) {
+      toast.error(e?.data?.message || 'Failed to save calibration.');
     }
   };
 
@@ -288,21 +322,33 @@ const CalibrateModal = ({ summary, onClose }: CalibrateModalProps) => {
             </p>
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Calibrated Final Score (optional)</label>
+            <label style={labelStyle}>Calibrated Final Score (0–100, optional)</label>
             <input
-              type="number" min={0} max={5} step={0.01}
+              type="number" min={0} max={100} step={0.01}
               value={calibratedScore}
               onChange={(e) => setCalibratedScore(e.target.value)}
-              placeholder="e.g. 4.25"
+              placeholder="e.g. 82.50"
               style={inputStyle}
             />
           </div>
+          {calibratedScore !== '' && (
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Calibration Reason *</label>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={2}
+                placeholder="Explain why the score is being adjusted…"
+                style={{ ...inputStyle, resize: 'vertical' }}
+              />
+            </div>
+          )}
           <div style={{ marginBottom: 20 }}>
             <label style={labelStyle}>Manager Summary</label>
             <textarea
               value={managerSummaryText}
               onChange={(e) => setManagerSummaryText(e.target.value)}
-              rows={5}
+              rows={4}
               placeholder="Overall narrative for this employee's 360° results…"
               style={{ ...inputStyle, resize: 'vertical' }}
             />
@@ -377,7 +423,8 @@ const SummaryRow = ({ summary, isExpanded, cycleLocked, onToggle, onFinalize, on
           <span style={{ fontSize: 13, fontWeight: 700, color: '#111827', background: '#F5F6F8', padding: '2px 8px', borderRadius: 6 }}>
             {displayScore.toFixed(2)}
           </span>
-          {summary.calibratedFinalScore != null && (
+          <CalStatusBadge status={summary.calibrationStatus} />
+          {summary.calibratedFinalScore != null && !summary.calibrationStatus && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: '#EEF3FD', color: '#1A56DB' }}>
               Calibrated
             </span>
@@ -489,11 +536,19 @@ interface PreviewRowProps {
   onRegenerate: () => void;
   onCancel: () => void;
   onReassign: () => void;
+  onRemind: () => void;
+  isReminding: boolean;
 }
 
-const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign }: PreviewRowProps) => {
+const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign, onRemind, isReminding }: PreviewRowProps) => {
+  const { user } = useAuth();
   const isDone = req.status === FeedbackStatus.COMPLETED;
   const [downloadReport, { isLoading: isPrinting }] = useDownloadReportMutation();
+
+  const isMyRow = req.targetUserId === user?.id;
+  const shouldHide = isMyRow
+    && req.isAnonymous
+    && (req.relationship === 'PEER' || req.relationship === 'SUBORDINATE');
 
   const handlePrint = async () => {
     if (!req.id) return;
@@ -515,7 +570,9 @@ const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign }: Pr
       background: req.isReciprocalFallback ? '#FFFBEB' : 'transparent',
     }}>
       <td style={{ padding: '8px 10px', fontWeight: 500, color: '#111827' }}>{req.targetUserName}</td>
-      <td style={{ padding: '8px 10px', color: '#374151' }}>{req.evaluatorName}</td>
+      <td style={{ padding: '8px 10px', color: shouldHide ? '#9EA3B0' : '#374151', fontStyle: shouldHide ? 'italic' : 'normal' }}>
+        {shouldHide ? 'Anonymous' : req.evaluatorName}
+      </td>
       <td style={{ padding: '8px 10px' }}><RelBadge rel={req.relationship} /></td>
       <td style={{ padding: '8px 10px' }}><StatusBadge status={req.status} /></td>
       <td style={{ padding: '8px 10px', color: '#9EA3B0', fontSize: 12 }}>
@@ -538,22 +595,33 @@ const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign }: Pr
             {!isDone && (
               <>
                 <button
-                  style={{ ...smBtn('neutral'), opacity: req.id ? 1 : 0.45, cursor: req.id ? 'pointer' : 'not-allowed' }}
+                  style={{ ...smBtn('neutral'), opacity: (req.id && !shouldHide) ? 1 : 0.45, cursor: (req.id && !shouldHide) ? 'pointer' : 'not-allowed' }}
                   onClick={onReassign}
-                  disabled={!req.id}
-                  title={!req.id ? 'Click Generate to enable per-row actions' : undefined}
+                  disabled={!req.id || shouldHide}
+                  title={shouldHide ? 'Cannot reassign your own anonymous evaluator' : !req.id ? 'Click Generate to enable per-row actions' : undefined}
                 >
                   <Edit3 size={10} /> Reassign
                 </button>
                 <button
-                  style={{ ...smBtn('danger'), opacity: req.id ? 1 : 0.45, cursor: req.id ? 'pointer' : 'not-allowed' }}
+                  style={{ ...smBtn('danger'), opacity: (req.id && !shouldHide) ? 1 : 0.45, cursor: (req.id && !shouldHide) ? 'pointer' : 'not-allowed' }}
                   onClick={onCancel}
-                  disabled={!req.id}
-                  title={!req.id ? 'Click Generate to enable per-row actions' : undefined}
+                  disabled={!req.id || shouldHide}
+                  title={shouldHide ? 'Cannot cancel your own anonymous evaluator' : !req.id ? 'Click Generate to enable per-row actions' : undefined}
                 >
                   <X size={10} /> Cancel
                 </button>
               </>
+            )}
+            {(req.status === FeedbackStatus.PENDING || req.status === FeedbackStatus.IN_PROGRESS) && req.id && (
+              <button
+                style={{ ...smBtn('neutral'), background: '#FEF3C7', color: '#92400E', borderColor: '#FCD34D' }}
+                onClick={onRemind}
+                disabled={isReminding}
+                title="Send immediate reminder notification to this evaluator"
+              >
+                {isReminding ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} /> : <Mail size={10} />}
+                Remind
+              </button>
             )}
             {req.id && (
               <button
@@ -914,6 +982,7 @@ const CycleDashboardTab = ({ cycleId }: CycleDashboardTabProps) => {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 const Feedback360AdminPage = () => {
+  const navigate = useNavigate();
   const { activeCycleId } = useAuth();
   const { data: cycles = [], isLoading: cyclesLoading } = useGetCyclesQuery();
 
@@ -926,6 +995,15 @@ const Feedback360AdminPage = () => {
   const [expandedSummary, setExpandedSummary] = useState<number | null>(null);
   const [calibrateTarget, setCalibrateTarget] = useState<FeedbackSummaryResponse | null>(null);
   const [reassignRequestId, setReassignRequestId] = useState<number | null>(null);
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmBtnText?: string;
+    confirmBtnBg?: string;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const [hasGenerated, setHasGenerated] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'setup' | 'assignments' | 'summaries'>('dashboard');
@@ -942,6 +1020,9 @@ const Feedback360AdminPage = () => {
   const [finalizeSummary, { isLoading: isFinalizing }] = useFinalizeSummaryMutation();
   const [regenerateUser] = useRegenerateUserRequestsMutation();
   const [cancelRequest] = useCancelFeedbackRequestMutation();
+
+  const [sendCycleReminders, { isLoading: isSendingCycleReminders }] = useSendFeedbackCycleRemindersMutation();
+  const [sendIndividualReminder, { isLoading: isSendingIndividualReminder }] = useSendIndividualFeedbackReminderMutation();
 
   const { data: summaries, isLoading: summariesLoading } = useGetAllSummariesByCycleQuery(
     cycleId, { skip: !cycleId },
@@ -984,6 +1065,8 @@ const Feedback360AdminPage = () => {
 
   const cycleLocked = !!(summaries && summaries.length > 0 && summaries.every((s) => s.isFinalized));
 
+  const selectedCycle = cycles.find(c => c.cycleId === cycleId);
+
   const buildParams = () => ({
     cycleId,
     previousCycleId: previousCycleId ? Number(previousCycleId) : undefined,
@@ -993,41 +1076,110 @@ const Feedback360AdminPage = () => {
 
   const handlePreview = async () => {
     if (!cycleId) return toast.error('Please enter a cycle ID.');
+    if (!selectedCycle?.isActive) {
+      return toast.error('Only active cycles can be previewed.');
+    }
     setShowPreview(true);
-    try { await previewTrigger(buildParams()).unwrap(); } catch { toast.error('Preview failed.'); }
+    try {
+      await previewTrigger(buildParams()).unwrap();
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Preview failed.');
+    }
   };
 
   const handleGenerate = async () => {
     if (!cycleId) return toast.error('Please enter a cycle ID.');
-    if (!window.confirm(`Generate feedback requests for cycle ${cycleId}? This may overwrite existing PENDING requests.`)) return;
-    try {
-      await generate(buildParams()).unwrap();
-      toast.success('Requests generated.');
-      setHasGenerated(true);
-    } catch { toast.error('Generation failed.'); }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Generate Feedback Requests',
+      message: `Generate feedback requests for cycle ${cycleId}? This may overwrite existing PENDING requests.`,
+      onConfirm: async () => {
+        try {
+          await generate(buildParams()).unwrap();
+          toast.success('Requests generated.');
+          setHasGenerated(true);
+        } catch { toast.error('Generation failed.'); }
+      },
+      confirmBtnText: 'Generate',
+      confirmBtnBg: '#1A56DB'
+    });
   };
 
   const handleGenerateSummaries = async () => {
     if (!cycleId) return toast.error('Please enter a cycle ID.');
-    if (!window.confirm(`Generate all summaries for cycle ${cycleId}?`)) return;
-    try { await generateSummaries(cycleId).unwrap(); toast.success('Summaries generated.'); } catch { toast.error('Failed.'); }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Generate All Summaries',
+      message: `Generate all summaries for cycle ${cycleId}?`,
+      onConfirm: async () => {
+        try { await generateSummaries(cycleId).unwrap(); toast.success('Summaries generated.'); } catch { toast.error('Failed.'); }
+      },
+      confirmBtnText: 'Generate',
+      confirmBtnBg: '#1A56DB'
+    });
   };
 
   const handleFinalize = async (summaryId: number) => {
-    if (!window.confirm('Finalize this summary? It will be visible to the employee.')) return;
-    try { await finalizeSummary(summaryId).unwrap(); toast.success('Finalized.'); } catch { toast.error('Finalization failed.'); }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Finalize Summary',
+      message: 'Finalize this summary? It will be visible to the employee.',
+      onConfirm: async () => {
+        try { await finalizeSummary(summaryId).unwrap(); toast.success('Finalized.'); } catch { toast.error('Finalization failed.'); }
+      },
+      confirmBtnText: 'Finalize',
+      confirmBtnBg: '#059669'
+    });
   };
 
   const handleRegenerate = async (req: FeedbackRequestResponse) => {
     try {
       await regenerateUser({ targetEmployeeId: req.targetUserId, cycleId, globalMaxLimit, previousCycleId: previousCycleId ? Number(previousCycleId) : undefined }).unwrap();
       toast.success('Requests regenerated.');
-    } catch { toast.error('Regeneration failed.'); }
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Regeneration failed. Run Generate first.');
+    }
   };
 
   const handleCancel = async (requestId: number) => {
-    if (!window.confirm('Cancel this feedback request?')) return;
-    try { await cancelRequest(requestId).unwrap(); toast.success('Request cancelled.'); } catch { toast.error('Cancellation failed.'); }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Cancel Feedback Request',
+      message: 'Cancel this feedback request?',
+      onConfirm: async () => {
+        try { await cancelRequest(requestId).unwrap(); toast.success('Request cancelled.'); } catch { toast.error('Cancellation failed.'); }
+      },
+      confirmBtnText: 'Cancel Request',
+      confirmBtnBg: '#791F1F'
+    });
+  };
+
+  const handleSendCycleReminders = async () => {
+    if (!cycleId) return toast.error('Please select a cycle.');
+    setConfirmModal({
+      isOpen: true,
+      title: 'Send Cycle Reminders',
+      message: 'Send urgent feedback reminders to all pending/in-progress evaluators of this cycle?',
+      onConfirm: async () => {
+        try {
+          await sendCycleReminders(cycleId).unwrap();
+          toast.success('Cycle reminders sent successfully.');
+        } catch {
+          toast.error('Failed to send cycle reminders.');
+        }
+      },
+      confirmBtnText: 'Send Reminders',
+      confirmBtnBg: '#D97706'
+    });
+  };
+
+  const handleSendIndividualReminder = async (requestId: number) => {
+    try {
+      await sendIndividualReminder(requestId).unwrap();
+      toast.success('Reminder sent to evaluator.');
+    } catch {
+      toast.error('Failed to send reminder.');
+    }
   };
 
   return (
@@ -1044,6 +1196,13 @@ const Feedback360AdminPage = () => {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {cycleId > 0 && (
+            <button
+              onClick={() => navigate(`/360-feedback/calibration?cycleId=${cycleId}`)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#EEF3FD', border: '0.5px solid #BFD4F5', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#0C447C', cursor: 'pointer' }}>
+              <Sliders size={13} /> Calibration Workbench
+            </button>
+          )}
           {cycleId > 0 && (
             <button
               onClick={handleDownloadSummaryReport}
@@ -1235,6 +1394,25 @@ const Feedback360AdminPage = () => {
                 {isGenerating ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Play size={14} />}
                 {cycleLocked ? 'Locked' : 'Generate'}
               </button>
+              {hasGenerated && (
+                <button
+                  style={{
+                    ...secondaryBtn,
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    borderColor: '#FCD34D',
+                  }}
+                  onClick={handleSendCycleReminders}
+                  disabled={isSendingCycleReminders || !cycleId}
+                >
+                  {isSendingCycleReminders ? (
+                    <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <Mail size={14} />
+                  )}
+                  Send Cycle Reminders
+                </button>
+              )}
               <button
                 style={{ ...secondaryBtn, marginLeft: 'auto' }}
                 onClick={handleGenerateSummaries}
@@ -1283,6 +1461,8 @@ const Feedback360AdminPage = () => {
                             onRegenerate={() => handleRegenerate(req)}
                             onCancel={() => req.id && handleCancel(req.id)}
                             onReassign={() => req.id && setReassignRequestId(req.id)}
+                            onRemind={() => req.id && handleSendIndividualReminder(req.id)}
+                            isReminding={isSendingIndividualReminder}
                           />
                         ))}
                       </tbody>
@@ -1406,6 +1586,56 @@ const Feedback360AdminPage = () => {
       )}
       {reassignRequestId !== null && (
         <ReassignModal requestId={reassignRequestId} onClose={() => setReassignRequestId(null)} />
+      )}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '24px', maxWidth: 400, width: '100%' }}>
+            <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertTriangle size={16} style={{ color: '#D97706' }} />
+              </div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', margin: 0 }}>{confirmModal.title}</p>
+            </div>
+            <p style={{ fontSize: 13, color: '#5A6070', marginBottom: 20 }}>{confirmModal.message}</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                style={{
+                  flex: 1,
+                  background: '#F5F6F8',
+                  color: '#111827',
+                  border: '0.5px solid #E0E2E8',
+                  borderRadius: 8,
+                  padding: '8px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal({ ...confirmModal, isOpen: false });
+                }}
+                style={{
+                  flex: 1,
+                  background: confirmModal.confirmBtnBg || '#791F1F',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '8px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                {confirmModal.confirmBtnText || 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

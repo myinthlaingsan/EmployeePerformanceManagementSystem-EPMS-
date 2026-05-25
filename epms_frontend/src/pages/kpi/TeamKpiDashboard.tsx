@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, Users, AlertCircle, CheckCircle2, Search, Filter,
+  TrendingUp, AlertCircle, CheckCircle2, Search, Filter,
   Download, ChevronRight, LayoutTemplate
 } from 'lucide-react';
 import { useGetAllEmployeesQuery, useGetDirectReportsQuery } from '../../features/employee/employeeapi';
