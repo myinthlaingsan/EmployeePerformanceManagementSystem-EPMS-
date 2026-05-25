@@ -109,6 +109,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     ...(hasPermission("KPI_VIEW_OWN") ? [{ to: "/kpi/my", label: "My Goals" }] : []),
     ...(hasPermission("KPI_VIEW_TEAM") ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
     ...(hasPermission("KPI_VIEW_OWN") && user ? [{ to: `/kpi/history/${user.id}`, label: "My KPI Journey" }] : []),
+    
     ...(hasPermission("KPI_LIBRARY_MANAGE")
       ? [
           { to: "/kpi/manage", label: "Goal Management" },

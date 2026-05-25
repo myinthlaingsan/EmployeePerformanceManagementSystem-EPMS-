@@ -18,8 +18,8 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }>
 
 const TeamKpiDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user, activeCycleId, activeCycleName } = useAuth();
-  const isAdminOrHr = user?.roles?.some(r => r === 'ADMIN' || r === 'HR');
+  const { user, activeCycleId, activeCycleName, isAdmin, isHR } = useAuth();
+  const isAdminOrHr = isAdmin || isHR;
 
   const { data: allEmployees = [], isLoading: loadingAll } = useGetAllEmployeesQuery(undefined, { skip: !isAdminOrHr });
   const { data: directReports = [], isLoading: loadingReports } = useGetDirectReportsQuery(Number(user?.id), { skip: isAdminOrHr || !user?.id });
