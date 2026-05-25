@@ -74,6 +74,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const [isModified, setIsModified] = useState(false);
   const [assignmentMode, setAssignmentMode] = useState<'append'|'replace'>('append');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tempIdCounter, setTempIdCounter] = useState(-1);
 
@@ -213,9 +214,14 @@ const GoalAssignmentWorkspace: React.FC = () => {
     }
   };
 
-  const handleEdit = async () => {
+  const handleEdit = () => {
     if (!goalSet) return;
-    if (!window.confirm('This will revert the status to DRAFT so you can make changes. Continue?')) return;
+    setShowEditConfirm(true);
+  };
+
+  const handleEditConfirmed = async () => {
+    if (!goalSet) return;
+    setShowEditConfirm(false);
     setIsSubmitting(true);
     try { await revertToDraft(goalSet.id).unwrap(); }
     catch (err: any) { toast.error(`Failed to revert: ${err?.data?.message || err.message}`); }
@@ -614,6 +620,39 @@ const GoalAssignmentWorkspace: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {showEditConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: 28, maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Edit3 size={22} color="#D97706" />
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: '#111827', textAlign: 'center', marginBottom: 8 }}>Edit Goals</h2>
+            <p style={{ fontSize: 13, color: '#5A6070', textAlign: 'center', marginBottom: 16, lineHeight: 1.6 }}>
+              This will revert the goal set back to <strong>DRAFT</strong> status so you can make changes.
+            </p>
+            <div style={{ background: '#FEF9EC', border: '0.5px solid #FCD34D', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
+              <p style={{ fontSize: 12, color: '#92400E', fontWeight: 500, marginBottom: 6 }}>This action will:</p>
+              <ul style={{ fontSize: 12, color: '#92400E', paddingLeft: 16, margin: 0, lineHeight: 1.8 }}>
+                <li>Revert status from APPROVED → DRAFT</li>
+                <li>Allow goal items to be edited or added</li>
+                <li>Require re-approval before scoring</li>
+              </ul>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowEditConfirm(false)}
+                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '0.5px solid #E0E2E8', background: '#F5F6F8', color: '#374151', fontSize: 13, fontWeight: 500 }}>
+                Cancel
+              </button>
+              <button onClick={handleEditConfirmed} disabled={isSubmitting}
+                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: '#D97706', color: '#FFFFFF', fontSize: 13, fontWeight: 500 }}
+                className="disabled:opacity-50 hover:bg-[#B45309] transition-colors">
+                {isSubmitting ? 'Reverting…' : 'Revert to Draft'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

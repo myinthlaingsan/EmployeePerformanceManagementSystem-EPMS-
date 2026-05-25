@@ -20,6 +20,7 @@ import org.hibernate.annotations.SQLRestriction;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 public class OneOnOneMeeting extends BaseEntity {
@@ -35,6 +36,9 @@ public class OneOnOneMeeting extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "manager_id", nullable = false)
     private Employee manager;
+
+    @Column(name = "meeting_title", length = 255)
+    private String meetingTitle;
 
     private LocalDate meetingDate;
 

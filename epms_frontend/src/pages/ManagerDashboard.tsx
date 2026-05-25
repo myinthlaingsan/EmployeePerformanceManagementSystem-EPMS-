@@ -1,20 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Users, CheckCircle2, AlertCircle, HelpCircle, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Users, CheckCircle2, AlertCircle, HelpCircle, TrendingUp, Layers, Briefcase, AlertTriangle } from 'lucide-react';
 import { useGetManagerDashboardQuery } from '../features/dashboard/dashboardApi';
 import DashboardStatCard from '../components/dashboard/DashboardStatCard';
 import ChartCard from '../components/dashboard/ChartCard';
 import TaskPanel from '../components/dashboard/TaskPanel';
-import { scoreToColor, progressToColor, tokenToHex } from '../constants/dashboardColors';
+import { scoreToColor, progressToColor} from '../constants/dashboardColors';
+import EmployeeDashboard from './EmployeeDashboard';
 
 const ManagerDashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'team' | 'personal'>('team');
   const { data, isLoading, error } = useGetManagerDashboardQuery();
 
-  if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading team overview…</div>;
+  if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading dashboard...</div>;
   if (error) return <div className="py-16 text-center" style={{ color: "#791F1F", fontSize: 13 }}>Error loading manager dashboard.</div>;
 
   return (
     <div className="space-y-4">
+      {/* Premium Tab Selector */}
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-1.5 flex gap-2 w-fit shadow-sm">
+        <button
+          onClick={() => setActiveTab('team')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold tracking-tight transition-all duration-300 ${
+            activeTab === 'team'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+          }`}
+        >
+          <Layers size={14} />
+          Team Overview
+        </button>
+        <button
+          onClick={() => setActiveTab('personal')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold tracking-tight transition-all duration-300 ${
+            activeTab === 'personal'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+          }`}
+        >
+          <Briefcase size={14} />
+          My Performance
+        </button>
+      </div>
+
+      {activeTab === 'personal' ? (
+        <EmployeeDashboard />
+      ) : (
+        <div className="space-y-4 animate-in fade-in duration-300">
       <div>
         <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Team management</h1>
         <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Manage your direct reports and their performance cycles.</p>
@@ -137,6 +169,8 @@ const ManagerDashboard: React.FC = () => {
           priority: t.priority as 'High' | 'Medium' | 'Low',
         })) ?? []}
       />
+      </div>
+      )}
     </div>
   );
 };

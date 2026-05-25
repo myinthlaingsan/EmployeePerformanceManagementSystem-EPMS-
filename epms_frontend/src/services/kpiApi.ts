@@ -268,12 +268,12 @@ export const kpiApi = api.injectEndpoints({
         url: `/kpi/calculate-score?employeeId=${employeeId}&cycleId=${cycleId}`,
         method: 'POST',
       }),
-      invalidatesTags: ['Score', 'GoalSet'],
+      invalidatesTags: ['FinalScore', 'GoalSet'],
     }),
     getFinalScore: builder.query<ApiResponse<KpiScoreResponse>, { employeeId: number; cycleId: number }>({
       query: ({ employeeId, cycleId }) =>
         `/kpi/calculate-score?employeeId=${employeeId}&cycleId=${cycleId}`,
-      providesTags: ['Score'],
+      providesTags: ['FinalScore'],
     }),
     getTeamGoalSets: builder.query<ApiResponse<GoalSetResponse[]>, { managerId: number; cycleId: number }>({
       query: ({ managerId, cycleId }) => `/kpi/goal-set/team?managerId=${managerId}&cycleId=${cycleId}`,

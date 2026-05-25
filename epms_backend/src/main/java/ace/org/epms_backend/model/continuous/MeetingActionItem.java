@@ -5,12 +5,18 @@ import ace.org.epms_backend.model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "meeting_action_items")
+@SQLDelete(sql = "UPDATE meeting_action_items SET is_deleted = true WHERE id = ?")
+@SQLRestriction("is_deleted = false OR is_deleted IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 public class MeetingActionItem extends BaseEntity {
 
@@ -21,6 +27,13 @@ public class MeetingActionItem extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "meeting_id", nullable = false)
     private OneOnOneMeeting meeting;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_to_id")
+    private ace.org.epms_backend.model.employee.Employee assignedTo;
+
+    @Column(name = "due_date")
+    private java.time.LocalDate dueDate;
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;

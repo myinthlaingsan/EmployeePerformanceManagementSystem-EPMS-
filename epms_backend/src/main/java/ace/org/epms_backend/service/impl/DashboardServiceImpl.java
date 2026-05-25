@@ -5,6 +5,7 @@ import ace.org.epms_backend.enums.AppraisalStatus;
 import ace.org.epms_backend.enums.KpiItemStatus;
 import ace.org.epms_backend.enums.RoleType;
 import ace.org.epms_backend.enums.PipStatus;
+import ace.org.epms_backend.enums.ContinuousStatus;
 import ace.org.epms_backend.model.appraisal.Appraisal;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.appraisal.AppraisalSummary;
@@ -46,6 +47,8 @@ public class DashboardServiceImpl implements DashboardService {
     private final AuditLogRepository auditLogRepository;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
     private final EmployeeRoleRepository employeeRoleRepository;
+    private final ContinuousFeedbackRepository continuousFeedbackRepository;
+    private final OneOnOneMeetingRepository oneOnOneMeetingRepository;
 
     @Override
     public HrDashboardResponse getHrDashboard() {
@@ -373,7 +376,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .currentScore(summary != null ? summary.getTotalScore().doubleValue() : 0.0)
                 .kpiCompletionPercentage((int) kpiCompletion)
                 .pendingTasksCount((int) notificationRepository.countByRecipientIdAndReadAtIsNullAndIsDeletedFalse(employeeId))
-                .feedbackCount((int) feedbackCount)
+//                .feedbackCount((int) feedbackCount)
+                .feedbackCount((int) continuousFeedbackRepository.countByEmployee_IdAndStatus(employeeId, ContinuousStatus.PUBLISHED))
                 .performanceTrend(trend)
                 .kpiStatus(List.of(
                     EmployeeDashboardResponse.KpiProgress.builder().name("Completed").value((int) kpiGoals.stream().flatMap(g -> g.getItems().stream()).filter(i -> i.getStatus() == KpiItemStatus.COMPLETED).count()).build(),
@@ -511,7 +515,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .reviewsCompleted((int) completed)
                 .totalReviews(subordinates.size())
                 .pendingReviews((int) (subordinates.size() - completed))
-                .feedbackRequests((int) feedbackRequests)
+//              .feedbackRequests((int) feedbackRequests)
+                .feedbackRequests((int) continuousFeedbackRepository.countByManager_IdAndStatus(managerId, ContinuousStatus.DRAFT))
                 .teamAvgScore(teamAvgScore)
                 .companyAvgScore(companyAvgScore)
                 .pendingSelfAssessmentNames(pendingSelfAssessmentNames)

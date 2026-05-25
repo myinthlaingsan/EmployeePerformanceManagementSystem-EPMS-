@@ -62,6 +62,39 @@ public class ReportController {
         return createDownloadResponse(reportContent, "Performance_Trend_Report", format);
     }
 
+    @GetMapping("/performance-distribution")
+    public ResponseEntity<ApiResponse<PerformanceDistributionReportDTO>> getPerformanceDistribution(
+            @RequestParam Long cycleId,
+            @RequestParam(required = false) Long departmentId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getPerformanceDistribution(cycleId, departmentId)));
+    }
+
+    @GetMapping("/performance-by-department")
+    public ResponseEntity<ApiResponse<List<DepartmentAnalyticsDTO>>> getPerformanceByDepartment(@RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getPerformanceByDepartment(cycleId)));
+    }
+
+    @GetMapping("/organization-performance-trend")
+    public ResponseEntity<ApiResponse<List<PerformanceTrendPointDTO>>> getOrganizationPerformanceTrend(
+            @RequestParam(defaultValue = "6") int months) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getOrganizationPerformanceTrend(months)));
+    }
+
+    @GetMapping("/performance-potential-matrix")
+    public ResponseEntity<ApiResponse<List<PerformancePotentialMatrixDTO>>> getPerformancePotentialMatrix(@RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getPerformancePotentialMatrix(cycleId)));
+    }
+
+    @GetMapping("/goal-completion")
+    public ResponseEntity<ApiResponse<GoalCompletionReportDTO>> getGoalCompletion(@RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getGoalCompletion(cycleId)));
+    }
+
+    @GetMapping("/feedback-360-summary")
+    public ResponseEntity<ApiResponse<Feedback360SummaryAnalyticsDTO>> getFeedback360SummaryAnalytics(@RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getFeedback360SummaryAnalytics(cycleId)));
+    }
+
     // 360 Feedback
     @GetMapping("/feedback-participation")
     public ResponseEntity<ApiResponse<FeedbackParticipationReportDTO>> getFeedbackParticipationReport(

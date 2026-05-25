@@ -140,6 +140,13 @@ public class KpiController {
         return ResponseEntity.ok(ApiResponse.success(scoringService.calculateFinalScore(employeeId, cycleId)));
     }
 
+    @GetMapping("/calculate-score")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR')")
+    public ResponseEntity<ApiResponse<KpiScoreResponse>> getFinalScore(
+            @RequestParam Long employeeId, @RequestParam Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(scoringService.getFinalScore(employeeId, cycleId)));
+    }
+
     // 7. Goal Set Retrieval
     @GetMapping("/goal-set/employee/{employeeId}")
     public ResponseEntity<ApiResponse<GoalSetResponse>> getGoalSetByEmployee(

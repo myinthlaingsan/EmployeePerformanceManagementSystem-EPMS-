@@ -191,6 +191,244 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
+    public PerformanceDistributionReportDTO getPerformanceDistribution(Long cycleId, Long departmentId) {
+        List<AppraisalSummary> summaries = appraisalSummaryRepository.findByCycle_CycleId(cycleId).stream()
+                .filter(summary -> departmentId == null || employeeDepartmentRepository
+                        .findByEmployeeIdAndIsCurrentTrue(summary.getEmployee().getId())
+                        .map(ed -> ed.getCurrentDepartment() != null
+                                && departmentId.equals(ed.getCurrentDepartment().getId()))
+                        .orElse(false))
+                .filter(summary -> summary.getTotalScore() != null)
+                .collect(Collectors.toList());
+
+        List<Double> scores = summaries.stream()
+                .map(summary -> summary.getTotalScore().doubleValue())
+                .sorted()
+                .collect(Collectors.toList());
+
+        int[] counts = new int[5];
+        for (double score : scores) {
+            if (score < 60) counts[0]++;
+            else if (score < 70) counts[1]++;
+            else if (score < 80) counts[2]++;
+            else if (score < 90) counts[3]++;
+            else counts[4]++;
+        }
+
+        String[] labels = {"<60", "60-69", "70-79", "80-89", "90+"};
+        List<PerformanceDistributionBinDTO> bins = new ArrayList<>();
+        for (int i = 0; i < labels.length; i++) {
+            bins.add(PerformanceDistributionBinDTO.builder()
+                    .range(labels[i])
+                    .count(counts[i])
+                    .percentage(scores.isEmpty() ? 0 : roundDouble((counts[i] * 100.0) / scores.size()))
+                    .build());
+        }
+
+        double mean = scores.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+        double median = 0;
+        if (!scores.isEmpty()) {
+            int middle = scores.size() / 2;
+            median = scores.size() % 2 == 0 ? (scores.get(middle - 1) + scores.get(middle)) / 2 : scores.get(middle);
+        }
+        double variance = scores.stream().mapToDouble(score -> Math.pow(score - mean, 2)).average().orElse(0);
+        double stdDev = Math.sqrt(variance);
+        double skewness = stdDev == 0 ? 0 : scores.stream()
+                .mapToDouble(score -> Math.pow((score - mean) / stdDev, 3))
+                .average().orElse(0);
+
+        return PerformanceDistributionReportDTO.builder()
+                .bins(bins)
+                .mean(toScaledBigDecimal(mean))
+                .median(toScaledBigDecimal(median))
+                .standardDeviation(toScaledBigDecimal(stdDev))
+                .skewness(toScaledBigDecimal(skewness))
+                .sampleSize(scores.size())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DepartmentAnalyticsDTO> getPerformanceByDepartment(Long cycleId) {
+        List<Appraisal> appraisals = appraisalRepository.findByCycle_CycleId(cycleId);
+        Map<Long, List<Appraisal>> byDept = appraisals.stream()
+                .collect(Collectors.groupingBy(a -> employeeDepartmentRepository
+                        .findByEmployeeIdAndIsCurrentTrue(a.getEmployee().getId())
+                        .filter(ed -> ed.getCurrentDepartment() != null)
+                        .map(ed -> ed.getCurrentDepartment().getId())
+                        .orElse(0L)));
+
+        List<DepartmentAnalyticsDTO> results = byDept.entrySet().stream().map(entry -> {
+            List<Appraisal> deptAppraisals = entry.getValue();
+            EmployeeDepartment firstDept = employeeDepartmentRepository
+                    .findByEmployeeIdAndIsCurrentTrue(deptAppraisals.get(0).getEmployee().getId())
+                    .orElse(null);
+            String deptName = firstDept != null && firstDept.getCurrentDepartment() != null
+                    ? firstDept.getCurrentDepartment().getDepartmentName()
+                    : "Unassigned";
+            double avgScore = deptAppraisals.stream()
+                    .mapToDouble(a -> appraisalSummaryRepository
+                            .findByEmployee_IdAndCycle_CycleId(a.getEmployee().getId(), cycleId)
+                            .map(s -> s.getTotalScore() != null ? s.getTotalScore().doubleValue() : 0.0)
+                            .orElse(0.0))
+                    .filter(score -> score > 0)
+                    .average().orElse(0);
+            long completed = deptAppraisals.stream().filter(a -> "COMPLETED".equals(a.getStatus().name())
+                    || "FINALIZED".equals(a.getStatus().name())
+                    || "HR_APPROVED".equals(a.getStatus().name())).count();
+            int pipCount = (int) pipRecordRepository.findAll().stream()
+                    .filter(p -> "ACTIVE".equals(p.getStatus().name()))
+                    .filter(p -> employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(p.getEmployee().getId())
+                            .map(ed -> ed.getCurrentDepartment() != null
+                                    && entry.getKey().equals(ed.getCurrentDepartment().getId()))
+                            .orElse(false))
+                    .count();
+
+            return DepartmentAnalyticsDTO.builder()
+                    .departmentId(entry.getKey().equals(0L) ? null : entry.getKey())
+                    .departmentName(deptName)
+                    .avgScore(toScaledBigDecimal(avgScore))
+                    .completionRate(deptAppraisals.isEmpty() ? 0 : roundDouble((completed * 100.0) / deptAppraisals.size()))
+                    .pipCount(pipCount)
+                    .employeeCount(deptAppraisals.size())
+                    .build();
+        }).sorted((a, b) -> b.getAvgScore().compareTo(a.getAvgScore())).collect(Collectors.toList());
+
+        for (int i = 0; i < results.size(); i++) {
+            results.get(i).setRank(i + 1);
+        }
+        return results;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PerformanceTrendPointDTO> getOrganizationPerformanceTrend(int months) {
+        List<AppraisalCycle> cycles = appraisalCycleRepository.findAllByOrderByEndDateDesc().stream()
+                .limit(Math.max(1, months))
+                .collect(Collectors.toList());
+        Collections.reverse(cycles);
+
+        return cycles.stream().map(cycle -> {
+            Long cycleId = cycle.getCycleId();
+            List<Appraisal> appraisals = appraisalRepository.findByCycle_CycleId(cycleId);
+            double avgScore = appraisalSummaryRepository.findByCycle_CycleId(cycleId).stream()
+                    .filter(s -> s.getTotalScore() != null)
+                    .mapToDouble(s -> s.getTotalScore().doubleValue())
+                    .average().orElse(0);
+            long completed = appraisals.stream().filter(a -> "COMPLETED".equals(a.getStatus().name())
+                    || "FINALIZED".equals(a.getStatus().name())
+                    || "HR_APPROVED".equals(a.getStatus().name())).count();
+            double engagement = feedbackSummaryRepository.findAll().stream()
+                    .filter(summary -> summary.getCycle() != null && cycleId.equals(summary.getCycle().getCycleId()))
+                    .filter(summary -> summary.getFinalScore() != null)
+                    .mapToDouble(summary -> summary.getFinalScore().doubleValue())
+                    .average().orElse(0);
+
+            return PerformanceTrendPointDTO.builder()
+                    .period(cycle.getCycleName())
+                    .avgScore(toScaledBigDecimal(avgScore))
+                    .completionRate(appraisals.isEmpty() ? 0 : roundDouble((completed * 100.0) / appraisals.size()))
+                    .pipResolutionRate(calculatePipResolutionRate())
+                    .engagementScore(toScaledBigDecimal(engagement))
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PerformancePotentialMatrixDTO> getPerformancePotentialMatrix(Long cycleId) {
+        return appraisalRepository.findByCycle_CycleId(cycleId).stream().map(appraisal -> {
+            BigDecimal performance = appraisalSummaryRepository
+                    .findByEmployee_IdAndCycle_CycleId(appraisal.getEmployee().getId(), cycleId)
+                    .map(AppraisalSummary::getTotalScore)
+                    .orElse(BigDecimal.ZERO);
+            BigDecimal potential = feedbackSummaryRepository
+                    .findByEmployeeIdAndCycleCycleId(appraisal.getEmployee().getId(), cycleId)
+                    .map(summary -> summary.getCalibratedFinalScore() != null ? summary.getCalibratedFinalScore()
+                            : summary.getFinalScore() != null ? summary.getFinalScore()
+                            : summary.getManagerScore() != null ? summary.getManagerScore()
+                            : performance)
+                    .orElse(performance);
+            EmployeeDepartment ed = employeeDepartmentRepository
+                    .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId()).orElse(null);
+
+            return PerformancePotentialMatrixDTO.builder()
+                    .employeeId(appraisal.getEmployee().getId())
+                    .employeeName(appraisal.getEmployee().getStaffName())
+                    .departmentName(ed != null && ed.getCurrentDepartment() != null
+                            ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                    .performanceScore(performance)
+                    .potentialScore(potential)
+                    .quadrant(resolveQuadrant(performance.doubleValue(), potential.doubleValue()))
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GoalCompletionReportDTO getGoalCompletion(Long cycleId) {
+        List<KpiGoalItem> items = kpiGoalsRepository.findByCycleAndDepartment(cycleId, null).stream()
+                .flatMap(goal -> goal.getItems().stream())
+                .collect(Collectors.toList());
+        int completed = (int) items.stream().filter(item -> item.getStatus() != null
+                && "COMPLETED".equals(item.getStatus().name())).count();
+        int inProgress = (int) items.stream().filter(item -> item.getStatus() != null
+                && "IN_PROGRESS".equals(item.getStatus().name())).count();
+        int notStarted = (int) items.stream().filter(item -> item.getStatus() == null
+                || "NOT_STARTED".equals(item.getStatus().name())).count();
+        int offTrack = (int) items.stream().filter(item -> item.getStatus() != null
+                && !"COMPLETED".equals(item.getStatus().name())
+                && item.getScorePercent() != null
+                && item.getScorePercent().compareTo(BigDecimal.valueOf(50)) < 0).count();
+
+        return GoalCompletionReportDTO.builder()
+                .total(items.size())
+                .completed(completed)
+                .inProgress(inProgress)
+                .notStarted(notStarted)
+                .offTrack(offTrack)
+                .completionRate(items.isEmpty() ? 0 : roundDouble((completed * 100.0) / items.size()))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Feedback360SummaryAnalyticsDTO getFeedback360SummaryAnalytics(Long cycleId) {
+        List<FeedbackRequest> requests = feedbackRequestRepository.findByCycleCycleId(cycleId);
+        int completed = (int) requests.stream().filter(request -> "COMPLETED".equals(request.getStatus().name())).count();
+        double avgDays = requests.stream()
+                .filter(request -> "COMPLETED".equals(request.getStatus().name()))
+                .filter(request -> request.getCreatedAt() != null && request.getUpdatedAt() != null)
+                .mapToLong(request -> java.time.Duration.between(request.getCreatedAt(), request.getUpdatedAt()).toDays())
+                .average().orElse(0);
+
+        Map<String, Long> relationshipCounts = requests.stream()
+                .filter(request -> request.getRelationship() != null)
+                .collect(Collectors.groupingBy(request -> request.getRelationship().name(), Collectors.counting()));
+        List<String> commonThemes = relationshipCounts.entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .map(entry -> formatTheme(entry.getKey()))
+                .collect(Collectors.toList());
+
+        double selfGap = feedbackSummaryRepository.findAll().stream()
+                .filter(summary -> summary.getCycle() != null && cycleId.equals(summary.getCycle().getCycleId()))
+                .filter(summary -> summary.getSelfScore() != null && summary.getFinalScore() != null)
+                .mapToDouble(summary -> Math.abs(summary.getSelfScore().doubleValue() - summary.getFinalScore().doubleValue()))
+                .average().orElse(0);
+
+        return Feedback360SummaryAnalyticsDTO.builder()
+                .totalRequests(requests.size())
+                .completedResponses(completed)
+                .participationRate(requests.isEmpty() ? 0 : roundDouble((completed * 100.0) / requests.size()))
+                .avgResponseTimeDays(roundDouble(avgDays))
+                .mostCommonFeedbackTheme(commonThemes.isEmpty() ? "No feedback yet" : commonThemes.get(0))
+                .selfPerceptionGap(roundDouble(selfGap))
+                .commonThemes(commonThemes)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public FeedbackParticipationReportDTO getFeedbackParticipationReport(Long cycleId) {
         List<FeedbackRequest> requests = feedbackRequestRepository.findByCycleCycleId(cycleId);
         String cycleName = appraisalCycleRepository.findById(cycleId).map(AppraisalCycle::getCycleName).orElse("N/A");
@@ -300,6 +538,37 @@ public class ReportServiceImpl implements ReportService {
         } catch (Exception e) {
             return json; // Fallback if not valid JSON
         }
+    }
+
+    private BigDecimal toScaledBigDecimal(double value) {
+        return BigDecimal.valueOf(value).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private double roundDouble(double value) {
+        return BigDecimal.valueOf(value).setScale(2, java.math.RoundingMode.HALF_UP).doubleValue();
+    }
+
+    private String resolveQuadrant(double performance, double potential) {
+        boolean highPerformance = performance >= 75;
+        boolean highPotential = potential >= 75;
+        if (highPerformance && highPotential) return "Rising Stars";
+        if (!highPerformance && highPotential) return "Emerging Leaders";
+        if (highPerformance) return "Solid Contributors";
+        return "Development Needed";
+    }
+
+    private double calculatePipResolutionRate() {
+        List<PipRecord> pips = pipRecordRepository.findAll();
+        if (pips.isEmpty()) return 0;
+        long resolved = pips.stream()
+                .filter(pip -> "COMPLETED".equals(pip.getStatus().name()) || "CLOSED".equals(pip.getStatus().name()))
+                .count();
+        return roundDouble((resolved * 100.0) / pips.size());
+    }
+
+    private String formatTheme(String value) {
+        String lower = value.toLowerCase().replace("_", " ");
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
     @Override
@@ -565,6 +834,8 @@ public class ReportServiceImpl implements ReportService {
                 .managerComments(managerComment)
                 .hrComments(appraisal.getApprovalComment())
                 .selfComments("")
+                .employeeSignatureUrl(appraisal.getEmployeeSignComment() != null && appraisal.getEmployeeSignComment().startsWith("/uploads/") ? "http://localhost:8080" + appraisal.getEmployeeSignComment() : null)
+                .managerSignatureUrl(appraisal.getManagerSignComment() != null && appraisal.getManagerSignComment().startsWith("/uploads/") ? "http://localhost:8080" + appraisal.getManagerSignComment() : null)
                 .build();
     }
 

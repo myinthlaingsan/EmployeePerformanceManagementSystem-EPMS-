@@ -11,10 +11,10 @@ import java.util.List;
 public interface ContinuousFeedbackService {
     ContinuousFeedbackResponse createFeedback(ContinuousFeedbackRequest request);
     ContinuousFeedbackResponse getFeedbackById(Long feedbackId);
-    PagedResponse<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId, int page, int size);
-    PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, ace.org.epms_backend.enums.ContinuousStatus status, int page, int size);
+    PagedResponse<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId, ace.org.epms_backend.enums.FeedbackType feedbackType, Long tagId, java.time.LocalDate createdAfter, java.time.LocalDate createdBefore, int page, int size);
+    PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, ace.org.epms_backend.enums.ContinuousStatus status, ace.org.epms_backend.enums.FeedbackType feedbackType, Long tagId, java.time.LocalDate createdAfter, java.time.LocalDate createdBefore, int page, int size);
     ace.org.epms_backend.dto.continuous.ContinuousStatsResponse getFeedbackStatsForManager(Long managerId);
-    PagedResponse<ContinuousFeedbackResponse> getAllFeedbacks(ace.org.epms_backend.enums.ContinuousStatus status, int page, int size);
+    PagedResponse<ContinuousFeedbackResponse> getAllFeedbacks(ace.org.epms_backend.enums.ContinuousStatus status, ace.org.epms_backend.enums.FeedbackType feedbackType, Long tagId, java.time.LocalDate createdAfter, java.time.LocalDate createdBefore, int page, int size);
     ContinuousFeedbackResponse updateFeedback(Long feedbackId, ContinuousFeedbackRequest request);
     void deleteFeedback(Long feedbackId);
     ContinuousFeedbackResponse publishFeedback(Long feedbackId);

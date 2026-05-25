@@ -50,4 +50,7 @@ public class PerformanceHistory extends BaseEntity {
     private String tagName;
 
     private Long createdBy;
+
+    @Column(name = "manager_position_name")
+    private String managerPositionName;
 }
