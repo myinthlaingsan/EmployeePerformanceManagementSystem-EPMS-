@@ -25,5 +25,5 @@ public class EmployeeTeam {
     @JoinColumn(name = "team_id")
     private Team team;
 
-    private Boolean isPrimary; // optional
+    private Boolean isPrimary = true; // optional
 }
