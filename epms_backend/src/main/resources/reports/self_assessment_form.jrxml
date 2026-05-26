@@ -183,7 +183,7 @@
                  x="0" y="5" width="555" height="1" forecolor="#E5E7EB"/>
         <element kind="textField" uuid="aa000051-0001-0001-0001-000000000051"
                  x="0" y="10" width="300" height="15" fontSize="8.0" forecolor="#9CA3AF">
-            <expression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date())]]></expression>
+            <expression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("dd-MM-yyyy HH:mm").format(new java.util.Date())]]></expression>
         </element>
         <element kind="textField" uuid="aa000052-0001-0001-0001-000000000052"
                  x="455" y="10" width="100" height="15" fontSize="8.0"
@@ -191,5 +191,15 @@
             <expression><![CDATA["Page " + $V{PAGE_NUMBER}]]></expression>
         </element>
     </pageFooter>
-
+    <summary height="30">
+        <element kind="line" uuid="summary-line" x="0" y="5" width="555" height="1">
+            <pen lineWidth="1.0" lineColor="#34495E"/>
+        </element>
+        <element kind="staticText" uuid="summary-label" x="0" y="10" width="180" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+            <text><![CDATA[Total Questions Evaluated:]]></text>
+        </element>
+        <element kind="textField" uuid="summary-value" x="180" y="10" width="100" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+            <expression><![CDATA[$V{REPORT_COUNT}]]></expression>
+        </element>
+    </summary>
 </jasperReport>

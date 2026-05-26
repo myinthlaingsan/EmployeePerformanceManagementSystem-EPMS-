@@ -212,8 +212,8 @@
 		
 		<!-- Detail Section 2: Detailed Anonymized Comments List -->
 		<band height="100" splitType="Stretch">
-			<element kind="staticText" uuid="a2a2a2a2-1c1c-2d2d-3e3e-4f4f4f4f4f4f" x="0" y="10" width="200" height="18" fontSize="12.0" bold="true" forecolor="#111827">
-				<text><![CDATA[Anonymized Evaluator Comments]]></text>
+			<element kind="textField" uuid="a2a2a2a2-1c1c-2d2d-3e3e-4f4f4f4f4f4f" x="0" y="10" width="555" height="18" fontSize="12.0" bold="true" forecolor="#111827">
+				<expression><![CDATA["Anonymized Evaluator Comments (Total: " + ($F{comments} != null ? $F{comments}.size() : 0) + ")"]]></expression>
 			</element>
 			
 			<element kind="component" uuid="b3b3b3b3-2d2d-3e3e-4f4f-5a5a5a5a5a5a" x="0" y="35" width="555" height="50">
@@ -274,8 +274,8 @@
 		</element>
 		
 		<!-- Left info: Date generated -->
-		<element kind="textField" uuid="6f6f6f6f-3c3c-4d4d-5e5e-6f6f6f6f6f6f" x="0" y="15" width="250" height="15" fontSize="8.0" forecolor="#9CA3AF" pattern="MMMMM dd, yyyy HH:mm">
-			<expression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date())]]></expression>
+		<element kind="textField" uuid="6f6f6f6f-3c3c-4d4d-5e5e-6f6f6f6f6f6f" x="0" y="15" width="250" height="15" fontSize="8.0" forecolor="#9CA3AF" pattern="dd-MM-yyyy HH:mm">
+			<expression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("dd-MM-yyyy HH:mm").format(new java.util.Date())]]></expression>
 		</element>
 		
 		<!-- Middle info: Company branding -->
