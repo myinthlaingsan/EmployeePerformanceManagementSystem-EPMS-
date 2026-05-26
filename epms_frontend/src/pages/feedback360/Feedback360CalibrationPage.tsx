@@ -10,7 +10,6 @@ import {
   useApproveSummaryMutation,
   useRevertSummaryMutation,
   useLockCalibrationCycleMutation,
-  useListCalibrationSessionsQuery,
   useCreateCalibrationSessionMutation,
 } from '../../features/feedback360/feedback360Api';
 import {

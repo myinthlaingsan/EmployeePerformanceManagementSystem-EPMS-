@@ -50,4 +50,15 @@ public interface OneOnOneMeetingRepository extends JpaRepository<OneOnOneMeeting
     long countByEmployee_IdAndStatus(Long employeeId, ace.org.epms_backend.enums.ContinuousStatus status);
 
     long countByManager_IdAndStatus(Long managerId, ace.org.epms_backend.enums.ContinuousStatus status);
+
+    /**
+     * Find all PUBLISHED meetings whose follow-up date has passed (strictly before today).
+     * Used by the daily overdue notification scheduler.
+     */
+    @Query("SELECT m FROM OneOnOneMeeting m " +
+            "WHERE m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED " +
+            "AND m.followUpDate IS NOT NULL " +
+            "AND m.followUpDate < :today")
+    java.util.List<OneOnOneMeeting> findPublishedMeetingsWithOverdueFollowUp(
+            @Param("today") java.time.LocalDate today);
 }

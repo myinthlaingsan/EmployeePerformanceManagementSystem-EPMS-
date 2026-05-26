@@ -12,6 +12,7 @@ public interface PermissionService {
     void deletePermission(Long id);
 
     void assignPermission(AssignPermissionRequest request);
+    void togglePermission(AssignPermissionRequest request);
     void removeAssignedPermission(Long roleLevelPermissionId);
     List<RoleLevelPermissionResponse> getAssignedPermissions(Long roleId, Long levelId);
 
