@@ -257,7 +257,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             >
               <span className="flex items-center gap-[9px]">
                 <Target size={16} aria-hidden="true" />
-                Performance Hub
+                KPIs Hub
               </span>
               <ChevronDown
                 size={14}
