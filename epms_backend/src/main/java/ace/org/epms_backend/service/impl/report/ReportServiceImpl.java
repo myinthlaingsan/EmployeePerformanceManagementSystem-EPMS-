@@ -1214,6 +1214,12 @@ public class ReportServiceImpl implements ReportService {
                 ? ed.getCurrentDepartment().getDepartmentName()
                 : "Unassigned";
         String posName = target.getPosition() != null ? target.getPosition().getPositionName() : "N/A";
+        Employee evaluator = req.getEvaluator();
+        EmployeeDepartment evaluatorDepartment = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(evaluator.getId()).orElse(null);
+        String evaluatorDeptName = (evaluatorDepartment != null && evaluatorDepartment.getCurrentDepartment() != null)
+                ? evaluatorDepartment.getCurrentDepartment().getDepartmentName()
+                : "Unassigned";
+        String evaluatorPosName = evaluator.getPosition() != null ? evaluator.getPosition().getPositionName() : "N/A";
 
         Optional<Feedback> feedbackOpt = feedbackRepository.findByRequestId(requestId);
         List<FeedbackResponse> responses = feedbackOpt.isPresent() ? feedbackOpt.get().getResponses() : new ArrayList<>();
@@ -1248,8 +1254,22 @@ public class ReportServiceImpl implements ReportService {
                 .build();
 
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("reportTitle", "360° Feedback Paper Form");
-        return generateReport("reports/feedback_360_paper_form.jrxml", parameters, List.of(formDTO), format);
+        parameters.put("reportTitle", "360 Feedback Paper Form");
+        parameters.put("companyName", "ACE Data Systems");
+        parameters.put("cycleName", formDTO.getCycleName());
+        parameters.put("targetEmployeeName", formDTO.getTargetEmployeeName());
+        parameters.put("targetEmployeeCode", formDTO.getTargetEmployeeCode());
+        parameters.put("targetDepartmentName", formDTO.getTargetDepartmentName());
+        parameters.put("targetPositionName", formDTO.getTargetPositionName());
+        parameters.put("evaluatorEmployeeName", formDTO.getEvaluatorEmployeeName());
+        parameters.put("evaluatorPositionName", evaluatorPosName);
+        parameters.put("evaluatorDepartmentName", evaluatorDeptName);
+        parameters.put("relationshipType", formDTO.getRelationshipType());
+        parameters.put("assessmentDate", req.getCycle().getStartDate() != null ? req.getCycle().getStartDate().toString() : null);
+        parameters.put("effectiveDate", req.getCycle().getEndDate() != null ? req.getCycle().getEndDate().toString() : null);
+        parameters.put("totalScore", "");
+        parameters.put("finalComment", "");
+        return generateReport("reports/feedback_360_paper_form.jrxml", parameters, questionDTOs, format);
     }
 
     private byte[] generateReport(String jrxmlPath, Map<String, Object> parameters, List<?> data, String format) {
@@ -1394,6 +1414,7 @@ public class ReportServiceImpl implements ReportService {
                         .employeeComment(selfAns != null ? selfAns.getComment() : null)
                         .managerRating(mgrAns != null && mgrAns.getRatingValue() != null
                                 ? mgrAns.getRatingValue().toString() : "-")
+                        .managerRatingValue(mgrAns != null ? mgrAns.getRatingValue() : null)
                         .managerComment(mgrAns != null ? mgrAns.getComment() : null)
                         .build());
             }
@@ -1409,12 +1430,16 @@ public class ReportServiceImpl implements ReportService {
 
         Map<String, Object> params = new HashMap<>();
         params.put("reportTitle", "Manager Evaluation Form");
+        params.put("companyName", "ACE Data Systems");
         params.put("cycleName", appraisal.getCycle().getCycleName());
         params.put("employeeName", appraisal.getEmployee().getStaffName());
         params.put("employeeCode", appraisal.getEmployee().getEmployeeCode());
         params.put("departmentName", deptName);
         params.put("positionName", posName);
         params.put("managerName", mgrName);
+        params.put("jobTitle", posName);
+        params.put("assessmentDate", submittedAt);
+        params.put("effectiveDate", appraisal.getFinalizedAt() != null ? appraisal.getFinalizedAt().toString() : submittedAt);
         params.put("totalScore", totalScore);
         params.put("finalComment", eval.getFinalComment() != null ? eval.getFinalComment() : "");
         params.put("submittedAt", submittedAt);
