@@ -9,6 +9,10 @@
 	<field name="topPerformersCount" class="java.lang.Integer"/>
 	<field name="lowPerformersCount" class="java.lang.Integer"/>
 	<field name="rank" class="java.lang.Integer"/>
+	<variable name="ROW_COUNT" class="java.lang.Integer" calculation="Count">
+		<expression><![CDATA[$F{departmentName}]]></expression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
 	<title height="80">
 		<element kind="image" uuid="d654321a-da6c-490e-a08e-25cba038ec31" x="0" y="0" width="120" height="50">
 			<expression><![CDATA[$P{logoStream}]]></expression>
@@ -16,7 +20,7 @@
 		<element kind="staticText" uuid="c643d96a-da6c-490e-a08e-25cba038ec31" x="120" y="0" width="562" height="50" fontSize="24.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
 			<text><![CDATA[Department Performance Comparison]]></text>
 		</element>
-		<element kind="textField" uuid="cc1ac08f-44a2-4f68-ae97-670033f24e50" x="682" y="50" width="120" height="20" pattern="MMMMM dd, yyyy" hTextAlign="Right" vTextAlign="Bottom">
+		<element kind="textField" uuid="cc1ac08f-44a2-4f68-ae97-670033f24e50" x="682" y="50" width="120" height="20" pattern="dd-MM-yyyy" hTextAlign="Right" vTextAlign="Bottom">
 			<expression><![CDATA[new java.util.Date()]]></expression>
 		</element>
 	</title>
@@ -107,4 +111,15 @@
 			<expression><![CDATA["Page " + $V{PAGE_NUMBER}]]></expression>
 		</element>
 	</pageFooter>
+	<summary height="30">
+		<element kind="line" uuid="summary-line" x="0" y="5" width="802" height="1">
+			<pen lineWidth="1.0" lineColor="#34495E"/>
+		</element>
+		<element kind="staticText" uuid="summary-label" x="0" y="10" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<text><![CDATA[Total Departments:]]></text>
+		</element>
+		<element kind="textField" uuid="summary-value" x="150" y="10" width="100" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<expression><![CDATA[$V{ROW_COUNT}]]></expression>
+		</element>
+	</summary>
 </jasperReport>

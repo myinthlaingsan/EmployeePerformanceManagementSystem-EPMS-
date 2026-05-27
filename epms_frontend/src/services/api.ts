@@ -46,9 +46,14 @@ export const api = createApi({
     "Nomination",
     "CalibrationSession",
     "Calibration",
+<<<<<<< HEAD
     "IDP",
     "IdpGoal",
     "IdpProgress",
+=======
+    "AuditTrail",
+    "FinalScore",
+>>>>>>> origin/MHS
   ],
   endpoints: () => ({}),
   // This adds more context to traces

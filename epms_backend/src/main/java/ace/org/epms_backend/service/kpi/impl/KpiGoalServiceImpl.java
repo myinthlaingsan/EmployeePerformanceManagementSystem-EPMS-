@@ -5,6 +5,7 @@ import ace.org.epms_backend.dto.appraisal.AppraisalCycleResponse;
 import ace.org.epms_backend.dto.kpi.*;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.*;
+import ace.org.epms_backend.exception.CannotAssignException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -61,6 +63,22 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .build();
     }
 
+    private void ensureAssignmentAllowed(AppraisalCycle cycle) {
+        if (cycle == null || cycle.getManagerEvaluationDeadline() == null || cycle.getIsActive() == null || !cycle.getIsActive()) {
+            return;
+        }
+
+        LocalDate today = LocalDate.now();
+        boolean deadlinePassed = !cycle.getManagerEvaluationDeadline().isAfter(today);
+        boolean cycleStatusOpen = cycle.getStatus() == null
+                || cycle.getStatus() == CycleStatus.IN_PROGRESS
+                || cycle.getStatus() == CycleStatus.EVALUATION;
+
+        if (deadlinePassed && cycleStatusOpen) {
+            throw new CannotAssignException("KPI assignment is locked for this cycle because the manager evaluation deadline has passed.");
+        }
+    }
+
     @Override
     @Transactional
     public GoalSetResponse assignKpiToEmployee(GoalAssignmentRequest request) {
@@ -77,6 +95,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         }
         AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
                 .orElseThrow(() -> new NotFoundException("Selected appraisal cycle not found. ID: " + request.getAppraisalCycleId()));
+
+        ensureAssignmentAllowed(cycle);
 
         Employee currentManager = getCurrentEmployee();
 
@@ -207,6 +227,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
 
         AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
                 .orElseThrow(() -> new NotFoundException("Selected appraisal cycle not found. ID: " + request.getAppraisalCycleId()));
+
+        ensureAssignmentAllowed(cycle);
 
         Employee currentManager = getCurrentEmployee();
 

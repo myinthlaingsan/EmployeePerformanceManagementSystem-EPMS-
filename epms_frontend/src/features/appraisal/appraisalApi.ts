@@ -397,7 +397,7 @@ export const appraisalApi = api.injectEndpoints({
       }),
       transformResponse,
       // Invalidate GoalSet so stale goal data from the closed cycle is evicted from cache
-      invalidatesTags: ['Cycle', 'GoalSet'],
+      invalidatesTags: ['Cycle', 'GoalSet', 'AuditTrail'],
     }),
 
     deleteCycle: builder.mutation<any, number>({
