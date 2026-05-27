@@ -293,7 +293,7 @@ export const kpiApi = api.injectEndpoints({
     }),
     getGoalSetAuditTrail: builder.query<ApiResponse<KpiHistoryLog[]>, number>({
       query: (goalSetId) => `/kpi-history/goal-set/${goalSetId}/audit`,
-      providesTags: ['GoalSet'],
+      providesTags: (result, error, goalSetId) => [{ type: 'AuditTrail' as const, id: goalSetId }],
     }),
   }),
 });

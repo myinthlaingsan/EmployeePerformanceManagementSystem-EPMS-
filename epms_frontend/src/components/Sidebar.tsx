@@ -108,6 +108,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     ...(hasPermission("KPI_VIEW_OWN") ? [{ to: "/kpi/my", label: "My Goals" }] : []),
     ...(hasPermission("KPI_VIEW_TEAM") ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
     ...(hasPermission("KPI_VIEW_OWN") && user ? [{ to: `/kpi/history/${user.id}`, label: "My KPI Journey" }] : []),
+    
     ...(hasPermission("KPI_LIBRARY_MANAGE")
       ? [
           { to: "/kpi/manage", label: "Goal Management" },
@@ -255,7 +256,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             >
               <span className="flex items-center gap-2.25">
                 <Target size={16} aria-hidden="true" />
-                Performance Hub
+                KPIs Hub
               </span>
               <ChevronDown
                 size={14}
