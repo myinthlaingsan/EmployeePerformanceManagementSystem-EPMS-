@@ -1,205 +1,252 @@
-<!-- Self-Assessment Form — main datasource = List<SelfAssessmentReportQuestionDTO> -->
-<jasperReport name="self_assessment_form" language="java"
-              pageWidth="595" pageHeight="842"
-              columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20"
-              uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890">
-
-    <!-- ===================== PARAMETERS (header metadata) ===================== -->
-    <parameter name="reportTitle"        class="java.lang.String"/>
-    <parameter name="cycleName"          class="java.lang.String"/>
-    <parameter name="employeeName"       class="java.lang.String"/>
-    <parameter name="employeeCode"       class="java.lang.String"/>
-    <parameter name="departmentName"     class="java.lang.String"/>
-    <parameter name="positionName"       class="java.lang.String"/>
-    <parameter name="managerName"        class="java.lang.String"/>
-    <parameter name="totalScore"         class="java.lang.String"/>
-    <parameter name="overallReflection"  class="java.lang.String"/>
-    <parameter name="submittedAt"        class="java.lang.String"/>
-
-    <!-- ===================== FIELDS (one row = one SelfAssessmentReportQuestionDTO) ===================== -->
-    <field name="categoryName"  class="java.lang.String"/>
-    <field name="questionText"  class="java.lang.String"/>
-    <field name="ratingValue"   class="java.lang.String"/>
-    <field name="comment"       class="java.lang.String"/>
-
-    <!-- ===================== TITLE (printed once at top of page 1) ===================== -->
-    <title height="175">
-        <!-- Report heading -->
-        <element kind="staticText" uuid="aa000001-0001-0001-0001-000000000001"
-                 x="0" y="0" width="555" height="28"
-                 fontSize="18.0" bold="true" hTextAlign="Center" vTextAlign="Middle" forecolor="#1F2937">
-            <text><![CDATA[Self-Assessment Form]]></text>
+<!-- Created with Jaspersoft Studio version 7.0.3.final using JasperReports Library version 7.0.3-41034ca841d452f3305ba55b9042260aaa1ab5dd  -->
+<jasperReport name="self_assessment_form" language="java" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="47b87a54-df51-4033-b7dc-1257d26fff18">
+    <parameter name="companyName" class="java.lang.String"/>
+    <parameter name="cycleName" class="java.lang.String"/>
+    <parameter name="employeeName" class="java.lang.String"/>
+    <parameter name="employeeCode" class="java.lang.String"/>
+    <parameter name="positionName" class="java.lang.String"/>
+    <parameter name="departmentName" class="java.lang.String"/>
+    <parameter name="assessmentDate" class="java.lang.String"/>
+    <parameter name="managerName" class="java.lang.String"/>
+    <field name="questionText" class="java.lang.String"/>
+    <field name="isYes" class="java.lang.Boolean"/>
+    <field name="isNo" class="java.lang.Boolean"/>
+    <field name="ratingValue" class="java.lang.Integer"/>
+    <variable name="totalRatingSum" calculation="Sum" class="java.lang.Integer">
+        <expression><![CDATA[$F{ratingValue} != null ? $F{ratingValue} : 0]]></expression>
+    </variable>
+    <title height="220">
+        <element kind="staticText" uuid="6927e93c-11fb-4d6e-b301-967d12f61e86" x="0" y="10" width="555" height="25" fontSize="14.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[Employee Self-assessment Form]]></text>
         </element>
-        <element kind="textField" uuid="aa000002-0001-0001-0001-000000000002"
-                 x="0" y="28" width="555" height="15"
-                 fontSize="10.0" hTextAlign="Center" forecolor="#4B5563">
-            <expression><![CDATA["Appraisal Cycle: " + $P{cycleName}]]></expression>
+        <element kind="textField" uuid="ea02fd71-7966-425d-94f6-6fe8f29f56d2" x="0" y="35" width="555" height="20" fontSize="11.0" bold="true" hTextAlign="Center">
+            <expression><![CDATA[$P{companyName}]]></expression>
         </element>
-
-        <!-- Info box background -->
-        <element kind="rectangle" uuid="aa000003-0001-0001-0001-000000000003"
-                 x="0" y="52" width="555" height="115" backcolor="#F9FAFB">
-            <pen lineWidth="0.5" lineColor="#D1D5DB"/>
+        <element kind="staticText" uuid="b9c2183a-ce26-4b06-8c79-e41e6bde3a18" x="0" y="60" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+            <text><![CDATA[Employee Name :]]></text>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
-
-        <!-- Row 1: Employee Name | Department -->
-        <element kind="staticText" uuid="aa000010-0001-0001-0001-000000000010"
-                 x="10" y="62" width="100" height="14" fontSize="9.0" bold="true" forecolor="#374151">
-            <text><![CDATA[Employee Name:]]></text>
+        <element kind="textField" uuid="c23a3018-5d41-46e8-a1ae-620186d5915c" x="150" y="60" width="405" height="20" fontSize="10.0" vTextAlign="Middle">
+            <expression><![CDATA[$P{employeeName}]]></expression>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
-        <element kind="textField" uuid="aa000011-0001-0001-0001-000000000011"
-                 x="112" y="62" width="175" height="14" fontSize="9.0" forecolor="#111827">
-            <expression><![CDATA[$P{employeeName} + " (" + $P{employeeCode} + ")"]]></expression>
+        <element kind="staticText" uuid="c4770ef1-8e96-4345-87d6-69f0f0f0b69d" x="0" y="80" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+            <text><![CDATA[Employee ID :]]></text>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
-        <element kind="staticText" uuid="aa000012-0001-0001-0001-000000000012"
-                 x="300" y="62" width="85" height="14" fontSize="9.0" bold="true" forecolor="#374151">
-            <text><![CDATA[Department:]]></text>
+        <element kind="textField" uuid="a0311c0c-ec1c-4e5c-ae84-5a1bba6db4b8" x="150" y="80" width="405" height="20" fontSize="10.0" vTextAlign="Middle">
+            <expression><![CDATA[$P{employeeCode}]]></expression>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
-        <element kind="textField" uuid="aa000013-0001-0001-0001-000000000013"
-                 x="387" y="62" width="158" height="14" fontSize="9.0" forecolor="#111827">
-            <expression><![CDATA[$P{departmentName}]]></expression>
+        <element kind="staticText" uuid="deb72400-8c21-4977-976f-966d0d1adeef" x="0" y="100" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+            <text><![CDATA[Current Position :]]></text>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
-
-        <!-- Row 2: Position | Manager -->
-        <element kind="staticText" uuid="aa000014-0001-0001-0001-000000000014"
-                 x="10" y="82" width="100" height="14" fontSize="9.0" bold="true" forecolor="#374151">
-            <text><![CDATA[Position:]]></text>
-        </element>
-        <element kind="textField" uuid="aa000015-0001-0001-0001-000000000015"
-                 x="112" y="82" width="175" height="14" fontSize="9.0" forecolor="#111827">
+        <element kind="textField" uuid="bd310510-e3f1-4128-9efd-d0f0d06cc412" x="150" y="100" width="405" height="20" fontSize="10.0" vTextAlign="Middle">
             <expression><![CDATA[$P{positionName}]]></expression>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
-        <element kind="staticText" uuid="aa000016-0001-0001-0001-000000000016"
-                 x="300" y="82" width="85" height="14" fontSize="9.0" bold="true" forecolor="#374151">
-            <text><![CDATA[Reporting Manager:]]></text>
+        <element kind="staticText" uuid="7a823d5a-a313-4851-b2da-6d8c6839e396" x="0" y="120" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+            <text><![CDATA[Department :]]></text>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
-        <element kind="textField" uuid="aa000017-0001-0001-0001-000000000017"
-                 x="387" y="82" width="158" height="14" fontSize="9.0" forecolor="#111827">
+        <element kind="textField" uuid="61ea43f4-8ff3-4f79-a8b0-02ed671cf716" x="150" y="120" width="405" height="20" fontSize="10.0" vTextAlign="Middle">
+            <expression><![CDATA[$P{departmentName}]]></expression>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
+        </element>
+        <element kind="staticText" uuid="96a15532-d31e-4c62-87cc-2a6b25ae2d4a" x="0" y="140" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+            <text><![CDATA[Assessment Date :]]></text>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
+        </element>
+        <element kind="textField" uuid="ced48200-470f-4196-9909-20f7bd2331a0" x="150" y="140" width="405" height="20" fontSize="10.0" vTextAlign="Middle">
+            <expression><![CDATA[$P{assessmentDate}]]></expression>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
+        </element>
+        <element kind="staticText" uuid="31b4407e-9011-4a1a-9d94-49ee45f128e8" x="0" y="160" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+            <text><![CDATA[Manager Name :]]></text>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
+        </element>
+        <element kind="textField" uuid="1ec3b6da-b028-42e2-b4c1-15737c87d31a" x="150" y="160" width="405" height="20" fontSize="10.0" vTextAlign="Middle">
             <expression><![CDATA[$P{managerName}]]></expression>
-        </element>
-
-        <!-- Row 3: Submitted At | Total Score -->
-        <element kind="staticText" uuid="aa000018-0001-0001-0001-000000000018"
-                 x="10" y="102" width="100" height="14" fontSize="9.0" bold="true" forecolor="#374151">
-            <text><![CDATA[Submitted At:]]></text>
-        </element>
-        <element kind="textField" uuid="aa000019-0001-0001-0001-000000000019"
-                 x="112" y="102" width="175" height="14" fontSize="9.0" forecolor="#111827">
-            <expression><![CDATA[$P{submittedAt}]]></expression>
-        </element>
-        <element kind="staticText" uuid="aa000020-0001-0001-0001-000000000020"
-                 x="300" y="102" width="85" height="14" fontSize="9.0" bold="true" forecolor="#374151">
-            <text><![CDATA[Total Score:]]></text>
-        </element>
-        <element kind="textField" uuid="aa000021-0001-0001-0001-000000000021"
-                 x="387" y="102" width="158" height="14" fontSize="9.0" bold="true" forecolor="#1F2937">
-            <expression><![CDATA[$P{totalScore}]]></expression>
-        </element>
-
-        <!-- Row 4: Overall Reflection -->
-        <element kind="staticText" uuid="aa000022-0001-0001-0001-000000000022"
-                 x="10" y="122" width="100" height="14" fontSize="9.0" bold="true" forecolor="#374151">
-            <text><![CDATA[Overall Reflection:]]></text>
-        </element>
-        <element kind="textField" uuid="aa000023-0001-0001-0001-000000000023"
-                 x="112" y="122" width="433" height="28" fontSize="9.0" forecolor="#4B5563"
-                 textAdjust="StretchHeight">
-            <expression><![CDATA[$P{overallReflection} != null && !$P{overallReflection}.isEmpty() ? $P{overallReflection} : "\u2014"]]></expression>
+            <box padding="4">
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
     </title>
-
-    <!-- Column header for the question table -->
-    <columnHeader height="18">
-        <element kind="rectangle" uuid="aa000030-0001-0001-0001-000000000030"
-                 x="0" y="0" width="555" height="18" backcolor="#1F2937">
-            <pen lineWidth="0"/>
+    <columnHeader height="35">
+        <element kind="staticText" uuid="0344c095-c5cf-480c-97cd-01c265a27b17" x="0" y="0" width="275" height="35" fontSize="10.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[Assessment Subject]]></text>
+            <box>
+                <pen lineWidth="0.75"/>
+            </box>
         </element>
-        <element kind="staticText" uuid="aa000031-0001-0001-0001-000000000031"
-                 x="5" y="2" width="200" height="14" fontSize="9.0" bold="true"
-                 forecolor="#FFFFFF" vTextAlign="Middle">
-            <text><![CDATA[Question]]></text>
+        <element kind="staticText" uuid="d05187ff-7927-4869-9dd0-6a4f61d31fe2" x="275" y="0" width="40" height="35" fontSize="10.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[Yes]]></text>
+            <box>
+                <pen lineWidth="0.75"/>
+            </box>
         </element>
-        <element kind="staticText" uuid="aa000032-0001-0001-0001-000000000032"
-                 x="370" y="2" width="80" height="14" fontSize="9.0" bold="true"
-                 forecolor="#FFFFFF" hTextAlign="Center" vTextAlign="Middle">
+        <element kind="staticText" uuid="76b381d0-c537-4141-b9a6-ff009140c8ec" x="315" y="0" width="40" height="35" fontSize="10.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[No]]></text>
+            <box>
+                <pen lineWidth="0.75"/>
+            </box>
+        </element>
+        <element kind="staticText" uuid="37439bff-94af-45ca-93c1-a97b276d9be9" x="355" y="0" width="200" height="15" fontSize="9.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
             <text><![CDATA[Rating]]></text>
+            <box>
+                <pen lineWidth="0.75"/>
+            </box>
         </element>
-        <element kind="staticText" uuid="aa000033-0001-0001-0001-000000000033"
-                 x="455" y="2" width="95" height="14" fontSize="9.0" bold="true"
-                 forecolor="#FFFFFF" hTextAlign="Center" vTextAlign="Middle">
-            <text><![CDATA[Comments]]></text>
+        <element kind="staticText" uuid="44d71ca0-f9d8-4f75-ba3a-94ffa59574ff" x="355" y="15" width="40" height="20" fontSize="9.0" bold="true" hTextAlign="Center">
+            <text><![CDATA[5]]></text>
+            <box>
+                <pen lineWidth="0.5"/>
+            </box>
+        </element>
+        <element kind="staticText" uuid="659f5df4-3e09-410e-b180-1cf2e1257229" x="395" y="15" width="40" height="20" fontSize="9.0" bold="true" hTextAlign="Center">
+            <text><![CDATA[4]]></text>
+            <box>
+                <pen lineWidth="0.5"/>
+            </box>
+        </element>
+        <element kind="staticText" uuid="dc4a3b3c-3ae2-48ad-805d-446e3de58547" x="435" y="15" width="40" height="20" fontSize="9.0" bold="true" hTextAlign="Center">
+            <text><![CDATA[3]]></text>
+            <box>
+                <pen lineWidth="0.5"/>
+            </box>
+        </element>
+        <element kind="staticText" uuid="c9152e7c-1c3a-4c1b-8fb8-c799524230e8" x="475" y="15" width="40" height="20" fontSize="9.0" bold="true" hTextAlign="Center">
+            <text><![CDATA[2]]></text>
+            <box>
+                <pen lineWidth="0.5"/>
+            </box>
+        </element>
+        <element kind="staticText" uuid="6c85cdc2-36b6-4908-b484-36db73207dac" x="515" y="15" width="40" height="20" fontSize="9.0" bold="true" hTextAlign="Center">
+            <text><![CDATA[1]]></text>
+            <box>
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
     </columnHeader>
-
-    <!-- ===================== DETAIL (one band per question row) ===================== -->
     <detail>
-        <band height="50" splitType="Stretch">
-            <!-- Alternating row background via print-when (optional, keep simple) -->
-            <element kind="rectangle" uuid="aa000040-0001-0001-0001-000000000040"
-                     x="0" y="0" width="555" height="50" backcolor="#F9FAFB">
-                <pen lineWidth="0"/>
-                <printWhenExpression><![CDATA[$V{REPORT_COUNT} % 2 == 0]]></printWhenExpression>
+        <band height="30">
+            <element kind="textField" uuid="ac9c167a-e7c0-41f7-8fbf-55b962cf58b4" x="0" y="0" width="30" height="30" fontSize="9.0" hTextAlign="Center" vTextAlign="Middle">
+                <expression><![CDATA[$V{REPORT_COUNT}]]></expression>
+                <box>
+                    <pen lineWidth="0.5"/>
+                </box>
             </element>
-
-            <!-- Category label -->
-            <element kind="textField" uuid="aa000041-0001-0001-0001-000000000041"
-                     x="5" y="2" width="360" height="12" fontSize="8.0" bold="true"
-                     forecolor="#6B7280">
-                <expression><![CDATA["[" + $F{categoryName} + "]"]]></expression>
-            </element>
-
-            <!-- Question text -->
-            <element kind="textField" uuid="aa000042-0001-0001-0001-000000000042"
-                     x="5" y="14" width="360" height="14" fontSize="10.0"
-                     forecolor="#111827" textAdjust="StretchHeight">
+            <element kind="textField" uuid="a0bc3bea-2126-4f71-8a7e-1b82718dd221" x="30" y="0" width="245" height="30" fontSize="9.0" textAdjust="StretchHeight" vTextAlign="Middle">
                 <expression><![CDATA[$F{questionText}]]></expression>
+                <box leftPadding="5" rightPadding="3">
+                    <pen lineWidth="0.5"/>
+                </box>
             </element>
-
-            <!-- Rating value (centred) -->
-            <element kind="textField" uuid="aa000043-0001-0001-0001-000000000043"
-                     x="370" y="14" width="80" height="14" fontSize="12.0" bold="true"
-                     hTextAlign="Center" forecolor="#1D4ED8">
-                <expression><![CDATA[($F{ratingValue} != null ? $F{ratingValue} : "-") + " / 5"]]></expression>
+            <element kind="textField" uuid="380609c4-5b12-4c8b-bf0e-8914f0997226" x="275" y="0" width="40" height="30" fontName="DejaVu Sans" fontSize="10.0" hTextAlign="Center" vTextAlign="Middle">
+                <expression><![CDATA[Boolean.TRUE.equals($F{isYes}) ? "☑" : "☐"]]></expression>
+                <box>
+                    <pen lineWidth="0.5"/>
+                </box>
             </element>
-
-            <!-- Comment -->
-            <element kind="textField" uuid="aa000044-0001-0001-0001-000000000044"
-                     x="455" y="14" width="95" height="14" fontSize="8.0"
-                     forecolor="#4B5563" textAdjust="StretchHeight">
-                <expression><![CDATA[$F{comment} != null && !$F{comment}.trim().isEmpty() ? $F{comment} : "\u2014"]]></expression>
+            <element kind="textField" uuid="0d11a7f5-6625-46c0-aa6b-bc8fe58502b9" x="315" y="0" width="40" height="30" fontName="DejaVu Sans" fontSize="10.0" hTextAlign="Center" vTextAlign="Middle">
+                <expression><![CDATA[Boolean.TRUE.equals($F{isNo}) ? "☑" : "☐"]]></expression>
+                <box>
+                    <pen lineWidth="0.5"/>
+                </box>
             </element>
-
-            <!-- Row divider -->
-            <element kind="line" uuid="aa000045-0001-0001-0001-000000000045"
-                     x="0" y="48" width="555" height="1" forecolor="#E5E7EB">
-                <pen lineWidth="0.5"/>
+            <element kind="textField" uuid="f46bd94e-ef9e-44cf-9ffb-ac46004a0918" x="355" y="0" width="40" height="30" fontName="DejaVu Sans" hTextAlign="Center" vTextAlign="Middle">
+                <expression><![CDATA[$F{ratingValue} != null && $F{ratingValue} == 5 ? "✔" : ""]]></expression>
+                <box>
+                    <pen lineWidth="0.5"/>
+                </box>
+            </element>
+            <element kind="textField" uuid="a1024676-384b-43ea-afe9-942ab042dd2e" x="395" y="0" width="40" height="30" fontName="DejaVu Sans" hTextAlign="Center" vTextAlign="Middle">
+                <expression><![CDATA[$F{ratingValue} != null && $F{ratingValue} == 4 ? "✔" : ""]]></expression>
+                <box>
+                    <pen lineWidth="0.5"/>
+                </box>
+            </element>
+            <element kind="textField" uuid="f6c811a1-4b00-4ff6-8d3b-834b6dd255c7" x="435" y="0" width="40" height="30" fontName="DejaVu Sans" hTextAlign="Center" vTextAlign="Middle">
+                <expression><![CDATA[$F{ratingValue} != null && $F{ratingValue} == 3 ? "✔" : ""]]></expression>
+                <box>
+                    <pen lineWidth="0.5"/>
+                </box>
+            </element>
+            <element kind="textField" uuid="2d3a34a7-858b-405c-9132-f7c847f546e2" x="475" y="0" width="40" height="30" fontName="DejaVu Sans" hTextAlign="Center" vTextAlign="Middle">
+                <expression><![CDATA[$F{ratingValue} != null && $F{ratingValue} == 2 ? "✔" : ""]]></expression>
+                <box>
+                    <pen lineWidth="0.5"/>
+                </box>
+            </element>
+            <element kind="textField" uuid="2b7c05ad-270d-4990-9771-540e1d5752aa" x="515" y="0" width="40" height="30" fontName="DejaVu Sans" hTextAlign="Center" vTextAlign="Middle">
+                <expression><![CDATA[$F{ratingValue} != null && $F{ratingValue} == 1 ? "✔" : ""]]></expression>
+                <box>
+                    <pen lineWidth="0.5"/>
+                </box>
             </element>
         </band>
     </detail>
-
-    <!-- ===================== PAGE FOOTER ===================== -->
-    <pageFooter height="30">
-        <element kind="line" uuid="aa000050-0001-0001-0001-000000000050"
-                 x="0" y="5" width="555" height="1" forecolor="#E5E7EB"/>
-        <element kind="textField" uuid="aa000051-0001-0001-0001-000000000051"
-                 x="0" y="10" width="300" height="15" fontSize="8.0" forecolor="#9CA3AF">
-            <expression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("dd-MM-yyyy HH:mm").format(new java.util.Date())]]></expression>
+    <summary height="85">
+        <element kind="staticText" uuid="f4ea7645-198b-4f1c-a2c2-62f894c950fc" x="0" y="15" width="120" height="60" fontSize="10.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[Total Points]]></text>
+            <box>
+                <pen lineWidth="1.0"/>
+            </box>
         </element>
-        <element kind="textField" uuid="aa000052-0001-0001-0001-000000000052"
-                 x="455" y="10" width="100" height="15" fontSize="8.0"
-                 forecolor="#9CA3AF" hTextAlign="Right">
-            <expression><![CDATA["Page " + $V{PAGE_NUMBER}]]></expression>
+        <element kind="staticText" uuid="68d89582-a06b-4c01-a3d4-e5e5e231e9b8" x="120" y="15" width="180" height="20" fontSize="9.0" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[Total Point]]></text>
+            <box>
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
-    </pageFooter>
-    <summary height="30">
-        <element kind="line" uuid="summary-line" x="0" y="5" width="555" height="1">
-            <pen lineWidth="1.0" lineColor="#34495E"/>
+        <element kind="staticText" uuid="71aaefae-a36f-4756-b31c-a913d675e62c" x="120" y="35" width="180" height="20" fontSize="9.0" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[X 100]]></text>
+            <box>
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
-        <element kind="staticText" uuid="summary-label" x="0" y="10" width="180" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
-            <text><![CDATA[Total Questions Evaluated:]]></text>
+        <element kind="staticText" uuid="b7f3dddd-1510-4e61-87b7-db87f13496db" x="120" y="55" width="180" height="20" fontSize="9.0" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[Number of Questions Answered X 5]]></text>
+            <box>
+                <pen lineWidth="0.5"/>
+            </box>
         </element>
-        <element kind="textField" uuid="summary-value" x="180" y="10" width="100" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
-            <expression><![CDATA[$V{REPORT_COUNT}]]></expression>
+        <element kind="textField" uuid="ed1129b9-8f3d-4028-829f-47685ef48541" x="300" y="15" width="255" height="60" fontSize="12.0" evaluationTime="Report" bold="true" hTextAlign="Center" vTextAlign="Middle">
+            <expression><![CDATA[($V{REPORT_COUNT} != null && $V{REPORT_COUNT} > 0)
+                    ?
+                    String.format(
+                        "%.2f",
+                        ((double)$V{totalRatingSum} * 100)
+                        / ($V{REPORT_COUNT} * 5)
+                    ) + " %"
+                    :
+                    "0.00 %"]]></expression>
+            <box>
+                <pen lineWidth="1.0"/>
+            </box>
         </element>
     </summary>
 </jasperReport>
