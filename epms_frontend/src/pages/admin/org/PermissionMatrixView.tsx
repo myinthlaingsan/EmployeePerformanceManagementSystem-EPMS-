@@ -1,10 +1,10 @@
-import { useGetPermissionMatrixQuery, useUpdatePermissionMatrixMutation } from "../../../features/org/permissionApi";
+import { useGetPermissionMatrixQuery, useTogglePermissionMutation } from "../../../features/org/permissionApi";
 import { useState } from "react";
 import { getLevelsForRole } from "../../../utils/roleLevel";
 
 const PermissionMatrixView = () => {
   const { data: matrixData, isLoading, error } = useGetPermissionMatrixQuery();
-  const [updateMatrix] = useUpdatePermissionMatrixMutation();
+  const [togglePermission] = useTogglePermissionMutation();
   const [updating, setUpdating] = useState<string | null>(null);
 
   if (isLoading) return <div style={{ padding: '48px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading Matrix...</div>;
@@ -19,15 +19,10 @@ const PermissionMatrixView = () => {
   const handleToggle = async (roleId: number, levelId: number, permissionId: number) => {
     const key = `${roleId}-${levelId}-${permissionId}`;
     setUpdating(key);
-    const currentMapping = matrix.find(m => m.roleId === roleId && m.levelId === levelId);
-    const currentPermissionIds = currentMapping?.permissionIds || [];
-    const newPermissionIds = currentPermissionIds.includes(permissionId)
-      ? currentPermissionIds.filter(id => id !== permissionId)
-      : [...currentPermissionIds, permissionId];
     try {
-      await updateMatrix({ roleId, levelId, permissionIds: newPermissionIds }).unwrap();
+      await togglePermission({ roleId, levelId, permissionId }).unwrap();
     } catch (err) {
-      console.error("Failed to update matrix", err);
+      console.error("Failed to toggle permission", err);
     } finally {
       setUpdating(null);
     }

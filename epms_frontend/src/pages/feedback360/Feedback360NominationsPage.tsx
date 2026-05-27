@@ -330,6 +330,7 @@ const Feedback360NominationsPage = () => {
   const { data: myNominations = [], isLoading, isError, refetch } = useListMyNominationsQuery();
   const [approve, { isLoading: approving }] = useApproveNominationMutation();
   const [reject,  { isLoading: rejecting }] = useRejectNominationMutation();
+  const [rejectTargetId, setRejectTargetId] = useState<number | null>(null);
 
   const pendingNominations = myNominations.filter((n) => n.status === 'PROPOSED');
   const canApprove = isAdmin || isHR || isManager;
@@ -339,10 +340,15 @@ const Feedback360NominationsPage = () => {
     catch { toast.error('Failed to approve.'); }
   };
 
-  const handleReject = async (id: number) => {
-    if (!window.confirm('Reject this nomination?')) return;
-    try { await reject(id).unwrap(); toast.success('Nomination rejected.'); }
+  const handleReject = (id: number) => {
+    setRejectTargetId(id);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectTargetId) return;
+    try { await reject(rejectTargetId).unwrap(); toast.success('Nomination rejected.'); }
     catch { toast.error('Failed to reject.'); }
+    finally { setRejectTargetId(null); }
   };
 
   return (
@@ -421,6 +427,33 @@ const Feedback360NominationsPage = () => {
           />
         )}
       </div>
+
+      {rejectTargetId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: 24, width: '100%', maxWidth: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.16)' }}>
+            <p style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 8 }}>Reject Nomination?</p>
+            <p style={{ fontSize: 13, color: '#5A6070', marginBottom: 20 }}>
+              This nomination will be rejected and removed from pending approval.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setRejectTargetId(null)}
+                disabled={rejecting}
+                style={{ padding: '8px 16px', border: '1px solid #E4E6EC', borderRadius: 8, fontSize: 13, background: '#fff', cursor: rejecting ? 'not-allowed' : 'pointer', opacity: rejecting ? 0.7 : 1 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReject}
+                disabled={rejecting}
+                style={{ padding: '8px 16px', background: '#791F1F', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, cursor: rejecting ? 'not-allowed' : 'pointer', opacity: rejecting ? 0.7 : 1 }}
+              >
+                {rejecting ? 'Rejecting...' : 'Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
