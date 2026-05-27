@@ -32,10 +32,11 @@ const ProfilePage = () => {
   const { data: profile, isLoading: isProfileLoading } = useGetCurrentUserQuery();
   const { data: activeCycleResp } = useGetActiveCycleQuery();
   const activeCycle = activeCycleResp?.data;
+  const activeCycleId = activeCycle?.cycleId;
 
   const { data: goalSetResp, isLoading: isGoalsLoading } = useGetGoalSetByEmployeeQuery(
-    { employeeId: profile?.id ?? 0, cycleId: activeCycle?.id ?? 0 },
-    { skip: !profile?.id || !activeCycle?.id }
+    { employeeId: profile?.id ?? 0, cycleId: activeCycleId ?? 0 },
+    { skip: !profile?.id || !activeCycleId }
   );
   const goalSet = goalSetResp?.data;
 

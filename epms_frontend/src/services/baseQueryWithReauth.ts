@@ -51,6 +51,12 @@ const getStatusPrefix = (status: number | string): string => {
 
 const shouldShowToast = (status: number | string, url: string): boolean => {
   if (url.includes("/auth/me") && status === 401) return false;
+  if (
+    status === 404 &&
+    (url.includes("/kpi/active-cycle") || url.includes("/appraisal-cycles/active"))
+  ) {
+    return false;
+  }
   return true;
 };
 
@@ -149,7 +155,9 @@ export const baseQueryWithReauth: BaseQueryFn<
   }
 
   if (status === 404) {
-    toast.error(`${getStatusPrefix(status)}: ${message}`);
+    if (shouldShowToast(status, url)) {
+      toast.error(`${getStatusPrefix(status)}: ${message}`);
+    }
     return result;
   }
 

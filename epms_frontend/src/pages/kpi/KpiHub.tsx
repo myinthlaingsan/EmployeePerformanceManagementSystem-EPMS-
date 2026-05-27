@@ -12,8 +12,8 @@ const KpiHub: React.FC = () => {
   const libraries = librariesResponse?.data || [];
 
   const { data: myGoalsResponse, isLoading: loadingGoals } = useGetGoalSetByEmployeeQuery(
-    { employeeId: user?.id || 0, cycleId: activeCycleId },
-    { skip: !user }
+    { employeeId: user?.id || 0, cycleId: activeCycleId ?? 0 },
+    { skip: !user?.id || !activeCycleId }
   );
 
   const myGoals = myGoalsResponse?.data;
