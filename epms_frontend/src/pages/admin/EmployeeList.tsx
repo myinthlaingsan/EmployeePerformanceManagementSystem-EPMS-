@@ -75,7 +75,7 @@ const EmployeeList = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Employees</h1>
-          <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Manage staff accounts, roles, and status.</p>
+          <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Manage employee accounts, roles, and status.</p>
         </div>
         <Can permission="EMPLOYEE_CREATE">
           <Link
@@ -85,7 +85,7 @@ const EmployeeList = () => {
             onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
           >
-            <Plus size={14} aria-hidden="true" /> Add staff
+            <Plus size={14} aria-hidden="true" /> Add Employee
           </Link>
         </Can>
       </div>
@@ -99,7 +99,7 @@ const EmployeeList = () => {
               <Search size={13} className="absolute left-3 pointer-events-none" style={{ color: "#9EA3B0" }} aria-hidden="true" />
               <input
                 type="text"
-                placeholder="Search staff…"
+                placeholder="Search Employee…"
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
                 style={{ ...selectStyle, paddingLeft: 30, width: 180 }}
