@@ -240,7 +240,7 @@ const AppraisalList: React.FC = () => {
               >
                 <Mail className="w-4 h-4" /> {isSendingReminders ? 'Sending...' : 'Send Reminders'}
               </button>
-              {isPrivileged && !cycle?.isAssigned && (
+              {isPrivileged && !cycle?.isAssigned && !cycle?.isActive && cycle?.status === 'PLANNING' && (
                 <button
                   onClick={() => {
                     setConfirmModal({
@@ -427,7 +427,7 @@ const AppraisalList: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Can permission="APPRAISAL_CYCLE_MANAGE">
-                  {isPrivileged && !cycle.isAssigned && (
+                  {isPrivileged && !cycle.isAssigned && !cycle.isActive && cycle.status === 'PLANNING' && (
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
