@@ -17,6 +17,9 @@ import KpiAuditLogModal from '../../components/kpi/KpiAuditLogModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
 import { ChevronLeft, CheckCircle2, AlertCircle, Lock, Award, ShieldCheck, History, Archive } from 'lucide-react';
 import { Can } from '../../components/Can';
+import { useGetMidcycleSummaryQuery } from '../../services/midcycleApi';
+import { MidcyclePhaseTimeline } from '../../features/kpi/MidcyclePhaseTimeline';
+import { MidcycleChangeModal } from '../../features/kpi/MidcycleChangeModal';
 
 const STEPS = [
   { id: 'DRAFT', label: 'Draft', icon: CheckCircle2 },
@@ -63,7 +66,14 @@ const GoalDetail: React.FC = () => {
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [showRevertConfirm, setShowRevertConfirm] = useState(false);
+  const [showMidcycleModal, setShowMidcycleModal] = useState(false);
   const [showLockConfirm, setShowLockConfirm] = useState(false);
+
+  const { data: midcycleResponse, refetch: refetchMidcycle } = useGetMidcycleSummaryQuery(
+    { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId! },
+    { skip: !effectiveCycleId }
+  );
+  const midcycle = midcycleResponse?.data ?? null;
 
   const isOwner = user?.id === parseInt(employeeId!);
   const isPrivileged = _isManager || isAdmin || isHR;
@@ -219,6 +229,13 @@ const GoalDetail: React.FC = () => {
                     Lock Goals
                   </button>
                 )}
+                {(goalSet.status === 'APPROVED' || goalSet.status === 'LOCKED') && (
+                  <button onClick={() => setShowMidcycleModal(true)}
+                    style={{ background: '#EFF6FF', color: '#1E40AF', border: '0.5px solid #BFDBFE', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}
+                    className="hover:bg-blue-100 transition-colors">
+                    Midcycle Change
+                  </button>
+                )}
               </Can>
             </>
           )}
@@ -333,6 +350,17 @@ const GoalDetail: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {midcycle && midcycle.phases && midcycle.phases.length > 0 && (
+        <MidcyclePhaseTimeline
+          summary={midcycle}
+          isPrivileged={isAdmin || isHR}
+          onRefetch={() => {
+            refetch();
+            refetchMidcycle();
+          }}
+        />
+      )}
 
       {/* 2-column layout: table left, score sidebar right */}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
@@ -603,6 +631,24 @@ const GoalDetail: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showMidcycleModal && goalSet && cycleData && (
+        <MidcycleChangeModal
+          employeeId={parseInt(employeeId!)}
+          employeeName={goalSet.employeeName}
+          cycleId={effectiveCycleId!}
+          cycleName={goalSet.appraisalCycleName || cycleData.cycleName}
+          cycleStartDate={cycleData.startDate}
+          cycleEndDate={cycleData.endDate}
+          summary={midcycle}
+          onClose={() => setShowMidcycleModal(false)}
+          onSuccess={() => {
+            setShowMidcycleModal(false);
+            refetch();
+            refetchMidcycle();
+          }}
+        />
       )}
 
       <div style={{ display: 'none' }}><CheckCircle2 /><AlertCircle /></div>
