@@ -4,7 +4,7 @@ import { useGetJobLevelsQuery } from "../../../features/org/jobLevelApi";
 import {
   useGetPermissionsQuery,
   useGetAssignedPermissionsQuery,
-  useUpdatePermissionMatrixMutation
+  useTogglePermissionMutation
 } from "../../../features/org/permissionApi";
 import { getLevelsForRole } from "../../../utils/roleLevel";
 
@@ -24,7 +24,7 @@ const RoleLevelPermissionManager = () => {
     { skip: selectedRoleId === 0 || selectedLevelId === 0 }
   );
 
-  const [updateMatrix] = useUpdatePermissionMatrixMutation();
+  const [togglePermission] = useTogglePermissionMutation();
 
   const getRelevantLevelsForRole = (roleName: string | undefined) => {
     if (!roleName || !levels) return [];
@@ -41,14 +41,10 @@ const RoleLevelPermissionManager = () => {
 
   const handleTogglePermission = async (permissionId: number) => {
     if (selectedRoleId === 0 || selectedLevelId === 0) return;
-    const currentPermissionIds = assignments?.map(a => a.permissionId) || [];
-    const newPermissionIds = currentPermissionIds.includes(permissionId)
-      ? currentPermissionIds.filter(id => id !== permissionId)
-      : [...currentPermissionIds, permissionId];
     try {
-      await updateMatrix({ roleId: selectedRoleId, levelId: selectedLevelId, permissionIds: newPermissionIds }).unwrap();
+      await togglePermission({ roleId: selectedRoleId, levelId: selectedLevelId, permissionId }).unwrap();
     } catch (err) {
-      console.error("Failed to update permissions", err);
+      console.error("Failed to toggle permission", err);
     }
   };
 

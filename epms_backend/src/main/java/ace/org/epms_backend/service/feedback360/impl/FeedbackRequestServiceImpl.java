@@ -620,6 +620,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     @Override
     public List<FeedbackRequestResponse> getMyRequests(Long evaluatorId) {
         return requestRepository.findByEvaluatorId(evaluatorId).stream()
+                .filter(r -> r.getCycle() != null && Boolean.TRUE.equals(r.getCycle().getIsActive()))
                 .map(feedbackMapper::toRequestResponse)
                 .collect(Collectors.toList());
     }

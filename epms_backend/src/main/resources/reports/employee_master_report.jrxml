@@ -1,5 +1,5 @@
-<!-- Created with Jaspersoft Studio version 7.0.3.final using JasperReports Library version 7.0.3-41034ca841d452f3305ba55b9042260aaa1ab5dd  -->
-<jasperReport name="employee_master_report" language="java" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="a1b2c3d4-e5f6-7890-abcd-1234567890ab">
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport name="employee_master_report" language="java" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
 	<parameter name="logoStream" class="java.io.InputStream"/>
 	<parameter name="reportTitle" class="java.lang.String"/>
 	<field name="employeeCode" class="java.lang.String"/>
@@ -12,98 +12,104 @@
 	<field name="directManagerName" class="java.lang.String"/>
 	<field name="status" class="java.lang.String"/>
 	<field name="joinedDate" class="java.lang.String"/>
+
+	<variable name="ROW_COUNT" class="java.lang.Integer" calculation="Count">
+		<expression><![CDATA[$F{employeeCode}]]></expression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+
 	<title height="70">
-		<element kind="image" uuid="d654321a-da6c-490e-a08e-25cba038ec31" x="0" y="0" width="100" height="50">
+		<element kind="image" x="0" y="0" width="100" height="50">
 			<expression><![CDATA[$P{logoStream}]]></expression>
 		</element>
-		<element kind="textField" uuid="c643d96a-da6c-490e-a08e-25cba038ec31" x="100" y="0" width="600" height="50" fontSize="22.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+		<element kind="textField" x="100" y="0" width="600" height="50" fontSize="22.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
 			<expression><![CDATA[$P{reportTitle} != null ? $P{reportTitle} : "Employee Master Report"]]></expression>
 		</element>
 	</title>
 	<columnHeader height="35">
-		<element kind="rectangle" uuid="2f026e40-5c1a-4bdb-b9fb-ac7d1ba057c3" x="0" y="0" width="802" height="35" backcolor="#34495E">
+		<element kind="rectangle" x="0" y="0" width="802" height="35" backcolor="#34495E">
 			<pen lineWidth="0.0"/>
 		</element>
-		<element kind="staticText" uuid="47b9e909-40fe-4263-bfe7-16c5b2433e1e" x="0" y="0" width="70" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
+		<element kind="staticText" x="0" y="0" width="70" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
 			<text><![CDATA[Code]]></text>
 			<box leftPadding="5"/>
 		</element>
-		<element kind="staticText" uuid="91f35c17-ce04-4be5-8a2f-fde670af6a0e" x="70" y="0" width="120" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
+		<element kind="staticText" x="70" y="0" width="120" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
 			<text><![CDATA[Staff Name]]></text>
 		</element>
-		<element kind="staticText" uuid="0d324371-d990-423d-bba3-c753fafe7c99" x="190" y="0" width="90" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
+		<element kind="staticText" x="190" y="0" width="90" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
 			<text><![CDATA[Department]]></text>
 		</element>
-		<element kind="staticText" uuid="4f230d59-f524-4de4-a085-3cc896ce6d4b" x="280" y="0" width="90" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
+		<element kind="staticText" x="280" y="0" width="90" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
 			<text><![CDATA[Team]]></text>
 		</element>
-		<element kind="staticText" uuid="8ad1c068-0396-4819-9e41-6178f56c1768" x="370" y="0" width="100" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
+		<element kind="staticText" x="370" y="0" width="100" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
 			<text><![CDATA[Position]]></text>
 		</element>
-		<element kind="staticText" uuid="87d5dbbf-59be-4b44-a178-a31f21da4e5e" x="470" y="0" width="70" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
+		<element kind="staticText" x="470" y="0" width="70" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
 			<text><![CDATA[Level]]></text>
 		</element>
-		<element kind="staticText" uuid="66a6bb21-7a55-4345-8a2b-12750b41572e" x="540" y="0" width="110" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
+		<element kind="staticText" x="540" y="0" width="110" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" vTextAlign="Middle">
 			<text><![CDATA[Manager]]></text>
 		</element>
-		<element kind="staticText" uuid="384dccf9-6ce6-40c4-9e3c-107896dbf76f" x="650" y="0" width="60" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+		<element kind="staticText" x="650" y="0" width="60" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
 			<text><![CDATA[Status]]></text>
 		</element>
-		<element kind="staticText" uuid="7e1b9bc9-d775-4d47-85e6-f1953f3e931c" x="710" y="0" width="92" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+		<element kind="staticText" x="710" y="0" width="92" height="35" forecolor="#FFFFFF" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
 			<text><![CDATA[Joined Date]]></text>
 		</element>
 	</columnHeader>
 	<detail>
 		<band height="30">
-			<element kind="textField" uuid="abd0d660-22d5-4f94-aa4c-9527a0f62fc7" x="0" y="0" width="70" height="30" fontSize="8.0" vTextAlign="Middle">
+			<element kind="textField" x="0" y="0" width="70" height="30" fontSize="8.0" vTextAlign="Middle">
 				<expression><![CDATA[$F{employeeCode}]]></expression>
 				<box leftPadding="5">
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="726706b1-8f9f-47a6-89c8-6f4e95a786db" x="70" y="0" width="120" height="30" fontSize="8.0" bold="true" vTextAlign="Middle">
+			<element kind="textField" x="70" y="0" width="120" height="30" fontSize="8.0" bold="true" vTextAlign="Middle">
 				<expression><![CDATA[$F{staffName}]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="ca1f8d9f-c199-43c2-9ef2-1d2c4c0ce8fb" x="190" y="0" width="90" height="30" fontSize="8.0" vTextAlign="Middle">
+			<element kind="textField" x="190" y="0" width="90" height="30" fontSize="8.0" vTextAlign="Middle">
 				<expression><![CDATA[$F{departmentName}]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="19ea7692-c511-45d6-82ef-e10378e08447" x="280" y="0" width="90" height="30" fontSize="8.0" vTextAlign="Middle">
+			<element kind="textField" x="280" y="0" width="90" height="30" fontSize="8.0" vTextAlign="Middle">
 				<expression><![CDATA[$F{teamName}]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="9b23eaa9-de90-4e32-b83e-9a1fe47a4b46" x="370" y="0" width="100" height="30" fontSize="8.0" vTextAlign="Middle">
+			<element kind="textField" x="370" y="0" width="100" height="30" fontSize="8.0" vTextAlign="Middle">
 				<expression><![CDATA[$F{positionName}]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="f5361ef0-e742-416f-8455-45aaff0c2cd9" x="470" y="0" width="70" height="30" fontSize="8.0" vTextAlign="Middle">
+			<element kind="textField" x="470" y="0" width="70" height="30" fontSize="8.0" vTextAlign="Middle">
 				<expression><![CDATA[$F{levelName}]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="e1b66ea2-bc63-44bc-9d45-704480bd73e0" x="540" y="0" width="110" height="30" fontSize="8.0" vTextAlign="Middle">
+			<element kind="textField" x="540" y="0" width="110" height="30" fontSize="8.0" vTextAlign="Middle">
 				<expression><![CDATA[$F{directManagerName}]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="0c702aee-85aa-4c5a-a3b5-3e846d9b5aa4" x="650" y="0" width="60" height="30" fontSize="8.0" hTextAlign="Center" vTextAlign="Middle">
+			<element kind="textField" x="650" y="0" width="60" height="30" fontSize="8.0" hTextAlign="Center" vTextAlign="Middle">
 				<expression><![CDATA[$F{status}]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
 				</box>
 			</element>
-			<element kind="textField" uuid="a28d2f40-15e3-42ac-8522-e3b796369892" x="710" y="0" width="92" height="30" fontSize="8.0" hTextAlign="Center" vTextAlign="Middle">
+			<element kind="textField" x="710" y="0" width="92" height="30" fontSize="8.0" hTextAlign="Center" vTextAlign="Middle">
 				<expression><![CDATA[$F{joinedDate}]]></expression>
 				<box>
 					<bottomPen lineWidth="0.5" lineColor="#CCCCCC"/>
@@ -111,4 +117,28 @@
 			</element>
 		</band>
 	</detail>
+
+	<pageFooter height="30">
+		<element kind="textField" x="0" y="10" width="200" height="20" fontSize="8.0" pattern="dd-MM-yyyy HH:mm:ss" vTextAlign="Middle">
+			<expression><![CDATA[new java.util.Date()]]></expression>
+		</element>
+		<element kind="textField" x="600" y="10" width="150" height="20" fontSize="8.0" hTextAlign="Right" vTextAlign="Middle">
+			<expression><![CDATA["Page " + $V{PAGE_NUMBER} + " of "]]></expression>
+		</element>
+		<element kind="textField" x="750" y="10" width="52" height="20" fontSize="8.0" evaluationTime="Report" hTextAlign="Left" vTextAlign="Middle">
+			<expression><![CDATA[" " + $V{PAGE_NUMBER}]]></expression>
+		</element>
+	</pageFooter>
+
+	<summary height="40">
+		<element kind="line" x="0" y="5" width="802" height="1">
+			<pen lineWidth="1.0" lineColor="#34495E"/>
+		</element>
+		<element kind="staticText" x="0" y="10" width="150" height="25" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<text><![CDATA[Total Employees:]]></text>
+		</element>
+		<element kind="textField" x="150" y="10" width="100" height="25" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<expression><![CDATA[$V{ROW_COUNT}]]></expression>
+		</element>
+	</summary>
 </jasperReport>

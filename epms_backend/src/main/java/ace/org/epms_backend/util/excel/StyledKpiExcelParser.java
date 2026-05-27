@@ -4,6 +4,7 @@ import ace.org.epms_backend.dto.kpi.KpiLibraryDetailRequest;
 import ace.org.epms_backend.dto.kpi.KpiLibraryRequest;
 import ace.org.epms_backend.dto.kpi.KpiParseResult;
 import ace.org.epms_backend.exception.NotFoundException;
+import ace.org.epms_backend.model.employee.Position;
 import ace.org.epms_backend.model.kpi.KpiCategory;
 import ace.org.epms_backend.repository.KpiCategoryRepository;
 import ace.org.epms_backend.repository.PositionRepository;
@@ -16,6 +17,7 @@ import ace.org.epms_backend.model.kpi.KpiCategory; // adjust package to match yo
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.Locale;
 
 @Component
 @RequiredArgsConstructor
@@ -177,26 +179,114 @@ public class StyledKpiExcelParser {
         return false;
     }
 
+    private static final Map<String, String> POSITION_SHORT_NAME_MAP = Map.of(
+            "SE", "Software Engineer",
+            "SSE", "Senior Software Engineer"
+    );
+
+    private static final Map<String, String> POSITION_NAME_ALIAS_MAP = Map.of(
+            "SE", "Software Engineer",
+            "SSE", "Senior Software Engineer",
+            "SOFTWARE ENGINEER", "SE",
+            "SENIOR SOFTWARE ENGINEER", "SSE"
+    );
+
     private Long resolvePositionId(String title) {
         String cleanTitle = title.replaceAll("(?i)\\s*KPI\\s*$", "").trim();
+        if (cleanTitle.isEmpty()) {
+            throw new NotFoundException("Position title is empty for input: " + title);
+        }
 
         if (cleanTitle.contains("-")) {
             String[] parts = cleanTitle.split("-", 2);
             String code = parts[0].trim();
-            String name = parts[1].trim();
+            String name = parts.length > 1 ? parts[1].trim() : "";
 
             var posByCode = positionRepository.findByPositionCode(code);
-            if (posByCode.isPresent())
+            if (posByCode.isPresent()) {
                 return posByCode.get().getPositionId();
+            }
 
-            var posByName = positionRepository.findByPositionNameIgnoreCase(name);
-            if (posByName.isPresent())
-                return posByName.get().getPositionId();
+            if (!name.isBlank()) {
+                var posByName = findPositionByNameOrAlias(name);
+                if (posByName.isPresent()) {
+                    return posByName.get().getPositionId();
+                }
+            }
+
+            String mappedName = mapShortTitle(code);
+            if (mappedName != null) {
+                var posByMappedName = findPositionByNameOrAlias(mappedName);
+                if (posByMappedName.isPresent()) {
+                    return posByMappedName.get().getPositionId();
+                }
+            }
+        }
+
+        var posByCode = positionRepository.findByPositionCode(cleanTitle);
+        if (posByCode.isPresent()) {
+            return posByCode.get().getPositionId();
+        }
+
+        var posByName = findPositionByNameOrAlias(cleanTitle);
+        if (posByName.isPresent()) {
+            return posByName.get().getPositionId();
         }
 
         return positionRepository.findByPositionNameIgnoreCase(cleanTitle)
                 .orElseThrow(() -> new NotFoundException("Position not found for title: " + title))
                 .getPositionId();
+    }
+
+    private Optional<Position> findPositionByNameOrAlias(String name) {
+        if (name == null || name.isBlank()) {
+            return Optional.empty();
+        }
+
+        var exactMatch = positionRepository.findByPositionNameIgnoreCase(name);
+        if (exactMatch.isPresent()) {
+            return exactMatch;
+        }
+
+        String alias = lookupPositionAlias(name);
+        if (alias != null && !alias.equalsIgnoreCase(name)) {
+            return positionRepository.findByPositionNameIgnoreCase(alias);
+        }
+
+        return Optional.empty();
+    }
+
+    private String lookupPositionAlias(String title) {
+        if (title == null || title.isBlank()) {
+            return null;
+        }
+        return POSITION_NAME_ALIAS_MAP.get(title.trim().toUpperCase(Locale.ROOT));
+    }
+
+    private String normalizeShortTitle(String title) {
+        if (title == null) {
+            return "";
+        }
+        String trimmed = title.trim();
+        String upper = trimmed.toUpperCase(Locale.ROOT);
+        if (POSITION_SHORT_NAME_MAP.containsKey(upper)) {
+            return POSITION_SHORT_NAME_MAP.get(upper);
+        }
+
+        for (String shortForm : POSITION_SHORT_NAME_MAP.keySet()) {
+            String prefix = shortForm + " ";
+            if (upper.startsWith(prefix)) {
+                return trimmed.substring(shortForm.length()).trim();
+            }
+        }
+        return trimmed;
+    }
+
+    private String mapShortTitle(String title) {
+        if (title == null) {
+            return null;
+        }
+        return POSITION_SHORT_NAME_MAP.get(title.toUpperCase(Locale.ROOT));
     }
 
     private KpiLibraryDetailRequest parseDetailRow(Row row, DataFormatter formatter, FormulaEvaluator evaluator,

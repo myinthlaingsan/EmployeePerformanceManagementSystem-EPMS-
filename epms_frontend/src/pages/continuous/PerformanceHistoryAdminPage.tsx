@@ -792,10 +792,7 @@ export const PerformanceHistoryAdminPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-gray-900 text-white px-6 py-2 rounded-2xl flex items-center gap-3 shadow-lg">
-         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Admin Mode: Organizational Oversight</span>
-      </div>
+
 
       <header className="flex flex-col gap-2">
         <h1 className="text-4xl font-black text-gray-900 tracking-tight">The Global Pulse</h1>
@@ -970,7 +967,6 @@ export const PerformanceHistoryAdminPage = () => {
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 relative min-h-[500px] flex flex-col">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Audit Log / Transparent History</h2>
-          <button className="px-6 py-2 bg-gray-50 text-gray-600 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-100 border border-gray-100">Export CSV</button>
         </div>
 
         {isHistoryLoading ? (

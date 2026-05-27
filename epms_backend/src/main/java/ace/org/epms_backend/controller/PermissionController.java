@@ -73,6 +73,15 @@ public class PermissionController {
                 HttpStatus.CREATED);
     }
 
+    @PostMapping("/assign/toggle")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> togglePermission(
+            @Valid @RequestBody AssignPermissionRequest request) {
+        permissionService.togglePermission(request);
+        return ResponseEntity.ok(
+                ApiResponse.success(null));
+    }
+
     @DeleteMapping("/assign/{assignmentId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> removeAssignedPermission(@PathVariable Long assignmentId) {

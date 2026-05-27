@@ -14,6 +14,29 @@ import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Bell, MailOpen, Inbox } from "lucide-react";
 
+/** Returns a left-border accent colour based on notification type. */
+function getNotificationAccent(type: string, isRead: boolean): string {
+  if (isRead) return "2px solid transparent";
+  if (type === "MEETING_FOLLOWUP_OVERDUE" || type === "ACTION_ITEM_OVERDUE")
+    return "2px solid #F59E0B"; // amber – overdue warnings
+  if (type === "PIP_CREATED" || type === "PIP_ESCALATED")
+    return "2px solid #EF4444"; // red – PIP critical
+  if (type === "MEETING_SCHEDULED" || type === "MEETING_UPDATED")
+    return "2px solid #8B5CF6"; // purple – meeting events
+  return "2px solid #1A56DB"; // default blue
+}
+
+function getNotificationBg(type: string, isRead: boolean): string {
+  if (isRead) return "#FFFFFF";
+  if (type === "MEETING_FOLLOWUP_OVERDUE" || type === "ACTION_ITEM_OVERDUE")
+    return "#FFFBEB"; // amber tint
+  if (type === "PIP_CREATED" || type === "PIP_ESCALATED")
+    return "#FFF5F5"; // red tint
+  if (type === "MEETING_SCHEDULED" || type === "MEETING_UPDATED")
+    return "#FAF5FF"; // purple tint
+  return "#F9FBFF"; // default blue tint
+}
+
 export const NotificationBell: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -196,8 +219,8 @@ export const NotificationBell: React.FC = () => {
                         ? "0.5px solid #F0F2F6"
                         : "none",
                     cursor: "pointer",
-                    background: !n.isRead ? "#F9FBFF" : "#FFFFFF",
-                    borderLeft: !n.isRead ? "2px solid #1A56DB" : "2px solid transparent",
+                    background: getNotificationBg(n.type, n.isRead),
+                    borderLeft: getNotificationAccent(n.type, n.isRead),
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
