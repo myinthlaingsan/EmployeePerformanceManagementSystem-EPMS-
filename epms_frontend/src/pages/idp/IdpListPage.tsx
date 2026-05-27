@@ -123,8 +123,8 @@ const IdpListPage = () => {
       {canViewOthers && (
         <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: 4, display: "inline-flex", gap: 4 }}>
           {[
-            { key: "SELF" as const, label: "My Development Plans", count: selfPlans.length },
-            { key: "OTHERS" as const, label: "Other People Plans", count: otherPlans.length },
+            { key: "SELF" as const, label: "My IDP", count: selfPlans.length },
+            { key: "OTHERS" as const, label: "Team IDPs", count: otherPlans.length },
           ].map(tab => (
             <button
               key={tab.key}

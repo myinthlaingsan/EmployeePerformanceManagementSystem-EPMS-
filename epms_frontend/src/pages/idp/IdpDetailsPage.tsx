@@ -14,7 +14,7 @@ import type { DevelopmentGoalResponse, IdpUpdateRequest } from "../../features/i
 import { useAuth } from "../../hooks/useAuth";
 import {
   useActivateIdpMutation,
-  useAddProgressMutation,
+  useAddIdpProgressMutation,
   useCancelIdpMutation,
   useCompleteIdpMutation,
   useCreateGoalMutation,
@@ -49,7 +49,7 @@ const IdpDetailsPage = () => {
   const [completeIdp] = useCompleteIdpMutation();
   const [cancelIdp] = useCancelIdpMutation();
   const [createGoal] = useCreateGoalMutation();
-  const [addProgress] = useAddProgressMutation();
+  const [addProgress] = useAddIdpProgressMutation();
   const [updateIdp] = useUpdateIdpMutation();
   const [deleteIdp] = useDeleteIdpMutation();
   const [updateGoal] = useUpdateGoalMutation();
@@ -297,7 +297,12 @@ const IdpDetailsPage = () => {
           initialProgress={progressGoal.progressPercent}
           onClose={() => setProgressGoal(null)}
           onSubmit={async data => {
-            await addProgress({ ...data, goalId: progressGoal.goalId }).unwrap();
+            const selectedGoalId = progressGoal.goalId ?? (progressGoal as unknown as { id?: number }).id;
+            if (!selectedGoalId) {
+              toast.error("Cannot update progress because the selected goal is missing its ID.");
+              return;
+            }
+            await addProgress({ ...data, goalId: selectedGoalId }).unwrap();
             toast.success("Progress updated.");
             await refresh();
           }}

@@ -8,7 +8,6 @@ import ace.org.epms_backend.enums.*;
 import ace.org.epms_backend.exception.AccessDeniedException;
 import ace.org.epms_backend.exception.InvalidStateException;
 import ace.org.epms_backend.exception.NotFoundException;
-import ace.org.epms_backend.mapper.DevelopmentProgressMapper;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.idp.DevelopmentGoal;
 import ace.org.epms_backend.model.idp.DevelopmentPlan;
@@ -23,7 +22,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -32,13 +33,15 @@ public class DevelopmentProgressServiceImpl implements DevelopmentProgressServic
 
     private final DevelopmentProgressUpdateRepository progressRepository;
     private final DevelopmentGoalRepository goalRepository;
-    private final DevelopmentProgressMapper progressMapper;
     private final AuthService authService;
     private final EmployeeRoleService employeeRoleService;
     private final AuditService auditService;
 
     @Override
     public DevelopmentProgressResponse addProgress(DevelopmentProgressRequest request) {
+        if (request.getGoalId() == null) {
+            throw new InvalidStateException("Development goal is required before progress can be updated");
+        }
         DevelopmentGoal goal = goalRepository.findById(request.getGoalId())
                 .orElseThrow(() -> new NotFoundException("Development goal not found"));
         DevelopmentPlan plan = goal.getPlan();
@@ -48,9 +51,13 @@ public class DevelopmentProgressServiceImpl implements DevelopmentProgressServic
             throw new InvalidStateException("Progress can only be added to ACTIVE IDPs");
         }
 
-        DevelopmentProgressUpdate update = progressMapper.toEntity(request);
+        Employee current = authService.getCurrentUser();
+
+        DevelopmentProgressUpdate update = new DevelopmentProgressUpdate();
+        update.setProgressNote(request.getProgressNote());
+        update.setProgressPercent(request.getProgressPercent());
         update.setGoal(goal);
-        update.setUpdatedBy(authService.getCurrentUser());
+        update.setUpdatedBy(current);
         update = progressRepository.save(update);
 
         goal.setProgressPercent(request.getProgressPercent());
@@ -62,14 +69,27 @@ public class DevelopmentProgressServiceImpl implements DevelopmentProgressServic
             goal.setStatus(DevelopmentGoalStatus.NOT_STARTED);
         }
         goalRepository.save(goal);
+        goalRepository.flush();
+        progressRepository.flush();
 
         audit(update.getUpdateId(), AuditAction.INSERT, update);
-        return toProgressResponse(update);
+        DevelopmentProgressResponse response = new DevelopmentProgressResponse();
+        response.setUpdateId(update.getUpdateId());
+        response.setGoalId(goal.getGoalId());
+        response.setProgressNote(update.getProgressNote());
+        response.setProgressPercent(update.getProgressPercent());
+        response.setUpdatedBy(current.getId());
+        response.setUpdatedByName(current.getStaffName());
+        response.setCreatedAt(update.getCreatedAt());
+        return response;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<DevelopmentProgressResponse> getByGoal(Long goalId) {
+        if (goalId == null) {
+            throw new InvalidStateException("Development goal is required before progress history can be loaded");
+        }
         DevelopmentGoal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new NotFoundException("Development goal not found"));
         requireParticipantOrHr(goal.getPlan());
@@ -131,8 +151,17 @@ public class DevelopmentProgressServiceImpl implements DevelopmentProgressServic
                 .tableName("development_progress_updates")
                 .recordId(recordId)
                 .action(action)
-                .newState(state)
+                .newState(toAuditState((DevelopmentProgressUpdate) state))
                 .status(AuditStatus.SUCCESS)
                 .build());
+    }
+
+    private Map<String, Object> toAuditState(DevelopmentProgressUpdate update) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("updateId", update.getUpdateId());
+        state.put("goalId", update.getGoal() != null ? update.getGoal().getGoalId() : null);
+        state.put("progressPercent", update.getProgressPercent());
+        state.put("updatedBy", update.getUpdatedBy() != null ? update.getUpdatedBy().getId() : null);
+        return state;
     }
 }

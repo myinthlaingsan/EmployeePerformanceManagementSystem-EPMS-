@@ -198,6 +198,9 @@ public class IdpServiceImpl implements IdpService {
     }
 
     private DevelopmentPlan findPlan(Long id) {
+        if (id == null) {
+            throw new InvalidStateException("IDP id is required");
+        }
         return planRepository.findById(id).orElseThrow(() -> new NotFoundException("IDP not found"));
     }
 

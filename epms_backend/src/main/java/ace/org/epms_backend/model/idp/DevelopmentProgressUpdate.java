@@ -12,7 +12,7 @@ import lombok.experimental.SuperBuilder;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = true, exclude = {"goal", "updatedBy"})
 @SuperBuilder
 public class DevelopmentProgressUpdate extends BaseEntity {
 

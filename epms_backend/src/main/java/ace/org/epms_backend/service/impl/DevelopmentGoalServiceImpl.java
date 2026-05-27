@@ -112,10 +112,16 @@ public class DevelopmentGoalServiceImpl implements DevelopmentGoalService {
     }
 
     private DevelopmentPlan findPlan(Long idpId) {
+        if (idpId == null) {
+            throw new InvalidStateException("IDP id is required");
+        }
         return planRepository.findById(idpId).orElseThrow(() -> new NotFoundException("IDP not found"));
     }
 
     private DevelopmentGoal findGoal(Long goalId) {
+        if (goalId == null) {
+            throw new InvalidStateException("Development goal id is required");
+        }
         return goalRepository.findById(goalId).orElseThrow(() -> new NotFoundException("Development goal not found"));
     }
 

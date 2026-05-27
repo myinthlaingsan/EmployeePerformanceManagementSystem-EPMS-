@@ -18,7 +18,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = true, exclude = {"employee", "manager", "appraisal", "goals"})
 @SuperBuilder
 public class DevelopmentPlan extends BaseEntity {
 

@@ -1,7 +1,7 @@
-import { useGetProgressByGoalQuery } from "../../services/idpApi";
+import { useGetIdpProgressByGoalQuery } from "../../services/idpApi";
 
 const GoalProgressList = ({ goalId }: { goalId: number }) => {
-  const { data, isLoading } = useGetProgressByGoalQuery(goalId);
+  const { data, isLoading } = useGetIdpProgressByGoalQuery(goalId, { skip: !goalId });
   const updates = data?.data ?? [];
 
   if (isLoading) {

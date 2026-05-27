@@ -80,14 +80,14 @@ export const idpApi = api.injectEndpoints({
       query: (id) => ({ url: `/idp/goals/${id}`, method: "DELETE" }),
       invalidatesTags: [{ type: "IdpGoal", id: "LIST" }, { type: "IDP", id: "LIST" }],
     }),
-    getProgressByGoal: builder.query<ApiResponse<DevelopmentProgressResponse[]>, number>({
+    getIdpProgressByGoal: builder.query<ApiResponse<DevelopmentProgressResponse[]>, number>({
       query: (goalId) => `/idp/progress/${goalId}`,
       providesTags: (result) =>
         result?.data
           ? [...result.data.map(({ updateId }) => ({ type: "IdpProgress" as const, id: updateId })), { type: "IdpProgress", id: "LIST" }]
           : [{ type: "IdpProgress", id: "LIST" }],
     }),
-    addProgress: builder.mutation<ApiResponse<DevelopmentProgressResponse>, DevelopmentProgressRequest>({
+    addIdpProgress: builder.mutation<ApiResponse<DevelopmentProgressResponse>, DevelopmentProgressRequest>({
       query: (body) => ({ url: "/idp/progress", method: "POST", body }),
       invalidatesTags: (_result, _error, { goalId }) => [
         { type: "IdpProgress", id: "LIST" },
@@ -115,6 +115,6 @@ export const {
   useUpdateGoalMutation,
   useUpdateGoalStatusMutation,
   useDeleteGoalMutation,
-  useGetProgressByGoalQuery,
-  useAddProgressMutation,
+  useGetIdpProgressByGoalQuery,
+  useAddIdpProgressMutation,
 } = idpApi;
