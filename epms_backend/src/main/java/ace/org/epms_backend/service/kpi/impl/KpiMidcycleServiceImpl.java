@@ -224,11 +224,26 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         List<KpiGoalPhase> phases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId);
 
         if (phases.isEmpty()) {
-            throw new IllegalStateException("No midcycle phases found for this employee and cycle.");
+            KpiGoals currentGoalSet = goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
+                    .orElseThrow(() -> new IllegalStateException("No midcycle phases or active goal set found for this employee and cycle."));
+
+            KpiGoalPhase defaultPhase = KpiGoalPhase.builder()
+                    .employee(employee)
+                    .cycle(cycle)
+                    .goalSet(currentGoalSet)
+                    .phaseNumber(1)
+                    .phaseStartDate(cycle.getStartDate())
+                    .status(PhaseStatus.OPEN)
+                    .build();
+            phases = List.of(phaseRepository.save(defaultPhase));
         }
 
         KpiGoalPhase lastPhase = phases.get(phases.size() - 1);
         if (lastPhase.getStatus() == PhaseStatus.OPEN) {
+            if (cycle.getEndDate().isBefore(lastPhase.getPhaseStartDate())) {
+                throw new IllegalStateException("Cannot finalize composite score: cycle end date is before the last phase start date.");
+            }
+
             lastPhase.setPhaseEndDate(cycle.getEndDate());
             int phaseDays = (int) ChronoUnit.DAYS.between(lastPhase.getPhaseStartDate(), cycle.getEndDate()) + 1;
             lastPhase.setPhaseDays(phaseDays);
@@ -263,10 +278,17 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         }
 
         int totalCycleDays = (int) ChronoUnit.DAYS.between(cycle.getStartDate(), cycle.getEndDate()) + 1;
+        if (totalCycleDays <= 0) {
+            throw new IllegalStateException("Cannot finalize composite score: cycle end date must be on or after cycle start date.");
+        }
         BigDecimal totalWeightedScoreSum = BigDecimal.ZERO;
         BigDecimal totalAchievementPercentSum = BigDecimal.ZERO;
 
         for (KpiGoalPhase phase : phases) {
+            if (phase.getPhaseDays() == null || phase.getPhaseDays() <= 0) {
+                throw new IllegalStateException("Cannot finalize composite score: phase " + phase.getPhaseNumber() + " has invalid duration.");
+            }
+
             BigDecimal days = BigDecimal.valueOf(phase.getPhaseDays());
             BigDecimal weight = days.divide(BigDecimal.valueOf(totalCycleDays), 6, RoundingMode.HALF_UP);
             phase.setPhaseWeight(weight);
