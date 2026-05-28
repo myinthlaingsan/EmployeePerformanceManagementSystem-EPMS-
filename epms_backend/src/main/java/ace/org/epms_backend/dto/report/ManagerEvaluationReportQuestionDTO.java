@@ -15,5 +15,6 @@ public class ManagerEvaluationReportQuestionDTO {
     private String employeeRating;
     private String employeeComment;
     private String managerRating;
+    private Integer managerRatingValue;
     private String managerComment;
 }

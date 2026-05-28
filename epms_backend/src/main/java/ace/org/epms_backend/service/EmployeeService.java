@@ -3,11 +3,16 @@ package ace.org.epms_backend.service;
 import ace.org.epms_backend.dto.PagedResponse;
 import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.model.employee.Employee;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 import java.util.List;
 
 public interface EmployeeService {
     EmployeeResponse createEmployee(CreateEmployeeRequest request);
+
+    EmployeeImportResult importEmployees(MultipartFile file) throws IOException;
 
     void setPassword(String token, String newPassword);
 
@@ -39,7 +44,7 @@ public interface EmployeeService {
 
     EmployeeResponse updateProfile(UpdateProfileRequest request);
 
-    void uploadProfileImage(Long id, org.springframework.web.multipart.MultipartFile file);
+    void uploadProfileImage(Long id, MultipartFile file);
 
     void changePassword(Long id, ChangePasswordRequest request);
 }

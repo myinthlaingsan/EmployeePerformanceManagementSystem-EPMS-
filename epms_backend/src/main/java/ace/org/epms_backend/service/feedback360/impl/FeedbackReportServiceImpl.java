@@ -52,10 +52,42 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
 
     @Override
     public FeedbackSummaryResponse getFeedbackSummary(Long targetUserId, Long cycleId) {
+        return getFeedbackSummary(targetUserId, cycleId, false);
+    }
+
+    @Override
+    public FeedbackSummaryResponse getFeedbackSummary(Long targetUserId, Long cycleId, boolean isCalibrationView) {
         Employee target = employeeRepository.findById(targetUserId)
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
         AppraisalCycle cycle = appraisalCycleRepository.findById(cycleId)
                 .orElseThrow(() -> new RuntimeException("Appraisal cycle not found"));
+
+        Long viewerId = securityHelper.currentUserId();
+        if (viewerId == null) {
+            throw new ace.org.epms_backend.exception.AccessDeniedException("User not authenticated.");
+        }
+
+        boolean isOwnReport = viewerId.equals(targetUserId);
+        boolean isHR = securityHelper.hasAnyRole("ADMIN", "HR");
+        boolean isManager = securityHelper.hasAnyRole("MANAGER");
+
+        // Access check: must be self, HR, admin, or manager
+        if (!isOwnReport && !isHR && !isManager) {
+            throw new ace.org.epms_backend.exception.AccessDeniedException("You do not have permission to view this report.");
+        }
+
+        FeedbackSummary summary = feedbackSummaryRepository
+                .findByEmployeeIdAndCycleCycleId(targetUserId, cycleId).orElse(null);
+
+        // Access rule: self-viewers cannot view the report until the cycle is locked and finalized (bypassed if calibration view)
+        if (isOwnReport && !isCalibrationView && summary != null) {
+            boolean isReleased = Boolean.TRUE.equals(summary.getIsFinalized())
+                    && summary.getCalibrationStatus() == ace.org.epms_backend.enums.CalibrationStatus.LOCKED;
+            if (!isReleased) {
+                throw new ace.org.epms_backend.exception.AccessDeniedException(
+                        "Your 360° Feedback Report is currently under review by the calibration committee. It will be released once the appraisal cycle is finalized.");
+            }
+        }
 
         List<Feedback> allFeedbacks = feedbackRepository
                 .findByRequestTargetUserIdAndRequestCycleCycleId(targetUserId, cycleId);
@@ -69,8 +101,8 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
         // Count feedbacks per relationship for comment suppression
         Map<FeedbackRelationship, Long> countByRelationship = allFeedbacks.stream()
                 .collect(Collectors.groupingBy(
-                        f -> f.getRequest().getRelationship(),
-                        Collectors.counting()));
+                    f -> f.getRequest().getRelationship(),
+                    Collectors.counting()));
 
         Map<String, List<Integer>> selfScoresMap = new HashMap<>();
         Map<String, List<Integer>> managerScoresMap = new HashMap<>();
@@ -88,16 +120,20 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
             FeedbackRelationship relationship = feedback.getRequest().getRelationship();
 
             // Mask evaluator identity when the viewer is the target (peer/subordinate anonymous rows).
-            // HR viewing someone else's report sees real names for audit purposes.
-            Long viewerId = securityHelper.currentUserId();
-            boolean viewerIsTarget = viewerId != null && viewerId.equals(targetUserId);
-            boolean anonymous = Boolean.TRUE.equals(feedback.getRequest().getIsAnonymous())
-                    && relationship != FeedbackRelationship.SELF
-                    && relationship != FeedbackRelationship.DIRECT_MANAGER
-                    && viewerIsTarget;
-            String evaluatorName = anonymous
-                    ? "Anonymous"
-                    : feedback.getRequest().getEvaluator().getStaffName();
+            // HR/Admin viewing someone else's report sees real names for audit purposes.
+            boolean viewerIsTarget = viewerId.equals(targetUserId);
+            String evaluatorName;
+            if (viewerIsTarget) {
+                if (relationship == FeedbackRelationship.PEER) {
+                    evaluatorName = "Anonymous Peer";
+                } else if (relationship == FeedbackRelationship.SUBORDINATE) {
+                    evaluatorName = "Anonymous Subordinate";
+                } else {
+                    evaluatorName = feedback.getRequest().getEvaluator().getStaffName();
+                }
+            } else {
+                evaluatorName = feedback.getRequest().getEvaluator().getStaffName();
+            }
 
             for (FeedbackResponse response : responses) {
                 String categoryName = response.getQuestion().getCategory() != null
@@ -168,9 +204,6 @@ public class FeedbackReportServiceImpl implements FeedbackReportService {
                 })
                 .collect(Collectors.toList());
         Collections.shuffle(visibleComments);
-
-        FeedbackSummary summary = feedbackSummaryRepository
-                .findByEmployeeIdAndCycleCycleId(targetUserId, cycleId).orElse(null);
 
         double totalAverageScore;
         if (summary != null) {

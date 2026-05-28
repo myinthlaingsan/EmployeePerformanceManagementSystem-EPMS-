@@ -1,6 +1,7 @@
 import {
-  useSearchEmployeesQuery, useDeleteEmployeeMutation, useActivateEmployeeMutation, useDeactivateEmployeeMutation
+  useSearchEmployeesQuery, useDeleteEmployeeMutation, useActivateEmployeeMutation, useDeactivateEmployeeMutation, useImportEmployeesMutation
 } from "../../features/employee/employeeapi";
+import type { EmployeeImportResult } from "../../features/employee/employeeTypes";
 import {
   useGetRolesQuery, useAssignRoleToEmployeeMutation, useRemoveRoleFromEmployeeMutation
 } from "../../features/org/roleApi";
@@ -8,8 +9,8 @@ import { useGetActiveDepartmentsQuery } from "../../features/org/departmentApi";
 import { useGetTeamsQuery } from "../../features/org/teamApi";
 import { useDownloadReportMutation } from "../../features/report/reportApi";
 import { Link } from "react-router-dom";
-import { useState } from "react";
-import { Plus, Pencil, Trash2, Building2, Download, Search, Settings2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Pencil, Trash2, Building2, Download, Search, Settings2, Upload, FileText, X, CheckCircle2, AlertCircle, Loader2, AlertTriangle } from "lucide-react";
 import { Can } from "../../components/Can";
 
 const AVATAR_COLORS = [
@@ -32,6 +33,12 @@ const EmployeeList = () => {
   const [selectedDeptId, setSelectedDeptId] = useState<string>("");
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [selectedEmp, setSelectedEmp] = useState<number | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importResult, setImportResult] = useState<EmployeeImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const { data: pagedData, isLoading, error } = useSearchEmployeesQuery({ query: searchQuery, departmentId: selectedDeptId, teamId: selectedTeamId, page, size });
   const employees = pagedData?.content;
@@ -42,6 +49,7 @@ const EmployeeList = () => {
   const [deleteEmployee] = useDeleteEmployeeMutation();
   const [activateEmployee] = useActivateEmployeeMutation();
   const [deactivateEmployee] = useDeactivateEmployeeMutation();
+  const [importEmployees, { isLoading: isImporting }] = useImportEmployeesMutation();
   const [assignRole] = useAssignRoleToEmployeeMutation();
   const [removeRole] = useRemoveRoleFromEmployeeMutation();
 
@@ -66,6 +74,57 @@ const EmployeeList = () => {
     }
   };
 
+  const resetImport = () => {
+    setImportFile(null);
+    setImportResult(null);
+    setImportError(null);
+    setIsDragging(false);
+    if (importInputRef.current) importInputRef.current.value = "";
+  };
+
+  const closeImport = () => {
+    setIsImportOpen(false);
+    resetImport();
+  };
+
+  const setSelectedImportFile = (file?: File) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      setImportError("Only .xlsx files are supported.");
+      setImportFile(null);
+      return;
+    }
+    setImportFile(file);
+    setImportError(null);
+    setImportResult(null);
+  };
+
+  const handleImportUpload = async () => {
+    if (!importFile) return;
+
+    const formData = new FormData();
+    formData.append("file", importFile);
+
+    try {
+      const response = await importEmployees(formData).unwrap();
+      setImportResult(response.data);
+      setImportError(null);
+      setPage(0);
+    } catch (err: any) {
+      const errors = err?.data?.errors;
+      if (Array.isArray(errors)) {
+        setImportResult({
+          totalRows: 0,
+          successfulImports: 0,
+          failedImports: errors.length,
+          errors,
+        });
+      } else {
+        setImportError(err?.data?.message || "Employee import failed.");
+      }
+    }
+  };
+
   if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading employees…</div>;
   if (error) return <div className="py-16 text-center" style={{ color: "#791F1F", fontSize: 13 }}>Error loading employees.</div>;
 
@@ -75,18 +134,28 @@ const EmployeeList = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>Employees</h1>
-          <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Manage staff accounts, roles, and status.</p>
+          <p style={{ fontSize: 13, color: "#9EA3B0", marginTop: 2 }}>Manage employee accounts, roles, and status.</p>
         </div>
         <Can permission="EMPLOYEE_CREATE">
-          <Link
-            to="/employees/new"
-            className="inline-flex items-center gap-2 transition-colors self-start sm:self-auto"
-            style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, textDecoration: "none" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
-          >
-            <Plus size={14} aria-hidden="true" /> Add staff
-          </Link>
+          <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setIsImportOpen(true)}
+              className="inline-flex items-center gap-2 transition-colors"
+              style={{ background: "#FFFFFF", color: "#111827", border: "0.5px solid #E4E6EC", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500 }}
+            >
+              <Upload size={14} aria-hidden="true" /> Import Excel
+            </button>
+            <Link
+              to="/employees/new"
+              className="inline-flex items-center gap-2 transition-colors"
+              style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, textDecoration: "none" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+            >
+              <Plus size={14} aria-hidden="true" /> Add Employee
+            </Link>
+          </div>
         </Can>
       </div>
 
@@ -99,7 +168,7 @@ const EmployeeList = () => {
               <Search size={13} className="absolute left-3 pointer-events-none" style={{ color: "#9EA3B0" }} aria-hidden="true" />
               <input
                 type="text"
-                placeholder="Search staff…"
+                placeholder="Search Employee…"
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
                 style={{ ...selectStyle, paddingLeft: 30, width: 180 }}
@@ -274,6 +343,152 @@ const EmployeeList = () => {
               style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, background: "#F5F6F8", border: "0.5px solid #E0E2E8", color: "#5A6070" }}>
               ›
             </button>
+          </div>
+        </div>
+      )}
+
+      {isImportOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: "rgba(17,24,39,0.48)" }}>
+          <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, width: "100%", maxWidth: 560, overflow: "hidden" }}>
+            <div className="flex items-center justify-between" style={{ padding: "16px 18px", borderBottom: "0.5px solid #E4E6EC" }}>
+              <div>
+                <h2 style={{ fontSize: 16, fontWeight: 500, color: "#111827" }}>Import Employees</h2>
+                <p style={{ fontSize: 12, color: "#9EA3B0", marginTop: 2 }}>Upload employee workbook (.xlsx)</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeImport}
+                style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, color: "#9EA3B0" }}
+                className="hover:bg-[#F5F6F8] transition-colors"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div style={{ padding: "18px" }} className="space-y-4">
+              {!importResult ? (
+                <>
+                  <div
+                    onClick={() => importInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      setSelectedImportFile(e.dataTransfer.files?.[0]);
+                    }}
+                    className="transition-colors cursor-pointer"
+                    style={{
+                      border: `1px dashed ${isDragging ? "#1A56DB" : importFile ? "#B8DCA0" : "#C8CCE0"}`,
+                      borderRadius: 12,
+                      background: isDragging ? "#EEF3FD" : importFile ? "#EAF3DE" : "#FAFBFF",
+                      padding: "32px 18px",
+                    }}
+                  >
+                    <input
+                      ref={importInputRef}
+                      type="file"
+                      accept=".xlsx"
+                      className="hidden"
+                      onChange={(e) => setSelectedImportFile(e.target.files?.[0])}
+                    />
+                    <div className="flex flex-col items-center text-center gap-3">
+                      <div style={{ width: 42, height: 42, borderRadius: 10, background: importFile ? "#DDEECC" : "#EEF3FD", color: importFile ? "#27500A" : "#1A56DB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {importFile ? <FileText size={21} aria-hidden="true" /> : <Upload size={21} aria-hidden="true" />}
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>
+                          {importFile ? importFile.name : "Drop Excel file here or browse"}
+                        </p>
+                        <p style={{ fontSize: 11, color: importFile ? "#27500A" : "#9EA3B0", marginTop: 3 }}>
+                          {importFile ? "Ready to import" : "Accepted format: .xlsx"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#FAEEDA", border: "0.5px solid #F0D4A4", borderRadius: 10, padding: "10px 12px" }} className="flex gap-2">
+                    <AlertTriangle size={15} style={{ color: "#633806", flexShrink: 0, marginTop: 1 }} />
+                    <p style={{ fontSize: 11, color: "#633806", lineHeight: 1.5 }}>
+                      Headers can use names such as staffName, email, positionName, currentDepartmentName, roleName, and directManagerEmail.
+                    </p>
+                  </div>
+
+                  {importError && (
+                    <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 10, padding: "10px 12px" }} className="flex gap-2">
+                      <AlertCircle size={15} style={{ color: "#791F1F", flexShrink: 0, marginTop: 1 }} />
+                      <p style={{ fontSize: 12, color: "#791F1F" }}>{importError}</p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={closeImport}
+                      style={{ padding: "8px 16px", fontSize: 13, fontWeight: 500, color: "#5A6070", background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 8 }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!importFile || isImporting}
+                      onClick={handleImportUpload}
+                      style={{ padding: "8px 18px", fontSize: 13, fontWeight: 500, color: "#FFFFFF", background: "#1A56DB", border: "none", borderRadius: 8, opacity: (!importFile || isImporting) ? 0.55 : 1, display: "inline-flex", alignItems: "center", gap: 6 }}
+                    >
+                      {isImporting ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <CheckCircle2 size={14} aria-hidden="true" />}
+                      {isImporting ? "Importing..." : "Start Import"}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ background: "#F5F6F8", border: "0.5px solid #E0E2E8", borderRadius: 12, padding: "14px 16px" }} className="flex items-center gap-3">
+                    <div style={{ width: 36, height: 36, borderRadius: 9, background: importResult.failedImports ? "#FAEEDA" : "#EAF3DE", color: importResult.failedImports ? "#633806" : "#27500A", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {importResult.failedImports ? <AlertTriangle size={18} aria-hidden="true" /> : <CheckCircle2 size={18} aria-hidden="true" />}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Import Summary</p>
+                      <p style={{ fontSize: 12, color: "#9EA3B0", marginTop: 2 }}>
+                        {importResult.successfulImports} success / {importResult.failedImports} failed / {importResult.totalRows} rows
+                      </p>
+                    </div>
+                  </div>
+
+                  {importResult.errors?.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 500, color: "#791F1F", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Error logs</p>
+                      <div style={{ maxHeight: 190, overflowY: "auto", border: "0.5px solid #F5C2C2", borderRadius: 10, background: "#FCEBEB", padding: 8 }} className="space-y-1">
+                        {importResult.errors.map((item, index) => (
+                          <div key={`${item}-${index}`} style={{ background: "#FFFFFF", borderRadius: 8, padding: "8px 10px" }} className="flex gap-2">
+                            <AlertCircle size={13} style={{ color: "#791F1F", flexShrink: 0, marginTop: 1 }} />
+                            <p style={{ fontSize: 11, color: "#5A6070", lineHeight: 1.45 }}>{item}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2">
+                    {importResult.failedImports > 0 && (
+                      <button
+                        type="button"
+                        onClick={resetImport}
+                        style={{ padding: "8px 16px", fontSize: 13, fontWeight: 500, color: "#5A6070", background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 8 }}
+                      >
+                        Retry
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={closeImport}
+                      style={{ padding: "8px 18px", fontSize: 13, fontWeight: 500, color: "#FFFFFF", background: "#111827", border: "none", borderRadius: 8 }}
+                    >
+                      Complete
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

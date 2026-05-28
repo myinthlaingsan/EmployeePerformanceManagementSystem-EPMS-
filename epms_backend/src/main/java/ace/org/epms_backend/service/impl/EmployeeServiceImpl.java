@@ -3,6 +3,8 @@ package ace.org.epms_backend.service.impl;
 import ace.org.epms_backend.dto.PagedResponse;
 import ace.org.epms_backend.dto.employee.*;
 import ace.org.epms_backend.enums.EmployeeStatus;
+import ace.org.epms_backend.enums.Gender;
+import ace.org.epms_backend.enums.RoleType;
 import ace.org.epms_backend.exception.*;
 import ace.org.epms_backend.mapper.EmployeeMapper;
 import ace.org.epms_backend.model.employee.*;
@@ -27,12 +29,27 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +68,295 @@ public class EmployeeServiceImpl implements EmployeeService {
         private final AuthService authService;
         private final ApplicationEventPublisher applicationEventPublisher;
         private final AuditService auditService;
+        private final PlatformTransactionManager transactionManager;
+
+        @Override
+        public EmployeeImportResult importEmployees(MultipartFile file) throws IOException {
+                EmployeeImportResult result = EmployeeImportResult.builder()
+                                .errors(new ArrayList<>())
+                                .build();
+
+                Map<String, Position> positionCache = positionRepository.findAll().stream()
+                                .flatMap(position -> aliases(position.getPositionName(), position.getPositionCode()).stream()
+                                                .map(alias -> Map.entry(alias, position)))
+                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (first, second) -> first));
+
+                Map<String, Department> departmentCache = departmentRepository.findAll().stream()
+                                .flatMap(department -> aliases(department.getDepartmentName(), department.getDepartmentCode()).stream()
+                                                .map(alias -> Map.entry(alias, department)))
+                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (first, second) -> first));
+
+                Map<String, Role> roleCache = roleRepository.findAll().stream()
+                                .collect(Collectors.toMap(
+                                                role -> normalize(role.getRoleName().name()),
+                                                role -> role,
+                                                (first, second) -> first));
+
+                Map<String, Employee> managerCache = employeeRepository.findAll().stream()
+                                .flatMap(employee -> aliases(employee.getEmail(), employee.getEmployeeCode()).stream()
+                                                .map(alias -> Map.entry(alias, employee)))
+                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (first, second) -> first));
+
+                TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+
+                try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+                        Sheet sheet = workbook.getSheetAt(0);
+                        if (sheet == null || sheet.getPhysicalNumberOfRows() <= 1) {
+                                result.addError("Excel file has no employee rows.");
+                                return result;
+                        }
+
+                        Map<String, Integer> headers = readHeaders(sheet.getRow(0));
+                        for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                                Row row = sheet.getRow(rowIndex);
+                                if (isEmptyRow(row)) {
+                                        continue;
+                                }
+
+                                result.incrementTotalRows();
+                                int rowNumber = rowIndex + 1;
+
+                                try {
+                                        CreateEmployeeRequest request = toCreateEmployeeRequest(
+                                                        row,
+                                                        headers,
+                                                        rowNumber,
+                                                        positionCache,
+                                                        departmentCache,
+                                                        roleCache,
+                                                        managerCache);
+
+                                        transactionTemplate.executeWithoutResult(status -> createEmployee(request));
+                                        result.incrementSuccess();
+                                } catch (Exception ex) {
+                                        result.addError("Row " + rowNumber + ": " + ex.getMessage());
+                                }
+                        }
+                }
+
+                return result;
+        }
+
+        private CreateEmployeeRequest toCreateEmployeeRequest(
+                        Row row,
+                        Map<String, Integer> headers,
+                        int rowNumber,
+                        Map<String, Position> positionCache,
+                        Map<String, Department> departmentCache,
+                        Map<String, Role> roleCache,
+                        Map<String, Employee> managerCache) {
+                CreateEmployeeRequest request = new CreateEmployeeRequest();
+
+                request.setStaffName(requiredText(row, headers, "staffName", rowNumber));
+                request.setOtherName(text(row, headers, "otherName"));
+                request.setEmail(requiredText(row, headers, "email", rowNumber));
+                request.setPhoneNo(requiredText(row, headers, "phoneNo", rowNumber));
+                request.setProfileImage(text(row, headers, "profileImage"));
+                request.setStateCode(integer(row, headers, "stateCode"));
+                request.setTownship(requiredText(row, headers, "township", rowNumber));
+                request.setNrcType(requiredText(row, headers, "nrcType", rowNumber));
+                request.setNumber(requiredText(row, headers, "number", rowNumber));
+                request.setGender(parseGender(requiredText(row, headers, "gender", rowNumber)));
+                request.setDateOfBirth(requiredDate(row, headers, "dateOfBirth", rowNumber));
+                request.setSalary(decimal(row, headers, "salary"));
+                request.setCurrency(defaultIfBlank(text(row, headers, "currency"), "MMK"));
+
+                String positionName = requiredText(row, headers, rowNumber, "positionName", "position", "positionCode");
+                Position position = positionCache.get(normalize(positionName));
+                if (position == null) {
+                        throw new IllegalArgumentException("Position not found: " + positionName);
+                }
+                request.setPositionId(position.getPositionId());
+
+                String currentDepartmentName = requiredText(row, headers, rowNumber,
+                                "currentDepartmentName", "currentDepartment", "currentDepartmentCode");
+                Department currentDepartment = departmentCache.get(normalize(currentDepartmentName));
+                if (currentDepartment == null) {
+                        throw new IllegalArgumentException("Current department not found: " + currentDepartmentName);
+                }
+                request.setCurrentDepartmentId(currentDepartment.getId());
+
+                String parentDepartmentName = text(row, headers,
+                                "parentDepartmentName", "parentDepartment", "parentDepartmentCode");
+                if (isBlank(parentDepartmentName)) {
+                        request.setParentDepartmentId(currentDepartment.getId());
+                } else {
+                        Department parentDepartment = departmentCache.get(normalize(parentDepartmentName));
+                        if (parentDepartment == null) {
+                                throw new IllegalArgumentException("Parent department not found: " + parentDepartmentName);
+                        }
+                        request.setParentDepartmentId(parentDepartment.getId());
+                }
+
+                String roleName = requiredText(row, headers, rowNumber, "roleName", "role");
+                Role role = roleCache.get(normalize(roleName));
+                if (role == null) {
+                        try {
+                                role = roleCache.get(normalize(RoleType.valueOf(roleName.trim().toUpperCase(Locale.ROOT)).name()));
+                        } catch (IllegalArgumentException ignored) {
+                                // Keep null; detailed error is thrown below.
+                        }
+                }
+                if (role == null) {
+                        throw new IllegalArgumentException("Role not found: " + roleName);
+                }
+                request.setRoleId(role.getRoleId());
+
+                String managerKey = text(row, headers,
+                                "directManagerEmail", "directManagerEmployeeCode", "directManager");
+                if (!isBlank(managerKey)) {
+                        Employee manager = managerCache.get(normalize(managerKey));
+                        if (manager == null) {
+                                throw new IllegalArgumentException("Direct manager not found by email or employee code: " + managerKey);
+                        }
+                        request.setDirectManagerId(manager.getId());
+                }
+
+                return request;
+        }
+
+        private Map<String, Integer> readHeaders(Row headerRow) {
+                if (headerRow == null) {
+                        throw new IllegalArgumentException("Excel header row is required.");
+                }
+
+                Map<String, Integer> headers = new HashMap<>();
+                DataFormatter formatter = new DataFormatter();
+                for (Cell cell : headerRow) {
+                        String header = normalizeHeader(formatter.formatCellValue(cell));
+                        if (!header.isEmpty()) {
+                                headers.put(header, cell.getColumnIndex());
+                        }
+                }
+                return headers;
+        }
+
+        private List<String> aliases(String... values) {
+                List<String> aliases = new ArrayList<>();
+                for (String value : values) {
+                        if (!isBlank(value)) {
+                                aliases.add(normalize(value));
+                        }
+                }
+                return aliases;
+        }
+
+        private String text(Row row, Map<String, Integer> headers, String... keys) {
+                for (String key : keys) {
+                        Integer column = headers.get(normalizeHeader(key));
+                        if (column == null) {
+                                continue;
+                        }
+                        Cell cell = row.getCell(column);
+                        if (cell == null) {
+                                return "";
+                        }
+                        return new DataFormatter().formatCellValue(cell).trim();
+                }
+                return "";
+        }
+
+        private String requiredText(Row row, Map<String, Integer> headers, String key, int rowNumber) {
+                return requiredText(row, headers, rowNumber, key);
+        }
+
+        private String requiredText(Row row, Map<String, Integer> headers, int rowNumber, String... keys) {
+                String value = text(row, headers, keys);
+                if (isBlank(value)) {
+                        throw new IllegalArgumentException("Missing required column value: " + keys[0]);
+                }
+                return value;
+        }
+
+        private Integer integer(Row row, Map<String, Integer> headers, String key) {
+                String value = text(row, headers, key);
+                if (isBlank(value)) {
+                        return null;
+                }
+                return new BigDecimal(value).intValue();
+        }
+
+        private BigDecimal decimal(Row row, Map<String, Integer> headers, String key) {
+                String value = text(row, headers, key);
+                if (isBlank(value)) {
+                        return null;
+                }
+                return new BigDecimal(value.replace(",", ""));
+        }
+
+        private LocalDate requiredDate(Row row, Map<String, Integer> headers, String key, int rowNumber) {
+                Integer column = headers.get(normalizeHeader(key));
+                if (column == null) {
+                        throw new IllegalArgumentException("Missing required column value: " + key);
+                }
+
+                Cell cell = row.getCell(column);
+                if (cell == null) {
+                        throw new IllegalArgumentException("Missing required column value: " + key);
+                }
+
+                if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+                        return cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                }
+
+                String value = new DataFormatter().formatCellValue(cell).trim();
+                if (isBlank(value)) {
+                        throw new IllegalArgumentException("Missing required column value: " + key);
+                }
+
+                for (DateTimeFormatter formatter : List.of(
+                                DateTimeFormatter.ISO_LOCAL_DATE,
+                                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+                                DateTimeFormatter.ofPattern("MM/dd/yyyy"))) {
+                        try {
+                                return LocalDate.parse(value, formatter);
+                        } catch (DateTimeParseException ignored) {
+                                // Try next supported format.
+                        }
+                }
+
+                throw new IllegalArgumentException("Invalid date format for " + key + ". Use yyyy-MM-dd.");
+        }
+
+        private Gender parseGender(String value) {
+                String normalized = value.trim().toUpperCase(Locale.ROOT);
+                if ("MALE".equals(normalized)) {
+                        return Gender.M;
+                }
+                if ("FEMALE".equals(normalized)) {
+                        return Gender.F;
+                }
+                return Gender.valueOf(normalized);
+        }
+
+        private boolean isEmptyRow(Row row) {
+                if (row == null) {
+                        return true;
+                }
+                DataFormatter formatter = new DataFormatter();
+                for (Cell cell : row) {
+                        if (!formatter.formatCellValue(cell).trim().isEmpty()) {
+                                return false;
+                        }
+                }
+                return true;
+        }
+
+        private String normalize(String value) {
+                return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        }
+
+        private String normalizeHeader(String value) {
+                return normalize(value).replaceAll("[^a-z0-9]", "");
+        }
+
+        private boolean isBlank(String value) {
+                return value == null || value.trim().isEmpty();
+        }
+
+        private String defaultIfBlank(String value, String defaultValue) {
+                return isBlank(value) ? defaultValue : value.trim();
+        }
 
         @Override
         @Transactional
@@ -132,8 +438,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                         reportingLineRepository.save(reportingLine);
                 }
 
-                applicationEventPublisher.publishEvent(
-                                new EmployeeCreatedEvent(savedEmployee.getId(), token));
                 applicationEventPublisher.publishEvent(
                                 new EmployeeCreatedEvent(savedEmployee.getId(), token));
 

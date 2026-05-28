@@ -53,10 +53,16 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             CycleStatus.PLANNING, CycleStatus.IN_PROGRESS, CycleStatus.EVALUATION
         ));
 
-        AppraisalCycle cycle = cycles.stream().findFirst()
-                .orElseThrow(() -> new NotFoundException("No active appraisal cycle found"));
-        System.out.println(cycle.getCycleId());
-        System.out.println(cycle.getCycleName());
+        if (cycles.isEmpty()) {
+            cycles = cycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
+        }
+
+        AppraisalCycle cycle = cycles.stream().findFirst().orElse(null);
+
+        if (cycle == null) {
+            return null;
+        }
+
         return AppraisalCycleResponse.builder()
                 .cycleId(cycle.getCycleId())
                 .cycleName(cycle.getCycleName())

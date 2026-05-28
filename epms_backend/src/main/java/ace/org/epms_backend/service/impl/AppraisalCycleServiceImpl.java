@@ -174,14 +174,9 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     public void delete(Long id) {
         AppraisalCycle cycle = getCycleById(id);
 
-        // Reject deletion of active cycles
-        if (Boolean.TRUE.equals(cycle.getIsActive())) {
-            throw new RuntimeException("Cannot delete an active cycle. Close it first.");
-        }
-
-        // Reject deletion of archived cycles (permanent records)
-        if (cycle.getStatus() == CycleStatus.ARCHIVED) {
-            throw new RuntimeException("Cannot delete an archived cycle. Archived cycles are permanent records.");
+        // Cycles become permanent records once activated.
+        if (cycle.getStatus() != CycleStatus.PLANNING || Boolean.TRUE.equals(cycle.getIsActive())) {
+            throw new RuntimeException("Cannot delete this cycle. Only inactive PLANNING cycles can be deleted.");
         }
 
         // Check if cycle has any appraisals assigned

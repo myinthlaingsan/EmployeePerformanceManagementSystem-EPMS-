@@ -12,6 +12,8 @@ import lombok.NoArgsConstructor;
 public class SelfAssessmentReportQuestionDTO {
     private String categoryName;
     private String questionText;
-    private String ratingValue;
+    private Boolean isYes;
+    private Boolean isNo;
+    private Integer ratingValue;
     private String comment;
 }

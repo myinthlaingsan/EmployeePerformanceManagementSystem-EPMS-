@@ -4,11 +4,12 @@ import ace.org.epms_backend.dto.report.*;
 import ace.org.epms_backend.dto.feedback360.CategoryScore;
 import ace.org.epms_backend.dto.feedback360.DetailedComment;
 import ace.org.epms_backend.dto.feedback360.FeedbackSummaryResponse;
+import ace.org.epms_backend.enums.AppraisalStatus;
+import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.exception.InvalidAppraisalStateException;
+import ace.org.epms_backend.model.appraisal.*;
 import ace.org.epms_backend.service.feedback360.FeedbackReportService;
 import ace.org.epms_backend.model.AuditLog;
-import ace.org.epms_backend.model.appraisal.Appraisal;
-import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.employee.EmployeeDepartment;
 import ace.org.epms_backend.model.employee.EmployeeTeam;
@@ -17,15 +18,10 @@ import ace.org.epms_backend.model.feedback360.Feedback;
 import ace.org.epms_backend.model.feedback360.FeedbackResponse;
 import ace.org.epms_backend.model.feedback360.FeedbackRequest;
 import ace.org.epms_backend.model.feedback360.FeedbackSummary;
-import ace.org.epms_backend.model.appraisal.AppraisalSummary;
-import ace.org.epms_backend.model.appraisal.SelfAssessment;
-import ace.org.epms_backend.model.appraisal.ManagerEvaluation;
 import ace.org.epms_backend.model.kpi.*;
 import ace.org.epms_backend.model.pip.PipRecord;
 import ace.org.epms_backend.model.pip.PipObjective;
 import ace.org.epms_backend.enums.PipStatus;
-import ace.org.epms_backend.model.appraisal.SelfAssessmentAnswer;
-import ace.org.epms_backend.model.appraisal.ManagerEvaluationAnswer;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.repository.employee.EmployeeTeamRepository;
 import ace.org.epms_backend.repository.employee.ReportingLineRepository;
@@ -39,7 +35,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 import ace.org.epms_backend.exception.NotFoundException;
-import ace.org.epms_backend.model.appraisal.Question;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -1219,6 +1214,12 @@ public class ReportServiceImpl implements ReportService {
                 ? ed.getCurrentDepartment().getDepartmentName()
                 : "Unassigned";
         String posName = target.getPosition() != null ? target.getPosition().getPositionName() : "N/A";
+        Employee evaluator = req.getEvaluator();
+        EmployeeDepartment evaluatorDepartment = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(evaluator.getId()).orElse(null);
+        String evaluatorDeptName = (evaluatorDepartment != null && evaluatorDepartment.getCurrentDepartment() != null)
+                ? evaluatorDepartment.getCurrentDepartment().getDepartmentName()
+                : "Unassigned";
+        String evaluatorPosName = evaluator.getPosition() != null ? evaluator.getPosition().getPositionName() : "N/A";
 
         Optional<Feedback> feedbackOpt = feedbackRepository.findByRequestId(requestId);
         List<FeedbackResponse> responses = feedbackOpt.isPresent() ? feedbackOpt.get().getResponses() : new ArrayList<>();
@@ -1253,8 +1254,22 @@ public class ReportServiceImpl implements ReportService {
                 .build();
 
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("reportTitle", "360° Feedback Paper Form");
-        return generateReport("reports/feedback_360_paper_form.jrxml", parameters, List.of(formDTO), format);
+        parameters.put("reportTitle", "360 Feedback Paper Form");
+        parameters.put("companyName", "ACE Data Systems");
+        parameters.put("cycleName", formDTO.getCycleName());
+        parameters.put("targetEmployeeName", formDTO.getTargetEmployeeName());
+        parameters.put("targetEmployeeCode", formDTO.getTargetEmployeeCode());
+        parameters.put("targetDepartmentName", formDTO.getTargetDepartmentName());
+        parameters.put("targetPositionName", formDTO.getTargetPositionName());
+        parameters.put("evaluatorEmployeeName", formDTO.getEvaluatorEmployeeName());
+        parameters.put("evaluatorPositionName", evaluatorPosName);
+        parameters.put("evaluatorDepartmentName", evaluatorDeptName);
+        parameters.put("relationshipType", formDTO.getRelationshipType());
+        parameters.put("assessmentDate", req.getCycle().getStartDate() != null ? req.getCycle().getStartDate().toString() : null);
+        parameters.put("effectiveDate", req.getCycle().getEndDate() != null ? req.getCycle().getEndDate().toString() : null);
+        parameters.put("totalScore", "");
+        parameters.put("finalComment", "");
+        return generateReport("reports/feedback_360_paper_form.jrxml", parameters, questionDTOs, format);
     }
 
     private byte[] generateReport(String jrxmlPath, Map<String, Object> parameters, List<?> data, String format) {
@@ -1275,9 +1290,9 @@ public class ReportServiceImpl implements ReportService {
         Appraisal appraisal = appraisalRepository.findById(appraisalId)
                 .orElseThrow(() -> new NotFoundException("Appraisal not found: " + appraisalId));
 
-        if (appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.HR_APPROVED &&
-            appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.FINALIZED &&
-            appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.ARCHIVED) {
+        if (appraisal.getStatus() != AppraisalStatus.HR_APPROVED &&
+            appraisal.getStatus() != AppraisalStatus.FINALIZED &&
+            appraisal.getStatus() != AppraisalStatus.ARCHIVED) {
             throw new InvalidAppraisalStateException(
                     "Self-assessment form can only be exported after the appraisal is approved or finalized.");
         }
@@ -1288,28 +1303,30 @@ public class ReportServiceImpl implements ReportService {
         EmployeeDepartment ed = employeeDepartmentRepository
                 .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId()).orElse(null);
 
-        ace.org.epms_backend.model.appraisal.AppraisalForm form = null;
+        AppraisalForm form = null;
         if (appraisal.getFormSet() != null) form = appraisal.getFormSet().getSelfAssessmentForm();
         if (form == null) {
             form = appraisal.getCycle().getForms().stream()
-                    .filter(f -> f.getFormType() == ace.org.epms_backend.enums.FormType.SELF_ASSESSMENT)
+                    .filter(f -> f.getFormType() == FormType.SELF_ASSESSMENT)
                     .findFirst().orElse(null);
         }
 
-        List<ace.org.epms_backend.dto.report.SelfAssessmentReportQuestionDTO> questions = new ArrayList<>();
+        List<SelfAssessmentReportQuestionDTO> questions = new ArrayList<>();
         if (form != null) {
-            List<ace.org.epms_backend.model.appraisal.Question> formQuestions =
+            List<Question> formQuestions =
                     questionRepository.findByCategory_Form_FormId(form.getFormId());
             Map<Long, SelfAssessmentAnswer> answerMap =
                     selfAssessmentAnswerRepository.findBySelfAssessment_SelfAssessmentId(self.getSelfAssessmentId())
                             .stream().collect(Collectors.toMap(
                                     a -> a.getQuestion().getQuestionId(), a -> a, (a, b) -> a));
-            for (ace.org.epms_backend.model.appraisal.Question q : formQuestions) {
+            for (Question q : formQuestions) {
                 SelfAssessmentAnswer ans = answerMap.get(q.getQuestionId());
                 questions.add(ace.org.epms_backend.dto.report.SelfAssessmentReportQuestionDTO.builder()
                         .categoryName(q.getCategory() != null ? q.getCategory().getCategoryName() : "General")
                         .questionText(q.getQuestionText())
-                        .ratingValue(ans != null && ans.getRatingValue() != null ? ans.getRatingValue().toString() : "-")
+                        .isYes(ans != null && Boolean.TRUE.equals(ans.getIsCompleted()))
+                        .isNo(ans != null && Boolean.FALSE.equals(ans.getIsCompleted()))
+                        .ratingValue(ans != null ? ans.getRatingValue() : null)
                         .comment(ans != null ? ans.getComment() : null)
                         .build());
             }
@@ -1325,6 +1342,7 @@ public class ReportServiceImpl implements ReportService {
 
         Map<String, Object> params = new HashMap<>();
         params.put("reportTitle", "Self-Assessment Form");
+        params.put("companyName", "ACE Data Systems");
         params.put("cycleName", appraisal.getCycle().getCycleName());
         params.put("employeeName", appraisal.getEmployee().getStaffName());
         params.put("employeeCode", appraisal.getEmployee().getEmployeeCode());
@@ -1333,6 +1351,7 @@ public class ReportServiceImpl implements ReportService {
         params.put("managerName", mgrName);
         params.put("totalScore", totalScore);
         params.put("overallReflection", self.getOverallReflection() != null ? self.getOverallReflection() : "");
+        params.put("assessmentDate", submittedAt);
         params.put("submittedAt", submittedAt);
 
         return generateReport("reports/self_assessment_form.jrxml", params, questions, format);
@@ -1395,6 +1414,7 @@ public class ReportServiceImpl implements ReportService {
                         .employeeComment(selfAns != null ? selfAns.getComment() : null)
                         .managerRating(mgrAns != null && mgrAns.getRatingValue() != null
                                 ? mgrAns.getRatingValue().toString() : "-")
+                        .managerRatingValue(mgrAns != null ? mgrAns.getRatingValue() : null)
                         .managerComment(mgrAns != null ? mgrAns.getComment() : null)
                         .build());
             }
@@ -1410,12 +1430,16 @@ public class ReportServiceImpl implements ReportService {
 
         Map<String, Object> params = new HashMap<>();
         params.put("reportTitle", "Manager Evaluation Form");
+        params.put("companyName", "ACE Data Systems");
         params.put("cycleName", appraisal.getCycle().getCycleName());
         params.put("employeeName", appraisal.getEmployee().getStaffName());
         params.put("employeeCode", appraisal.getEmployee().getEmployeeCode());
         params.put("departmentName", deptName);
         params.put("positionName", posName);
         params.put("managerName", mgrName);
+        params.put("jobTitle", posName);
+        params.put("assessmentDate", submittedAt);
+        params.put("effectiveDate", appraisal.getFinalizedAt() != null ? appraisal.getFinalizedAt().toString() : submittedAt);
         params.put("totalScore", totalScore);
         params.put("finalComment", eval.getFinalComment() != null ? eval.getFinalComment() : "");
         params.put("submittedAt", submittedAt);
