@@ -1050,7 +1050,8 @@ export const PerformanceHistoryManagerPage = () => {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header className="flex flex-col gap-2">
-        <h1 className="text-4xl font-black text-gray-900 tracking-tight">Team Performance Tracker</h1>
+              <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.3px' }}>Team Performance Tracker</h1>
+        {/* <h1 className="text-4xl font-black text-gray-900 tracking-tight">Team Performance Tracker</h1> */}
         <p className="text-gray-500 font-medium">View chronological performance activities, feedback, and 1-on-1 meeting records for your team.</p>
       </header>
 
