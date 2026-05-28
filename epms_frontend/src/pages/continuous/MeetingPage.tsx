@@ -383,7 +383,7 @@ const MeetingPage = () => {
     if (e) e.preventDefault();
 
     if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || newMeeting.actionItems.length === 0 || !user) {
-      alert("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
+      toast.warning("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
       return;
     }
     if (newMeeting.followUpDate && newMeeting.followUpDate < newMeeting.meetingDate) {

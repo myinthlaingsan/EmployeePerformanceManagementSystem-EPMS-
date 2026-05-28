@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+import { formatAuditDateTime, formatAuditDateValue } from "../../utils/timeUtils";
 import {
   useExportAuditCsvMutation,
   useExportAuditPdfMutation,
@@ -51,13 +52,6 @@ const statusColors: Record<string, { bg: string; text: string }> = {
 };
 
 const toLocalInputDate = (date: Date) => format(date, "yyyy-MM-dd");
-
-const formatDateTime = (value?: string) => {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return format(parsed, "dd MMM yyyy, HH:mm");
-};
 
 const startOfDateTime = (date: string) => (date ? `${date}T00:00:00` : undefined);
 const endOfDateTime = (date: string) => (date ? `${date}T23:59:59` : undefined);
@@ -130,7 +124,7 @@ const AuditDetailPanel = ({ auditId, onClose }: { auditId: number; onClose: () =
                   </div>
                   <div>
                     <p style={{ color: "#9EA3B0", fontSize: 11 }}>Changed at</p>
-                    <p style={{ color: "#111827", fontSize: 13, marginTop: 4 }}>{formatDateTime(detail.changedAt)}</p>
+                    <p style={{ color: "#111827", fontSize: 13, marginTop: 4 }}>{formatAuditDateTime(detail.changedAt)}</p>
                   </div>
                   <div>
                     <p style={{ color: "#9EA3B0", fontSize: 11 }}>Changed by</p>
@@ -156,18 +150,18 @@ const AuditDetailPanel = ({ auditId, onClose }: { auditId: number; onClose: () =
                 {changes.length === 0 ? (
                   <p style={{ color: "#9EA3B0", fontSize: 12, padding: 14 }}>No field-level payload was included for this event.</p>
                 ) : (
-                  <div className="divide-y divide-[#F0F2F6]">
+                  <div className="divide-y divide-border-subtle">
                     {changes.map((change) => (
                       <div key={change.fieldName} style={{ padding: 14 }}>
                         <p style={{ color: "#111827", fontSize: 12, fontWeight: 500 }}>{change.fieldName}</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" style={{ marginTop: 8 }}>
                           <div style={{ background: "#FCEBEB", borderRadius: 8, padding: 10 }}>
                             <p style={{ color: "#791F1F", fontSize: 10, fontWeight: 500 }}>Old value</p>
-                            <p style={{ color: "#111827", fontSize: 12, marginTop: 4, wordBreak: "break-word" }}>{change.oldValue ?? "null"}</p>
+                            <p style={{ color: "#111827", fontSize: 12, marginTop: 4, wordBreak: "break-word" }}>{change.oldValue == null ? "null" : formatAuditDateValue(change.oldValue)}</p>
                           </div>
                           <div style={{ background: "#EAF3DE", borderRadius: 8, padding: 10 }}>
                             <p style={{ color: "#27500A", fontSize: 10, fontWeight: 500 }}>New value</p>
-                            <p style={{ color: "#111827", fontSize: 12, marginTop: 4, wordBreak: "break-word" }}>{change.newValue ?? "null"}</p>
+                            <p style={{ color: "#111827", fontSize: 12, marginTop: 4, wordBreak: "break-word" }}>{change.newValue == null ? "null" : formatAuditDateValue(change.newValue)}</p>
                           </div>
                         </div>
                       </div>
@@ -370,14 +364,14 @@ const AuditLogPage = () => {
                       </td>
                       <td style={{ padding: "12px 14px" }}><Badge value={log.action} colors={actionColors} /></td>
                       <td style={{ color: "#5A6070", fontSize: 12, padding: "12px 14px" }}>{log.changedByName || "-"}</td>
-                      <td style={{ color: "#5A6070", fontSize: 12, padding: "12px 14px", whiteSpace: "nowrap" }}>{formatDateTime(log.changedAt)}</td>
+                      <td style={{ color: "#5A6070", fontSize: 12, padding: "12px 14px", whiteSpace: "nowrap" }}>{formatAuditDateTime(log.changedAt)}</td>
                       <td style={{ color: "#9EA3B0", fontSize: 12, padding: "12px 14px" }}>{log.ipAddress || "-"}</td>
                       <td style={{ padding: "12px 14px" }}><Badge value={log.status} colors={statusColors} /></td>
                       <td style={{ padding: "12px 14px", textAlign: "right" }}>
                         <button
                           onClick={() => setSelectedAuditId(log.auditId)}
                           title="View detail"
-                          className="hover:bg-[#EEF3FD] hover:text-[#1A56DB]"
+                          className="hover:bg-info-fill hover:text-[#1A56DB]"
                           style={{ alignItems: "center", borderRadius: 7, color: "#9EA3B0", display: "inline-flex", height: 28, justifyContent: "center", width: 28 }}
                         >
                           <Eye size={14} aria-hidden="true" />
@@ -412,7 +406,7 @@ const AuditLogPage = () => {
           </div>
           {summary?.latestChange && (
             <p style={{ color: "#9EA3B0", fontSize: 11, marginTop: 16 }}>
-              Latest change: {formatDateTime(summary.latestChange)}
+              Latest change: {formatAuditDateTime(summary.latestChange)}
             </p>
           )}
         </div>
