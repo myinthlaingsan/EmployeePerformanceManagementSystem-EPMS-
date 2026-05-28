@@ -95,7 +95,6 @@ const KpiCategoryManager: React.FC = () => {
       {/* Header */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>Framework › Categories</p>
           <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>KPI Category Management</h1>
           <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Define and organize the pillars of your organizational performance framework.</p>
         </div>
