@@ -307,6 +307,11 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
     @Override
     @Transactional(readOnly = true)
     public MidcycleSummaryResponse getMidcycleSummary(Long employeeId, Long cycleId) {
+        Employee currentUser = getCurrentEmployee();
+        if (!canViewEmployeeSummary(currentUser, employeeId)) {
+            throw new SecurityException("You are not authorized to view this employee's midcycle KPI summary.");
+        }
+
         AppraisalCycle cycle = cycleRepository.findById(cycleId)
                 .orElseThrow(() -> new NotFoundException("Appraisal cycle not found"));
 
@@ -381,5 +386,16 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Current user not found"));
+    }
+
+    private boolean canViewEmployeeSummary(Employee currentUser, Long targetEmployeeId) {
+        if (currentUser.getId().equals(targetEmployeeId)) {
+            return true;
+        }
+
+        return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_MANAGER")
+                        || a.getAuthority().equals("ROLE_HR")
+                        || a.getAuthority().equals("ROLE_ADMIN"));
     }
 }
