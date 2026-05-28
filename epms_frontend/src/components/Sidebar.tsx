@@ -82,7 +82,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ onClose }: SidebarProps) => {
-  const { logout, isAdmin, isHR, user, hasPermission } = useAuth();
+  const { logout, isAdmin, isHR, isManager, user, hasPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
@@ -107,9 +107,14 @@ const Sidebar = ({ onClose }: SidebarProps) => {
   const perfSubItems: Array<{ to: string; label: string; end?: boolean }> = [
     { to: "/kpi", label: "KPI Intelligence Hub", end: true },
     ...(hasPermission("KPI_VIEW_OWN") ? [{ to: "/kpi/my", label: "My Goals" }] : []),
-    ...(hasPermission("KPI_VIEW_TEAM") ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
     ...(hasPermission("KPI_VIEW_OWN") && user ? [{ to: `/kpi/history/${user.id}`, label: "My KPI Journey" }] : []),
-    
+    ...(hasPermission("KPI_VIEW_TEAM") ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
+    ...(isHR || isAdmin
+      ? [{ to: "/kpi/org-history", label: "Org KPI History" }]
+      : []),
+    ...(isManager && !isHR && !isAdmin
+      ? [{ to: "/kpi/org-history", label: "Team KPI History" }]
+      : []),
     ...(hasPermission("KPI_LIBRARY_MANAGE")
       ? [
           { to: "/kpi/manage", label: "Goal Management" },
