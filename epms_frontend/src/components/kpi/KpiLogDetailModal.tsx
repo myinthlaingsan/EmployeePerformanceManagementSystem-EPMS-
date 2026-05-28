@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, MessageSquare } from 'lucide-react';
-import { format } from 'date-fns';
 import type { KpiHistoryLog } from '../../features/kpi/kpiTypes';
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 interface KpiLogDetailModalProps {
   log: KpiHistoryLog;
@@ -62,7 +62,7 @@ const KpiLogDetailModal: React.FC<KpiLogDetailModalProps> = ({ log, onClose }) =
               {log.action.replaceAll('_', ' ')}
             </span>
             <span style={{ fontSize: 12, color: '#9EA3B0' }}>
-              {format(new Date(log.createdAt), 'dd MMM yyyy, h:mm a')}
+              {formatRelativeTime(log.createdAt)}
             </span>
           </div>
 
@@ -95,7 +95,7 @@ const KpiLogDetailModal: React.FC<KpiLogDetailModalProps> = ({ log, onClose }) =
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                 <span style={{ color: '#9EA3B0' }}>Timestamp:</span>
-                <span style={{ color: '#111827', fontWeight: 600 }}>{format(new Date(log.createdAt), 'dd MMM yyyy, HH:mm:ss')}</span>
+                <span style={{ color: '#111827', fontWeight: 600 }}>{formatRelativeTime(log.createdAt)}</span>
               </div>
             </div>
           </div>

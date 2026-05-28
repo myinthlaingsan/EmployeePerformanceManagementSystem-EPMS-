@@ -17,6 +17,10 @@ import KpiAuditLogModal from '../../components/kpi/KpiAuditLogModal';
 import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
 import { ChevronLeft, CheckCircle2, AlertCircle, Lock, Award, ShieldCheck, History, Archive } from 'lucide-react';
 import { Can } from '../../components/Can';
+import { useGetMidcycleSummaryQuery } from '../../services/midcycleApi';
+import { MidcyclePhaseTimeline } from '../../features/kpi/MidcyclePhaseTimeline';
+import { MidcycleChangeModal } from '../../features/kpi/MidcycleChangeModal';
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 const STEPS = [
   { id: 'DRAFT', label: 'Draft', icon: CheckCircle2 },
@@ -63,7 +67,14 @@ const GoalDetail: React.FC = () => {
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [showRevertConfirm, setShowRevertConfirm] = useState(false);
+  const [showMidcycleModal, setShowMidcycleModal] = useState(false);
   const [showLockConfirm, setShowLockConfirm] = useState(false);
+
+  const { data: midcycleResponse, refetch: refetchMidcycle } = useGetMidcycleSummaryQuery(
+    { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId! },
+    { skip: !effectiveCycleId }
+  );
+  const midcycle = midcycleResponse?.data ?? null;
 
   const isOwner = user?.id === parseInt(employeeId!);
   const isPrivileged = _isManager || isAdmin || isHR;
@@ -94,16 +105,6 @@ const GoalDetail: React.FC = () => {
   const handleLock = () => {
     if (!goalSet) return;
     setShowLockConfirm(true);
-  };
-
-  // Helper: human-friendly age (days/weeks/months/years)
-  const getTimeAgo = (dateStr: string): string => {
-    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000);
-    if (days < 1) return 'today';
-    if (days < 7) return `${days}d ago`;
-    if (days < 30) return `${Math.floor(days / 7)}w ago`;
-    if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-    return `${Math.floor(days / 365)}y ago`;
   };
 
   if (isLoading) return (
@@ -162,9 +163,7 @@ const GoalDetail: React.FC = () => {
                 },
                 {
                   label: 'Assigned',
-                  value: goalSet.assignedAt
-                    ? `${new Date(goalSet.assignedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${getTimeAgo(goalSet.assignedAt)}`
-                    : '—'
+                  value: formatRelativeTime(goalSet.assignedAt) || '—'
                 },
               ].map(({ label, value }) => (
                 <div key={label}>
@@ -217,6 +216,13 @@ const GoalDetail: React.FC = () => {
                   <button onClick={handleLock}
                     style={{ background: '#F1EFE8', color: '#444441', border: '0.5px solid #DDDBD2', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
                     Lock Goals
+                  </button>
+                )}
+                {(goalSet.status === 'APPROVED' || goalSet.status === 'LOCKED') && (
+                  <button onClick={() => setShowMidcycleModal(true)}
+                    style={{ background: '#EFF6FF', color: '#1E40AF', border: '0.5px solid #BFDBFE', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}
+                    className="hover:bg-blue-100 transition-colors">
+                    Midcycle Change
                   </button>
                 )}
               </Can>
@@ -298,7 +304,7 @@ const GoalDetail: React.FC = () => {
               <Award size={12} />
               Score calculated — {finalScore.weightedScore.toFixed(1)} / 100
               <span style={{ color: '#5A7A3A', fontWeight: 400 }}>
-                · {new Date(finalScore.calculatedAt).toLocaleDateString()}
+                · {formatRelativeTime(finalScore.calculatedAt)}
               </span>
             </div>
           ) : (
@@ -333,6 +339,17 @@ const GoalDetail: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {midcycle && midcycle.phases && midcycle.phases.length > 0 && (
+        <MidcyclePhaseTimeline
+          summary={midcycle}
+          isPrivileged={isAdmin || isHR}
+          onRefetch={() => {
+            refetch();
+            refetchMidcycle();
+          }}
+        />
+      )}
 
       {/* 2-column layout: table left, score sidebar right */}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
@@ -411,7 +428,7 @@ const GoalDetail: React.FC = () => {
                             item.verifiedAt ? (
                               <div style={{ fontSize: 10, color: '#27500A', background: '#EAF3DE', border: '0.5px solid #B8DCA0', borderRadius: 6, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <ShieldCheck size={11} />
-                                Verified {item.verifiedBy ? `by ${item.verifiedBy}` : ''} {new Date(item.verifiedAt).toLocaleDateString()}
+                                Verified {item.verifiedBy ? `by ${item.verifiedBy}` : ''} {formatRelativeTime(item.verifiedAt)}
                               </div>
                             ) : (
                               <button
@@ -464,7 +481,7 @@ const GoalDetail: React.FC = () => {
                   Achievement: {finalScore.totalAchievementPercent?.toFixed(1)}%
                 </p>
                 <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 4 }}>
-                  Last calculated {getTimeAgo(finalScore.calculatedAt)}
+                  Last calculated {formatRelativeTime(finalScore.calculatedAt)}
                 </p>
               </>
             ) : (
@@ -603,6 +620,24 @@ const GoalDetail: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showMidcycleModal && goalSet && cycleData && (
+        <MidcycleChangeModal
+          employeeId={parseInt(employeeId!)}
+          employeeName={goalSet.employeeName}
+          cycleId={effectiveCycleId!}
+          cycleName={goalSet.appraisalCycleName || cycleData.cycleName}
+          cycleStartDate={cycleData.startDate}
+          cycleEndDate={cycleData.endDate}
+          summary={midcycle}
+          onClose={() => setShowMidcycleModal(false)}
+          onSuccess={() => {
+            setShowMidcycleModal(false);
+            refetch();
+            refetchMidcycle();
+          }}
+        />
       )}
 
       <div style={{ display: 'none' }}><CheckCircle2 /><AlertCircle /></div>

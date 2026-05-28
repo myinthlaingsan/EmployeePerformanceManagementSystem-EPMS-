@@ -6,17 +6,7 @@ import KpiSummaryCard from '../../components/kpi/KpiSummaryCard';
 import KpiGoalCard from '../../components/kpi/KpiGoalCard';
 import KpiUpdateHistoryCard from '../../components/kpi/KpiUpdateHistoryCard';
 import { TrendingUp, Target } from 'lucide-react';
-
-const formatAssignedAt = (iso?: string): string => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  const today = new Date();
-  const diffDays = Math.floor((today.getTime() - d.getTime()) / 86400000);
-  const base = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  if (diffDays === 0) return `${base} · today`;
-  if (diffDays === 1) return `${base} · yesterday`;
-  return base;
-};
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 const MyKpiDashboard: React.FC = () => {
   const { user, activeCycleId, activeCycleName } = useAuth();
@@ -73,7 +63,7 @@ const MyKpiDashboard: React.FC = () => {
             { label: 'CYCLE', value: goalSetResponse.data.appraisalCycleName ?? activeCycleName },
             { label: 'MANAGER', value: goalSetResponse.data.managerName },
             { label: 'ASSIGNED BY', value: goalSetResponse.data.assignedByName },
-            { label: 'ASSIGNED', value: formatAssignedAt(goalSetResponse.data.assignedAt) },
+            { label: 'ASSIGNED', value: formatRelativeTime(goalSetResponse.data.assignedAt) },
           ].map(({ label, value }) => (
             <div key={label}>
               <p style={{ fontSize: 10, fontWeight: 600, color: '#9EA3B0', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</p>

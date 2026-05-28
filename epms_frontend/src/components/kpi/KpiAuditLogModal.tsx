@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, History, FileEdit } from 'lucide-react';
 import { useGetGoalSetAuditTrailQuery } from '../../services/kpiApi';
-import { format } from 'date-fns';
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 interface KpiAuditLogModalProps {
   goalSetId: number;
@@ -84,7 +84,7 @@ const KpiAuditLogModal: React.FC<KpiAuditLogModalProps> = ({ goalSetId, onClose 
                         {log.action}
                       </span>
                       <span className="text-[11px] font-bold text-gray-400">
-                        {log.createdAt ? format(new Date(log.createdAt), 'MMM dd, HH:mm') : ''}
+                        {formatRelativeTime(log.createdAt)}
                       </span>
                     </div>
                     <p className="text-xs font-bold text-gray-800 uppercase mb-2 pb-2 border-b border-gray-50">
