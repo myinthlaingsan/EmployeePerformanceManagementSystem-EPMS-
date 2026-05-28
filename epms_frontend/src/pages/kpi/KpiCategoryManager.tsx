@@ -1,31 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit2, Trash2, X } from 'lucide-react';
 import {
-  useGetKpiCategoriesQuery,
+  useGetKpiCategoriesPaginatedQuery,
   useCreateKpiCategoryMutation,
   useUpdateKpiCategoryMutation,
   useDeleteKpiCategoryMutation
-} from '../../../services/kpiApi';
-import type { KpiCategory } from '../../../features/kpi/kpiTypes';
+} from '../../services/kpiApi';
+import type { KpiCategory } from '../../features/kpi/kpiTypes';
 
 const inputStyle: React.CSSProperties = { background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' };
 
 const KpiCategoryManager: React.FC = () => {
-  const { data: response, isLoading } = useGetKpiCategoriesQuery();
-  const categories = response?.data || [];
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  const { data: response, isLoading } = useGetKpiCategoriesPaginatedQuery({ page, size, search: debouncedSearch });
+  const pagedData = response?.data;
+  const categories = pagedData?.content || [];
+  const totalElements = pagedData?.totalElements || 0;
+  const totalPages = pagedData?.totalPages || 0;
 
   const [createCategory, { isLoading: isCreating }] = useCreateKpiCategoryMutation();
   const [updateCategory, { isLoading: isUpdating }] = useUpdateKpiCategoryMutation();
   const [deleteCategory] = useDeleteKpiCategoryMutation();
 
-  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<KpiCategory | null>(null);
   const [formName, setFormName] = useState('');
 
-  const filteredCategories = categories.filter(c =>
-    (c.categoryName || c.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCategories = categories;
 
   const handleOpenModal = (category?: KpiCategory) => {
     if (category) { setEditingCategory(category); setFormName(category.categoryName || category.name || ''); }
@@ -87,7 +100,7 @@ const KpiCategoryManager: React.FC = () => {
               onChange={e => setSearchTerm(e.target.value)}
               style={{ ...inputStyle, paddingLeft: 30, width: 240 }} />
           </div>
-          <span style={{ fontSize: 12, color: '#9EA3B0' }}>Displaying {filteredCategories.length} categories</span>
+          <span style={{ fontSize: 12, color: '#9EA3B0' }}>Total: {totalElements} categories</span>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
@@ -133,6 +146,42 @@ const KpiCategoryManager: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-3"
+          style={{ padding: '10px 16px', borderTop: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, color: '#9EA3B0' }}>Rows per page:</span>
+            <select
+              value={size}
+              onChange={e => { setSize(Number(e.target.value)); setPage(0); }}
+              style={{ background: '#FFFFFF', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '2px 8px', fontSize: 12, color: '#374151', outline: 'none', cursor: 'pointer' }}
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+
+          <span style={{ fontSize: 12, color: '#9EA3B0' }}>
+            Showing <strong style={{ color: '#111827' }}>{totalElements > 0 ? page * size + 1 : 0}–{Math.min((page + 1) * size, totalElements)}</strong> of <strong style={{ color: '#111827' }}>{totalElements}</strong>
+          </span>
+
+          <div className="flex gap-2">
+            <button onClick={() => setPage(p => Math.max(p - 1, 0))} disabled={page === 0}
+              style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 500, cursor: page === 0 ? 'not-allowed' : 'pointer' }}
+              className="disabled:opacity-50 transition-colors hover:bg-[#E0E2E8]">
+              Previous
+            </button>
+            <button onClick={() => setPage(p => Math.min(p + 1, totalPages - 1))} disabled={page >= totalPages - 1 || totalPages === 0}
+              style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 500, cursor: (page >= totalPages - 1 || totalPages === 0) ? 'not-allowed' : 'pointer' }}
+              className="disabled:opacity-50 transition-colors">
+              Next
+            </button>
+          </div>
         </div>
       </div>
 

@@ -17,12 +17,24 @@ import type {
   BulkAssignmentResponse,
   KpiHistoryLog,
 } from '../features/kpi/kpiTypes';
+import type { PagedResponse } from '../features/employee/employeeTypes';
 
 export const kpiApi = api.injectEndpoints({
   endpoints: (builder) => ({
     // ==================== Categories ====================
     getKpiCategories: builder.query<ApiResponse<KpiCategory[]>, void>({
       query: () => '/kpi/categories',
+      providesTags: ['Category'],
+    }),
+    getKpiCategoriesPaginated: builder.query<
+      ApiResponse<PagedResponse<KpiCategory>>,
+      { page: number; size: number; search?: string }
+    >({
+      query: ({ page, size, search }) => {
+        let url = `/kpi/categories/paginated?page=${page}&size=${size}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        return url;
+      },
       providesTags: ['Category'],
     }),
     createKpiCategory: builder.mutation<ApiResponse<KpiCategory>, { name: string }>({
@@ -303,6 +315,7 @@ export const kpiApi = api.injectEndpoints({
 
 export const {
   useGetKpiCategoriesQuery,
+  useGetKpiCategoriesPaginatedQuery,
   useCreateKpiCategoryMutation,
   useUpdateKpiCategoryMutation,
   useDeleteKpiCategoryMutation,
