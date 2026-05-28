@@ -22,8 +22,8 @@ const MyKpiDashboard: React.FC = () => {
   const { user, activeCycleId, activeCycleName } = useAuth();
 
   const { data: goalSetResponse, isLoading } = useGetGoalSetByEmployeeQuery(
-    { employeeId: user?.id || 0, cycleId: activeCycleId },
-    { skip: !user }
+    { employeeId: user?.id || 0, cycleId: activeCycleId ?? 0 },
+    { skip: !user?.id || !activeCycleId }
   );
   const { data: historyResponse } = useGetProgressHistoryQuery(
     { employeeId: user?.id || 0, limit: 3 },

@@ -128,10 +128,50 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
         Feedback feedback = feedbackRepository.findByRequestId(requestId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
 
+        Long viewerId = securityHelper.currentUserId();
+        if (viewerId == null) {
+            throw new AccessDeniedException("User not authenticated.");
+        }
+
+        Long targetUserId = feedback.getRequest().getTargetUser().getId();
+        Long cycleId = feedback.getRequest().getCycle().getCycleId();
+        boolean isTargetViewingSelf = viewerId.equals(targetUserId);
+
+        // Access check: evaluator, HR/Admin (non-self), Manager, or Target employee
+        boolean isEvaluator = viewerId.equals(feedback.getRequest().getEvaluator().getId());
+        boolean isPrivileged = securityHelper.hasAnyRole("HR", "ADMIN") && !isTargetViewingSelf;
+        boolean isManager = securityHelper.hasAnyRole("MANAGER");
+
+        if (!isEvaluator && !isTargetViewingSelf && !isPrivileged && !isManager) {
+            throw new AccessDeniedException("You do not have permission to view this feedback.");
+        }
+
+        // Release check: target self-viewers must wait until the cycle is locked & finalized
+        if (isTargetViewingSelf) {
+            FeedbackSummary summary = summaryRepository.findByEmployeeIdAndCycleCycleId(targetUserId, cycleId).orElse(null);
+            if (summary != null) {
+                boolean isReleased = Boolean.TRUE.equals(summary.getIsFinalized())
+                        && summary.getCalibrationStatus() == ace.org.epms_backend.enums.CalibrationStatus.LOCKED;
+                if (!isReleased) {
+                    throw new AccessDeniedException("Your feedback responses are not yet released.");
+                }
+            }
+        }
+
         FeedbackDetailsResponse response = feedbackMapper.toFeedbackDetails(feedback);
         response.setResponses(responseRepository.findByFeedbackId(feedback.getId()).stream()
                 .map(feedbackMapper::toResponseDetails)
                 .collect(Collectors.toList()));
+
+        // Masking: mask peer/subordinate evaluator name for self-viewing
+        if (isTargetViewingSelf) {
+            FeedbackRelationship rel = feedback.getRequest().getRelationship();
+            if (rel == FeedbackRelationship.PEER) {
+                response.setEvaluatorName("Anonymous Peer");
+            } else if (rel == FeedbackRelationship.SUBORDINATE) {
+                response.setEvaluatorName("Anonymous Subordinate");
+            }
+        }
 
         return response;
     }
@@ -151,8 +191,27 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
     @Override
     public List<FeedbackDetailsResponse> getFeedbackReceivedByEmployee(Long employeeId, Long cycleId) {
         Long viewerId = securityHelper.currentUserId();
-        boolean isTargetViewingSelf = viewerId != null && viewerId.equals(employeeId);
+        if (viewerId == null) {
+            throw new AccessDeniedException("User not authenticated.");
+        }
+        boolean isTargetViewingSelf = viewerId.equals(employeeId);
         boolean isPrivileged = securityHelper.hasAnyRole("HR", "ADMIN") && !isTargetViewingSelf;
+
+        // Access check: only target or HR/Admin/Manager can view
+        if (!isTargetViewingSelf && !securityHelper.hasAnyRole("HR", "ADMIN", "MANAGER")) {
+            throw new AccessDeniedException("You do not have permission to view these feedback responses.");
+        }
+
+        if (isTargetViewingSelf) {
+            // Self-viewing: check lock and finalization status
+            FeedbackSummary summary = summaryRepository.findByEmployeeIdAndCycleCycleId(employeeId, cycleId).orElse(null);
+            boolean isReleased = summary != null
+                    && Boolean.TRUE.equals(summary.getIsFinalized())
+                    && summary.getCalibrationStatus() == ace.org.epms_backend.enums.CalibrationStatus.LOCKED;
+            if (!isReleased) {
+                throw new AccessDeniedException("Your feedback responses are not yet released.");
+            }
+        }
 
         return feedbackRepository
                 .findByRequestTargetUserIdAndRequestCycleCycleId(employeeId, cycleId)
@@ -161,8 +220,11 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
                     FeedbackRelationship rel = f.getRequest().getRelationship();
                     if (isPrivileged) return true;
                     if (isTargetViewingSelf) {
+                        // Allow all relationships (including peer/subordinate, now that they are masked)
                         return rel == FeedbackRelationship.SELF
-                                || rel == FeedbackRelationship.DIRECT_MANAGER;
+                                || rel == FeedbackRelationship.DIRECT_MANAGER
+                                || rel == FeedbackRelationship.PEER
+                                || rel == FeedbackRelationship.SUBORDINATE;
                     }
                     return false;
                 })
@@ -171,6 +233,16 @@ public class FeedbackSubmissionServiceImpl implements FeedbackSubmissionService 
                     res.setResponses(responseRepository.findByFeedbackId(f.getId()).stream()
                             .map(feedbackMapper::toResponseDetails)
                             .collect(Collectors.toList()));
+
+                    // Masking peer/subordinate evaluator names for self-viewing
+                    if (isTargetViewingSelf) {
+                        FeedbackRelationship rel = f.getRequest().getRelationship();
+                        if (rel == FeedbackRelationship.PEER) {
+                            res.setEvaluatorName("Anonymous Peer");
+                        } else if (rel == FeedbackRelationship.SUBORDINATE) {
+                            res.setEvaluatorName("Anonymous Subordinate");
+                        }
+                    }
                     return res;
                 }).collect(Collectors.toList());
     }

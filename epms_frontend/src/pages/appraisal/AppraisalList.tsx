@@ -110,6 +110,10 @@ const AppraisalList: React.FC = () => {
     }
   };
 
+  const isArchivedCycle = (cycle: any) => cycle?.status?.toUpperCase() === 'ARCHIVED';
+  const canDeleteCycle = (cycle: any) =>
+    isPrivileged && !cycle?.isAssigned && !cycle?.isActive && cycle?.status === 'PLANNING' && !isArchivedCycle(cycle);
+
   const renderAppraisals = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {appraisals.length > 0 ? appraisals.map((appraisal: any) => {
@@ -240,7 +244,7 @@ const AppraisalList: React.FC = () => {
               >
                 <Mail className="w-4 h-4" /> {isSendingReminders ? 'Sending...' : 'Send Reminders'}
               </button>
-              {isPrivileged && !cycle?.isAssigned && !cycle?.isActive && cycle?.status !== 'ARCHIVED' && (
+              {canDeleteCycle(cycle) && (
                 <button
                   onClick={() => {
                     setConfirmModal({
@@ -416,7 +420,7 @@ const AppraisalList: React.FC = () => {
           <div
             key={cycle.cycleId}
             onClick={() => setSelectedCycleId(cycle.cycleId)}
-            className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
+            className="group bg-white rounded-4xl border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
           >
             {/* Background Accent */}
             <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-0 group-hover:opacity-10 transition-opacity blur-3xl ${cycle.isActive ? 'bg-indigo-600' : 'bg-slate-400'}`}></div>
@@ -427,7 +431,7 @@ const AppraisalList: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Can permission="APPRAISAL_CYCLE_MANAGE">
-                  {isPrivileged && !cycle.isAssigned && (
+                  {canDeleteCycle(cycle) && (
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
@@ -652,7 +656,7 @@ const AppraisalList: React.FC = () => {
                     <Can permission="APPRAISAL_FORM_DESIGN">
                       {!set.isAssigned ? (
                         <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error(err?.data?.message || 'Delete failed'); } } }); }}
-                          style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-[#791F1F] transition-colors">
+                          style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-danger-text transition-colors">
                           <Trash2 size={13} />
                         </button>
                       ) : <div />}
@@ -749,7 +753,7 @@ const AppraisalList: React.FC = () => {
 
       {/* Confirm modal */}
       {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
           <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '24px', maxWidth: 400, width: '100%' }}>
             <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

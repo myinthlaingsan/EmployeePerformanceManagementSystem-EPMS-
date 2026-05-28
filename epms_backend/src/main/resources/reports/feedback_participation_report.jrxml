@@ -77,8 +77,19 @@
 		<element kind="textField" uuid="520a8de4-f9cb-408c-8b13-1f0ea4d54233" x="455" y="10" width="100" height="20" hTextAlign="Right">
 			<expression><![CDATA["Page " + $V{PAGE_NUMBER}]]></expression>
 		</element>
-		<element kind="textField" uuid="69bbe819-b55d-42e3-b5a9-4dc35bdc8fe8" x="0" y="10" width="200" height="20" pattern="MMMMM dd, yyyy">
+		<element kind="textField" uuid="69bbe819-b55d-42e3-b5a9-4dc35bdc8fe8" x="0" y="10" width="200" height="20" pattern="dd-MM-yyyy">
 			<expression><![CDATA[new java.util.Date()]]></expression>
 		</element>
 	</pageFooter>
+	<summary height="30">
+		<element kind="line" uuid="summary-line" x="0" y="5" width="555" height="1">
+			<pen lineWidth="1.0" lineColor="#34495E"/>
+		</element>
+		<element kind="staticText" uuid="summary-label" x="0" y="10" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<text><![CDATA[Total Participants:]]></text>
+		</element>
+		<element kind="textField" uuid="summary-value" x="150" y="10" width="100" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<expression><![CDATA[$F{participation} != null ? $F{participation}.size() : 0]]></expression>
+		</element>
+	</summary>
 </jasperReport>

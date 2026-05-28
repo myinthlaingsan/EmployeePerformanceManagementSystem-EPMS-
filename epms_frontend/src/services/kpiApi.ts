@@ -244,7 +244,10 @@ export const kpiApi = api.injectEndpoints({
 
     // ==================== Goal Set Retrieval ====================
     getGoalSetByEmployee: builder.query<ApiResponse<GoalSetResponse>, { employeeId: number; cycleId: number }>({
-      query: ({ employeeId, cycleId }) => `/kpi/goal-set/employee/${employeeId}?cycleId=${cycleId}`,
+      query: ({ employeeId, cycleId }) => ({
+        url: `/kpi/goal-set/employee/${employeeId}`,
+        params: { cycleId },
+      }),
       providesTags: ['GoalSet'],
     }),
 
@@ -293,7 +296,7 @@ export const kpiApi = api.injectEndpoints({
     }),
     getGoalSetAuditTrail: builder.query<ApiResponse<KpiHistoryLog[]>, number>({
       query: (goalSetId) => `/kpi-history/goal-set/${goalSetId}/audit`,
-      providesTags: ['GoalSet'],
+      providesTags: (result, error, goalSetId) => [{ type: 'AuditTrail' as const, id: goalSetId }],
     }),
   }),
 });
@@ -331,7 +334,6 @@ export const {
   useGetLibraryHistoryQuery,
   useGetTeamGoalSetsQuery,
   useGetDepartmentGoalSetsQuery,
-
   useBulkAssignKpiMutation,
   useGetEmployeeKpiHistoryQuery,
   useGetGoalSetAuditTrailQuery,

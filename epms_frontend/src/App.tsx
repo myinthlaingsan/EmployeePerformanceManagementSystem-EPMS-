@@ -11,6 +11,7 @@ import {
   appraisalRoutes,
   adminRoutes,
   pipRoutes,
+  idpRoutes,
   generalRoutes,
   kpiRoutes,
   continuousRoutes,
@@ -18,6 +19,7 @@ import {
 } from "./routes";
 import { ActiveCycleProvider } from "./context/ActiveCycleContext";
 import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
+import AuditLogPage from './pages/admin/AuditLogPage';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -86,6 +88,11 @@ const App = () => {
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
+            {/* IDP Routes */}
+            {idpRoutes.filter(r => r.path !== "/idp/new").map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
             {/* KPI General Routes */}
             {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId', '/kpi/team'].includes(r.path)).map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
@@ -122,6 +129,11 @@ const App = () => {
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
 
+              {/* IDP Creation Route (HR/Admin only) */}
+              {idpRoutes.filter(r => r.path === "/idp/new").map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+
               {/* KPI Administrative Routes (Library Management) */}
               {kpiRoutes.filter(r => ['/kpi/library', '/kpi/library/new', '/kpi/library/edit/:id'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
@@ -132,6 +144,11 @@ const App = () => {
             {/* Approvals — requires calibrate permission */}
             <Route element={<ProtectedRoute requiredPermissions={["APPRAISAL_CALIBRATE"]} />}>
               <Route path="/approvals" element={<ApprovalPage />} />
+            </Route>
+
+            {/* Audit Log Console */}
+            <Route element={<ProtectedRoute allowedRoles={["ADMIN", "AUDIT_VIEWER"]} />}>
+              <Route path="/audit-logs" element={<AuditLogPage />} />
             </Route>
           </Route>
         </Route>

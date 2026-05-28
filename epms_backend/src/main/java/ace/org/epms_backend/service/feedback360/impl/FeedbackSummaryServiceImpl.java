@@ -150,7 +150,7 @@ public class FeedbackSummaryServiceImpl implements FeedbackSummaryService {
     @Override
     public List<FeedbackSummaryResponse> getSummariesByCycle(Long cycleId) {
         return summaryRepository.findByCycleCycleId(cycleId).stream()
-                .map(s -> feedbackReportService.getFeedbackSummary(s.getEmployee().getId(), cycleId))
+                .map(s -> feedbackReportService.getFeedbackSummary(s.getEmployee().getId(), cycleId, true))
                 .collect(Collectors.toList());
     }
 

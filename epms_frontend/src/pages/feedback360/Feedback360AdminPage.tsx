@@ -1,985 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// useNavigate imported above — ensure it is used inside the main component
-import { toast } from 'react-toastify';
-import {
-  RefreshCw, Play, Eye, CheckCircle, Loader2, AlertCircle,
-  ChevronDown, ChevronUp, Lock, Edit3, X, Plus, FileDown,
-} from 'lucide-react';
+import { RefreshCw, Play, Eye, Loader2, AlertCircle, Lock, FileDown, Mail, Sliders } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useDownloadReportMutation } from '../../features/report/reportApi';
-import { useGetFeedbackFormsByCycleQuery, useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
-import type { AppraisalForm } from '../../features/appraisal/appraisalApi';
+import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import {
-  useLazyPreviewFeedbackRequestsQuery,
-  useGenerateFeedbackRequestsMutation,
   useGetAllSummariesByCycleQuery,
-  useGenerateAllSummariesMutation,
-  useFinalizeSummaryMutation,
-  useRegenerateUserRequestsMutation,
-  useCancelFeedbackRequestMutation,
-  useReassignFeedbackRequestMutation,
-  useSendFeedbackCycleRemindersMutation,
-  useSendIndividualFeedbackReminderMutation,
-  usePostManagerSummaryMutation,
-  useAdjustSummaryScoreMutation,
-  useGetScoringPoliciesQuery,
-  useUpsertScoringPolicyMutation,
   useListRequestsByCycleQuery,
-  useGetFeedbackCycleDashboardQuery,
 } from '../../features/feedback360/feedback360Api';
-import {
-  Users, Mail, Clock, FileText, CheckCircle2, BarChart3, AlertTriangle, Sliders,
-} from 'lucide-react';
 import type {
-  FeedbackSummaryResponse,
   FeedbackRequestResponse,
-  ScoringPolicy,
+  FeedbackSummaryResponse,
 } from '../../features/feedback360/feedback360Types';
-import { FeedbackStatus, CalibrationStatus } from '../../features/feedback360/feedback360Types';
-import RelBadge from '../../components/feedback360/RelBadge';
-import StatusBadge from '../../components/feedback360/StatusBadge';
 import { useGetAllEmployeesQuery } from '../../features/employee/employeeapi';
-
-// ── Style constants ────────────────────────────────────────────────────────────
-
-const panel: React.CSSProperties = {
-  background: '#FFFFFF',
-  border: '0.5px solid #E4E6EC',
-  borderRadius: 12,
-  padding: '20px 22px',
-};
-
-const sectionTitle: React.CSSProperties = {
-  fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 16,
-};
-
-const inputStyle: React.CSSProperties = {
-  fontSize: 13, color: '#111827', background: '#FAFBFC',
-  border: '0.5px solid #E4E6EC', borderRadius: 8,
-  padding: '8px 12px', outline: 'none', width: '100%',
-  boxSizing: 'border-box' as const,
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: 12, fontWeight: 500, color: '#5A6070',
-  marginBottom: 4, display: 'block',
-};
-
-const primaryBtn = (disabled = false): React.CSSProperties => ({
-  display: 'inline-flex', alignItems: 'center', gap: 6,
-  fontSize: 13, fontWeight: 500, color: '#FFFFFF',
-  background: disabled ? '#93A8E8' : '#1A56DB',
-  border: 'none', borderRadius: 8, padding: '8px 16px',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-});
-
-const secondaryBtn: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 6,
-  fontSize: 13, fontWeight: 500, color: '#1A56DB',
-  background: '#EEF3FD', border: '0.5px solid #BFCFFA',
-  borderRadius: 8, padding: '8px 16px', cursor: 'pointer',
-};
-
-const smBtn = (variant: 'danger' | 'neutral' | 'success'): React.CSSProperties => {
-  const map = {
-    danger: { bg: '#FCEBEB', text: '#791F1F', border: '#F5C6C6' },
-    neutral: { bg: '#F5F6F8', text: '#5A6070', border: '#E4E6EC' },
-    success: { bg: '#EAF3DE', text: '#27500A', border: '#B7E0A0' },
-  };
-  const c = map[variant];
-  return {
-    display: 'inline-flex', alignItems: 'center', gap: 4,
-    fontSize: 11, fontWeight: 500, color: c.text,
-    background: c.bg, border: `0.5px solid ${c.border}`,
-    borderRadius: 6, padding: '3px 9px', cursor: 'pointer',
-  };
-};
-
-// ── Scoring Policy Editor ──────────────────────────────────────────────────────
-
-const WEIGHT_KEYS: Array<keyof Pick<ScoringPolicy, 'managerWeight' | 'peerWeight' | 'subordinateWeight' | 'selfWeight'>> =
-  ['managerWeight', 'peerWeight', 'subordinateWeight', 'selfWeight'];
-
-const WEIGHT_LABELS: Record<string, string> = {
-  managerWeight: 'Manager', peerWeight: 'Peer',
-  subordinateWeight: 'Subordinate', selfWeight: 'Self',
-};
-
-interface PolicyRowState {
-  jobLevelId?: number;
-  label: string;
-  managerWeight: number;
-  peerWeight: number;
-  subordinateWeight: number;
-  selfWeight: number;
-  includeSelfInFinal: boolean;
-  suppressionThreshold: number;
-}
-
-const ScoringPolicyEditor = ({ cycleId }: { cycleId: number }) => {
-  const { data: policies, isLoading } = useGetScoringPoliciesQuery(cycleId, { skip: !cycleId });
-  const [upsert, { isLoading: saving }] = useUpsertScoringPolicyMutation();
-  const [rows, setRows] = useState<PolicyRowState[]>([]);
-
-  useEffect(() => {
-    if (!policies) return;
-    setRows(policies.map((p) => ({
-      jobLevelId: p.jobLevelId,
-      label: p.jobLevelId ? `Job Level ${p.jobLevelId}` : 'Default (all levels)',
-      managerWeight: p.managerWeight,
-      peerWeight: p.peerWeight,
-      subordinateWeight: p.subordinateWeight,
-      selfWeight: p.selfWeight,
-      includeSelfInFinal: p.includeSelfInFinal,
-      suppressionThreshold: p.suppressionThreshold,
-    })));
-  }, [policies]);
-
-  const updateRow = (i: number, patch: Partial<PolicyRowState>) =>
-    setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, ...patch } : r));
-
-  const rowTotal = (row: PolicyRowState) =>
-    +(row.managerWeight + row.peerWeight + row.subordinateWeight + row.selfWeight).toFixed(3);
-
-  const handleSave = async (i: number) => {
-    const row = rows[i];
-    const total = rowTotal(row);
-    if (Math.abs(total - 1) > 0.001) {
-      toast.error(`Weights must sum to 1.00 (currently ${total.toFixed(3)}).`);
-      return;
-    }
-    try {
-      await upsert({ cycleId, ...row }).unwrap();
-      toast.success('Scoring policy saved.');
-    } catch {
-      toast.error('Failed to save scoring policy.');
-    }
-  };
-
-  if (isLoading) return <p style={{ fontSize: 13, color: '#9EA3B0' }}>Loading policies…</p>;
-  if (!rows.length) return <p style={{ fontSize: 13, color: '#9EA3B0' }}>No scoring policies found for this cycle.</p>;
-
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
-          <tr style={{ borderBottom: '1px solid #E4E6EC', background: '#FAFBFC' }}>
-            <th style={{ textAlign: 'left', padding: '6px 8px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase' }}>Level</th>
-            {WEIGHT_KEYS.map((k) => (
-              <th key={k} style={{ textAlign: 'center', padding: '6px 8px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase' }}>
-                {WEIGHT_LABELS[k]}
-              </th>
-            ))}
-            <th style={{ textAlign: 'center', padding: '6px 8px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase' }}>Self in Final</th>
-            <th style={{ textAlign: 'center', padding: '6px 8px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase' }}>Min. Group</th>
-            <th style={{ textAlign: 'center', padding: '6px 8px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase' }}>Total</th>
-            <th style={{ padding: '6px 8px' }} />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => {
-            const total = rowTotal(row);
-            const valid = Math.abs(total - 1) <= 0.001;
-            return (
-              <tr key={i} style={{ borderBottom: '0.5px solid #F0F2F8' }}>
-                <td style={{ padding: '8px 8px', color: '#111827', fontWeight: 500, whiteSpace: 'nowrap' }}>{row.label}</td>
-                {WEIGHT_KEYS.map((k) => (
-                  <td key={k} style={{ padding: '4px 6px', textAlign: 'center' }}>
-                    <input
-                      type="number" min={0} max={1} step={0.05}
-                      value={row[k]}
-                      onChange={(e) => updateRow(i, { [k]: parseFloat(e.target.value) || 0 })}
-                      style={{ ...inputStyle, width: 70, textAlign: 'center', padding: '5px 6px' }}
-                    />
-                  </td>
-                ))}
-                <td style={{ padding: '4px 6px', textAlign: 'center' }}>
-                  <input
-                    type="checkbox"
-                    checked={row.includeSelfInFinal}
-                    onChange={(e) => updateRow(i, { includeSelfInFinal: e.target.checked })}
-                    style={{ width: 15, height: 15, cursor: 'pointer' }}
-                  />
-                </td>
-                <td style={{ padding: '4px 6px', textAlign: 'center' }}>
-                  <input
-                    type="number" min={1} max={10} step={1}
-                    value={row.suppressionThreshold}
-                    onChange={(e) => updateRow(i, { suppressionThreshold: parseInt(e.target.value) || 1 })}
-                    style={{ ...inputStyle, width: 60, textAlign: 'center', padding: '5px 6px' }}
-                  />
-                </td>
-                <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: valid ? '#059669' : '#EF4444' }}>
-                    {total.toFixed(2)}
-                  </span>
-                </td>
-                <td style={{ padding: '4px 8px' }}>
-                  <button
-                    style={smBtn('success')}
-                    onClick={() => handleSave(i)}
-                    disabled={!valid || saving}
-                  >
-                    {saving ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : null}
-                    Save
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-// ── Calibrate Modal ────────────────────────────────────────────────────────────
-
-interface CalibrateModalProps {
-  summary: FeedbackSummaryResponse;
-  onClose: () => void;
-}
-
-const CAL_STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  NOT_STARTED:  { bg: '#F5F6F8', text: '#5A6070', border: '#E4E6EC' },
-  UNDER_REVIEW: { bg: '#FFF8E6', text: '#633806', border: '#F5D48A' },
-  ADJUSTED:     { bg: '#EEF3FD', text: '#0C447C', border: '#BFD4F5' },
-  APPROVED:     { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
-  LOCKED:       { bg: '#F0F1F5', text: '#9EA3B0', border: '#D0D3DC' },
-};
-
-const CalStatusBadge = ({ status }: { status?: CalibrationStatus | null }) => {
-  if (!status) return null;
-  const c = CAL_STATUS_COLORS[status] ?? CAL_STATUS_COLORS.NOT_STARTED;
-  return (
-    <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: c.bg, color: c.text, border: `0.5px solid ${c.border}`, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-      {status.replace('_', ' ')}
-    </span>
-  );
-};
-
-const CalibrateModal = ({ summary, onClose }: CalibrateModalProps) => {
-  const [calibratedScore, setCalibratedScore] = useState<string>(
-    summary.calibratedFinalScore != null ? String(summary.calibratedFinalScore) : '',
-  );
-  const [managerSummaryText, setManagerSummaryText] = useState(summary.managerSummary ?? '');
-  const [reason, setReason] = useState(summary.calibrationReason ?? '');
-  const [postManagerSummary, { isLoading: isSavingManagerSummary }] = usePostManagerSummaryMutation();
-  const [adjustScore, { isLoading: isAdjusting }] = useAdjustSummaryScoreMutation();
-  const isLoading = isSavingManagerSummary || isAdjusting;
-
-  const handleSave = async () => {
-    if (!summary.summaryId) return;
-    const hasScore = calibratedScore !== '';
-    const parsed = hasScore ? parseFloat(calibratedScore) : NaN;
-    if (hasScore && (isNaN(parsed) || parsed < 0 || parsed > 100)) {
-      toast.error('Score must be between 0 and 100'); return;
-    }
-    if (hasScore && !reason.trim()) {
-      toast.error('Calibration reason is required when setting a score'); return;
-    }
-    try {
-      if (hasScore) {
-        await adjustScore({ summaryId: summary.summaryId, calibratedFinalScore: parsed, calibrationReason: reason.trim() }).unwrap();
-      }
-      if (managerSummaryText !== (summary.managerSummary ?? '')) {
-        await postManagerSummary({ summaryId: summary.summaryId, managerSummary: managerSummaryText }).unwrap();
-      }
-      toast.success('Calibration saved.');
-      onClose();
-    } catch (e: any) {
-      toast.error(e?.data?.message || 'Failed to save calibration.');
-    }
-  };
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-    }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{
-        background: '#FFFFFF', borderRadius: 14, width: '100%', maxWidth: 520,
-        border: '0.5px solid #E4E6EC', boxShadow: '0 12px 40px rgba(0,0,0,0.14)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '0.5px solid #E4E6EC' }}>
-          <p style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>
-            Calibrate — {summary.targetUserName}
-          </p>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9EA3B0' }}>
-            <X size={18} />
-          </button>
-        </div>
-        <div style={{ padding: '20px 20px 0' }}>
-          <div style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 4 }}>
-              System Score (pre-calibration)
-            </p>
-            <p style={{ fontSize: 20, fontWeight: 700, color: '#111827' }}>
-              {summary.totalAverageScore.toFixed(2)}
-            </p>
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Calibrated Final Score (0–100, optional)</label>
-            <input
-              type="number" min={0} max={100} step={0.01}
-              value={calibratedScore}
-              onChange={(e) => setCalibratedScore(e.target.value)}
-              placeholder="e.g. 82.50"
-              style={inputStyle}
-            />
-          </div>
-          {calibratedScore !== '' && (
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Calibration Reason *</label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={2}
-                placeholder="Explain why the score is being adjusted…"
-                style={{ ...inputStyle, resize: 'vertical' }}
-              />
-            </div>
-          )}
-          <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>Manager Summary</label>
-            <textarea
-              value={managerSummaryText}
-              onChange={(e) => setManagerSummaryText(e.target.value)}
-              rows={4}
-              placeholder="Overall narrative for this employee's 360° results…"
-              style={{ ...inputStyle, resize: 'vertical' }}
-            />
-          </div>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '14px 20px', borderTop: '0.5px solid #E4E6EC' }}>
-          <button style={{ ...smBtn('neutral'), padding: '7px 14px', fontSize: 13 }} onClick={onClose}>Cancel</button>
-          <button style={primaryBtn(isLoading)} onClick={handleSave} disabled={isLoading}>
-            {isLoading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : null}
-            Save Calibration
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ── Summary row ────────────────────────────────────────────────────────────────
-
-const ScorePill = ({ score }: { score: number }) => (
-  <span style={{
-    fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 20,
-    background: score >= 4 ? '#EAF3DE' : score >= 3 ? '#FAEEDA' : '#FCEBEB',
-    color: score >= 4 ? '#27500A' : score >= 3 ? '#633806' : '#791F1F',
-  }}>
-    {score.toFixed(2)}
-  </span>
-);
-
-interface SummaryRowProps {
-  summary: FeedbackSummaryResponse;
-  isExpanded: boolean;
-  cycleLocked: boolean;
-  onToggle: () => void;
-  onFinalize: () => void;
-  onCalibrate: () => void;
-  isFinalizing: boolean;
-  cycleId: number;
-}
-
-const SummaryRow = ({ summary, isExpanded, cycleLocked, onToggle, onFinalize, onCalibrate, isFinalizing, cycleId }: SummaryRowProps) => {
-  const displayScore = summary.calibratedFinalScore ?? summary.totalAverageScore;
-  const [downloadReport, { isLoading: isDownloading }] = useDownloadReportMutation();
-
-  const handleDownloadPDF = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await downloadReport({
-        endpoint: 'feedback-360',
-        params: { targetUserId: summary.targetUserId, cycleId },
-        fileName: `Feedback_360_Report_${summary.targetUserName}.pdf`,
-      }).unwrap();
-      toast.success('Feedback report downloaded successfully.');
-    } catch {
-      toast.error('Failed to download individual feedback report.');
-    }
-  };
-
-  return (
-    <div style={{ border: '0.5px solid #E4E6EC', borderRadius: 10, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#FAFBFC', cursor: 'pointer' }} onClick={onToggle}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0 }}>{summary.targetUserName}</p>
-          {summary.calibratedFinalScore != null && (
-            <p style={{ fontSize: 11, color: '#9EA3B0', margin: '2px 0 0' }}>
-              Pre-calibration: {summary.totalAverageScore.toFixed(2)}
-            </p>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 12, color: '#9EA3B0' }}>Overall</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#111827', background: '#F5F6F8', padding: '2px 8px', borderRadius: 6 }}>
-            {displayScore.toFixed(2)}
-          </span>
-          <CalStatusBadge status={summary.calibrationStatus} />
-          {summary.calibratedFinalScore != null && !summary.calibrationStatus && (
-            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: '#EEF3FD', color: '#1A56DB' }}>
-              Calibrated
-            </span>
-          )}
-          {summary.summaryId && (
-            <button
-              style={{ ...smBtn('neutral'), display: 'flex', alignItems: 'center', gap: 4 }}
-              onClick={handleDownloadPDF}
-              disabled={isDownloading}
-              title="Download Individual 360 PDF Report"
-            >
-              {isDownloading ? (
-                <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />
-              ) : (
-                <FileDown size={11} />
-              )}
-              Report PDF
-            </button>
-          )}
-          {!cycleLocked && (
-            <button
-              style={smBtn('neutral')}
-              onClick={(e) => { e.stopPropagation(); onCalibrate(); }}
-              disabled={!summary.summaryId}
-              title="Calibrate score and write manager summary"
-            >
-              <Edit3 size={11} />
-              {summary.calibratedFinalScore != null || summary.managerSummary ? 'Edit Calibration' : 'Calibrate'}
-            </button>
-          )}
-          {summary.isFinalized ? (
-            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#EAF3DE', color: '#27500A' }}>
-              Finalized
-            </span>
-          ) : !cycleLocked ? (
-            <button
-              style={smBtn('success')}
-              onClick={(e) => { e.stopPropagation(); onFinalize(); }}
-              disabled={isFinalizing || !summary.summaryId}
-              title="Finalize this summary for employee viewing"
-            >
-              {isFinalizing ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={11} />}
-              Finalize
-            </button>
-          ) : null}
-          {isExpanded ? <ChevronUp size={14} color="#9EA3B0" /> : <ChevronDown size={14} color="#9EA3B0" />}
-        </div>
-      </div>
-
-      {isExpanded && (
-        <div style={{ padding: '14px 16px', background: '#FFFFFF', borderTop: '0.5px solid #E4E6EC' }}>
-          {summary.managerSummary && (
-            <div style={{ marginBottom: 12, padding: '10px 12px', background: '#F5F6F8', borderRadius: 8 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', margin: '0 0 4px' }}>Manager Summary</p>
-              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, margin: 0 }}>{summary.managerSummary}</p>
-            </div>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginBottom: 12 }}>
-            {[
-              { label: 'Manager', scores: summary.managerScores, color: '#1A56DB' },
-              { label: 'Peer', scores: summary.peerScores, color: '#7C3AED' },
-              { label: 'Subordinate', scores: summary.subordinateScores, color: '#059669' },
-              { label: 'Self', scores: summary.selfScores, color: '#D97706' },
-            ].map((group) => {
-              const a = group.scores?.length
-                ? group.scores.reduce((s, c) => s + c.averageScore, 0) / group.scores.length
-                : null;
-              return (
-                <div key={group.label} style={{ background: '#FAFBFC', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '8px 12px' }}>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: group.color, textTransform: 'uppercase', margin: '0 0 4px' }}>{group.label}</p>
-                  <p style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>
-                    {a !== null ? a.toFixed(2) : <span style={{ color: '#9EA3B0', fontSize: 13 }}>N/A</span>}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-          {summary.scores.length > 0 && (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: '0.5px solid #E4E6EC' }}>
-                  <th style={{ textAlign: 'left', padding: '4px 6px', color: '#5A6070', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Category</th>
-                  <th style={{ textAlign: 'right', padding: '4px 6px', color: '#5A6070', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Weighted</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.scores.map((c) => (
-                  <tr key={c.categoryName} style={{ borderBottom: '0.5px solid #F0F2F8' }}>
-                    <td style={{ padding: '5px 6px', color: '#374151' }}>{c.categoryName}</td>
-                    <td style={{ padding: '5px 6px', textAlign: 'right' }}>
-                      <ScorePill score={c.averageScore} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ── Preview table row ──────────────────────────────────────────────────────────
-
-interface PreviewRowProps {
-  req: FeedbackRequestResponse;
-  cycleLocked: boolean;
-  onRegenerate: () => void;
-  onCancel: () => void;
-  onReassign: () => void;
-  onRemind: () => void;
-  isReminding: boolean;
-}
-
-const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign, onRemind, isReminding }: PreviewRowProps) => {
-  const { user } = useAuth();
-  const isDone = req.status === FeedbackStatus.COMPLETED;
-  const [downloadReport, { isLoading: isPrinting }] = useDownloadReportMutation();
-
-  const isMyRow = req.targetUserId === user?.id;
-  const shouldHide = isMyRow
-    && req.isAnonymous
-    && (req.relationship === 'PEER' || req.relationship === 'SUBORDINATE');
-
-  const handlePrint = async () => {
-    if (!req.id) return;
-    try {
-      await downloadReport({
-        endpoint: 'feedback-360/print-form',
-        params: { requestId: req.id },
-        fileName: `Feedback_360_Form_${req.id}.pdf`,
-      }).unwrap();
-      toast.success('Paper form downloaded successfully.');
-    } catch {
-      toast.error('Failed to download paper form.');
-    }
-  };
-
-  return (
-    <tr style={{
-      borderBottom: '0.5px solid #F0F2F8',
-      background: req.isReciprocalFallback ? '#FFFBEB' : 'transparent',
-    }}>
-      <td style={{ padding: '8px 10px', fontWeight: 500, color: '#111827' }}>{req.targetUserName}</td>
-      <td style={{ padding: '8px 10px', color: shouldHide ? '#9EA3B0' : '#374151', fontStyle: shouldHide ? 'italic' : 'normal' }}>
-        {shouldHide ? 'Anonymous' : req.evaluatorName}
-      </td>
-      <td style={{ padding: '8px 10px' }}><RelBadge rel={req.relationship} /></td>
-      <td style={{ padding: '8px 10px' }}><StatusBadge status={req.status} /></td>
-      <td style={{ padding: '8px 10px', color: '#9EA3B0', fontSize: 12 }}>
-        {req.dueDate ? req.dueDate.slice(0, 10) : '—'}
-        {req.isReciprocalFallback && (
-          <span
-            title="No rotated evaluator available — using last cycle's evaluator as fallback"
-            style={{ marginLeft: 6, fontSize: 10, color: '#D97706', fontWeight: 600 }}
-          >
-            Fallback
-          </span>
-        )}
-      </td>
-      <td style={{ padding: '8px 10px' }}>
-        {!cycleLocked && (
-          <div style={{ display: 'flex', gap: 4 }}>
-            <button style={smBtn('neutral')} onClick={onRegenerate}>
-              <RefreshCw size={10} /> Regen
-            </button>
-            {!isDone && (
-              <>
-                <button
-                  style={{ ...smBtn('neutral'), opacity: (req.id && !shouldHide) ? 1 : 0.45, cursor: (req.id && !shouldHide) ? 'pointer' : 'not-allowed' }}
-                  onClick={onReassign}
-                  disabled={!req.id || shouldHide}
-                  title={shouldHide ? 'Cannot reassign your own anonymous evaluator' : !req.id ? 'Click Generate to enable per-row actions' : undefined}
-                >
-                  <Edit3 size={10} /> Reassign
-                </button>
-                <button
-                  style={{ ...smBtn('danger'), opacity: (req.id && !shouldHide) ? 1 : 0.45, cursor: (req.id && !shouldHide) ? 'pointer' : 'not-allowed' }}
-                  onClick={onCancel}
-                  disabled={!req.id || shouldHide}
-                  title={shouldHide ? 'Cannot cancel your own anonymous evaluator' : !req.id ? 'Click Generate to enable per-row actions' : undefined}
-                >
-                  <X size={10} /> Cancel
-                </button>
-              </>
-            )}
-            {(req.status === FeedbackStatus.PENDING || req.status === FeedbackStatus.IN_PROGRESS) && req.id && (
-              <button
-                style={{ ...smBtn('neutral'), background: '#FEF3C7', color: '#92400E', borderColor: '#FCD34D' }}
-                onClick={onRemind}
-                disabled={isReminding}
-                title="Send immediate reminder notification to this evaluator"
-              >
-                {isReminding ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} /> : <Mail size={10} />}
-                Remind
-              </button>
-            )}
-            {req.id && (
-              <button
-                style={{ ...smBtn('neutral'), background: '#ECFDF5', color: '#065F46', borderColor: '#A7F3D0' }}
-                onClick={handlePrint}
-                disabled={isPrinting}
-              >
-                {isPrinting ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} /> : <FileDown size={10} />}
-                Print Form
-              </button>
-            )}
-          </div>
-        )}
-      </td>
-    </tr>
-  );
-};
-
-// ── Reassign modal ─────────────────────────────────────────────────────────────
-
-interface ReassignModalProps {
-  requestId: number;
-  onClose: () => void;
-}
-
-const ReassignModal = ({ requestId, onClose }: ReassignModalProps) => {
-  const [newEvaluatorId, setNewEvaluatorId] = useState('');
-  const [reassign, { isLoading }] = useReassignFeedbackRequestMutation();
-
-  const handleSave = async () => {
-    const id = parseInt(newEvaluatorId);
-    if (!id) return toast.error('Enter a valid employee ID.');
-    try {
-      await reassign({ requestId, newEvaluatorId: id }).unwrap();
-      toast.success('Request reassigned.');
-      onClose();
-    } catch {
-      toast.error('Reassignment failed.');
-    }
-  };
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{ background: '#FFFFFF', borderRadius: 12, width: 380, border: '0.5px solid #E4E6EC', boxShadow: '0 12px 40px rgba(0,0,0,0.14)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '0.5px solid #E4E6EC' }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: 0 }}>Reassign Request</p>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9EA3B0' }}><X size={16} /></button>
-        </div>
-        <div style={{ padding: '16px 18px' }}>
-          <label style={labelStyle}>New Evaluator Employee ID</label>
-          <input
-            type="number"
-            value={newEvaluatorId}
-            onChange={(e) => setNewEvaluatorId(e.target.value)}
-            placeholder="Enter employee ID"
-            style={inputStyle}
-          />
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 18px', borderTop: '0.5px solid #E4E6EC' }}>
-          <button style={{ ...smBtn('neutral'), padding: '7px 14px', fontSize: 13 }} onClick={onClose}>Cancel</button>
-          <button style={primaryBtn(isLoading)} onClick={handleSave} disabled={isLoading}>
-            {isLoading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : null}
-            Reassign
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ── Form slots ─────────────────────────────────────────────────────────────────
-
-const REL_SLOTS: Array<{ rel: string; label: string; color: string }> = [
-  { rel: 'DIRECT_MANAGER', label: 'Manager → Target', color: '#1A56DB' },
-  { rel: 'PEER', label: 'Peer → Target', color: '#7C3AED' },
-  { rel: 'SUBORDINATE', label: 'Subordinate → Target', color: '#059669' },
-  { rel: 'SELF', label: 'Self-Assessment', color: '#D97706' },
-];
-
-interface FeedbackFormSlotsProps { cycleId: number; }
-
-const FeedbackFormSlots = ({ cycleId }: FeedbackFormSlotsProps) => {
-  const navigate = useNavigate();
-  const { data: forms = [], isLoading } = useGetFeedbackFormsByCycleQuery(cycleId, { skip: !cycleId });
-
-  const byRel: Record<string, AppraisalForm | undefined> = {};
-  forms.forEach((f) => { if (f.targetRelationship) byRel[f.targetRelationship] = f; });
-
-  const filled = REL_SLOTS.filter((s) => byRel[s.rel]).length;
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div>
-          <p style={sectionTitle}>360° Feedback Forms</p>
-          <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: -12, marginBottom: 0 }}>
-            Each relationship type needs its own form. {filled}/4 slots filled.
-          </p>
-        </div>
-      </div>
-      {isLoading ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', padding: '8px 0' }}>
-          <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-          <span style={{ fontSize: 13 }}>Loading forms…</span>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-          {REL_SLOTS.map(({ rel, label, color }) => {
-            const form = byRel[rel];
-            return (
-              <div key={rel} style={{
-                border: `0.5px solid ${form ? '#A7F3D0' : '#E4E6EC'}`,
-                borderRadius: 10,
-                padding: '14px 16px',
-                background: form ? '#F0FDF4' : '#FAFBFC',
-                display: 'flex', flexDirection: 'column', gap: 8,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{label}</span>
-                  {form && <CheckCircle size={13} color="#059669" style={{ marginLeft: 'auto' }} />}
-                </div>
-                {form ? (
-                  <>
-                    <p style={{ fontSize: 12, color: '#374151', margin: 0, fontWeight: 500 }}>{form.formName}</p>
-                    <button
-                      style={{ ...smBtn('neutral'), fontSize: 11, padding: '5px 10px', alignSelf: 'flex-start' }}
-                      onClick={() => navigate(`/appraisal-forms/design?edit=true&formId=${form.formId}&type=FEEDBACK&cycleId=${cycleId}&relationship=${rel}`)}
-                    >
-                      <Edit3 size={10} /> Edit Form
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p style={{ fontSize: 11, color: '#9EA3B0', margin: 0 }}>No form assigned</p>
-                    <button
-                      style={{ ...smBtn('neutral'), fontSize: 11, padding: '5px 10px', alignSelf: 'flex-start', background: '#EEF3FD', color: '#1A56DB', borderColor: '#BFCFFA' }}
-                      onClick={() => navigate(`/appraisal-forms/design?type=FEEDBACK&cycleId=${cycleId}&relationship=${rel}`)}
-                    >
-                      <Plus size={10} /> Create Form
-                    </button>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-      {filled < 4 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, padding: '8px 12px', background: '#FFFBEB', border: '0.5px solid #FDE68A', borderRadius: 8 }}>
-          <AlertCircle size={13} color="#D97706" />
-          <span style={{ fontSize: 12, color: '#92400E' }}>
-            {4 - filled} form{4 - filled !== 1 ? 's' : ''} missing — Generate will use a generic fallback form for those relationships.
-          </span>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ── Cycle Dashboard Tab (Step 3) ──────────────────────────────────────────────
-
-interface CycleDashboardTabProps {
-  cycleId: number;
-}
-
-const CycleDashboardTab = ({ cycleId }: CycleDashboardTabProps) => {
-  const { data: dashboard, isLoading, error } = useGetFeedbackCycleDashboardQuery(cycleId, { skip: !cycleId });
-
-  if (!cycleId) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', fontSize: 13, padding: '20px 0' }}>
-        <AlertCircle size={15} /> Select a Cycle above to view the dashboard.
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0', padding: '24px 0' }}>
-        <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-        <span style={{ fontSize: 13 }}>Loading cycle dashboard metrics…</span>
-      </div>
-    );
-  }
-
-  if (error || !dashboard) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#EF4444', fontSize: 13, padding: '20px 0' }}>
-        <AlertCircle size={15} /> Failed to load cycle dashboard metrics. Make sure feedback requests are generated for this cycle.
-      </div>
-    );
-  }
-
-  const statCard = (title: string, value: string | number, sub: string, icon: React.ReactNode, bg: string, color: string) => (
-    <div style={{
-      ...panel, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderRadius: 10, flex: 1, minWidth: 160
-    }}>
-      <div>
-        <p style={{ fontSize: 12, fontWeight: 500, color: '#5A6070', margin: '0 0 6px 0' }}>{title}</p>
-        <p style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0 }}>{value}</p>
-        <p style={{ fontSize: 11, color: '#9EA3B0', margin: '4px 0 0 0' }}>{sub}</p>
-      </div>
-      <div style={{ width: 38, height: 38, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
-        {icon}
-      </div>
-    </div>
-  );
-
-  const getRelationshipColor = (rel: string) => {
-    switch (rel) {
-      case 'DIRECT_MANAGER': return '#1A56DB';
-      case 'PEER': return '#7C3AED';
-      case 'SUBORDINATE': return '#059669';
-      case 'SELF': return '#D97706';
-      default: return '#5A6070';
-    }
-  };
-
-  const formatRelName = (rel: string) => {
-    return rel.replace('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Stat Cards Grid */}
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        {statCard(
-          'Submission Rate',
-          `${dashboard.submissionRate}%`,
-          'Overall completion rate',
-          <BarChart3 size={18} />,
-          '#EEF3FD',
-          '#1A56DB'
-        )}
-        {statCard(
-          'Total Requests',
-          dashboard.totalRequests,
-          'Total feedback slots assigned',
-          <FileText size={18} />,
-          '#F3F4F6',
-          '#374151'
-        )}
-        {statCard(
-          'Completed Feedback',
-          dashboard.submittedRequests,
-          'Submitted responses',
-          <CheckCircle2 size={18} />,
-          '#ECFDF5',
-          '#059669'
-        )}
-        {statCard(
-          'Overdue Requests',
-          dashboard.overdueRequests,
-          'Past due date requests',
-          <Clock size={18} />,
-          dashboard.overdueRequests > 0 ? '#FEF2F2' : '#F9FAFB',
-          dashboard.overdueRequests > 0 ? '#DC2626' : '#9EA3B0'
-        )}
-        {statCard(
-          'Pending / In Progress',
-          dashboard.pendingRequests,
-          'On schedule requests',
-          <Loader2 size={18} style={{ animation: dashboard.pendingRequests > 0 ? 'spin 2s linear infinite' : 'none' }} />,
-          '#FFFBEB',
-          '#D97706'
-        )}
-        {statCard(
-          'Target Employees',
-          dashboard.totalTargets,
-          'Receiving feedback',
-          <Users size={18} />,
-          '#F5F3FF',
-          '#7C3AED'
-        )}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
-        {/* Left Side: Relationship Submission Rates */}
-        <div style={panel}>
-          <p style={sectionTitle}>Submission Rate by Relationship</p>
-          {Object.keys(dashboard.relationshipRates).length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9EA3B0', margin: 0 }}>No relationship submission stats available.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {Object.entries(dashboard.relationshipRates).map(([rel, rate]) => {
-                const color = getRelationshipColor(rel);
-                return (
-                  <div key={rel} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 500 }}>
-                      <span style={{ color: '#374151' }}>{formatRelName(rel)}</span>
-                      <span style={{ color: color }}>{rate}%</span>
-                    </div>
-                    <div style={{ height: 8, background: '#E5E7EB', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{ width: `${rate}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.5s ease-out' }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Right Side: Top Bottlenecks */}
-        <div style={panel}>
-          <p style={sectionTitle}>Evaluator Bottlenecks</p>
-          {dashboard.bottlenecks.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 0', color: '#9EA3B0', gap: 6 }}>
-              <CheckCircle2 size={24} color="#059669" />
-              <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>No outstanding bottleneck evaluators!</p>
-              <p style={{ fontSize: 11, margin: 0 }}>All pending reviews are nicely distributed.</p>
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #E4E6EC', background: '#FAFBFC' }}>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 600, color: '#5A6070', fontSize: 11, textTransform: 'uppercase' }}>Evaluator</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 600, color: '#5A6070', fontSize: 11, textTransform: 'uppercase' }}>Department</th>
-                    <th style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 600, color: '#5A6070', fontSize: 11, textTransform: 'uppercase' }}>Pending</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dashboard.bottlenecks.map((b) => (
-                    <tr key={b.evaluatorId} style={{ borderBottom: '0.5px solid #E4E6EC' }}>
-                      <td style={{ padding: '8px 10px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 500, color: '#111827' }}>{b.evaluatorName}</span>
-                          <span style={{ fontSize: 11, color: '#9EA3B0', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Mail size={10} /> {b.evaluatorEmail}
-                          </span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '8px 10px', color: '#5A6070' }}>{b.departmentName}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                        <span style={{
-                          fontSize: 12, fontWeight: 600, padding: '3px 8px', borderRadius: 12,
-                          background: '#FEF2F2', color: '#DC2626', border: '0.5px solid #FEE2E2'
-                        }}>
-                          {b.pendingCount}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ── Main page ──────────────────────────────────────────────────────────────────
+import CalibrateModal from './components/CalibrateModal';
+import ConfirmModal from './components/ConfirmModal';
+import CycleDashboardTab from './components/CycleDashboardTab';
+import CycleSettings from './components/CycleSettings';
+import FeedbackFormSlots from './components/FeedbackFormSlots';
+import PaginationControls from './components/PaginationControls';
+import PreviewRow from './components/PreviewRow';
+import ReassignModal from './components/ReassignModal';
+import ScoringPolicyEditor from './components/ScoringPolicyEditor';
+import SummaryRow from './components/SummaryRow';
+import { inputStyle, panel, primaryBtn, secondaryBtn, sectionTitle } from './constants/styles';
+import { useFeedback360Actions } from './hooks/useFeedback360Actions';
 
 const Feedback360AdminPage = () => {
   const navigate = useNavigate();
@@ -996,17 +40,10 @@ const Feedback360AdminPage = () => {
   const [calibrateTarget, setCalibrateTarget] = useState<FeedbackSummaryResponse | null>(null);
   const [reassignRequestId, setReassignRequestId] = useState<number | null>(null);
 
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-    confirmBtnText?: string;
-    confirmBtnBg?: string;
-  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
-
   const [hasGenerated, setHasGenerated] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'setup' | 'assignments' | 'summaries'>('dashboard');
+  const [assignmentPage, setAssignmentPage] = useState(1);
+  const [assignmentPageSize, setAssignmentPageSize] = useState(10);
 
   const { data: savedRequests = [] } = useListRequestsByCycleQuery(cycleId, { skip: !cycleId });
 
@@ -1014,173 +51,52 @@ const Feedback360AdminPage = () => {
     if (savedRequests.length > 0) setHasGenerated(true);
   }, [savedRequests.length]);
 
-  const [previewTrigger, { data: previewData, isFetching: isPreviewing }] = useLazyPreviewFeedbackRequestsQuery();
-  const [generate, { isLoading: isGenerating }] = useGenerateFeedbackRequestsMutation();
-  const [generateSummaries, { isLoading: isGeneratingSummaries }] = useGenerateAllSummariesMutation();
-  const [finalizeSummary, { isLoading: isFinalizing }] = useFinalizeSummaryMutation();
-  const [regenerateUser] = useRegenerateUserRequestsMutation();
-  const [cancelRequest] = useCancelFeedbackRequestMutation();
-
-  const [sendCycleReminders, { isLoading: isSendingCycleReminders }] = useSendFeedbackCycleRemindersMutation();
-  const [sendIndividualReminder, { isLoading: isSendingIndividualReminder }] = useSendIndividualFeedbackReminderMutation();
-
   const { data: summaries, isLoading: summariesLoading } = useGetAllSummariesByCycleQuery(
     cycleId, { skip: !cycleId },
   );
 
-  const [downloadReport, { isLoading: isDownloadingReport }] = useDownloadReportMutation();
-  const [downloadManagerPack, { isLoading: isDownloadingPack }] = useDownloadReportMutation();
-
   const { data: allEmployees = [] } = useGetAllEmployeesQuery();
   const [selectedManagerId, setSelectedManagerId] = useState<string>('');
 
-  const handleDownloadSummaryReport = async () => {
-    if (!cycleId) return toast.error('Please select a cycle.');
-    try {
-      await downloadReport({
-        endpoint: 'feedback-360/cycle',
-        params: { cycleId },
-        fileName: `Feedback_360_Cycle_${cycleId}_Summary.pdf`,
-      }).unwrap();
-      toast.success('Summary report downloaded successfully.');
-    } catch {
-      toast.error('Failed to download summary report.');
-    }
-  };
-
-  const handleDownloadManagerPack = async () => {
-    if (!cycleId) return toast.error('Please select a cycle.');
-    if (!selectedManagerId) return toast.error('Please select a manager.');
-    try {
-      await downloadManagerPack({
-        endpoint: 'feedback-360/manager',
-        params: { managerId: Number(selectedManagerId), cycleId },
-        fileName: `Feedback_360_Manager_Pack_Cycle_${cycleId}_Manager_${selectedManagerId}.pdf`,
-      }).unwrap();
-      toast.success('Manager Review Pack downloaded successfully.');
-    } catch {
-      toast.error('Failed to download Manager Review Pack.');
-    }
-  };
-
   const cycleLocked = !!(summaries && summaries.length > 0 && summaries.every((s) => s.isFinalized));
+  const selectedCycle = cycles.find((c) => c.cycleId === cycleId);
 
-  const selectedCycle = cycles.find(c => c.cycleId === cycleId);
-
-  const buildParams = () => ({
+  const {
+    confirmModal,
+    closeConfirmModal,
+    previewData,
+    isPreviewing,
+    isGenerating,
+    isGeneratingSummaries,
+    isFinalizing,
+    isSendingCycleReminders,
+    isSendingIndividualReminder,
+    isDownloadingReport,
+    isDownloadingPack,
+    handleDownloadSummaryReport,
+    handleDownloadManagerPack,
+    handlePreview,
+    handleGenerate,
+    handleGenerateSummaries,
+    handleFinalize,
+    handleRegenerate,
+    handleCancel,
+    handleSendCycleReminders,
+    handleSendIndividualReminder,
+  } = useFeedback360Actions({
     cycleId,
-    previousCycleId: previousCycleId ? Number(previousCycleId) : undefined,
+    previousCycleId,
     globalMaxLimit,
     excludeLongTermLeave,
+    selectedCycle,
+    selectedManagerId,
+    setShowPreview,
+    setHasGenerated,
   });
 
-  const handlePreview = async () => {
-    if (!cycleId) return toast.error('Please enter a cycle ID.');
-    if (!selectedCycle?.isActive) {
-      return toast.error('Only active cycles can be previewed.');
-    }
-    setShowPreview(true);
-    try {
-      await previewTrigger(buildParams()).unwrap();
-    } catch (err: any) {
-      toast.error(err?.data?.message || 'Preview failed.');
-    }
-  };
-
-  const handleGenerate = async () => {
-    if (!cycleId) return toast.error('Please enter a cycle ID.');
-    setConfirmModal({
-      isOpen: true,
-      title: 'Generate Feedback Requests',
-      message: `Generate feedback requests for cycle ${cycleId}? This may overwrite existing PENDING requests.`,
-      onConfirm: async () => {
-        try {
-          await generate(buildParams()).unwrap();
-          toast.success('Requests generated.');
-          setHasGenerated(true);
-        } catch { toast.error('Generation failed.'); }
-      },
-      confirmBtnText: 'Generate',
-      confirmBtnBg: '#1A56DB'
-    });
-  };
-
-  const handleGenerateSummaries = async () => {
-    if (!cycleId) return toast.error('Please enter a cycle ID.');
-    setConfirmModal({
-      isOpen: true,
-      title: 'Generate All Summaries',
-      message: `Generate all summaries for cycle ${cycleId}?`,
-      onConfirm: async () => {
-        try { await generateSummaries(cycleId).unwrap(); toast.success('Summaries generated.'); } catch { toast.error('Failed.'); }
-      },
-      confirmBtnText: 'Generate',
-      confirmBtnBg: '#1A56DB'
-    });
-  };
-
-  const handleFinalize = async (summaryId: number) => {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Finalize Summary',
-      message: 'Finalize this summary? It will be visible to the employee.',
-      onConfirm: async () => {
-        try { await finalizeSummary(summaryId).unwrap(); toast.success('Finalized.'); } catch { toast.error('Finalization failed.'); }
-      },
-      confirmBtnText: 'Finalize',
-      confirmBtnBg: '#059669'
-    });
-  };
-
-  const handleRegenerate = async (req: FeedbackRequestResponse) => {
-    try {
-      await regenerateUser({ targetEmployeeId: req.targetUserId, cycleId, globalMaxLimit, previousCycleId: previousCycleId ? Number(previousCycleId) : undefined }).unwrap();
-      toast.success('Requests regenerated.');
-    } catch (err: any) {
-      toast.error(err?.data?.message || 'Regeneration failed. Run Generate first.');
-    }
-  };
-
-  const handleCancel = async (requestId: number) => {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Cancel Feedback Request',
-      message: 'Cancel this feedback request?',
-      onConfirm: async () => {
-        try { await cancelRequest(requestId).unwrap(); toast.success('Request cancelled.'); } catch { toast.error('Cancellation failed.'); }
-      },
-      confirmBtnText: 'Cancel Request',
-      confirmBtnBg: '#791F1F'
-    });
-  };
-
-  const handleSendCycleReminders = async () => {
-    if (!cycleId) return toast.error('Please select a cycle.');
-    setConfirmModal({
-      isOpen: true,
-      title: 'Send Cycle Reminders',
-      message: 'Send urgent feedback reminders to all pending/in-progress evaluators of this cycle?',
-      onConfirm: async () => {
-        try {
-          await sendCycleReminders(cycleId).unwrap();
-          toast.success('Cycle reminders sent successfully.');
-        } catch {
-          toast.error('Failed to send cycle reminders.');
-        }
-      },
-      confirmBtnText: 'Send Reminders',
-      confirmBtnBg: '#D97706'
-    });
-  };
-
-  const handleSendIndividualReminder = async (requestId: number) => {
-    try {
-      await sendIndividualReminder(requestId).unwrap();
-      toast.success('Reminder sent to evaluator.');
-    } catch {
-      toast.error('Failed to send reminder.');
-    }
-  };
+  useEffect(() => {
+    setAssignmentPage(1);
+  }, [cycleId, hasGenerated, showPreview, savedRequests.length, previewData?.length]);
 
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1249,63 +165,18 @@ const Feedback360AdminPage = () => {
         </div>
       </div>
 
-      {/* Cycle selector */}
-      <div style={panel}>
-        <p style={sectionTitle}>Cycle Settings</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
-          <div>
-            <label style={labelStyle}>Active Cycle *</label>
-            {cyclesLoading ? (
-              <select style={inputStyle} disabled><option>Loading cycles…</option></select>
-            ) : (
-              <select
-                style={inputStyle}
-                value={cycleId || ''}
-                onChange={(e) => setCycleId(Number(e.target.value) || 0)}
-              >
-                <option value="">-- Select Cycle --</option>
-                {cycles.map((c) => (
-                  <option key={c.cycleId} value={c.cycleId}>
-                    {c.cycleName} (ID: {c.cycleId})
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-          <div>
-            <label style={labelStyle}>Previous Cycle</label>
-            {cyclesLoading ? (
-              <select style={inputStyle} disabled><option>Loading cycles…</option></select>
-            ) : (
-              <select
-                style={inputStyle}
-                value={previousCycleId}
-                onChange={(e) => setPreviousCycleId(e.target.value)}
-              >
-                <option value="">-- None / Select Previous Cycle --</option>
-                {cycles
-                  .filter((c) => c.cycleId !== cycleId)
-                  .map((c) => (
-                    <option key={c.cycleId} value={String(c.cycleId)}>
-                      {c.cycleName} (ID: {c.cycleId})
-                    </option>
-                  ))}
-              </select>
-            )}
-          </div>
-          <div>
-            <label style={labelStyle}>Max Evaluators per Person</label>
-            <input type="number" style={inputStyle} value={globalMaxLimit} min={1} max={20} onChange={(e) => setGlobalMaxLimit(Number(e.target.value))} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={labelStyle}>Exclude Long-Term Leave</label>
-            <div style={{ display: 'flex', alignItems: 'center', height: 36 }}>
-              <input type="checkbox" id="excludeLTL" checked={excludeLongTermLeave} onChange={(e) => setExcludeLongTermLeave(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              <label htmlFor="excludeLTL" style={{ fontSize: 13, color: '#5A6070', marginLeft: 8, cursor: 'pointer' }}>Yes</label>
-            </div>
-          </div>
-        </div>
-      </div>
+      <CycleSettings
+        cycles={cycles}
+        cyclesLoading={cyclesLoading}
+        cycleId={cycleId}
+        previousCycleId={previousCycleId}
+        globalMaxLimit={globalMaxLimit}
+        excludeLongTermLeave={excludeLongTermLeave}
+        setCycleId={setCycleId}
+        setPreviousCycleId={setPreviousCycleId}
+        setGlobalMaxLimit={setGlobalMaxLimit}
+        setExcludeLongTermLeave={setExcludeLongTermLeave}
+      />
 
       {/* Tabs Navigation */}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #E4E6EC', paddingBottom: 8, marginTop: 10 }}>
@@ -1427,6 +298,9 @@ const Feedback360AdminPage = () => {
           {/* Request table — preview or saved */}
           {(showPreview || hasGenerated) && (() => {
             const rows: FeedbackRequestResponse[] = hasGenerated ? savedRequests : (previewData ?? []);
+            const totalPages = Math.max(1, Math.ceil(rows.length / assignmentPageSize));
+            const currentPage = Math.min(assignmentPage, totalPages);
+            const pagedRows = rows.slice((currentPage - 1) * assignmentPageSize, currentPage * assignmentPageSize);
             return (
               <div style={panel}>
                 <p style={sectionTitle}>{hasGenerated ? 'Generated Assignments' : 'Preview — Assignments'}</p>
@@ -1453,9 +327,9 @@ const Feedback360AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.map((req, idx) => (
+                        {pagedRows.map((req, idx) => (
                           <PreviewRow
-                            key={req.id ?? `preview-${idx}`}
+                            key={req.id ?? `preview-${(currentPage - 1) * assignmentPageSize + idx}`}
                             req={req}
                             cycleLocked={cycleLocked}
                             onRegenerate={() => handleRegenerate(req)}
@@ -1467,9 +341,16 @@ const Feedback360AdminPage = () => {
                         ))}
                       </tbody>
                     </table>
-                    <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 10 }}>
-                      {rows.length} assignment{rows.length !== 1 ? 's' : ''} {hasGenerated ? 'saved' : 'previewed'}.
-                    </p>
+                    <PaginationControls
+                      currentPage={currentPage}
+                      pageSize={assignmentPageSize}
+                      totalItems={rows.length}
+                      onPageChange={setAssignmentPage}
+                      onPageSizeChange={(nextPageSize) => {
+                        setAssignmentPageSize(nextPageSize);
+                        setAssignmentPage(1);
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -1587,56 +468,7 @@ const Feedback360AdminPage = () => {
       {reassignRequestId !== null && (
         <ReassignModal requestId={reassignRequestId} onClose={() => setReassignRequestId(null)} />
       )}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
-          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '24px', maxWidth: 400, width: '100%' }}>
-            <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <AlertTriangle size={16} style={{ color: '#D97706' }} />
-              </div>
-              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', margin: 0 }}>{confirmModal.title}</p>
-            </div>
-            <p style={{ fontSize: 13, color: '#5A6070', marginBottom: 20 }}>{confirmModal.message}</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                style={{
-                  flex: 1,
-                  background: '#F5F6F8',
-                  color: '#111827',
-                  border: '0.5px solid #E0E2E8',
-                  borderRadius: 8,
-                  padding: '8px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  confirmModal.onConfirm();
-                  setConfirmModal({ ...confirmModal, isOpen: false });
-                }}
-                style={{
-                  flex: 1,
-                  background: confirmModal.confirmBtnBg || '#791F1F',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '8px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: 'pointer'
-                }}
-              >
-                {confirmModal.confirmBtnText || 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal confirmModal={confirmModal} onClose={closeConfirmModal} />
     </div>
   );
 };

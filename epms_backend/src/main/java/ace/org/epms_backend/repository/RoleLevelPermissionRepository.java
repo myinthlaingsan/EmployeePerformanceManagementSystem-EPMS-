@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RoleLevelPermissionRepository extends JpaRepository<RoleLevelPermission, Long> {
@@ -20,6 +21,7 @@ public interface RoleLevelPermissionRepository extends JpaRepository<RoleLevelPe
 
     boolean existsByRoleAndLevelAndPermission(Role role, JobLevel level, Permission permission);
     boolean existsByPermission(Permission permission);
+    Optional<RoleLevelPermission> findByRoleAndLevelAndPermission(Role role, JobLevel level, Permission permission);
 
     List<RoleLevelPermission> findByRole_RoleIdAndLevel_LevelId(Long roleId, Long levelId);
 }
