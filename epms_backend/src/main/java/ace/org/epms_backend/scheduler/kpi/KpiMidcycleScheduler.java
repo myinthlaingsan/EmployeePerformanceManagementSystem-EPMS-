@@ -1,9 +1,11 @@
 package ace.org.epms_backend.scheduler.kpi;
 
 import ace.org.epms_backend.dto.notification.NotificationEvent;
+import ace.org.epms_backend.enums.CycleStatus;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.PhaseStatus;
 import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.kpi.KpiGoalPhase;
 import ace.org.epms_backend.repository.KpiGoalPhaseRepository;
@@ -28,11 +30,12 @@ public class KpiMidcycleScheduler {
 
     @Scheduled(cron = "${kpi.midcycle.scheduler.cron:0 0 1 * * ?}")
     public void checkPendingKpiAssignments() {
+        LocalDate today = LocalDate.now();
         List<KpiGoalPhase> openPhases = phaseRepository.findAll().stream()
                 .filter(p -> p.getStatus() == PhaseStatus.OPEN && p.getGoalSet() == null)
+                .filter(p -> isCycleOpenForMidcycle(p.getCycle(), today))
                 .toList();
 
-        LocalDate today = LocalDate.now();
         int alertThresholdDays = 3;
 
         for (KpiGoalPhase phase : openPhases) {
@@ -55,5 +58,19 @@ public class KpiMidcycleScheduler {
                 }
             }
         }
+    }
+
+    private boolean isCycleOpenForMidcycle(AppraisalCycle cycle, LocalDate today) {
+        if (cycle == null || cycle.getStartDate() == null || cycle.getEndDate() == null) {
+            return false;
+        }
+
+        boolean active = Boolean.TRUE.equals(cycle.getIsActive());
+        boolean inAllowedStatus = cycle.getStatus() == CycleStatus.PLANNING
+                || cycle.getStatus() == CycleStatus.IN_PROGRESS
+                || cycle.getStatus() == CycleStatus.EVALUATION;
+        boolean todayInsideCycle = !today.isBefore(cycle.getStartDate()) && !today.isAfter(cycle.getEndDate());
+
+        return active && inAllowedStatus && todayInsideCycle;
     }
 }

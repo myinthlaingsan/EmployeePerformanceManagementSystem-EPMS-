@@ -29,6 +29,13 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
 }) => {
   const [triggerChange, { isLoading }] = useTriggerMidcycleChangeMutation();
 
+  const toDateInputValue = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const { data: internalSummaryResponse } = useGetMidcycleSummaryQuery(
     { employeeId, cycleId },
     { skip: !!summary || !employeeId || !cycleId }
@@ -45,19 +52,22 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
   // Min date: currentPhaseStartDate + 1 day
   const minDateObj = new Date(currentPhaseStartDate);
   minDateObj.setDate(minDateObj.getDate() + 1);
-  const minDateStr = minDateObj.toISOString().split('T')[0];
+  const minDateStr = toDateInputValue(minDateObj);
 
-  // Max date: cycleEndDate - 1 day
-  const maxDateObj = new Date(cycleEndDate);
-  maxDateObj.setDate(maxDateObj.getDate() - 1);
-  const maxDateStr = maxDateObj.toISOString().split('T')[0];
+  // Max date: earlier of today and cycleEndDate - 1 day
+  const cycleMaxDateObj = new Date(cycleEndDate);
+  cycleMaxDateObj.setDate(cycleMaxDateObj.getDate() - 1);
+  const todayObj = new Date();
+  const maxDateObj = cycleMaxDateObj < todayObj ? cycleMaxDateObj : todayObj;
+  const maxDateStr = toDateInputValue(maxDateObj);
 
   // Selected date defaults to minDateStr
   const [changeDate, setChangeDate] = useState(minDateStr);
   const [changeReason, setChangeReason] = useState('');
+  const hasValidDateRange = minDateStr <= maxDateStr;
+  const currentPhaseStartsInFuture = currentPhaseStartDate > toDateInputValue(new Date());
 
   // Live preview metrics
-  const [totalCycleDays, setTotalCycleDays] = useState(0);
   const [currentPhaseDays, setCurrentPhaseDays] = useState(0);
   const [currentPhaseWeight, setCurrentPhaseWeight] = useState(0);
   const [nextPhaseDays, setNextPhaseDays] = useState(0);
@@ -71,6 +81,16 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
   };
 
   useEffect(() => {
+    if (!hasValidDateRange) {
+      setChangeDate('');
+      return;
+    }
+
+    if (!changeDate || changeDate < minDateStr || changeDate > maxDateStr) {
+      setChangeDate(maxDateStr);
+      return;
+    }
+
     if (cycleStartDate && cycleEndDate && changeDate) {
       const total = getDaysBetween(cycleStartDate, cycleEndDate);
       const current = getDaysBetween(currentPhaseStartDate, changeDate);
@@ -81,18 +101,21 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
       const nextStartStr = nextStart.toISOString().split('T')[0];
       const next = getDaysBetween(nextStartStr, cycleEndDate);
 
-      setTotalCycleDays(total);
       setCurrentPhaseDays(current);
       setCurrentPhaseWeight(Math.round((current / total) * 100));
       setNextPhaseDays(next);
       setNextPhaseWeight(Math.round((next / total) * 100));
     }
-  }, [changeDate, cycleStartDate, cycleEndDate, currentPhaseStartDate]);
+  }, [changeDate, cycleStartDate, cycleEndDate, currentPhaseStartDate, hasValidDateRange, minDateStr, maxDateStr]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!changeReason.trim()) {
       toast.warning('Please enter a change reason.');
+      return;
+    }
+    if (!hasValidDateRange || !changeDate) {
+      toast.warning('No valid change date is available yet.');
       return;
     }
 
@@ -172,6 +195,7 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
               max={maxDateStr}
               value={changeDate}
               onChange={(e) => setChangeDate(e.target.value)}
+              disabled={!hasValidDateRange}
               style={{
                 width: '100%',
                 padding: '8px 12px',
@@ -183,11 +207,16 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
               required
             />
             <p style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
-              Date boundary where Phase {currentPhaseNumber} ends. Phase {currentPhaseNumber + 1} begins on the next day.
+              {hasValidDateRange
+                ? `Date boundary where Phase ${currentPhaseNumber} ends. Phase ${currentPhaseNumber + 1} begins on the next day.`
+                : currentPhaseStartsInFuture
+                  ? `No valid date is available yet. The current phase starts on ${new Date(currentPhaseStartDate).toLocaleDateString()}, which is still in the future.`
+                  : 'No valid date is available yet. The change date cannot be in the future.'}
             </p>
           </div>
 
           {/* Live Weight Split Preview */}
+          {hasValidDateRange && changeDate && (
           <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', padding: '12px' }}>
             <span style={{ fontSize: '11px', fontWeight: 600, color: '#1E40AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Phase Split Preview
@@ -203,6 +232,7 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
               </div>
             </div>
           </div>
+          )}
 
           {/* Reason Textarea */}
           <div>
@@ -254,7 +284,7 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !hasValidDateRange}
               style={{
                 background: '#1A56DB',
                 color: '#FFFFFF',

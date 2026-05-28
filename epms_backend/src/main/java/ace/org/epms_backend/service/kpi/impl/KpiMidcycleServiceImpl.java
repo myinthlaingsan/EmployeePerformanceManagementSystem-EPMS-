@@ -7,6 +7,7 @@ import ace.org.epms_backend.dto.kpi.MidcycleSummaryResponse;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.AuditAction;
 import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.enums.CycleStatus;
 import ace.org.epms_backend.enums.KpiGoalStatus;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.PhaseStatus;
@@ -75,6 +76,13 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         AppraisalCycle cycle = cycleRepository.findById(cycleId)
                 .orElseThrow(() -> new NotFoundException("Appraisal cycle not found"));
+
+        ensureCycleAllowsMidcycleChange(cycle);
+
+        LocalDate today = LocalDate.now();
+        if (changeDate.isAfter(today)) {
+            throw new IllegalArgumentException("Change date cannot be in the future. Latest allowed date is " + today);
+        }
 
         if (changeDate.isBefore(cycle.getStartDate()) || changeDate.isAfter(cycle.getEndDate().minusDays(1))) {
             throw new IllegalArgumentException("Change date must be between cycle start date (" 
@@ -397,5 +405,16 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_MANAGER")
                         || a.getAuthority().equals("ROLE_HR")
                         || a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private void ensureCycleAllowsMidcycleChange(AppraisalCycle cycle) {
+        boolean active = Boolean.TRUE.equals(cycle.getIsActive());
+        boolean allowedStatus = cycle.getStatus() == CycleStatus.PLANNING
+                || cycle.getStatus() == CycleStatus.IN_PROGRESS
+                || cycle.getStatus() == CycleStatus.EVALUATION;
+
+        if (!active || !allowedStatus) {
+            throw new IllegalStateException("Midcycle changes are only allowed for active appraisal cycles.");
+        }
     }
 }
