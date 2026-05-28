@@ -52,7 +52,7 @@ public class KpiMidcycleScheduler {
                             .message("Reminder: Please assign performance goals for " + employee.getStaffName() 
                                     + " for Phase " + phase.getPhaseNumber() + " which started on " + phase.getPhaseStartDate() + ".")
                             .referenceType(ReferenceType.KPI)
-                            .referenceId(phase.getId())
+                            .referenceId(null)
                             .actionUrl("/kpi/management")
                             .build());
                 }

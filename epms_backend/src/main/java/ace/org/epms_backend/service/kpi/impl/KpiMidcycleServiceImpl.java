@@ -100,35 +100,36 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         int nextPhaseNumber = 1;
 
         if (openPhaseOpt.isEmpty()) {
-            boolean hasPhases = phaseRepository.existsByEmployee_IdAndCycle_CycleId(employeeId, cycleId);
-            if (hasPhases) {
-                throw new IllegalStateException("No open phase found but historical phases exist.");
-            }
-
             KpiGoals currentGoalSet = goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
                     .orElseThrow(() -> new NotFoundException("No active goal set found for this employee and cycle. Please assign KPIs first."));
 
-            currentPhase = KpiGoalPhase.builder()
-                    .employee(employee)
-                    .cycle(cycle)
-                    .goalSet(currentGoalSet)
-                    .phaseNumber(1)
-                    .phaseStartDate(cycle.getStartDate())
-                    .status(PhaseStatus.OPEN)
-                    .build();
-            
-            nextPhaseNumber = 2;
+            List<KpiGoalPhase> existingPhases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId);
+            if (!existingPhases.isEmpty()) {
+                currentPhase = createOpenPhaseAfterLatest(employee, cycle, currentGoalSet, existingPhases);
+                nextPhaseNumber = currentPhase.getPhaseNumber() + 1;
+            } else {
+                currentPhase = KpiGoalPhase.builder()
+                        .employee(employee)
+                        .cycle(cycle)
+                        .goalSet(currentGoalSet)
+                        .phaseNumber(1)
+                        .phaseStartDate(cycle.getStartDate())
+                        .status(PhaseStatus.OPEN)
+                        .build();
+
+                nextPhaseNumber = 2;
+            }
         } else {
             currentPhase = openPhaseOpt.get();
             nextPhaseNumber = currentPhase.getPhaseNumber() + 1;
 
-            if (changeDate.isBefore(currentPhase.getPhaseStartDate())) {
-                throw new IllegalArgumentException("Change date cannot be before current phase start date (" + currentPhase.getPhaseStartDate() + ")");
-            }
-
             if (currentPhase.getGoalSet() == null) {
                 throw new IllegalStateException("Cannot trigger midcycle change: No goal set has been assigned to the current phase yet.");
             }
+        }
+
+        if (changeDate.isBefore(currentPhase.getPhaseStartDate())) {
+            throw new IllegalArgumentException("Change date cannot be before current phase start date (" + currentPhase.getPhaseStartDate() + ")");
         }
 
         currentPhase.setPhaseEndDate(changeDate);
@@ -179,7 +180,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                     .message("A midcycle change was triggered for " + employee.getStaffName() 
                             + ". Please assign KPIs for the new phase starting on " + changeDate.plusDays(1) + ".")
                     .referenceType(ReferenceType.KPI)
-                    .referenceId(newPhase.getId())
+                    .referenceId(goalSet.getId())
                     .actionUrl("/kpi/management")
                     .build());
         }
@@ -379,14 +380,33 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
     @Transactional
     public void linkGoalSetToOpenPhase(Long employeeId, Long cycleId, Long goalSetId) {
         Optional<KpiGoalPhase> openPhaseOpt = phaseRepository.findByEmployee_IdAndCycle_CycleIdAndStatus(employeeId, cycleId, PhaseStatus.OPEN);
+        KpiGoals goalSet = goalsRepository.findById(goalSetId)
+                .orElseThrow(() -> new NotFoundException("Goal set not found"));
+        if (!goalSet.getEmployee().getId().equals(employeeId) || !goalSet.getCycle().getCycleId().equals(cycleId)) {
+            return;
+        }
+
         if (openPhaseOpt.isPresent()) {
             KpiGoalPhase openPhase = openPhaseOpt.get();
             if (openPhase.getGoalSet() == null) {
-                KpiGoals goalSet = goalsRepository.findById(goalSetId)
-                        .orElseThrow(() -> new NotFoundException("Goal set not found"));
                 openPhase.setGoalSet(goalSet);
                 phaseRepository.save(openPhase);
             }
+            return;
+        }
+
+        List<KpiGoalPhase> existingPhases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId);
+        if (!existingPhases.isEmpty()) {
+            createOpenPhaseAfterLatest(goalSet.getEmployee(), goalSet.getCycle(), goalSet, existingPhases);
+        } else {
+            phaseRepository.save(KpiGoalPhase.builder()
+                .employee(goalSet.getEmployee())
+                .cycle(goalSet.getCycle())
+                .goalSet(goalSet)
+                .phaseNumber(1)
+                .phaseStartDate(goalSet.getCycle().getStartDate())
+                .status(PhaseStatus.OPEN)
+                .build());
         }
     }
 
@@ -416,5 +436,28 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         if (!active || !allowedStatus) {
             throw new IllegalStateException("Midcycle changes are only allowed for active appraisal cycles.");
         }
+    }
+
+    private KpiGoalPhase createOpenPhaseAfterLatest(
+            Employee employee,
+            AppraisalCycle cycle,
+            KpiGoals goalSet,
+            List<KpiGoalPhase> existingPhases) {
+
+        KpiGoalPhase latestPhase = existingPhases.get(existingPhases.size() - 1);
+        LocalDate nextStartDate = latestPhase.getPhaseEndDate() != null
+                ? latestPhase.getPhaseEndDate().plusDays(1)
+                : latestPhase.getPhaseStartDate();
+
+        KpiGoalPhase recoveredPhase = KpiGoalPhase.builder()
+                .employee(employee)
+                .cycle(cycle)
+                .goalSet(goalSet)
+                .phaseNumber(latestPhase.getPhaseNumber() + 1)
+                .phaseStartDate(nextStartDate)
+                .status(PhaseStatus.OPEN)
+                .build();
+
+        return phaseRepository.save(recoveredPhase);
     }
 }
