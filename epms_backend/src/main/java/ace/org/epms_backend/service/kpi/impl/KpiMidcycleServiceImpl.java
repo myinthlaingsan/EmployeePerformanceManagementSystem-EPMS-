@@ -18,6 +18,7 @@ import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.kpi.KpiFinalScore;
 import ace.org.epms_backend.model.kpi.KpiGoalPhase;
 import ace.org.epms_backend.model.kpi.KpiGoals;
+import ace.org.epms_backend.model.kpi.KpiHistoryLog;
 import ace.org.epms_backend.model.kpi.KpiMidcycleFinalScore;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.AppraisalRepository;
@@ -25,6 +26,7 @@ import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.KpiFinalScoreRepository;
 import ace.org.epms_backend.repository.KpiGoalPhaseRepository;
 import ace.org.epms_backend.repository.KpiGoalsRepository;
+import ace.org.epms_backend.repository.KpiHistoryLogRepository;
 import ace.org.epms_backend.repository.KpiMidcycleFinalScoreRepository;
 import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.kpi.KpiGoalService;
@@ -56,6 +58,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
     private final KpiGoalPhaseRepository phaseRepository;
     private final KpiMidcycleFinalScoreRepository midcycleFinalScoreRepository;
     private final KpiFinalScoreRepository finalScoreRepository;
+    private final KpiHistoryLogRepository historyRepo;
     private final EmployeeRepository employeeRepository;
     private final AppraisalCycleRepository cycleRepository;
     private final AppraisalRepository appraisalRepository;
@@ -184,6 +187,19 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                     .actionUrl("/kpi/management")
                     .build());
         }
+
+        historyRepo.save(KpiHistoryLog.builder()
+                .employeeId(employee.getId())
+                .goalSetId(goalSet.getId())
+                .action("MID_CYCLE_EVENT")
+                .changeReason(request.getChangeReason())
+                .changeDetails("Midcycle KPI split triggered for " + employee.getStaffName()
+                        + ". Phase " + currentPhase.getPhaseNumber() + " closed on " + changeDate
+                        + " with score " + currentPhase.getPhaseScore()
+                        + ". Phase " + newPhase.getPhaseNumber() + " opened on " + newPhase.getPhaseStartDate()
+                        + " and is waiting for KPI assignment.")
+                .changedBy(currentUser.getId())
+                .build());
         
         auditService.log(AuditRequest.builder()
                 .tableName("kpi_goal_phases")

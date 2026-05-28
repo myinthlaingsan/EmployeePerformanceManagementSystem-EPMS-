@@ -17,7 +17,7 @@ public interface KpiAuditLogQueryRepository extends JpaRepository<KpiHistoryLog,
     @Query("""
         SELECT h FROM KpiHistoryLog h
         WHERE h.goalSetId IN (
-            SELECT g.id FROM KpiGoals g WHERE g.cycle.cycleId = :cycleId AND g.isCurrent = true
+            SELECT g.id FROM KpiGoals g WHERE g.cycle.cycleId = :cycleId
         )
         AND (:action IS NULL OR h.action = :action)
         ORDER BY h.createdAt DESC
