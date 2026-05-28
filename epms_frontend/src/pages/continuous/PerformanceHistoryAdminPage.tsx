@@ -72,9 +72,13 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
   const uniqueFeedbacksPerMonth = new Map<string, Set<number>>();
 
   history.forEach(h => {
-    const date = new Date(h.createdAt);
-    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-    const monthData = chartData.find(m => m.month === date.getMonth() && m.year === date.getFullYear());
+    if (!h.createdAt) return;
+    const datePart = h.createdAt.split('T')[0];
+    const [yStr, mStr] = datePart.split('-');
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10) - 1;
+    const monthKey = `${year}-${month}`;
+    const monthData = chartData.find(m => m.month === month && m.year === year);
     
     if (monthData) {
       if (h.sourceType === 'MEETING') {
@@ -100,16 +104,36 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
     }
   });
 
+  // Current-month slot used as a fallback bucket for undated items
+  const currentMonthSlot = chartData.length > 0 ? chartData[chartData.length - 1] : null;
+
   actionItems.forEach(ai => {
     if (ai.dueDate) {
-      const dueDate = new Date(ai.dueDate);
-      const monthData = chartData.find(m => m.month === dueDate.getMonth() && m.year === dueDate.getFullYear());
-      if (monthData) monthData.totalActionItems++;
+      const [yStr, mStr] = ai.dueDate.split('-');
+      const year = parseInt(yStr, 10);
+      const month = parseInt(mStr, 10) - 1;
+      const monthData = chartData.find(m => m.month === month && m.year === year);
+      if (monthData) {
+        monthData.totalActionItems++;
+      } else if (currentMonthSlot) {
+        // Due date is outside the chart time range — still count it in current month
+        currentMonthSlot.totalActionItems++;
+      }
+    } else if (currentMonthSlot) {
+      // No due date set — bucket in current month so it isn't silently lost
+      currentMonthSlot.totalActionItems++;
     }
     if (ai.status === 'DONE' && ai.completedAt) {
-      const completedDate = new Date(ai.completedAt);
-      const monthData = chartData.find(m => m.month === completedDate.getMonth() && m.year === completedDate.getFullYear());
-      if (monthData) monthData.actionItemsCompleted++;
+      const datePart = ai.completedAt.split('T')[0];
+      const [yStr, mStr] = datePart.split('-');
+      const year = parseInt(yStr, 10);
+      const month = parseInt(mStr, 10) - 1;
+      const monthData = chartData.find(m => m.month === month && m.year === year);
+      if (monthData) {
+        monthData.actionItemsCompleted++;
+      } else if (currentMonthSlot) {
+        currentMonthSlot.actionItemsCompleted++;
+      }
     }
   });
 
@@ -255,6 +279,7 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
                   ) : (
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-3 justify-between"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" /> Meetings</div><span className="font-black">{m.meetings}</span></div>
+                      <div className="flex items-center gap-3 justify-between"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-400" /> Total Tasks</div><span className="font-black">{m.totalActionItems}</span></div>
                       <div className="flex items-center gap-3 justify-between"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /> Tasks Done</div><span className="font-black">{m.actionItemsCompleted}</span></div>
                     </div>
                   )}
