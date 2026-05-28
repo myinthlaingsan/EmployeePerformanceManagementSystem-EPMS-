@@ -199,7 +199,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                     className={({ isActive }) => navCls(isActive)}
                     onClick={handleNavClick}
                   >
-                    My Pending
+                    Feedback Requests
                   </NavLink>
                 )}
                 {hasPermission("FEEDBACK360_VIEW_REPORT") && (

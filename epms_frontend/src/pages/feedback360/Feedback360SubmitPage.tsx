@@ -555,21 +555,6 @@ const Feedback360SubmitPage: React.FC = () => {
                         {cat.categoryName}
                       </p>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <span style={{ fontSize: 12, color: '#9EA3B0' }}>
-                        {catAnswered.length} / {catRequired.length}
-                      </span>
-                      <div style={{ width: 100, background: '#F0F2F6', borderRadius: 4, height: 5, overflow: 'hidden' }}>
-                        <div style={{
-                          height: '100%', borderRadius: 4,
-                          background: catPct === 100 ? '#059669' : '#1A56DB',
-                          width: `${catPct}%`, transition: 'width 0.3s',
-                        }} />
-                      </div>
-                      <span style={{ fontSize: 12, color: catPct === 100 ? '#059669' : '#9EA3B0', fontWeight: 600, minWidth: 32, textAlign: 'right' }}>
-                        {catPct}%
-                      </span>
-                    </div>
                   </div>
 
                   {/* Questions */}
