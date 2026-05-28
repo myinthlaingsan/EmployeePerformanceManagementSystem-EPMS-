@@ -233,16 +233,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                     Admin Panel
                   </NavLink>
                 )}
-                {hasPermission("FEEDBACK360_MANAGE") && (
-                  <NavLink
-                    to="/360-feedback/admin/competencies"
-                    style={{ padding: "7px 10px" }}
-                    className={({ isActive }) => navCls(isActive)}
-                    onClick={handleNavClick}
-                  >
-                    Competencies
-                  </NavLink>
-                )}
+
               </div>
             )}
           </div>

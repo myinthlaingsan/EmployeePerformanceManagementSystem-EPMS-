@@ -4,10 +4,12 @@ import Feedback360AdminPage from '../pages/feedback360/Feedback360AdminPage';
 import Feedback360CompetencyPage from '../pages/feedback360/Feedback360CompetencyPage';
 import Feedback360NominationsPage from '../pages/feedback360/Feedback360NominationsPage';
 import Feedback360CalibrationPage from '../pages/feedback360/Feedback360CalibrationPage';
+import Feedback360SubmitPage from '../pages/feedback360/Feedback360SubmitPage';
 
 export const feedback360Routes = [
   // All authenticated users
   { path: '/360-feedback/pending',              element: <Feedback360PendingPage />,       adminOnly: false },
+  { path: '/360-feedback/submit',               element: <Feedback360SubmitPage />,         adminOnly: false },
   { path: '/360-feedback/my-report',            element: <Feedback360ReportPage />,        adminOnly: false },
   { path: '/360-feedback/team-reports/:empId',  element: <Feedback360ReportPage />,        adminOnly: false }, // manager view
   { path: '/360-feedback/nominations',          element: <Feedback360NominationsPage />,   adminOnly: false }, // Phase 4
