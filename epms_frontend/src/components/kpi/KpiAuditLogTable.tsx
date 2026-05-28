@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { format } from 'date-fns';
 import { AlertCircle, MessageSquare, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { KpiAuditLogResponse } from '../../features/kpi/kpiAuditTypes';
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 interface KpiAuditLogTableProps {
   logs: KpiAuditLogResponse[];
@@ -157,7 +157,7 @@ const KpiAuditLogTable: React.FC<KpiAuditLogTableProps> = ({
                     style={{ borderBottom: '0.5px solid #E4E6EC' }}
                   >
                     <td style={{ padding: '14px 18px', fontSize: 12, color: '#111827' }}>
-                      {format(new Date(log.createdAt), 'yyyy-MM-dd HH:mm')}
+                      {formatRelativeTime(log.createdAt)}
                     </td>
                     <td style={{ padding: '14px 18px', fontSize: 12, fontWeight: 500, color: '#111827' }}>
                       {log.employeeName}
@@ -261,7 +261,7 @@ const KpiAuditLogTable: React.FC<KpiAuditLogTableProps> = ({
                   {selectedLog.action.replaceAll('_', ' ')}
                 </span>
                 <span style={{ fontSize: 12, color: '#9EA3B0' }}>
-                  {format(new Date(selectedLog.createdAt), 'dd MMM yyyy, h:mm a')}
+                  {formatRelativeTime(selectedLog.createdAt)}
                 </span>
               </div>
 

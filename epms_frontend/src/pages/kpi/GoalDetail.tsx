@@ -20,6 +20,7 @@ import { Can } from '../../components/Can';
 import { useGetMidcycleSummaryQuery } from '../../services/midcycleApi';
 import { MidcyclePhaseTimeline } from '../../features/kpi/MidcyclePhaseTimeline';
 import { MidcycleChangeModal } from '../../features/kpi/MidcycleChangeModal';
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 const STEPS = [
   { id: 'DRAFT', label: 'Draft', icon: CheckCircle2 },
@@ -106,16 +107,6 @@ const GoalDetail: React.FC = () => {
     setShowLockConfirm(true);
   };
 
-  // Helper: human-friendly age (days/weeks/months/years)
-  const getTimeAgo = (dateStr: string): string => {
-    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000);
-    if (days < 1) return 'today';
-    if (days < 7) return `${days}d ago`;
-    if (days < 30) return `${Math.floor(days / 7)}w ago`;
-    if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-    return `${Math.floor(days / 365)}y ago`;
-  };
-
   if (isLoading) return (
     <div style={{ padding: '48px 24px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading goal details…</div>
   );
@@ -172,9 +163,7 @@ const GoalDetail: React.FC = () => {
                 },
                 {
                   label: 'Assigned',
-                  value: goalSet.assignedAt
-                    ? `${new Date(goalSet.assignedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${getTimeAgo(goalSet.assignedAt)}`
-                    : '—'
+                  value: formatRelativeTime(goalSet.assignedAt) || '—'
                 },
               ].map(({ label, value }) => (
                 <div key={label}>
@@ -315,7 +304,7 @@ const GoalDetail: React.FC = () => {
               <Award size={12} />
               Score calculated — {finalScore.weightedScore.toFixed(1)} / 100
               <span style={{ color: '#5A7A3A', fontWeight: 400 }}>
-                · {new Date(finalScore.calculatedAt).toLocaleDateString()}
+                · {formatRelativeTime(finalScore.calculatedAt)}
               </span>
             </div>
           ) : (
@@ -439,7 +428,7 @@ const GoalDetail: React.FC = () => {
                             item.verifiedAt ? (
                               <div style={{ fontSize: 10, color: '#27500A', background: '#EAF3DE', border: '0.5px solid #B8DCA0', borderRadius: 6, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <ShieldCheck size={11} />
-                                Verified {item.verifiedBy ? `by ${item.verifiedBy}` : ''} {new Date(item.verifiedAt).toLocaleDateString()}
+                                Verified {item.verifiedBy ? `by ${item.verifiedBy}` : ''} {formatRelativeTime(item.verifiedAt)}
                               </div>
                             ) : (
                               <button
@@ -492,7 +481,7 @@ const GoalDetail: React.FC = () => {
                   Achievement: {finalScore.totalAchievementPercent?.toFixed(1)}%
                 </p>
                 <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 4 }}>
-                  Last calculated {getTimeAgo(finalScore.calculatedAt)}
+                  Last calculated {formatRelativeTime(finalScore.calculatedAt)}
                 </p>
               </>
             ) : (

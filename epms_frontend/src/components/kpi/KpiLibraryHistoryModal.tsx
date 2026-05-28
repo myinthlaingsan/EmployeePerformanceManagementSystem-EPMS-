@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useGetLibraryHistoryQuery, useToggleHistoryStatusMutation, useDeleteLibraryMutation } from '../../services/kpiApi';
 import LibraryKpiTable from './LibraryKpiTable';
-import { format } from 'date-fns';
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 interface KpiLibraryHistoryModalProps {
   isOpen: boolean;
@@ -135,7 +135,7 @@ const KpiLibraryHistoryModal: React.FC<KpiLibraryHistoryModalProps> = ({
                         <div className="flex items-center gap-4 text-[11px] font-bold text-gray-400">
                           <span className="flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5" />
-                            {lib.updatedAt ? format(new Date(lib.updatedAt), 'MMM dd, yyyy HH:mm') : 'Unknown Date'}
+                            {formatRelativeTime(lib.updatedAt) || 'Unknown Date'}
                           </span>
                           <span className="flex items-center gap-1.5">
                             <FileText className="w-3.5 h-3.5" />
