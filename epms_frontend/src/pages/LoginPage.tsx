@@ -76,12 +76,9 @@ const LoginPage = () => {
 
             {/* Password */}
             <div>
-              <div className="flex justify-between items-center" style={{ marginBottom: 5 }}>
-                <label htmlFor="password" style={{ fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  Password
-                </label>
-                <Link to="/forgot-password" style={{ fontSize: 12, color: "#1A56DB" }}>Forgot password?</Link>
-              </div>
+              <label htmlFor="password" style={{ display: "block", fontSize: 11, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 5 }}>
+                Password
+              </label>
               <div className="relative">
                 <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#9EA3B0" }} />
                 <input
@@ -110,6 +107,11 @@ const LoginPage = () => {
                 <><LogIn size={14} aria-hidden="true" /> Sign in</>
               )}
             </button>
+
+            {/* Forgot password link moved here */}
+            <div className="text-center">
+              <Link to="/forgot-password" style={{ fontSize: 13, color: "#1A56DB" }}>Forgot password?</Link>
+            </div>
           </form>
         </div>
 

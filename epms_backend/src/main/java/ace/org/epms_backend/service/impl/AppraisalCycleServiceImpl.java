@@ -8,12 +8,17 @@ import ace.org.epms_backend.exception.ResourceNotFoundException;
 import ace.org.epms_backend.mapper.AppraisalCycleMapper;
 import ace.org.epms_backend.model.appraisal.Appraisal;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
+import ace.org.epms_backend.model.kpi.KpiGoals;
+import ace.org.epms_backend.model.kpi.KpiHistoryLog;
 import ace.org.epms_backend.repository.AppraisalCycleRepository;
 import ace.org.epms_backend.repository.AppraisalRepository;
+import ace.org.epms_backend.repository.KpiGoalsRepository;
+import ace.org.epms_backend.repository.KpiHistoryLogRepository;
 import ace.org.epms_backend.repository.appraisal.FinancialYearRepository;
 import ace.org.epms_backend.repository.ScoringWeightRepository;
 import ace.org.epms_backend.service.AppraisalCycleService;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
+import ace.org.epms_backend.enums.KpiGoalStatus;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +44,8 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
     private final AppraisalRepository appraisalRepository;
+    private final KpiGoalsRepository kpiGoalsRepository;
+    private final KpiHistoryLogRepository kpiHistoryLogRepository;
     private final ace.org.epms_backend.repository.appraisal.AppraisalFormSetRepository appraisalFormSetRepository;
     private final ace.org.epms_backend.service.AppraisalFormService appraisalFormService;
 
@@ -282,6 +290,8 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         
         rejectIfArchived(cycle, "close");
         
+        int lockedCount = lockDraftAndApprovedGoalSets(id);
+
         cycle.setIsActive(false);
         cycle.setStatus(CycleStatus.ARCHIVED);
         cycle = appraisalCycleRepository.save(cycle);
@@ -308,7 +318,9 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
-        return appraisalCycleMapper.toResponse(cycle);
+        AppraisalCycleResponse response = appraisalCycleMapper.toResponse(cycle);
+        response.setLockedGoalSetCount(lockedCount);
+        return response;
     }
 
     @Override
@@ -346,6 +358,31 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 "Cannot " + actionLabel + " cycle '" + cycle.getCycleName()
                 + "'. Archived cycles are permanently closed and cannot be reopened or modified.");
         }
+    }
+
+    private int lockDraftAndApprovedGoalSets(Long cycleId) {
+        List<KpiGoals> goalSets = kpiGoalsRepository.findByCycle_CycleIdAndStatusInAndIsCurrentTrue(
+                cycleId,
+                List.of(KpiGoalStatus.DRAFT, KpiGoalStatus.APPROVED)
+        );
+        if (goalSets.isEmpty()) {
+            return 0;
+        }
+
+        goalSets.forEach(goalSet -> goalSet.setStatus(KpiGoalStatus.LOCKED));
+        kpiGoalsRepository.saveAll(goalSets);
+
+        List<KpiHistoryLog> historyLogs = goalSets.stream()
+                .map(goalSet -> (KpiHistoryLog) KpiHistoryLog.builder()
+                        .goalSetId(goalSet.getId())
+                        .employeeId(goalSet.getEmployee() != null ? goalSet.getEmployee().getId() : null)
+                        .action("LOCKED")
+                        .changeReason("Cycle archived")
+                        .build())
+                .collect(Collectors.toList());
+        kpiHistoryLogRepository.saveAll(historyLogs);
+
+        return goalSets.size();
     }
 
     private void checkForActiveCycles(Long excludeCycleId) {
@@ -403,6 +440,9 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         if (!finalized.isEmpty()) {
             appraisalRepository.saveAll(finalized);
         }
+
+        // 1.b. Auto-lock DRAFT/APPROVED goal sets when the cycle is archived
+        lockDraftAndApprovedGoalSets(cycleId);
 
         // 2. Find any appraisals that are NOT finalized/archived (incomplete)
         List<Appraisal> incomplete = appraisalRepository.findByCycleIdAndStatusNotIn(

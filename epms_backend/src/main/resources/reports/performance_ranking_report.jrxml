@@ -8,6 +8,10 @@
 	<field name="rating" class="java.lang.String"/>
 	<field name="trend" class="java.lang.String"/>
 	<field name="isHighPerformer" class="java.lang.Boolean"/>
+	<variable name="ROW_COUNT" class="java.lang.Integer" calculation="Count">
+		<expression><![CDATA[$F{employeeName}]]></expression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
 	<title height="80">
 		<element kind="image" uuid="d654321a-da6c-490e-a08e-25cba038ec31" x="0" y="0" width="120" height="50">
 			<expression><![CDATA[$P{logoStream}]]></expression>
@@ -85,11 +89,22 @@
 		</band>
 	</detail>
 	<pageFooter height="30">
-		<element kind="textField" uuid="e5bba396-530e-4857-b52b-ea51e29848df" x="0" y="10" width="200" height="20" pattern="MMMMM dd, yyyy">
+		<element kind="textField" uuid="e5bba396-530e-4857-b52b-ea51e29848df" x="0" y="10" width="200" height="20" pattern="dd-MM-yyyy">
 			<expression><![CDATA[new java.util.Date()]]></expression>
 		</element>
 		<element kind="textField" uuid="568bfb95-42d5-480f-adec-f3fcf1ceb4e3" x="702" y="10" width="100" height="20" hTextAlign="Right">
 			<expression><![CDATA["Page " + $V{PAGE_NUMBER}]]></expression>
 		</element>
 	</pageFooter>
+	<summary height="30">
+		<element kind="line" uuid="summary-line" x="0" y="5" width="802" height="1">
+			<pen lineWidth="1.0" lineColor="#34495E"/>
+		</element>
+		<element kind="staticText" uuid="summary-label" x="0" y="10" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<text><![CDATA[Total Ranked Employees:]]></text>
+		</element>
+		<element kind="textField" uuid="summary-value" x="150" y="10" width="100" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<expression><![CDATA[$V{ROW_COUNT}]]></expression>
+		</element>
+	</summary>
 </jasperReport>
