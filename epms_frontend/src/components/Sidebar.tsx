@@ -354,7 +354,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         onClick={() => { navigate("/profile"); handleNavClick(); }}
       >
         <div
-          className="flex items-center justify-center shrink-0"
+          className="flex items-center justify-center shrink-0 overflow-hidden"
           style={{
             width: 28,
             height: 28,
@@ -365,7 +365,18 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             fontWeight: 500,
           }}
         >
-          {user?.staffName?.charAt(0) ?? "U"}
+          {user?.profileImage && user.profileImage !== "default.jpg" ? (
+            <img
+              src={`http://localhost:8080${user.profileImage}`}
+              alt={user?.staffName ?? "User"}
+              className="w-full h-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            user?.staffName?.charAt(0) ?? "U"
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="truncate" style={{ fontSize: 13, fontWeight: 500, color: "#111827", lineHeight: 1.2 }}>
