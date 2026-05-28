@@ -21,6 +21,7 @@ import {
   X,
   Repeat2,
   FileClock,
+  GraduationCap,
 } from "lucide-react";
 
 interface NavItem {
@@ -43,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true, hideForAdmin: true },
   { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true, hideForAdmin: true },
   { label: "PIP", to: "/pip", icon: TrendingUp, end: true },
+  { label: "Development Plans", to: "/idp", icon: GraduationCap, end: true },
   { label: "Analytics", to: "/analytics", icon: BarChart3, adminOnly: true },
   { label: "Audit Logs", to: "/audit-logs", icon: FileClock },
 ];
@@ -97,6 +99,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       case "Continuous Feedback": return hasPermission("CONTINUOUS_FEEDBACK");
       case "1-on-1 Meetings":     return hasPermission("MEETING_MANAGE");
       case "PIP":                 return hasPermission("PIP_VIEW_OWN") || hasPermission("PIP_CREATE");
+      case "Development Plans":   return true;
       case "Analytics":           return hasPermission("REPORT_VIEW_ALL");
       case "Audit Logs":          return isAdmin || hasRole("AUDIT_VIEWER");
       default:                    return true;

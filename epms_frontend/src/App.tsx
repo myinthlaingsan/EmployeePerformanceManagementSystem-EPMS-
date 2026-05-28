@@ -11,6 +11,7 @@ import {
   appraisalRoutes,
   adminRoutes,
   pipRoutes,
+  idpRoutes,
   generalRoutes,
   kpiRoutes,
   continuousRoutes,
@@ -87,6 +88,11 @@ const App = () => {
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
+            {/* IDP Routes */}
+            {idpRoutes.filter(r => r.path !== "/idp/new").map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
             {/* KPI General Routes */}
             {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId', '/kpi/team'].includes(r.path)).map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
@@ -120,6 +126,11 @@ const App = () => {
 
               {/* PIP Creation Route (Restricted) */}
               {pipRoutes.filter(r => r.adminOnly).map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+
+              {/* IDP Creation Route (HR/Admin only) */}
+              {idpRoutes.filter(r => r.path === "/idp/new").map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
 
