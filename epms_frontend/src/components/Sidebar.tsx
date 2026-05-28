@@ -20,6 +20,7 @@ import {
   Layers,
   X,
   Repeat2,
+  FileClock,
 } from "lucide-react";
 
 interface NavItem {
@@ -43,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true, hideForAdmin: true },
   { label: "PIP", to: "/pip", icon: TrendingUp, end: true },
   { label: "Analytics", to: "/analytics", icon: BarChart3, adminOnly: true },
+  { label: "Audit Logs", to: "/audit-logs", icon: FileClock },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
@@ -81,7 +83,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ onClose }: SidebarProps) => {
-  const { logout, isAdmin, isHR, user, hasPermission } = useAuth();
+  const { logout, isAdmin, isHR, user, hasPermission, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
@@ -96,6 +98,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       case "1-on-1 Meetings":     return hasPermission("MEETING_MANAGE");
       case "PIP":                 return hasPermission("PIP_VIEW_OWN") || hasPermission("PIP_CREATE");
       case "Analytics":           return hasPermission("REPORT_VIEW_ALL");
+      case "Audit Logs":          return isAdmin || hasRole("AUDIT_VIEWER");
       default:                    return true;
     }
   });

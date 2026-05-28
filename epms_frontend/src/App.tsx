@@ -18,6 +18,7 @@ import {
 } from "./routes";
 import { ActiveCycleProvider } from "./context/ActiveCycleContext";
 import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
+import AuditLogPage from './pages/admin/AuditLogPage';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -132,6 +133,11 @@ const App = () => {
             {/* Approvals — requires calibrate permission */}
             <Route element={<ProtectedRoute requiredPermissions={["APPRAISAL_CALIBRATE"]} />}>
               <Route path="/approvals" element={<ApprovalPage />} />
+            </Route>
+
+            {/* Audit Log Console */}
+            <Route element={<ProtectedRoute allowedRoles={["ADMIN", "AUDIT_VIEWER"]} />}>
+              <Route path="/audit-logs" element={<AuditLogPage />} />
             </Route>
           </Route>
         </Route>
