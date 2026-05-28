@@ -146,23 +146,20 @@ const KpiLibraryEntry: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-8">
-      {/* Breadcrumb */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#9EA3B0', display: 'flex', alignItems: 'center' }}
-          className="hover:text-[#111827] transition-colors">
-          <ChevronLeft size={15} />
-        </button>
-        <span style={{ fontSize: 12, color: '#9EA3B0' }}>KPI Library</span>
-        <span style={{ fontSize: 12, color: '#D1D5DB' }}>›</span>
-        <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>{isEdit ? 'Edit Entry' : 'New Entry'}</span>
-      </div>
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         style={{ paddingBottom: 14, borderBottom: '0.5px solid #E4E6EC' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>KPI Library Entry</h1>
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)}
+            style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.5px solid #E4E6EC', borderRadius: 8, background: '#FFFFFF', color: '#5A6070', flexShrink: 0 }}
+            className="hover:bg-[#F5F6F8] transition-colors">
+            <ChevronLeft size={16} />
+          </button>
+          <div>
+            <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>KPI Library Entry</h1>
+            <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>{isEdit ? 'Edit template goals and weights.' : 'Create a reusable KPI template.'}</p>
+          </div>
+        </div>
         <div className="flex gap-2 self-start sm:self-auto">
           <button
             onClick={() => navigate(-1)}
