@@ -6,7 +6,7 @@ import { Can } from '../../components/Can';
 
 const KpiHub: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isHR, isAdmin, activeCycleId, activeCycleName } = useAuth();
+  const { user, isHR, isAdmin, isManager, activeCycleId, activeCycleName } = useAuth();
 
   const { data: librariesResponse } = useGetAllLibrariesQuery();
   const libraries = librariesResponse?.data || [];
