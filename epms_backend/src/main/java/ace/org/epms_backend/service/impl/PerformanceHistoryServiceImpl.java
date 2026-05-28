@@ -299,7 +299,13 @@ public class PerformanceHistoryServiceImpl implements PerformanceHistoryService 
                 .collect(Collectors.toList());
 
         // 3. Get Action Items
-        List<MeetingActionItem> actionItems = actionItemRepository.findAllByDepartmentOrEmployee(finalDeptId, employeeId);
+        // When filtering by a specific employee, do NOT also filter by department.
+        // A manager can conduct meetings with employees from other departments, and
+        // using both deptId AND empId in the query would exclude those action items
+        // (the SQL requires m.employee.id to be in the department, which fails for
+        // cross-department meetings where the manager is from a different dept).
+        Long actionItemDeptId = (employeeId != null) ? null : finalDeptId;
+        List<MeetingActionItem> actionItems = actionItemRepository.findAllByDepartmentOrEmployee(actionItemDeptId, employeeId);
         if (employeeId != null && Boolean.TRUE.equals(onlyByManager)) {
             actionItems = actionItems.stream()
                     .filter(ai -> ai.getMeeting() != null && 
