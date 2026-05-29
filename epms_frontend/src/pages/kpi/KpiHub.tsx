@@ -28,7 +28,6 @@ const KpiHub: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ paddingBottom: 14, borderBottom: '0.5px solid #E4E6EC' }}>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise / Performance</p>
           <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>System Intelligence Hub</h1>
         </div>
         <div style={{ background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '6px 12px' }}>

@@ -310,11 +310,17 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-8">
-      <button onClick={() => safeNavigate(-1)}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#5A6070', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-        className="hover:text-[#111827] transition-colors">
-        <ChevronLeft size={14} /> Back
-      </button>
+      <div className="flex items-center gap-3">
+        <button onClick={() => safeNavigate(-1)}
+          style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.5px solid #E4E6EC', borderRadius: 8, background: '#FFFFFF', color: '#5A6070', flexShrink: 0 }}
+          className="hover:bg-[#F5F6F8] transition-colors">
+          <ChevronLeft size={16} />
+        </button>
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Goal Assignment Workspace</h1>
+          <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>Assign and manage employee KPI goals.</p>
+        </div>
+      </div>
 
       {/* Header */}
       <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 20px' }}
