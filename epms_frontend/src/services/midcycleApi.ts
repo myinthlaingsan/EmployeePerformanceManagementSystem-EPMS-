@@ -9,7 +9,9 @@ export const midcycleApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getMidcycleSummary: builder.query<ApiResponse<MidcycleSummaryResponse>, { employeeId: number; cycleId: number }>({
       query: ({ employeeId, cycleId }) => `/kpi/midcycle/${employeeId}/${cycleId}`,
-      providesTags: ['GoalSet'],
+      providesTags: (_result, _error, { employeeId, cycleId }) => [
+        { type: 'GoalSet', id: `midcycle-${employeeId}-${cycleId}` },
+      ],
     }),
     triggerMidcycleChange: builder.mutation<ApiResponse<void>, MidcycleChangeRequest>({
       query: (body) => ({
@@ -17,7 +19,10 @@ export const midcycleApi = api.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['GoalSet'],
+      invalidatesTags: (_result, _error, { employeeId, cycleId }) => [
+        'GoalSet',
+        { type: 'GoalSet', id: `midcycle-${employeeId}-${cycleId}` },
+      ],
     }),
     finalizeCompositeScore: builder.mutation<ApiResponse<void>, { employeeId: number; cycleId: number }>({
       query: ({ employeeId, cycleId }) => ({
