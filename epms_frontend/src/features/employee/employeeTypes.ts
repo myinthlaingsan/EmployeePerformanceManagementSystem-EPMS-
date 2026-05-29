@@ -48,6 +48,7 @@ export interface EmployeeImportResult {
 }
 
 export interface SetPasswordRequest {
+  token: string;
   password: string;
 }
 

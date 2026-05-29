@@ -163,10 +163,10 @@ export const employeeApi = api.injectEndpoints({
 
     setPassword: builder.mutation<
       void,
-      { token: string; body: SetPasswordRequest }
+      SetPasswordRequest
     >({
-      query: ({ token, body }) => ({
-        url: `/emp/set-password?token=${token}`,
+      query: (body) => ({
+        url: "/emp/set-password",
         method: "POST",
         body,
       }),

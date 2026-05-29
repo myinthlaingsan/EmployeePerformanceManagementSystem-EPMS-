@@ -1,17 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSetPasswordMutation } from "../features/employee/employeeapi";
 import { validatePassword } from "../utils/validation";
 import React from "react";
 
 const SetPasswordPage = () => {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [token] = useState(() => searchParams.get("token"));
   const navigate = useNavigate();
   const [setPassword] = useSetPasswordMutation();
 
   const [password, setPassword2] = useState("");
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (searchParams.has("token")) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +30,7 @@ const SetPasswordPage = () => {
     }
 
     try {
-      await setPassword({ token, body: { password } }).unwrap();
+      await setPassword({ token, password }).unwrap();
       setMessage({ type: 'success', text: "Password set successfully! Redirecting to login…" });
       setTimeout(() => navigate("/login"), 3000);
     } catch {

@@ -5,18 +5,45 @@ import { DASHBOARD_COLORS, DASHBOARD_BORDER } from '../../styles/dashboardStyles
 import { formatScore, getTopRows } from '../../utils/reportUtils';
 import type { PerformanceRankingReportDTO, PipTrackingReportDTO } from '../../types/report';
 
+const ReportFormatButtons = ({
+  onDownloadPdf,
+  onDownloadExcel,
+}: {
+  onDownloadPdf: () => void;
+  onDownloadExcel: () => void;
+}) => (
+  <div style={{ display: 'flex', gap: 6 }}>
+    <button
+      aria-label="Download PDF report"
+      onClick={onDownloadPdf}
+      style={{ fontSize: 12, color: DASHBOARD_COLORS.primary, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+    >
+      PDF
+    </button>
+    <button
+      aria-label="Download Excel report"
+      onClick={onDownloadExcel}
+      style={{ fontSize: 12, color: DASHBOARD_COLORS.success, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+    >
+      Excel
+    </button>
+  </div>
+);
+
 export const PerformanceRankingTable = memo(({
   data,
   loading,
   isError,
   pageSize = 5,
-  onDownload,
+  onDownloadPdf,
+  onDownloadExcel,
 }: {
   data?: PerformanceRankingReportDTO[];
   loading: boolean;
   isError?: boolean;
   pageSize?: number;
-  onDownload: () => void;
+  onDownloadPdf: () => void;
+  onDownloadExcel: () => void;
 }) => {
   const [showAll, setShowAll] = useState(false);
   const visibleRows = useMemo(() => showAll ? data || [] : getTopRows(data, pageSize), [data, pageSize, showAll]);
@@ -27,15 +54,7 @@ export const PerformanceRankingTable = memo(({
       title="Top Performers Leaderboard"
       isError={isError}
       style={{ overflow: 'hidden', padding: 0 }}
-      action={(
-        <button
-          aria-label="Download full performance ranking"
-          onClick={onDownload}
-          style={{ fontSize: 12, color: DASHBOARD_COLORS.primary, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-        >
-          Export Full Ranking
-        </button>
-      )}
+      action={<ReportFormatButtons onDownloadPdf={onDownloadPdf} onDownloadExcel={onDownloadExcel} />}
     >
       {loading ? <div style={{ padding: 16 }}><SkeletonBlock height={180} /></div> : (
         <div style={{ overflowX: 'auto' }}>
@@ -81,7 +100,15 @@ export const PerformanceRankingTable = memo(({
   );
 });
 
-export const PipPanel = memo(({ data, onDownload }: { data?: PipTrackingReportDTO; onDownload: () => void }) => (
+export const PipPanel = memo(({
+  data,
+  onDownloadPdf,
+  onDownloadExcel,
+}: {
+  data?: PipTrackingReportDTO;
+  onDownloadPdf: () => void;
+  onDownloadExcel: () => void;
+}) => (
   <div style={{ background: DASHBOARD_COLORS.dark, borderRadius: 8, padding: '18px 20px', position: 'relative', overflow: 'hidden' }}>
     <div style={{ position: 'relative', zIndex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
@@ -105,13 +132,22 @@ export const PipPanel = memo(({ data, onDownload }: { data?: PipTrackingReportDT
           </div>
         ))}
       </div>
-      <button
-        aria-label="Download global PIP audit"
-        onClick={onDownload}
-        style={{ width: '100%', padding: 8, background: 'rgba(255,255,255,0.08)', border: '0.5px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-      >
-        Download Global PIP Audit
-      </button>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <button
+          aria-label="Download global PIP audit PDF"
+          onClick={onDownloadPdf}
+          style={{ padding: 8, background: 'rgba(255,255,255,0.08)', border: '0.5px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          PDF
+        </button>
+        <button
+          aria-label="Download global PIP audit Excel"
+          onClick={onDownloadExcel}
+          style={{ padding: 8, background: 'rgba(255,255,255,0.08)', border: '0.5px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          Excel
+        </button>
+      </div>
     </div>
     <div style={{ position: 'absolute', top: 0, right: 0, padding: 12, opacity: 0.06 }}>
       <AlertCircle size={80} color="#FFFFFF" />
