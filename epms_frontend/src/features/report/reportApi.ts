@@ -17,6 +17,7 @@ import type {
   PerformancePotentialMatrixDTO,
   GoalCompletionReportDTO,
   Feedback360SummaryAnalyticsDTO,
+  DepartmentBreakdownDTO,
 } from "../../types/report";
 
 export const reportApi = api.injectEndpoints({
@@ -73,6 +74,12 @@ export const reportApi = api.injectEndpoints({
       query: (cycleId) => ({
         url: "/reports/feedback-360-summary",
         params: { cycleId },
+      }),
+    }),
+    getTeamPerformanceBreakdown: builder.query<ApiResponse<DepartmentBreakdownDTO[]>, { cycleId: number; departmentId?: number }>({
+      query: ({ cycleId, departmentId }) => ({
+        url: "/reports/team-performance-breakdown",
+        params: { cycleId, departmentId },
       }),
     }),
     getFeedbackParticipationReport: builder.query<ApiResponse<FeedbackParticipationReportDTO>, number>({
@@ -160,5 +167,6 @@ export const {
   useGetPromotionReadinessReportQuery,
   useGetEmployeePerformanceSummaryQuery,
   useGetPerformanceRankingReportQuery,
+  useGetTeamPerformanceBreakdownQuery,
   useDownloadReportMutation,
 } = reportApi;

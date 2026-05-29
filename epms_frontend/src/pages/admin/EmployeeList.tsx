@@ -1,6 +1,7 @@
 import {
-  useSearchEmployeesQuery, useDeleteEmployeeMutation, useActivateEmployeeMutation, useDeactivateEmployeeMutation, useImportEmployeesMutation
+  useSearchEmployeesQuery, useActivateEmployeeMutation, useDeactivateEmployeeMutation, useImportEmployeesMutation
 } from "../../features/employee/employeeapi";
+import { useUnlockEmployeeMutation } from "../../features/auth/authApi";
 import type { EmployeeImportResult } from "../../features/employee/employeeTypes";
 import {
   useGetRolesQuery, useAssignRoleToEmployeeMutation, useRemoveRoleFromEmployeeMutation
@@ -46,9 +47,9 @@ const EmployeeList = () => {
   const { data: departments } = useGetActiveDepartmentsQuery();
   const { data: teams } = useGetTeamsQuery();
   const [downloadReport, { isLoading: isDownloading }] = useDownloadReportMutation();
-  const [deleteEmployee] = useDeleteEmployeeMutation();
   const [activateEmployee] = useActivateEmployeeMutation();
   const [deactivateEmployee] = useDeactivateEmployeeMutation();
+  const [unlockEmployee] = useUnlockEmployeeMutation();
   const [importEmployees, { isLoading: isImporting }] = useImportEmployeesMutation();
   const [assignRole] = useAssignRoleToEmployeeMutation();
   const [removeRole] = useRemoveRoleFromEmployeeMutation();
@@ -284,15 +285,16 @@ const EmployeeList = () => {
                             <Pencil size={14} aria-hidden="true" />
                           </Link>
                         </Can>
-                        <Can permission="EMPLOYEE_DELETE">
-                          <button onClick={() => emp.id && deleteEmployee(emp.id)} title="Delete"
-                            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: "#9EA3B0", borderRadius: 6 }}
-                            className="hover:bg-danger-fill hover:text-danger-text transition-colors">
-                            <Trash2 size={14} aria-hidden="true" />
-                          </button>
-                        </Can>
+
                         <div style={{ width: 1, height: 14, background: "#E4E6EC", margin: "0 2px" }} />
                         <Can permission="EMPLOYEE_EDIT">
+                          {emp.accountLocked && (
+                            <button
+                              onClick={async () => { try { await unlockEmployee(emp.id).unwrap(); } catch (err) { console.error("Unlock failed:", err); } }}
+                              style={{ fontSize: 11, fontWeight: 500, color: "#1A56DB", background: "#EEF3FD", border: "0.5px solid #C8CCE0", borderRadius: 6, padding: "3px 8px", marginRight: 4 }}>
+                              Unlock
+                            </button>
+                          )}
                           {emp.status !== "ACTIVE" ? (
                             <button
                               onClick={async () => { try { await activateEmployee(emp.id).unwrap(); } catch (err) { console.error("Activate failed:", err); } }}
