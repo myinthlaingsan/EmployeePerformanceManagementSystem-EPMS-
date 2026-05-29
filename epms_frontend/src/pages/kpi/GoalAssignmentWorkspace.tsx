@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import React from 'react';
 import { KPI_STATUS_STYLE, KPI_STATUS_FALLBACK } from '../../utils/kpiStatusStyles';
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 const GoalAssignmentWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -442,7 +443,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
               <div style={{ width: 1, height: 24, background: '#E2E8F0', alignSelf: 'center' }} />
               <div>
                 <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned At</span>
-                <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>{new Date(goalSet.assignedAt).toLocaleString()}</p>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>{formatRelativeTime(goalSet.assignedAt)}</p>
               </div>
             </>
           )}

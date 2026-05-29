@@ -6,11 +6,12 @@ import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
-import { Search, ClipboardList, CheckCircle2, XCircle, Eye, Pencil, UserPlus, Archive } from 'lucide-react';
+import { Search, ClipboardList, CheckCircle2, XCircle, Eye, Pencil, UserPlus, Archive, Calendar } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
 import { useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import React from 'react';
 import { KPI_STATUS_STYLE, KPI_STATUS_FALLBACK } from '../../utils/kpiStatusStyles';
+import { MidcycleChangeModal } from '../../features/kpi/MidcycleChangeModal';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +23,8 @@ const GoalManagement: React.FC = () => {
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [isMidcycleOpen, setIsMidcycleOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<{ id: number; staffName: string } | null>(null);
 
   const { data: pagedData, isLoading: loadingEmployees } = useGetEmployeesQuery({ page, size });
   const employees = pagedData?.content || [];
@@ -124,10 +127,22 @@ const GoalManagement: React.FC = () => {
       </button>
     );
     if (['APPROVED','LOCKED','SCORED'].includes(status)) return (
-      <button title="View Goals" style={{ ...base, color: '#1A56DB', background: '#EEF3FD' }}
-        onClick={e => { e.stopPropagation(); navigate(`/kpi/goals/${empId}?cycleId=${effectiveCycleId}`); }}>
-        <Eye size={14} />
-      </button>
+      <div className="flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
+        <button title="View Goals" style={{ ...base, color: '#1A56DB', background: '#EEF3FD' }}
+          onClick={e => { e.stopPropagation(); navigate(`/kpi/goals/${empId}?cycleId=${effectiveCycleId}`); }}>
+          <Eye size={14} />
+        </button>
+        {status !== 'SCORED' && (
+          <button title="Midcycle Change" style={{ ...base, color: '#1E40AF', background: '#EFF6FF' }}
+            onClick={e => { 
+              e.stopPropagation(); 
+              setSelectedEmployee({ id: empId, staffName: filteredEmployees.find(emp => emp.id === empId)?.staffName || '' });
+              setIsMidcycleOpen(true);
+            }}>
+            <Calendar size={14} />
+          </button>
+        )}
+      </div>
     );
     if (status === 'ARCHIVED') return (
       <span title="Archived" style={{ ...base, color: '#9EA3B0', cursor: 'default', display: 'inline-flex' }}>
@@ -372,6 +387,26 @@ const GoalManagement: React.FC = () => {
           effectiveCycleId={effectiveCycleId}
           onClose={() => setIsBulkModalOpen(false)}
           onSuccess={() => { setIsBulkModalOpen(false); setSelectedIds([]); }} />
+      )}
+
+      {isMidcycleOpen && selectedEmployee && selectedCycleObj && (
+        <MidcycleChangeModal
+          employeeId={selectedEmployee.id}
+          employeeName={selectedEmployee.staffName}
+          cycleId={effectiveCycleId!}
+          cycleName={selectedCycleObj.cycleName || selectedCycleObj.name}
+          cycleStartDate={selectedCycleObj.startDate}
+          cycleEndDate={selectedCycleObj.endDate}
+          summary={null}
+          onClose={() => {
+            setIsMidcycleOpen(false);
+            setSelectedEmployee(null);
+          }}
+          onSuccess={() => {
+            setIsMidcycleOpen(false);
+            setSelectedEmployee(null);
+          }}
+        />
       )}
 
       <div style={{ display: 'none' }}><CheckCircle2 /></div>

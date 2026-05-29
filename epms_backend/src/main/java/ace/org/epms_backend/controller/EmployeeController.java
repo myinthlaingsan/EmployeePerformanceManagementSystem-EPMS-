@@ -23,10 +23,9 @@ public class EmployeeController {
 
     @PostMapping("/set-password")
     public ResponseEntity<ApiResponse<?>> setPassword(
-            @RequestParam String token,
             @Valid @RequestBody SetPasswordRequest request
     ){
-        employeeService.setPassword(token,request.getPassword());
+        employeeService.setPassword(request.getToken(), request.getPassword());
         return ResponseEntity
                 .ok(ApiResponse.success());
     }

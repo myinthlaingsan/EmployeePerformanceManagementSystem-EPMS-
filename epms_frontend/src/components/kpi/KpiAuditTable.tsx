@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { subDays } from 'date-fns';
-import { format } from 'date-fns';
 import { AlertCircle, MessageSquare } from 'lucide-react';
 import type { KpiHistoryLog } from '../../features/kpi/kpiTypes';
 import KpiLogDetailModal from './KpiLogDetailModal';
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 interface KpiAuditTableProps {
   logs: KpiHistoryLog[];
@@ -204,7 +204,7 @@ const KpiAuditTable: React.FC<KpiAuditTableProps> = ({ logs, isLoading, isError 
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: '#5A6070', whiteSpace: 'nowrap' }}>
-                      {format(new Date(log.createdAt), 'dd MMM HH:mm')}
+                      {formatRelativeTime(log.createdAt)}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: '#111827', maxWidth: 300 }}>
                       {truncate(log.changeDetails || '—', 60)}

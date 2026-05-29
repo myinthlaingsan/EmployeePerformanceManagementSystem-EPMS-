@@ -85,7 +85,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ onClose }: SidebarProps) => {
-  const { logout, isAdmin, isHR, user, hasPermission, hasRole } = useAuth();
+  const { logout, isAdmin, isHR, isManager, user, hasPermission, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
@@ -112,9 +112,14 @@ const Sidebar = ({ onClose }: SidebarProps) => {
   const perfSubItems: Array<{ to: string; label: string; end?: boolean }> = [
     { to: "/kpi", label: "KPI Intelligence Hub", end: true },
     ...(hasPermission("KPI_VIEW_OWN") ? [{ to: "/kpi/my", label: "My Goals" }] : []),
-    ...(hasPermission("KPI_VIEW_TEAM") ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
     ...(hasPermission("KPI_VIEW_OWN") && user ? [{ to: `/kpi/history/${user.id}`, label: "My KPI Journey" }] : []),
-    
+    ...(hasPermission("KPI_VIEW_TEAM") ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
+    ...(isHR || isAdmin
+      ? [{ to: "/kpi/org-history", label: "Org KPI History" }]
+      : []),
+    ...(isManager && !isHR && !isAdmin
+      ? [{ to: "/kpi/org-history", label: "Team KPI History" }]
+      : []),
     ...(hasPermission("KPI_LIBRARY_MANAGE")
       ? [
           { to: "/kpi/manage", label: "Goal Management" },
@@ -205,7 +210,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                     className={({ isActive }) => navCls(isActive)}
                     onClick={handleNavClick}
                   >
-                    My Pending
+                    Feedback Requests
                   </NavLink>
                 )}
                 {hasPermission("FEEDBACK360_VIEW_REPORT") && (
@@ -239,16 +244,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                     Admin Panel
                   </NavLink>
                 )}
-                {hasPermission("FEEDBACK360_MANAGE") && (
-                  <NavLink
-                    to="/360-feedback/admin/competencies"
-                    style={{ padding: "7px 10px" }}
-                    className={({ isActive }) => navCls(isActive)}
-                    onClick={handleNavClick}
-                  >
-                    Competencies
-                  </NavLink>
-                )}
+
               </div>
             )}
           </div>
@@ -349,7 +345,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         onClick={() => { navigate("/profile"); handleNavClick(); }}
       >
         <div
-          className="flex items-center justify-center shrink-0"
+          className="flex items-center justify-center shrink-0 overflow-hidden"
           style={{
             width: 28,
             height: 28,
@@ -360,7 +356,18 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             fontWeight: 500,
           }}
         >
-          {user?.staffName?.charAt(0) ?? "U"}
+          {user?.profileImage && user.profileImage !== "default.jpg" ? (
+            <img
+              src={`http://localhost:8080${user.profileImage}`}
+              alt={user?.staffName ?? "User"}
+              className="w-full h-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            user?.staffName?.charAt(0) ?? "U"
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="truncate" style={{ fontSize: 13, fontWeight: 500, color: "#111827", lineHeight: 1.2 }}>

@@ -168,10 +168,15 @@ const AnalyticsDashboard = () => {
             pieData={appraisalPieData}
             loading={appraisalStatusQuery.isFetching}
             isError={appraisalStatusQuery.isError}
-            onDownload={() => handleDownload({
+            onDownloadPdf={() => handleDownload({
               endpoint: 'appraisal-status',
               params: { cycleId: selectedCycle },
               fileName: `Appraisal_Status_${selectedCycle}.pdf`,
+            })}
+            onDownloadExcel={() => handleDownload({
+              endpoint: 'appraisal-status',
+              params: { cycleId: selectedCycle, format: 'excel' },
+              fileName: `Appraisal_Status_${selectedCycle}.xlsx`,
             })}
           />
           <KpiAchievementChart
@@ -201,19 +206,29 @@ const AnalyticsDashboard = () => {
             data={rankingReportQuery.data?.data}
             loading={rankingReportQuery.isFetching}
             isError={rankingReportQuery.isError}
-            onDownload={() => handleDownload({
+            onDownloadPdf={() => handleDownload({
               endpoint: 'performance-ranking',
               params: { cycleId: selectedCycle },
               fileName: `Performance_Ranking_${selectedCycle}.pdf`,
+            })}
+            onDownloadExcel={() => handleDownload({
+              endpoint: 'performance-ranking',
+              params: { cycleId: selectedCycle, format: 'excel' },
+              fileName: `Performance_Ranking_${selectedCycle}.xlsx`,
             })}
           />
           <div className="lg:col-span-5 space-y-3">
             <PipPanel
               data={pipReportQuery.data?.data}
-              onDownload={() => handleDownload({
+              onDownloadPdf={() => handleDownload({
                 endpoint: 'pip-tracking',
                 params: {},
                 fileName: 'PIP_Global_Report.pdf',
+              })}
+              onDownloadExcel={() => handleDownload({
+                endpoint: 'pip-tracking',
+                params: { format: 'excel' },
+                fileName: 'PIP_Global_Report.xlsx',
               })}
             />
             <StrategicInsightCard />

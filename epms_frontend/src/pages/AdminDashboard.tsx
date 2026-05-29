@@ -45,7 +45,7 @@ const AdminDashboard: React.FC = () => {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <DashboardStatCard title="Total users" value={data?.totalEmployees ?? 0} icon={<Users size={15} />} color="blue" />
+        <DashboardStatCard title="Total Employees" value={data?.totalEmployees ?? 0} icon={<Users size={15} />} color="blue" />
         <DashboardStatCard title="Departments" value={data?.totalDepartments ?? 0} icon={<LayoutDashboard size={15} />} color="indigo" />
         <DashboardStatCard title="Active cycles" value={data?.activeCycles ?? 0} icon={<Calendar size={15} />} color="green" />
         <DashboardStatCard title="Locked accounts" value={data?.lockedAccounts ?? 0} icon={<Lock size={15} />} color="red" />

@@ -246,6 +246,8 @@ interface NominationTableProps {
 }
 
 const NominationTable = ({ nominations, showActions, onApprove, onReject, approving, rejecting }: NominationTableProps) => {
+  const { data: allEmployees = [] } = useGetAllEmployeesQuery();
+
   if (nominations.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '32px 0', color: '#9EA3B0' }}>
@@ -268,10 +270,12 @@ const NominationTable = ({ nominations, showActions, onApprove, onReject, approv
           </tr>
         </thead>
         <tbody>
-          {nominations.map((n, i) => (
-            <tr key={n.id} style={{ borderBottom: '0.5px solid #F0F2F8', background: i % 2 === 0 ? '#FAFBFC' : '#FFFFFF' }}>
-              <td style={{ padding: '10px 10px', color: '#5A6070' }}>#{n.targetUserId}</td>
-              <td style={{ padding: '10px 10px', fontWeight: 500, color: '#111827' }}>{n.nomineeName}</td>
+          {nominations.map((n, i) => {
+            const targetEmp = allEmployees.find(emp => emp.id === n.targetUserId);
+            return (
+              <tr key={n.id} style={{ borderBottom: '0.5px solid #F0F2F8', background: i % 2 === 0 ? '#FAFBFC' : '#FFFFFF' }}>
+                <td style={{ padding: '10px 10px', color: '#5A6070' }}>{targetEmp ? targetEmp.staffName : `#${n.targetUserId}`}</td>
+                <td style={{ padding: '10px 10px', fontWeight: 500, color: '#111827' }}>{n.nomineeName}</td>
               <td style={{ padding: '10px 10px' }}><RelBadge rel={n.relationship} /></td>
               <td style={{ padding: '10px 10px' }}><NomStatusBadge status={n.status} /></td>
               {showActions && (
@@ -309,7 +313,8 @@ const NominationTable = ({ nominations, showActions, onApprove, onReject, approv
                 </td>
               )}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

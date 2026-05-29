@@ -77,19 +77,26 @@ export const AppraisalCompletionCard = memo(({
   pieData,
   loading,
   isError,
-  onDownload,
+  onDownloadPdf,
+  onDownloadExcel,
 }: {
   data?: AppraisalStatusReportDTO;
   pieData: PieDatum[];
   loading: boolean;
   isError?: boolean;
-  onDownload: () => void;
+  onDownloadPdf: () => void;
+  onDownloadExcel: () => void;
 }) => (
   <DashboardCard
     title="Appraisal Completion Status"
     className="lg:col-span-4"
     isError={isError}
-    action={<DownloadButton iconOnly ariaLabel="Download appraisal status report" onClick={onDownload} />}
+    action={(
+      <div style={{ display: 'flex', gap: 6 }}>
+        <DownloadButton label="PDF" tone="primary" ariaLabel="Download appraisal status PDF" onClick={onDownloadPdf} />
+        <DownloadButton label="Excel" tone="success" ariaLabel="Download appraisal status Excel" onClick={onDownloadExcel} />
+      </div>
+    )}
   >
     <div style={{ ...dashboardStyles.chartHeightSm, position: 'relative' }}>
       {loading ? <SkeletonBlock height={220} /> : pieData.length === 0 ? (

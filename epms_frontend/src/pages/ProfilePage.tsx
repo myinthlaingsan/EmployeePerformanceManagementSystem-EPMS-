@@ -2,13 +2,10 @@ import { useNavigate } from "react-router-dom";
 import { useGetCurrentUserQuery } from "../features/employee/employeeapi";
 import { useGetGoalSetByEmployeeQuery, useGetActiveCycleQuery } from "../services/kpiApi";
 import { useGetAppraisalsQuery } from "../features/appraisal/appraisalApi";
-import { 
-  User, 
+import {
   Settings, 
-  Target, 
-  History, 
-  TrendingUp, 
-  Star, 
+  Target,
+  TrendingUp,
   MapPin, 
   Mail, 
   Phone,
@@ -72,7 +69,7 @@ const ProfilePage = () => {
         </div>
         <button
           onClick={() => navigate("/profile/edit")}
-          className="flex items-center gap-2 bg-[#1A56DB] hover:bg-[#1648C0] text-white px-[14px] py-[8px] rounded-[8px] text-[13px] font-medium transition-colors"
+          className="flex items-center gap-2 bg-[#1A56DB] hover:bg-primary-hover text-white px-3.5 py-2 rounded-lg text-[13px] font-medium transition-colors"
         >
           <Settings size={14} />
           Edit Profile
@@ -80,7 +77,7 @@ const ProfilePage = () => {
       </div>
 
       {/* Profile Header Card */}
-      <div className="bg-white border-[0.5px] border-[#E4E6EC] rounded-[12px] p-[20px] flex flex-col md:flex-row gap-6 items-center md:items-start">
+      <div className="bg-white border-[0.5px] border-[#E4E6EC] rounded-xl p-5 flex flex-col md:flex-row gap-6 items-center md:items-start">
         {/* Avatar */}
         <div 
           className="w-24 h-24 rounded-full flex items-center justify-center text-[32px] font-medium shrink-0 overflow-hidden"
@@ -121,12 +118,12 @@ const ProfilePage = () => {
         </div>
 
         {/* Score Card */}
-        <div className="bg-[#F5F6F8] border-[0.5px] border-[#E4E6EC] rounded-[12px] p-[16px] w-full md:w-[200px] text-center">
+        <div className="bg-[#F5F6F8] border-[0.5px] border-[#E4E6EC] rounded-xl p-4 w-full md:w-50 text-center">
           <p className="text-[10px] font-medium text-[#9EA3B0] uppercase tracking-[0.8px] mb-1">Performance Score</p>
           <div className="text-[32px] font-medium text-[#1A56DB] leading-none mb-1">
             {goalSet?.score?.toFixed(1) || "0.0"}
           </div>
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#EAF3DE] text-[#27500A] text-[11px] font-medium">
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-fill text-success-text text-[11px] font-medium">
             <TrendingUp size={10} />
             On Track
           </div>
@@ -134,10 +131,10 @@ const ProfilePage = () => {
       </div>
 
       {/* Three Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-[16px]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         
         {/* Left: Skill Breakdown */}
-        <div className="bg-white border-[0.5px] border-[#E4E6EC] rounded-[12px] p-[16px]">
+        <div className="bg-white border-[0.5px] border-[#E4E6EC] rounded-xl p-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-[14px] font-medium text-[#111827]">Skill Breakdown</h3>
             <span className="text-[10px] font-medium text-[#9EA3B0] uppercase tracking-[0.8px]">Current Level</span>
@@ -149,7 +146,7 @@ const ProfilePage = () => {
                   <span className="text-[12px] text-[#111827]">{skill.name}</span>
                   <span className="text-[12px] font-medium text-[#111827]">{skill.value}%</span>
                 </div>
-                <div className="h-[6px] bg-[#EEF0F6] rounded-[3px] overflow-hidden">
+                <div className="h-1.5 bg-[#EEF0F6] rounded-[3px] overflow-hidden">
                   <div 
                     className="h-full rounded-[3px] transition-all duration-500" 
                     style={{ width: `${skill.value}%`, background: skill.color }}
@@ -161,7 +158,7 @@ const ProfilePage = () => {
         </div>
 
         {/* Center: Goal List */}
-        <div className="bg-white border-[0.5px] border-[#E4E6EC] rounded-[12px] p-[16px]">
+        <div className="bg-white border-[0.5px] border-[#E4E6EC] rounded-xl p-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-[14px] font-medium text-[#111827]">Active Goals</h3>
             <button className="text-[12px] text-[#1A56DB] hover:underline" onClick={() => navigate("/kpi/my")}>View all</button>
@@ -171,13 +168,13 @@ const ProfilePage = () => {
               <div className="text-center py-4 text-[#9EA3B0]">Loading goals...</div>
             ) : goalSet?.kpiItems && goalSet.kpiItems.length > 0 ? (
               goalSet.kpiItems.map((item: any) => (
-                <div key={item.id} className="p-[12px] bg-[#F5F6F8] border-[0.5px] border-[#E4E6EC] rounded-[10px]">
+                <div key={item.id} className="p-3 bg-[#F5F6F8] border-[0.5px] border-[#E4E6EC] rounded-[10px]">
                   <div className="flex justify-between items-start gap-2 mb-2">
                     <p className="text-[13px] font-medium text-[#111827] leading-snug">{item.kpiName || item.customKpiName}</p>
                     <div className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                      item.status === 'COMPLETED' ? 'bg-[#EAF3DE] text-[#27500A]' : 
-                      item.status === 'IN_PROGRESS' ? 'bg-[#EEF3FD] text-[#0C447C]' : 
-                      'bg-[#FAEEDA] text-[#633806]'
+                      item.status === 'COMPLETED' ? 'bg-success-fill text-success-text' : 
+                      item.status === 'IN_PROGRESS' ? 'bg-info-fill text-info-text' : 
+                      'bg-warning-fill text-warning-text'
                     }`}>
                       {item.status === 'COMPLETED' ? <CheckCircle2 size={10} /> : <Clock size={10} />}
                       {item.status?.replace('_', ' ')}
@@ -199,17 +196,17 @@ const ProfilePage = () => {
         </div>
 
         {/* Right: Review History Timeline */}
-        <div className="bg-white border-[0.5px] border-[#E4E6EC] rounded-[12px] p-[16px]">
+        <div className="bg-white border-[0.5px] border-[#E4E6EC] rounded-xl p-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-[14px] font-medium text-[#111827]">Review History</h3>
           </div>
-          <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-[7px] before:top-[5px] before:bottom-[5px] before:w-[1px] before:bg-[#E4E6EC]">
+          <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-1.75 before:top-1.25 before:bottom-1.25 before:w-px before:bg-[#E4E6EC]">
             {isAppraisalsLoading ? (
               <div className="text-[#9EA3B0] text-[12px]">Loading history...</div>
             ) : appraisals && appraisals.length > 0 ? (
               appraisals.slice(0, 5).map((appraisal: any) => (
                 <div key={appraisal.id} className="relative">
-                  <div className="absolute -left-[23px] top-[4px] w-[10px] h-[10px] rounded-full border-2 border-white bg-[#1A56DB]" />
+                  <div className="absolute -left-5.75 top-1 w-2.5 h-2.5 rounded-full border-2 border-white bg-[#1A56DB]" />
                   <div className="flex justify-between items-start mb-1">
                     <p className="text-[13px] font-medium text-[#111827]">{appraisal.cycleName}</p>
                     <span className="text-[11px] text-[#9EA3B0] font-mono">{appraisal.finalScore?.toFixed(1) || "N/A"}</span>
