@@ -82,7 +82,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .tableName("appraisal_cycle")
                 .recordId(cycle.getCycleId())
                 .action(AuditAction.INSERT)
-                .newState(cycle)
+                .newState(appraisalCycleMapper.toResponse(cycle))
                 .status(AuditStatus.SUCCESS)
                 .build());
 
@@ -151,7 +151,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .tableName("appraisal_cycle")
                 .recordId(cycle.getCycleId())
                 .action(AuditAction.UPDATE)
-                .newState(cycle)
+                .newState(appraisalCycleMapper.toResponse(cycle))
                 .status(AuditStatus.SUCCESS)
                 .build());
 
@@ -234,7 +234,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .tableName("appraisal_cycle")
                 .recordId(cycle.getCycleId())
                 .action(AuditAction.UPDATE)
-                .newState(cycle)
+                .newState(appraisalCycleMapper.toResponse(cycle))
                 .status(AuditStatus.SUCCESS)
                 .build());
 
@@ -271,7 +271,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .tableName("appraisal_cycle")
                 .recordId(cycle.getCycleId())
                 .action(AuditAction.UPDATE)
-                .newState(cycle)
+                .newState(appraisalCycleMapper.toResponse(cycle))
                 .status(AuditStatus.SUCCESS)
                 .build());
 
@@ -309,7 +309,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .tableName("appraisal_cycle")
                 .recordId(cycle.getCycleId())
                 .action(AuditAction.UPDATE)
-                .newState(cycle)
+                .newState(appraisalCycleMapper.toResponse(cycle))
                 .status(AuditStatus.SUCCESS)
                 .build());
 
@@ -346,7 +346,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                     .tableName("appraisal_cycle")
                     .recordId(cycle.getCycleId())
                     .action(AuditAction.UPDATE)
-                    .newState(cycle)
+                    .newState(appraisalCycleMapper.toResponse(cycle))
                     .status(AuditStatus.FAILED)
                     .build());
             throw new IllegalStateException(
@@ -481,7 +481,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .tableName("appraisal_cycle")
                 .recordId(cycleId)
                 .action(AuditAction.UPDATE)
-                .newState(cycle)
+                .newState(appraisalCycleMapper.toResponse(cycle))
                 .status(AuditStatus.SUCCESS)
                 .build());
     }
@@ -540,7 +540,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
                 .tableName("appraisal_cycle")
                 .recordId(cycle.getCycleId())
                 .action(AuditAction.UPDATE)
-                .newState(cycle)
+                .newState(appraisalCycleMapper.toResponse(cycle))
                 .status(AuditStatus.SUCCESS)
                 .build());
     }
