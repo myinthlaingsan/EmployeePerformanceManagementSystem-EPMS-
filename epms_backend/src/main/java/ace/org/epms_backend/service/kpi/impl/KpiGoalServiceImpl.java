@@ -18,6 +18,7 @@ import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.kpi.KpiGoalService;
 import ace.org.epms_backend.service.kpi.KpiMidcycleService;
 import ace.org.epms_backend.service.kpi.KpiPhaseLinkerService;
+import ace.org.epms_backend.service.kpi.KpiScoringService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -49,6 +50,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     private final AuditService auditService;
     private final ReportingLineRepository reportingLineRepo;
     private final KpiPhaseLinkerService phaseLinkerService;
+    private final KpiScoringService kpiScoringService;
 
     @Override
     @Transactional(readOnly = true)
@@ -386,7 +388,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         .status(AuditStatus.SUCCESS)
                         .build());
 
-                //link to midcycle open phase if exists
+                // link to midcycle open phase if exists
                 phaseLinkerService.assignGoalSetToOpenPhase(employee.getId(), cycle.getCycleId(), savedGoalSet.getId());
 
                 response.setSuccessfulCount(response.getSuccessfulCount() + 1);
@@ -614,6 +616,14 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
+        // Auto-calculate initial score after approval
+        try {
+            kpiScoringService.calculateFinalScore(
+                    savedGoalSet.getEmployee().getId(),
+                    savedGoalSet.getCycle().getCycleId());
+        } catch (Exception e) {
+            // Continue even if calculation fails
+        }
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 

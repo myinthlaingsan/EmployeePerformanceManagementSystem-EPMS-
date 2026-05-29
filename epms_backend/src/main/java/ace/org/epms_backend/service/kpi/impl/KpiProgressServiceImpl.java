@@ -19,6 +19,7 @@ import ace.org.epms_backend.repository.KpiGoalItemRepository;
 import ace.org.epms_backend.repository.KpiHistoryLogRepository;
 import ace.org.epms_backend.repository.KpiProgressRepository;
 import ace.org.epms_backend.service.kpi.KpiProgressService;
+import ace.org.epms_backend.service.kpi.KpiScoringService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,6 +40,7 @@ public class KpiProgressServiceImpl implements KpiProgressService {
     private final KpiHistoryLogRepository historyRepo;
     private final KpiMapper kpiMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final KpiScoringService kpiScoringService;
 
     @Override
     @Transactional
@@ -55,9 +57,9 @@ public class KpiProgressServiceImpl implements KpiProgressService {
             // Check if compliance row being verified by manager/HR/Admin
             boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_HR") || a.getAuthority().equals("ROLE_ADMIN"));
-            
-            boolean isManager = item.getGoalSet().getManager() != null && 
-                               item.getGoalSet().getManager().getId().equals(currentUser.getId());
+
+            boolean isManager = item.getGoalSet().getManager() != null &&
+                    item.getGoalSet().getManager().getId().equals(currentUser.getId());
 
             if (Boolean.TRUE.equals(item.getIsCompliance()) && (isHrOrAdmin || isManager)) {
                 // Allowed for manager verification
@@ -87,7 +89,8 @@ public class KpiProgressServiceImpl implements KpiProgressService {
         BigDecimal scorePercent = BigDecimal.ZERO;
         if (item.getTargetValue() != null) {
             if (item.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
-                // If target is 0, 100% achievement if actual is 0, else 0% (Zero Tolerance Item)
+                // If target is 0, 100% achievement if actual is 0, else 0% (Zero Tolerance
+                // Item)
                 scorePercent = request.getActualValue().compareTo(BigDecimal.ZERO) == 0
                         ? new BigDecimal("100")
                         : BigDecimal.ZERO;
@@ -116,6 +119,14 @@ public class KpiProgressServiceImpl implements KpiProgressService {
         }
         goalItemRepository.save(item);
 
+        // Auto-recalculate final score after progress update
+        try {
+            kpiScoringService.calculateFinalScore(
+                    item.getGoalSet().getEmployee().getId(),
+                    item.getGoalSet().getCycle().getCycleId());
+        } catch (Exception e) {
+            // Continue even if recalculation fails
+        }
         // Notify manager when a KPI item is completed
         if (item.getStatus() == KpiItemStatus.COMPLETED && item.getGoalSet().getManager() != null) {
             eventPublisher.publishEvent(NotificationEvent.builder()
