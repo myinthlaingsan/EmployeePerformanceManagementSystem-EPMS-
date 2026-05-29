@@ -38,7 +38,7 @@ const GoalDetail: React.FC = () => {
 
   const { data: goalSetResponse, isLoading, error, refetch } = useGetGoalSetByEmployeeQuery(
     { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId! },
-    { skip: !user?.id || !effectiveCycleId }
+    { skip: !user?.id || !effectiveCycleId, refetchOnMountOrArgChange: true }
   );
 
   const goalSet = goalSetResponse?.data;
@@ -72,7 +72,7 @@ const GoalDetail: React.FC = () => {
 
   const { data: midcycleResponse, refetch: refetchMidcycle } = useGetMidcycleSummaryQuery(
     { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId! },
-    { skip: !effectiveCycleId }
+    { skip: !effectiveCycleId, refetchOnMountOrArgChange: true }
   );
   const midcycle = midcycleResponse?.data ?? null;
 
@@ -630,12 +630,11 @@ const GoalDetail: React.FC = () => {
           cycleName={goalSet.appraisalCycleName || cycleData.cycleName}
           cycleStartDate={cycleData.startDate}
           cycleEndDate={cycleData.endDate}
-          summary={midcycle}
+          summary={null}
           onClose={() => setShowMidcycleModal(false)}
-          onSuccess={() => {
+          onSuccess={async () => {
+            await Promise.all([refetch(), refetchMidcycle()]);
             setShowMidcycleModal(false);
-            refetch();
-            refetchMidcycle();
           }}
         />
       )}
