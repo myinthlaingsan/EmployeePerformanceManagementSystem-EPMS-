@@ -31,6 +31,7 @@ import ace.org.epms_backend.repository.KpiMidcycleFinalScoreRepository;
 import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.kpi.KpiGoalService;
 import ace.org.epms_backend.service.kpi.KpiMidcycleService;
+import ace.org.epms_backend.service.kpi.KpiPhaseLinkerService;
 import ace.org.epms_backend.service.kpi.KpiScoringService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -66,6 +67,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
     private final KpiScoringService kpiScoringService;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
+    private final KpiPhaseLinkerService phaseLinkerService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -498,4 +500,6 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         return phaseRepository.save(recoveredPhase);
     }
+
+    
 }
