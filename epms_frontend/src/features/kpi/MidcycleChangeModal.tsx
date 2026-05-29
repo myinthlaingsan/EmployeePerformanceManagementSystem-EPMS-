@@ -13,7 +13,7 @@ interface MidcycleChangeModalProps {
   cycleEndDate: string;
   summary: MidcycleSummaryResponse | null;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
 }
 
 export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
@@ -38,7 +38,7 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
 
   const { data: internalSummaryResponse } = useGetMidcycleSummaryQuery(
     { employeeId, cycleId },
-    { skip: !!summary || !employeeId || !cycleId }
+    { skip: !!summary || !employeeId || !cycleId, refetchOnMountOrArgChange: true }
   );
 
   const effectiveSummary = summary || internalSummaryResponse?.data || null;
@@ -127,7 +127,7 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
         changeReason,
       }).unwrap();
       toast.success('KPI phase split triggered successfully! Managers have been notified.');
-      onSuccess();
+      await onSuccess();
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to trigger midcycle change');
     }
