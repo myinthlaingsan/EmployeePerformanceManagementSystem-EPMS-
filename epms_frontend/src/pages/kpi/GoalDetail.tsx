@@ -630,7 +630,7 @@ const GoalDetail: React.FC = () => {
           cycleName={goalSet.appraisalCycleName || cycleData.cycleName}
           cycleStartDate={cycleData.startDate}
           cycleEndDate={cycleData.endDate}
-          summary={midcycle}
+          summary={null}
           onClose={() => setShowMidcycleModal(false)}
           onSuccess={async () => {
             await Promise.all([refetch(), refetchMidcycle()]);
