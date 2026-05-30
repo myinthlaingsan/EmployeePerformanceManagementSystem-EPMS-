@@ -1,10 +1,14 @@
 package ace.org.epms_backend.service.impl;
 
 import ace.org.epms_backend.dto.PagedResponse;
+import ace.org.epms_backend.dto.AuditRequest;
 import ace.org.epms_backend.dto.kpi.KpiCategoryRequest;
 import ace.org.epms_backend.dto.kpi.KpiCategoryResponse;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
 import ace.org.epms_backend.model.kpi.KpiCategory;
 import ace.org.epms_backend.repository.KpiCategoryRepository;
+import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.KpiCategoryService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +25,7 @@ import java.util.List;
 @Transactional
 public class KpiCategoryServiceImpl implements KpiCategoryService {
     private final KpiCategoryRepository repository;
+    private final AuditService auditService;
 
     @Override
     public KpiCategoryResponse createCategory(KpiCategoryRequest request) {
@@ -32,7 +37,10 @@ public class KpiCategoryServiceImpl implements KpiCategoryService {
                 .name(request.getName())
                 .build();
 
-        return mapToResponse(repository.save(category));
+        category = repository.save(category);
+        KpiCategoryResponse response = mapToResponse(category);
+        audit(category.getId(), AuditAction.CREATE, null, response);
+        return response;
     }
 
     @Override
@@ -86,8 +94,12 @@ public class KpiCategoryServiceImpl implements KpiCategoryService {
             throw new RuntimeException("Category name already exists");
         }
 
+        KpiCategoryResponse oldState = mapToResponse(category);
         category.setName(request.getName());
-        return mapToResponse(repository.save(category));
+        category = repository.save(category);
+        KpiCategoryResponse response = mapToResponse(category);
+        audit(category.getId(), AuditAction.UPDATE, oldState, response);
+        return response;
     }
 
     @Override
@@ -95,7 +107,9 @@ public class KpiCategoryServiceImpl implements KpiCategoryService {
         KpiCategory category = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
+        KpiCategoryResponse oldState = mapToResponse(category);
         repository.delete(category);
+        audit(id, AuditAction.DELETE, oldState, null);
     }
 
     // 🔹 Mapper
@@ -104,5 +118,16 @@ public class KpiCategoryServiceImpl implements KpiCategoryService {
                 .id(category.getId())
                 .name(category.getName())
                 .build();
+    }
+
+    private void audit(Long recordId, AuditAction action, Object oldState, Object newState) {
+        auditService.log(AuditRequest.builder()
+                .tableName("kpi_category")
+                .recordId(recordId)
+                .action(action)
+                .oldState(oldState)
+                .newState(newState)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 }
