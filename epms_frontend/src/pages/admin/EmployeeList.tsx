@@ -221,10 +221,18 @@ const EmployeeList = () => {
                     <td style={{ padding: "11px 18px" }}>
                       <div className="flex items-center gap-3">
                         <div style={{ width: 30, height: 30, borderRadius: "50%", background: avatarColor.bg, color: avatarColor.text, fontSize: 11, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
-                          {emp.profileImage && emp.profileImage !== "default.jpg" ? (
-                            <img src={`http://localhost:8080${emp.profileImage}`} alt={emp.staffName} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-                          ) : emp.staffName.charAt(0)}
-                        </div>
+  {emp.profileImage && emp.profileImage !== "default.jpg" ? (
+    <img 
+      src={`http://localhost:8080${emp.profileImage}`} 
+      alt={emp.staffName || "Employee"} 
+      className="w-full h-full object-cover" 
+      onError={(e) => { e.currentTarget.style.display = "none"; }} 
+    />
+  ) : (
+    // Check lagaya hai: Agar staffName null/undefined ho toh fallback character '?' dikhaye
+    emp.staffName && emp.staffName.trim() ? emp.staffName.charAt(0) : '?'
+  )}
+</div>
                         <div>
                           <p style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{emp.staffName}</p>
                           <p style={{ fontSize: 11, color: "#9EA3B0", fontFamily: "monospace" }}>{emp.employeeCode}</p>
