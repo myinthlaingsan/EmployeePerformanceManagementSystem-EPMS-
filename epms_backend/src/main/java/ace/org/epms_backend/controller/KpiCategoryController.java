@@ -1,6 +1,7 @@
 package ace.org.epms_backend.controller;
 
 import ace.org.epms_backend.dto.ApiResponse;
+import ace.org.epms_backend.dto.PagedResponse;
 import ace.org.epms_backend.dto.kpi.KpiCategoryRequest;
 import ace.org.epms_backend.dto.kpi.KpiCategoryResponse;
 import ace.org.epms_backend.service.KpiCategoryService;
@@ -37,6 +38,16 @@ public class KpiCategoryController {
     public ResponseEntity<ApiResponse<List<KpiCategoryResponse>>> getAll() {
         return ResponseEntity.ok(
                 ApiResponse.success(service.getAllCategories()));
+    }
+
+    // ✅ Get paginated
+    @GetMapping("/paginated")
+    public ResponseEntity<ApiResponse<PagedResponse<KpiCategoryResponse>>> getPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(
+                ApiResponse.success(service.getCategoriesPaginated(page, size, search)));
     }
 
     // ✅ Get by ID

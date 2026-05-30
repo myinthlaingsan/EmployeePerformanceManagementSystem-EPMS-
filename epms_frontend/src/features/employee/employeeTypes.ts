@@ -156,6 +156,7 @@ export interface EmployeeResponse {
 
   status?: EmployeeStatus;
   isActive?: boolean;
+  accountLocked?: boolean;
 
   directManagerId?: number;
   directManagerName?: string;

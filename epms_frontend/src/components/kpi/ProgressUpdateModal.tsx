@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { calculateProgressPercent, calculateWeightedScore } from '../../utils/kpiCalculations';
 import { useUpdateProgressMutation } from '../../services/kpiApi';
-import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
+import type { GoalItemResponse, KpiGoalStatus } from '../../features/kpi/kpiTypes';
 
 interface ProgressUpdateModalProps {
   item: GoalItemResponse;
+  goalSetStatus?: KpiGoalStatus;
   onClose: () => void;
 }
 
-const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose }) => {
+const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, goalSetStatus, onClose }) => {
   const [updateProgress, { isLoading }] = useUpdateProgressMutation();
   const [actualValue, setActualValue] = useState<number | "">(item.currentProgress || 0);
   const [note, setNote] = useState('');
+  const canSubmit = goalSetStatus === 'APPROVED';
 
   // Derived KPI preview values (zero-tolerance handled in utilities)
   const safeActual = actualValue === '' ? 0 : Number(actualValue);
@@ -20,6 +22,12 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSubmit) {
+      alert('Progress can only be updated after the KPI goal set is approved.');
+      onClose();
+      return;
+    }
+
     try {
       const finalActualValue = actualValue === '' ? 0 : actualValue;
       await updateProgress({
@@ -29,9 +37,9 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
         evidenceNote: note,
       }).unwrap();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update progress:', err);
-      alert('Failed to update progress');
+      alert(err?.data?.message || 'Failed to update progress');
     }
   };
 
@@ -161,7 +169,7 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, onClose
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !canSubmit}
               className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50"
             >
               {isLoading ? 'Updating...' : 'Save Progress'}

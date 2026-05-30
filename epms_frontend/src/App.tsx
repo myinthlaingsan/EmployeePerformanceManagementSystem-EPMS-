@@ -18,7 +18,7 @@ import {
   feedback360Routes,
 } from "./routes";
 import { ActiveCycleProvider } from "./context/ActiveCycleContext";
-import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
+import KpiCategoryManager from './pages/kpi/KpiCategoryManager';
 import AuditLogPage from './pages/admin/AuditLogPage';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';

@@ -53,7 +53,12 @@ const EmployeeForm = () => {
 
   useEffect(() => {
     if (isEdit && employeeData) {
-      setFormData(prev => ({ ...prev, ...employeeData, positionId: employeeData.positionId || 0 }));
+      setFormData(prev => ({ 
+        ...prev, 
+        ...employeeData, 
+        nrcType: employeeData.nrcType || "(N)",
+        positionId: employeeData.positionId || 0 
+      }));
       setSelectedPositionLevel(employeeData.levelName);
     }
   }, [isEdit, employeeData, positions, departments]);

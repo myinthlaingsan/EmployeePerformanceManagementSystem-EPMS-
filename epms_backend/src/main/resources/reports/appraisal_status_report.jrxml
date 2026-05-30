@@ -98,13 +98,13 @@
 							</box>
 						</element>
 						<element kind="textField" uuid="6eb511db-4591-4813-9122-67a9868ff596" x="265" y="0" width="95" height="25" hTextAlign="Center" vTextAlign="Middle">
-							<expression><![CDATA[$F{selfAssessmentDate} != null ? $F{selfAssessmentDate} : "-"]]></expression>
+							<expression><![CDATA[$F{selfAssessmentDate} != null && !$F{selfAssessmentDate}.trim().isEmpty() ? new java.text.SimpleDateFormat("dd/MM/yyyy").format(new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm").parse($F{selfAssessmentDate}.substring(0, 16))) : "-"]]></expression>
 							<box>
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
 							</box>
 						</element>
 						<element kind="textField" uuid="d693ded3-a71f-4f6b-81bd-baf169b4be6e" x="360" y="0" width="95" height="25" hTextAlign="Center" vTextAlign="Middle">
-							<expression><![CDATA[$F{managerEvaluationDate} != null ? $F{managerEvaluationDate} : "-"]]></expression>
+							<expression><![CDATA[$F{managerEvaluationDate} != null && !$F{managerEvaluationDate}.trim().isEmpty() ? new java.text.SimpleDateFormat("dd/MM/yyyy").format(new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm").parse($F{managerEvaluationDate}.substring(0, 16))) : "-"]]></expression>
 							<box>
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
 							</box>

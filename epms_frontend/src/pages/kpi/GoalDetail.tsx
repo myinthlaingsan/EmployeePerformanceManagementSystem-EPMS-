@@ -38,7 +38,13 @@ const GoalDetail: React.FC = () => {
 
   const { data: goalSetResponse, isLoading, error, refetch } = useGetGoalSetByEmployeeQuery(
     { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId! },
-    { skip: !user?.id || !effectiveCycleId }
+    {
+      skip: !user?.id || !effectiveCycleId,
+      refetchOnMountOrArgChange: true,
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+      pollingInterval: 30000,
+    }
   );
 
   const goalSet = goalSetResponse?.data;
@@ -72,7 +78,11 @@ const GoalDetail: React.FC = () => {
 
   const { data: midcycleResponse, refetch: refetchMidcycle } = useGetMidcycleSummaryQuery(
     { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId! },
-    { skip: !effectiveCycleId }
+    {
+      skip: !effectiveCycleId,
+      refetchOnMountOrArgChange: true,
+      pollingInterval: 10000   // ← auto-refresh every 10 seconds
+    }
   );
   const midcycle = midcycleResponse?.data ?? null;
 
@@ -191,7 +201,7 @@ const GoalDetail: React.FC = () => {
               <Can permission="KPI_CREATE">
                 {(goalSet.status === 'DRAFT' || goalSet.status === 'APPROVED') && (
                   <button
-                     onClick={() => navigate(`/kpi/assign/${employeeId}?cycleId=${effectiveCycleId}&mode=edit`)}
+                    onClick={() => navigate(`/kpi/assign/${employeeId}?cycleId=${effectiveCycleId}&mode=edit`)}
                     style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none' }}>
                     Modify Goals
                   </button>
@@ -255,69 +265,75 @@ const GoalDetail: React.FC = () => {
           This goal set has been archived and superseded by a newer assignment.
         </div>
       ) : (
-      <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div className="flex items-center w-full max-w-2xl mx-auto relative">
-          {STEPS.map((step, index) => {
-            const isCompleted = effectiveStepIndex > index;
-            const isCurrent = effectiveStepIndex === index;
-            const statusColor = isCompleted || isCurrent ? '#1A56DB' : '#E4E6EC';
-            const Icon = step.icon;
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div className="flex items-center w-full max-w-2xl mx-auto relative">
+            {STEPS.map((step, index) => {
+              const isCompleted = effectiveStepIndex > index;
+              const isCurrent = effectiveStepIndex === index;
+              const statusColor = isCompleted || isCurrent ? '#1A56DB' : '#E4E6EC';
+              const Icon = step.icon;
 
-            return (
-              <div key={step.id} className="flex-1 flex items-center relative">
-                <div className="flex flex-col items-center relative z-10 w-full">
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: isCurrent ? '#EEF3FD' : isCompleted ? '#1A56DB' : '#F5F6F8',
-                    color: isCurrent ? '#1A56DB' : isCompleted ? '#FFFFFF' : '#9EA3B0',
-                    border: `1.5px solid ${statusColor}`,
-                    transition: 'all 0.3s'
-                  }}>
-                    <Icon size={14} strokeWidth={isCurrent || isCompleted ? 3 : 2} />
+              return (
+                <div key={step.id} className="flex-1 flex items-center relative">
+                  <div className="flex flex-col items-center relative z-10 w-full">
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: isCurrent ? '#EEF3FD' : isCompleted ? '#1A56DB' : '#F5F6F8',
+                      color: isCurrent ? '#1A56DB' : isCompleted ? '#FFFFFF' : '#9EA3B0',
+                      border: `1.5px solid ${statusColor}`,
+                      transition: 'all 0.3s'
+                    }}>
+                      <Icon size={14} strokeWidth={isCurrent || isCompleted ? 3 : 2} />
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontWeight: 500, marginTop: 8,
+                      color: isCurrent ? '#111827' : '#9EA3B0'
+                    }}>
+                      {step.label}
+                    </span>
                   </div>
-                  <span style={{
-                    fontSize: 11, fontWeight: 500, marginTop: 8,
-                    color: isCurrent ? '#111827' : '#9EA3B0'
-                  }}>
-                    {step.label}
-                  </span>
+                  {index < STEPS.length - 1 && (
+                    <div style={{
+                      position: 'absolute', top: 16, left: '50%', right: '-50%', height: 2,
+                      background: currentStepIndex > index ? '#1A56DB' : '#E4E6EC',
+                      transform: 'translateY(-50%)', zIndex: 0
+                    }} />
+                  )}
                 </div>
-                {index < STEPS.length - 1 && (
-                  <div style={{
-                    position: 'absolute', top: 16, left: '50%', right: '-50%', height: 2,
-                    background: currentStepIndex > index ? '#1A56DB' : '#E4E6EC',
-                    transform: 'translateY(-50%)', zIndex: 0
-                  }} />
-                )}
+              );
+            })}
+          </div>
+          {/* Score status indicator — independent of step position */}
+          <div style={{
+            marginTop: 14, paddingTop: 12, borderTop: '0.5px solid #E4E6EC',
+            display: 'flex', justifyContent: 'center', width: '100%'
+          }}>
+            {isScoredState && finalScore ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: '#EAF3DE', border: '0.5px solid #B8DCA0',
+                borderRadius: 20, padding: '4px 14px',
+                fontSize: 11, fontWeight: 500, color: '#27500A'
+              }}>
+                <Award size={12} />
+                Score calculated — {finalScore.weightedScore.toFixed(1)} / 100
+                <span style={{ color: '#5A7A3A', fontWeight: 400 }}>
+                  · {formatRelativeTime(finalScore.calculatedAt)}
+                </span>
               </div>
-            );
-          })}
+            ) : (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: '#F5F6F8', border: '0.5px solid #E0E2E8',
+                borderRadius: 20, padding: '4px 14px',
+                fontSize: 11, color: '#9EA3B0'
+              }}>
+                <Award size={12} />
+                Score not yet calculated
+              </div>
+            )}
+          </div>
         </div>
-        {/* Score status indicator — independent of step position */}
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '0.5px solid #E4E6EC',
-                      display: 'flex', justifyContent: 'center', width: '100%' }}>
-          {isScoredState && finalScore ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6,
-                          background: '#EAF3DE', border: '0.5px solid #B8DCA0',
-                          borderRadius: 20, padding: '4px 14px',
-                          fontSize: 11, fontWeight: 500, color: '#27500A' }}>
-              <Award size={12} />
-              Score calculated — {finalScore.weightedScore.toFixed(1)} / 100
-              <span style={{ color: '#5A7A3A', fontWeight: 400 }}>
-                · {formatRelativeTime(finalScore.calculatedAt)}
-              </span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6,
-                          background: '#F5F6F8', border: '0.5px solid #E0E2E8',
-                          borderRadius: 20, padding: '4px 14px',
-                          fontSize: 11, color: '#9EA3B0' }}>
-              <Award size={12} />
-              Score not yet calculated
-            </div>
-          )}
-        </div>
-      </div>
       )}
 
       {/* Summary cards */}
@@ -359,106 +375,106 @@ const GoalDetail: React.FC = () => {
           <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
             <div className="overflow-x-auto">
               <table className="w-full text-left" style={{ minWidth: 600 }}>
-            <thead>
-              <tr style={{ borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
-                {['KPI Item', 'Weight', 'Target', 'Unit', 'Progress', 'Actions'].map((h, i) => (
-                  <th key={h} style={{ padding: '10px 18px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => {
-                const pct = Math.min(Math.round(((item.currentProgress || 0) / item.targetValue) * 100), 100);
-                const isComplianceRow = item.isCompliance;
-                const rowBg = isComplianceRow ? '#FEFCE8' : '#FAFBFF';
-                
-                return (
-                  <tr key={item.id} style={{ borderBottom: idx < items.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
-                    className={`transition-colors ${isComplianceRow ? 'hover:bg-[#FEF9C3]' : 'hover:bg-[#F3F4F6]'}`}>
-                    <td style={{ padding: '12px 18px', background: rowBg }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{item.title}</p>
-                        {isComplianceRow && (
-                          <span title="Compliance KPI" className="flex">
-                            <ShieldCheck size={14} className="text-amber-500" />
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.categoryName}</p>
-                    </td>
-                    <td style={{ padding: '12px 18px', fontSize: 13, fontWeight: 500, color: '#111827', background: rowBg }}>{item.weightPercent}%</td>
-                    <td style={{ padding: '12px 18px', fontSize: 12, color: '#5A6070', background: rowBg }}>
-                      {item.targetValue}
-                    </td>
-                    <td style={{ padding: '12px 18px', fontSize: 12, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', background: rowBg }}>
-                      {item.unit || '—'}
-                    </td>
-                    <td style={{ padding: '12px 18px', background: rowBg }}>
-                      <div className="flex items-center gap-3">
-                        <div style={{ flex: 1, maxWidth: 100, background: isComplianceRow ? '#FDE68A' : '#F0F2F6', borderRadius: 4, height: 4, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', background: isComplianceRow ? '#D97706' : '#1A56DB', width: `${pct}%`, transition: 'width 0.5s' }} />
-                        </div>
-                        <span style={{ fontSize: 12, fontWeight: 500, color: '#111827' }}>{pct}%</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 18px', textAlign: 'right', background: rowBg }}>
-                      <div className="flex justify-end gap-2">
-                        {/* Employee update button - for regular goals */}
-                        <Can permission="KPI_CREATE">
-                          {isOwner && goalSet.status === 'APPROVED' && !item.isCompliance && (
-                            <button
-                              onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
-                              style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
-                              className="hover:bg-blue-100 transition">
-                              UPDATE
-                            </button>
-                          )}
-                        </Can>
-                        {/* Employee locked state - for compliance goals */}
-                        {isOwner && goalSet.status === 'APPROVED' && item.isCompliance && (
-                          <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg" title="Requires manager verification">
-                            <Lock size={12} />
-                            <span style={{ fontSize: 10, fontWeight: 600 }}>MANAGER ONLY</span>
-                          </div>
-                        )}
-
-                        {/* Manager verify button - for compliance items */}
-                        <Can permission="KPI_APPROVE">
-                          {isPrivileged && item.isCompliance && goalSet.status === 'APPROVED' && !isArchivedCycle && (
-                            item.verifiedAt ? (
-                              <div style={{ fontSize: 10, color: '#27500A', background: '#EAF3DE', border: '0.5px solid #B8DCA0', borderRadius: 6, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <ShieldCheck size={11} />
-                                Verified {item.verifiedBy ? `by ${item.verifiedBy}` : ''} {formatRelativeTime(item.verifiedAt)}
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
-                                style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
-                                className="hover:bg-amber-200 transition">
-                                VERIFY
-                              </button>
-                            )
-                          )}
-                        </Can>
-
-                        {/* Manager revise button - for all items */}
-                        <Can permission="KPI_CREATE">
-                          {isPrivileged && !isReadOnly && goalSet.status !== 'LOCKED' && (
-                            <button
-                              onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
-                              style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
-                              className="hover:bg-gray-100 transition">
-                              REVISE
-                            </button>
-                          )}
-                        </Can>
-                      </div>
-                    </td>
+                <thead>
+                  <tr style={{ borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
+                    {['KPI Item', 'Weight', 'Target', 'Unit', 'Progress', 'Actions'].map((h, i) => (
+                      <th key={h} style={{ padding: '10px 18px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
+                    ))}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {items.map((item, idx) => {
+                    const pct = Math.min(Math.round(((item.currentProgress || 0) / item.targetValue) * 100), 100);
+                    const isComplianceRow = item.isCompliance;
+                    const rowBg = isComplianceRow ? '#FEFCE8' : '#FAFBFF';
+
+                    return (
+                      <tr key={item.id} style={{ borderBottom: idx < items.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
+                        className={`transition-colors ${isComplianceRow ? 'hover:bg-[#FEF9C3]' : 'hover:bg-[#F3F4F6]'}`}>
+                        <td style={{ padding: '12px 18px', background: rowBg }}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{item.title}</p>
+                            {isComplianceRow && (
+                              <span title="Compliance KPI" className="flex">
+                                <ShieldCheck size={14} className="text-amber-500" />
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ fontSize: 10, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.categoryName}</p>
+                        </td>
+                        <td style={{ padding: '12px 18px', fontSize: 13, fontWeight: 500, color: '#111827', background: rowBg }}>{item.weightPercent}%</td>
+                        <td style={{ padding: '12px 18px', fontSize: 12, color: '#5A6070', background: rowBg }}>
+                          {item.targetValue}
+                        </td>
+                        <td style={{ padding: '12px 18px', fontSize: 12, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', background: rowBg }}>
+                          {item.unit || '—'}
+                        </td>
+                        <td style={{ padding: '12px 18px', background: rowBg }}>
+                          <div className="flex items-center gap-3">
+                            <div style={{ flex: 1, maxWidth: 100, background: isComplianceRow ? '#FDE68A' : '#F0F2F6', borderRadius: 4, height: 4, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', background: isComplianceRow ? '#D97706' : '#1A56DB', width: `${pct}%`, transition: 'width 0.5s' }} />
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 500, color: '#111827' }}>{pct}%</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 18px', textAlign: 'right', background: rowBg }}>
+                          <div className="flex justify-end gap-2">
+                            {/* Employee update button - for regular goals */}
+                            <Can permission="KPI_CREATE">
+                              {isOwner && goalSet.status === 'APPROVED' && !item.isCompliance && (
+                                <button
+                                  onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
+                                  style={{ background: '#EEF3FD', color: '#0C447C', border: '0.5px solid #B5D4F4', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                                  className="hover:bg-blue-100 transition">
+                                  UPDATE
+                                </button>
+                              )}
+                            </Can>
+                            {/* Employee locked state - for compliance goals */}
+                            {isOwner && goalSet.status === 'APPROVED' && item.isCompliance && (
+                              <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg" title="Requires manager verification">
+                                <Lock size={12} />
+                                <span style={{ fontSize: 10, fontWeight: 600 }}>MANAGER ONLY</span>
+                              </div>
+                            )}
+
+                            {/* Manager verify button - for compliance items */}
+                            <Can permission="KPI_APPROVE">
+                              {isPrivileged && item.isCompliance && goalSet.status === 'APPROVED' && !isArchivedCycle && (
+                                item.verifiedAt ? (
+                                  <div style={{ fontSize: 10, color: '#27500A', background: '#EAF3DE', border: '0.5px solid #B8DCA0', borderRadius: 6, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <ShieldCheck size={11} />
+                                    Verified {item.verifiedBy ? `by ${item.verifiedBy}` : ''} {formatRelativeTime(item.verifiedAt)}
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => { setSelectedItem(item); setShowProgressModal(true); }}
+                                    style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                                    className="hover:bg-amber-200 transition">
+                                    VERIFY
+                                  </button>
+                                )
+                              )}
+                            </Can>
+
+                            {/* Manager revise button - for all items */}
+                            <Can permission="KPI_CREATE">
+                              {isPrivileged && !isReadOnly && goalSet.status !== 'LOCKED' && (
+                                <button
+                                  onClick={() => { setSelectedItem(item); setShowRevisionModal(true); }}
+                                  style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}
+                                  className="hover:bg-gray-100 transition">
+                                  REVISE
+                                </button>
+                              )}
+                            </Can>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -491,8 +507,10 @@ const GoalDetail: React.FC = () => {
             {/* Recalculate button — always visible to Manager/HR */}
             {isPrivileged && !isArchivedCycle && (
               <button onClick={handleCalculate}
-                style={{ width: '100%', marginTop: 12, background: '#EEF3FD', color: '#0C447C',
-                         border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '8px', fontSize: 12, fontWeight: 500 }}>
+                style={{
+                  width: '100%', marginTop: 12, background: '#EEF3FD', color: '#0C447C',
+                  border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '8px', fontSize: 12, fontWeight: 500
+                }}>
                 {finalScore ? 'Recalculate Score' : 'Calculate Score'}
               </button>
             )}
@@ -504,10 +522,14 @@ const GoalDetail: React.FC = () => {
               Item Breakdown
             </p>
             {items.map(item => (
-              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between',
-                                          padding: '6px 0', borderBottom: '0.5px solid #F0F2F6', fontSize: 12 }}>
-                <span style={{ color: '#5A6070', flex: 1, marginRight: 8,
-                               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div key={item.id} style={{
+                display: 'flex', justifyContent: 'space-between',
+                padding: '6px 0', borderBottom: '0.5px solid #F0F2F6', fontSize: 12
+              }}>
+                <span style={{
+                  color: '#5A6070', flex: 1, marginRight: 8,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                }}>
                   {item.title}
                 </span>
                 <span style={{ color: '#111827', fontWeight: 500, flexShrink: 0 }}>
@@ -521,7 +543,11 @@ const GoalDetail: React.FC = () => {
       </div>
 
       {showProgressModal && selectedItem && (
-        <ProgressUpdateModal item={selectedItem} onClose={() => { setShowProgressModal(false); setSelectedItem(null); }} />
+        <ProgressUpdateModal
+          item={selectedItem}
+          goalSetStatus={goalSet.status}
+          onClose={() => { setShowProgressModal(false); setSelectedItem(null); }}
+        />
       )}
       {showRevisionModal && selectedItem && (
         <KpiRevisionModal item={selectedItem} onClose={() => { setShowRevisionModal(false); setSelectedItem(null); }} />
@@ -554,15 +580,15 @@ const GoalDetail: React.FC = () => {
                 Cancel
               </button>
               <button onClick={async () => {
-                  setShowRevertConfirm(false);
-                  try {
-                    await revertGoal(goalSet!.id).unwrap();
-                    toast.success('Goal set reverted to draft.');
-                    await refetch();
-                  } catch (err: any) {
-                    toast.error(err?.data?.message || 'Failed to revert goal set');
-                  }
-                }}
+                setShowRevertConfirm(false);
+                try {
+                  await revertGoal(goalSet!.id).unwrap();
+                  toast.success('Goal set reverted to draft.');
+                  await refetch();
+                } catch (err: any) {
+                  toast.error(err?.data?.message || 'Failed to revert goal set');
+                }
+              }}
                 style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>
                 Yes, Revert
               </button>
@@ -586,8 +612,10 @@ const GoalDetail: React.FC = () => {
             <p style={{ fontSize: 13, color: '#5A6070', lineHeight: 1.6, marginBottom: 16 }}>
               This will:
             </p>
-            <ul style={{ fontSize: 13, color: '#5A6070', lineHeight: 2,
-                         paddingLeft: 20, marginBottom: 20 }}>
+            <ul style={{
+              fontSize: 13, color: '#5A6070', lineHeight: 2,
+              paddingLeft: 20, marginBottom: 20
+            }}>
               <li>Send a <strong>KPI_LOCKED</strong> notification to {goalSet?.employeeName}</li>
               <li>Prevent any further progress updates</li>
               <li>Allow final score calculation to proceed</li>
@@ -596,9 +624,11 @@ const GoalDetail: React.FC = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowLockConfirm(false)}
-                style={{ background: '#F5F6F8', color: '#5A6070',
-                         border: '0.5px solid #E0E2E8', borderRadius: 8,
-                         padding: '8px 16px', fontSize: 13 }}>
+                style={{
+                  background: '#F5F6F8', color: '#5A6070',
+                  border: '0.5px solid #E0E2E8', borderRadius: 8,
+                  padding: '8px 16px', fontSize: 13
+                }}>
                 Cancel
               </button>
               <button
@@ -612,9 +642,11 @@ const GoalDetail: React.FC = () => {
                     toast.error(err?.data?.message || 'Failed to lock goal set');
                   }
                 }}
-                style={{ background: '#F1EFE8', color: '#444441',
-                         border: '0.5px solid #DDDBD2', borderRadius: 8,
-                         padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>
+                style={{
+                  background: '#F1EFE8', color: '#444441',
+                  border: '0.5px solid #DDDBD2', borderRadius: 8,
+                  padding: '8px 16px', fontSize: 13, fontWeight: 500
+                }}>
                 Yes, Lock
               </button>
             </div>
@@ -630,12 +662,11 @@ const GoalDetail: React.FC = () => {
           cycleName={goalSet.appraisalCycleName || cycleData.cycleName}
           cycleStartDate={cycleData.startDate}
           cycleEndDate={cycleData.endDate}
-          summary={midcycle}
+          summary={null}
           onClose={() => setShowMidcycleModal(false)}
-          onSuccess={() => {
+          onSuccess={async () => {
+            await Promise.all([refetch(), refetchMidcycle()]);
             setShowMidcycleModal(false);
-            refetch();
-            refetchMidcycle();
           }}
         />
       )}

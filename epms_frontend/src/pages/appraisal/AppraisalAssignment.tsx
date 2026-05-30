@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   useAssignBulkMutation,
+  useGetAppraisalsByCycleQuery,
   useGetAppraisalFormSetsQuery,
   useSyncFormSetsMutation
 } from '../../features/appraisal/appraisalApi';
@@ -39,18 +40,38 @@ const AppraisalAssignment: React.FC = () => {
     if (activeCycleId != null) setSelectedCycleId(activeCycleId.toString());
   }, [activeCycleId]);
 
+  const selectedCycleNumber = selectedCycleId ? Number(selectedCycleId) : undefined;
+  const { data: cycleAppraisals = [], isFetching: appraisalsLoading, refetch: refetchCycleAppraisals } =
+    useGetAppraisalsByCycleQuery(selectedCycleNumber as number, { skip: !selectedCycleNumber });
+
   const employees = employeePaged?.content || [];
+
+  const assignedEmployeeIds = useMemo(() => {
+    if (!Array.isArray(cycleAppraisals)) return new Set<number>();
+    return new Set(
+      cycleAppraisals
+        .map((appraisal: any) => appraisal?.employeeId)
+        .filter((employeeId: unknown): employeeId is number => typeof employeeId === 'number')
+    );
+  }, [cycleAppraisals]);
 
   const filteredEmployees = useMemo(() => {
     if (!Array.isArray(employees)) return [];
     return employees.filter(emp => {
+      const hasDirectManager = Boolean(emp?.directManagerId);
+      const alreadyAssigned = assignedEmployeeIds.has(emp.id);
       const matchesSearch = String(emp?.staffName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         String(emp?.email || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesDept = deptFilter === '' || emp?.currentDepartmentName === deptFilter;
       const matchesPos = posFilter === '' || emp?.positionName === posFilter;
-      return matchesSearch && matchesDept && matchesPos;
+      return hasDirectManager && !alreadyAssigned && matchesSearch && matchesDept && matchesPos;
     });
-  }, [employees, searchTerm, deptFilter, posFilter]);
+  }, [employees, assignedEmployeeIds, searchTerm, deptFilter, posFilter]);
+
+  React.useEffect(() => {
+    const visibleEmployeeIds = new Set(filteredEmployees.map(emp => emp.id));
+    setSelectedEmployeeIds(prev => prev.filter(id => visibleEmployeeIds.has(id)));
+  }, [filteredEmployees]);
 
   const departments = useMemo(() => {
     if (!Array.isArray(employees)) return [];
@@ -63,8 +84,9 @@ const AppraisalAssignment: React.FC = () => {
     return Array.from(new Set(filtered.map(e => e?.positionName).filter(Boolean))) as string[];
   }, [employees, deptFilter]);
 
+  const allVisibleSelected = filteredEmployees.length > 0 && selectedEmployeeIds.length === filteredEmployees.length;
   const toggleEmployee = (id: number) => setSelectedEmployeeIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  const selectAll = () => setSelectedEmployeeIds(selectedEmployeeIds.length === filteredEmployees.length ? [] : filteredEmployees.map(e => e.id));
+  const selectAll = () => setSelectedEmployeeIds(allVisibleSelected ? [] : filteredEmployees.map(e => e.id));
 
   const handleAssign = async () => {
     if (!selectedCycleId) { toast.warning('Please select an appraisal cycle.'); return; }
@@ -73,7 +95,8 @@ const AppraisalAssignment: React.FC = () => {
     try {
       await assignBulk({ cycleId: Number(selectedCycleId), formSetId: Number(selectedFormSetId), employeeIds: selectedEmployeeIds }).unwrap();
       toast.success(`Assigned appraisals to ${selectedEmployeeIds.length} employees!`);
-      navigate('/appraisal');
+      setSelectedEmployeeIds([]);
+      refetchCycleAppraisals();
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to assign appraisals.');
     }
@@ -200,9 +223,11 @@ const AppraisalAssignment: React.FC = () => {
           ) : (
             <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
               <div className="flex items-center justify-between" style={{ padding: '10px 18px', borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
-                <span style={{ fontSize: 12, color: '#9EA3B0' }}>{filteredEmployees.length} employees found</span>
-                <button onClick={selectAll} style={{ fontSize: 12, color: '#1A56DB' }}>
-                  {selectedEmployeeIds.length === filteredEmployees.length ? 'Deselect All' : 'Select All'}
+                <span style={{ fontSize: 12, color: '#9EA3B0' }}>
+                  {appraisalsLoading || empsLoading ? 'Loading eligible employees...' : `${filteredEmployees.length} eligible employees found`}
+                </span>
+                <button onClick={selectAll} disabled={filteredEmployees.length === 0} style={{ fontSize: 12, color: filteredEmployees.length === 0 ? '#9EA3B0' : '#1A56DB' }}>
+                  {allVisibleSelected ? 'Deselect All' : 'Select All'}
                 </button>
               </div>
               <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>

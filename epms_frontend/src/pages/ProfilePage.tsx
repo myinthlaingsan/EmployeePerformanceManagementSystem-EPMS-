@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGetCurrentUserQuery } from "../features/employee/employeeapi";
 import { useGetGoalSetByEmployeeQuery, useGetActiveCycleQuery } from "../services/kpiApi";
@@ -39,6 +40,41 @@ const ProfilePage = () => {
 
   const { data: appraisals, isLoading: isAppraisalsLoading } = useGetAppraisalsQuery();
 
+  const skillColors = ["#1A56DB", "#639922", "#BA7517", "#9333EA", "#0369A1", "#E11D48"];
+
+  const dynamicSkills = useMemo(() => {
+    const items = goalSet?.kpiItems || goalSet?.items || [];
+    if (!items.length) return [];
+    
+    const categoryMap = new Map<string, { totalProgress: number; count: number }>();
+    
+    items.forEach((item: any) => {
+      const cat = item.categoryName || "General Productivity";
+      
+      let progress = 0;
+      if (item.currentProgress !== undefined) {
+         progress = item.currentProgress;
+      } else if (item.scorePercent !== undefined) {
+         progress = item.scorePercent;
+      } else if (item.status === 'COMPLETED') {
+         progress = 100;
+      } else if (item.status === 'IN_PROGRESS') {
+         progress = 50;
+      }
+      
+      const existing = categoryMap.get(cat) || { totalProgress: 0, count: 0 };
+      existing.totalProgress += Math.min(Math.max(progress, 0), 100);
+      existing.count += 1;
+      categoryMap.set(cat, existing);
+    });
+
+    return Array.from(categoryMap.entries()).map(([name, data], index) => ({
+      name,
+      value: Math.round(data.totalProgress / data.count),
+      color: skillColors[index % skillColors.length]
+    })).sort((a, b) => b.value - a.value); // Sort by highest value
+  }, [goalSet]);
+
   if (isProfileLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -48,16 +84,6 @@ const ProfilePage = () => {
   }
 
   const avatarColor = AVATAR_COLORS[(profile?.staffName?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length];
-
-  // Derived skills from KPI items (just as an example of "Skill Breakdown")
-  // In a real app, this might come from a separate skills endpoint
-  const mockSkills = [
-    { name: "Technical Proficiency", value: 85, color: "#1A56DB" },
-    { name: "Team Collaboration", value: 92, color: "#639922" },
-    { name: "Leadership", value: 70, color: "#BA7517" },
-    { name: "Communication", value: 78, color: "#1A56DB" },
-    { name: "Problem Solving", value: 88, color: "#639922" },
-  ];
 
   return (
     <div className="space-y-4 pb-8">
@@ -140,20 +166,26 @@ const ProfilePage = () => {
             <span className="text-[10px] font-medium text-[#9EA3B0] uppercase tracking-[0.8px]">Current Level</span>
           </div>
           <div className="space-y-5">
-            {mockSkills.map((skill) => (
-              <div key={skill.name}>
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-[12px] text-[#111827]">{skill.name}</span>
-                  <span className="text-[12px] font-medium text-[#111827]">{skill.value}%</span>
+            {dynamicSkills.length > 0 ? (
+              dynamicSkills.map((skill) => (
+                <div key={skill.name}>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[12px] text-[#111827]">{skill.name}</span>
+                    <span className="text-[12px] font-medium text-[#111827]">{skill.value}%</span>
+                  </div>
+                  <div className="h-1.5 bg-[#EEF0F6] rounded-[3px] overflow-hidden">
+                    <div 
+                      className="h-full rounded-[3px] transition-all duration-500" 
+                      style={{ width: `${skill.value}%`, background: skill.color }}
+                    />
+                  </div>
                 </div>
-                <div className="h-1.5 bg-[#EEF0F6] rounded-[3px] overflow-hidden">
-                  <div 
-                    className="h-full rounded-[3px] transition-all duration-500" 
-                    style={{ width: `${skill.value}%`, background: skill.color }}
-                  />
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-[#9EA3B0] text-[12px]">
+                No skills data available yet.
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -166,11 +198,11 @@ const ProfilePage = () => {
           <div className="space-y-3">
             {isGoalsLoading ? (
               <div className="text-center py-4 text-[#9EA3B0]">Loading goals...</div>
-            ) : goalSet?.kpiItems && goalSet.kpiItems.length > 0 ? (
-              goalSet.kpiItems.map((item: any) => (
+            ) : (goalSet?.kpiItems || goalSet?.items) && (goalSet?.kpiItems || goalSet?.items).length > 0 ? (
+              (goalSet?.kpiItems || goalSet?.items).map((item: any) => (
                 <div key={item.id} className="p-3 bg-[#F5F6F8] border-[0.5px] border-[#E4E6EC] rounded-[10px]">
                   <div className="flex justify-between items-start gap-2 mb-2">
-                    <p className="text-[13px] font-medium text-[#111827] leading-snug">{item.kpiName || item.customKpiName}</p>
+                    <p className="text-[13px] font-medium text-[#111827] leading-snug">{item.title || item.kpiName || item.customKpiName}</p>
                     <div className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                       item.status === 'COMPLETED' ? 'bg-success-fill text-success-text' : 
                       item.status === 'IN_PROGRESS' ? 'bg-info-fill text-info-text' : 
@@ -182,7 +214,7 @@ const ProfilePage = () => {
                   </div>
                   <div className="flex justify-between items-center text-[11px] text-[#9EA3B0]">
                     <span>Target: {item.targetValue}</span>
-                    <span>{item.weightage}% Weight</span>
+                    <span>{item.weightPercent !== undefined ? item.weightPercent : item.weightage}% Weight</span>
                   </div>
                 </div>
               ))

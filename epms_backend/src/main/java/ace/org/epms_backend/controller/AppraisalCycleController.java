@@ -62,7 +62,7 @@ public class AppraisalCycleController {
     }
 
     @PutMapping("/{id}/close")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<ApiResponse<AppraisalCycleResponse>> close(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appraisalCycleService.close(id)));
     }

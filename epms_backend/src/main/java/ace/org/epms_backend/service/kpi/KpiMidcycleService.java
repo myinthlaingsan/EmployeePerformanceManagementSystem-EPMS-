@@ -8,4 +8,5 @@ public interface KpiMidcycleService {
     void calculateCompositeFinalScore(Long employeeId, Long cycleId);
     MidcycleSummaryResponse getMidcycleSummary(Long employeeId, Long cycleId);
     void linkGoalSetToOpenPhase(Long employeeId, Long cycleId, Long goalSetId);
+    
 }
