@@ -18,7 +18,10 @@ public interface ReportService {
 
     PerformanceDistributionReportDTO getPerformanceDistribution(Long cycleId, Long departmentId);
     List<DepartmentAnalyticsDTO> getPerformanceByDepartment(Long cycleId);
+    List<DepartmentBreakdownDTO> getTeamPerformanceBreakdown(Long cycleId, Long departmentId);
+    byte[] exportTeamPerformanceBreakdown(Long cycleId, Long departmentId, String format);
     List<PerformanceTrendPointDTO> getOrganizationPerformanceTrend(int months);
+    byte[] exportOrganizationPerformanceTrendReport(int months, String format);
     List<PerformancePotentialMatrixDTO> getPerformancePotentialMatrix(Long cycleId);
     GoalCompletionReportDTO getGoalCompletion(Long cycleId);
     Feedback360SummaryAnalyticsDTO getFeedback360SummaryAnalytics(Long cycleId);

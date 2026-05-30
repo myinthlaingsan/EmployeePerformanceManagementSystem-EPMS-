@@ -448,13 +448,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                                 .newState(savedEmployee)
                                 .status(AuditStatus.SUCCESS)
                                 .build());
-                auditService.log(AuditRequest.builder()
-                                .tableName("employees")
-                                .recordId(savedEmployee.getId())
-                                .action(AuditAction.INSERT)
-                                .newState(savedEmployee)
-                                .status(AuditStatus.SUCCESS)
-                                .build());
 
                 return mapToResponse(savedEmployee);
         }

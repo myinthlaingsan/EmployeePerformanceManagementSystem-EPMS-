@@ -12,6 +12,7 @@ import {
   useGetPerformancePotentialMatrixQuery,
   useGetPerformanceRankingReportQuery,
   useGetPipTrackingReportQuery,
+  useGetTeamPerformanceBreakdownQuery,
 } from '../../features/report/reportApi';
 import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
@@ -26,6 +27,7 @@ import {
   PerformanceDistributionCard,
   PerformancePotentialMatrixCard,
   PerformanceTrendChart,
+  TeamPerformanceBreakdownCard,
 } from '../../components/analytics/ChartCards';
 import { PerformanceRankingTable, PipPanel, StrategicInsightCard } from '../../components/analytics/RankingAndPip';
 import {
@@ -57,6 +59,7 @@ const AnalyticsDashboard = () => {
   const matrixReportQuery = useGetPerformancePotentialMatrixQuery(Number(selectedCycle), { skip: !hasCycle });
   const goalReportQuery = useGetGoalCompletionQuery(Number(selectedCycle), { skip: !hasCycle });
   const feedback360ReportQuery = useGetFeedback360SummaryAnalyticsQuery(Number(selectedCycle), { skip: !hasCycle });
+  const teamBreakdownQuery = useGetTeamPerformanceBreakdownQuery({ cycleId: Number(selectedCycle), departmentId }, { skip: !hasCycle });
 
   const [downloadReport] = useDownloadReportMutation();
 
@@ -92,6 +95,7 @@ const AnalyticsDashboard = () => {
           matrixReportQuery.refetch(),
           goalReportQuery.refetch(),
           feedback360ReportQuery.refetch(),
+          teamBreakdownQuery.refetch(),
         );
       }
       await Promise.all(refreshes);
@@ -112,6 +116,7 @@ const AnalyticsDashboard = () => {
     matrixReportQuery,
     pipReportQuery,
     rankingReportQuery,
+    teamBreakdownQuery,
     trendReportQuery,
   ]);
 
@@ -197,7 +202,38 @@ const AnalyticsDashboard = () => {
 
           <PerformanceDistributionCard data={distributionReportQuery.data?.data} />
           <DepartmentHeatmap data={departmentReportQuery.data?.data} />
-          <PerformanceTrendChart data={trendReportQuery.data?.data} />
+
+          <div className="lg:col-span-12">
+            <TeamPerformanceBreakdownCard 
+              data={teamBreakdownQuery.data?.data}
+              loading={teamBreakdownQuery.isFetching}
+              isError={teamBreakdownQuery.isError}
+              onDownloadPdf={() => handleDownload({
+                endpoint: 'team-performance-breakdown',
+                params: { cycleId: selectedCycle, departmentId },
+                fileName: `Team_Performance_${selectedCycle}.pdf`,
+              })}
+              onDownloadExcel={() => handleDownload({
+                endpoint: 'team-performance-breakdown',
+                params: { cycleId: selectedCycle, departmentId, format: 'excel' },
+                fileName: `Team_Performance_${selectedCycle}.xlsx`,
+              })}
+            />
+          </div>
+
+          <PerformanceTrendChart
+            data={trendReportQuery.data?.data}
+            onDownloadPdf={() => handleDownload({
+              endpoint: 'organization-performance-trend',
+              params: {},
+              fileName: 'Organization_Performance_Trend.pdf',
+            })}
+            onDownloadExcel={() => handleDownload({
+              endpoint: 'organization-performance-trend',
+              params: { format: 'excel' },
+              fileName: 'Organization_Performance_Trend.xlsx',
+            })}
+          />
           <GoalCompletionCard data={goalReportQuery.data?.data} />
           <Feedback360Card data={feedback360ReportQuery.data?.data} />
           <PerformancePotentialMatrixCard data={matrixReportQuery.data?.data} />

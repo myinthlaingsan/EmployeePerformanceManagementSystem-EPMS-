@@ -95,12 +95,14 @@ public class AuthServiceImpl implements AuthService {
                 employee.setAccountLocked(true);
                 employee.setLockTime(LocalDateTime.now());
                 msg = "Invalid credentials. Your account has been locked after 3 failed attempts.";
+                employeeRepository.save(employee);
+                throw new LockedException(msg);
             } else {
                 int remaining = 3 - newAttempts;
                 msg = "Invalid credentials. You have " + remaining + " more attempt(s) before your account is locked.";
+                employeeRepository.save(employee);
+                throw new BadCredentialsException(msg);
             }
-            employeeRepository.save(employee);
-            throw new LockedException(msg);
         }
         return new AuthResponse("fail", "fail");
     }

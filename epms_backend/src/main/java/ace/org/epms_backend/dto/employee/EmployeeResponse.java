@@ -62,6 +62,7 @@ public class EmployeeResponse {
 
     private EmployeeStatus status;
     private Boolean isActive;
+    private Boolean accountLocked;
 
     private Long directManagerId;
     private String directManagerName;

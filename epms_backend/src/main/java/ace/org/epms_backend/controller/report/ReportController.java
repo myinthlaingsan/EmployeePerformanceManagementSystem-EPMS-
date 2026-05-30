@@ -80,6 +80,14 @@ public class ReportController {
         return ResponseEntity.ok(ApiResponse.success(reportService.getOrganizationPerformanceTrend(months)));
     }
 
+    @GetMapping("/organization-performance-trend/download")
+    public ResponseEntity<byte[]> downloadOrganizationPerformanceTrendReport(
+            @RequestParam(defaultValue = "6") int months,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportOrganizationPerformanceTrendReport(months, format);
+        return createDownloadResponse(reportContent, "Organization_Performance_Trend", format);
+    }
+
     @GetMapping("/performance-potential-matrix")
     public ResponseEntity<ApiResponse<List<PerformancePotentialMatrixDTO>>> getPerformancePotentialMatrix(@RequestParam Long cycleId) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getPerformancePotentialMatrix(cycleId)));
@@ -278,6 +286,22 @@ public class ReportController {
             @RequestParam(defaultValue = "pdf") String format) {
         byte[] content = reportService.exportPipDetailReport(pipId, format);
         return createDownloadResponse(content, "PIP_Detail_Report", format);
+    }
+
+    @GetMapping("/team-performance-breakdown")
+    public ResponseEntity<ApiResponse<List<DepartmentBreakdownDTO>>> getTeamPerformanceBreakdown(
+            @RequestParam Long cycleId,
+            @RequestParam(required = false) Long departmentId) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getTeamPerformanceBreakdown(cycleId, departmentId)));
+    }
+
+    @GetMapping("/team-performance-breakdown/download")
+    public ResponseEntity<byte[]> downloadTeamPerformanceBreakdown(
+            @RequestParam Long cycleId,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportTeamPerformanceBreakdown(cycleId, departmentId, format);
+        return createDownloadResponse(reportContent, "Team_Performance_Breakdown", format);
     }
 
     private ResponseEntity<byte[]> createDownloadResponse(byte[] content, String baseName, String format) {

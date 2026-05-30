@@ -8,6 +8,7 @@ import ChartCard from '../components/dashboard/ChartCard';
 import ActivityFeed from '../components/dashboard/ActivityFeed';
 import QuickActionPanel, { type Action } from '../components/dashboard/QuickActionPanel';
 import { alertColors } from '../constants/dashboardColors';
+import { formatAuditDateTime } from '../utils/timeUtils';
 
 const PIE_COLORS = ['#639922', '#E24B4A', '#BA7517'];
 
@@ -85,7 +86,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap justify-between gap-1" style={{ marginBottom: 2 }}>
                       <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{alert.event}</span>
-                      <span style={{ fontSize: 11, color: colors.text, opacity: 0.7, fontFamily: "monospace" }}>{alert.timestamp}</span>
+                      <span style={{ fontSize: 11, color: colors.text, opacity: 0.7, fontFamily: "monospace" }}>{formatAuditDateTime(alert.timestamp)}</span>
                     </div>
                     <p style={{ fontSize: 12, color: colors.text, opacity: 0.85 }}>{alert.details}</p>
                     <span style={{ fontSize: 11, fontWeight: 500, color: colors.text, marginTop: 4, display: "inline-block" }}>
@@ -145,7 +146,7 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {/* Quick actions */}
-      <QuickActionPanel actions={quickActions} />
+      {/* <QuickActionPanel actions={quickActions} /> */}
 
       {/* Activity feed */}
       <ActivityFeed

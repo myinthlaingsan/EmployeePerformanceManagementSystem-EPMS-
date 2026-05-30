@@ -173,9 +173,14 @@ public class ReportServiceImpl implements ReportService {
                     .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, a.getCycle().getCycleId())
                     .map(KpiFinalScore::getWeightedScore).orElse(BigDecimal.ZERO);
 
+            BigDecimal appraisalScore = appraisalSummaryRepository
+                    .findByEmployee_IdAndCycle_CycleId(employeeId, a.getCycle().getCycleId())
+                    .map(AppraisalSummary::getTotalScore).orElse(BigDecimal.ZERO);
+
             return CycleScoreDTO.builder()
                     .cycleName(a.getCycle().getCycleName())
                     .kpiScore(kpiScore)
+                    .appraisalScore(appraisalScore)
                     .performanceCategory(
                             a.getPerformanceCategory() != null ? a.getPerformanceCategory().getName() : "N/A")
                     .build();
@@ -734,6 +739,17 @@ public class ReportServiceImpl implements ReportService {
         parameters.put("reportTitle", "Historical Performance Trend");
         String jrxmlPath = "reports/performance_trend_report.jrxml";
         return generateReport(jrxmlPath, parameters, List.of(data), format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportOrganizationPerformanceTrendReport(int months, String format) {
+        List<PerformanceTrendPointDTO> data = getOrganizationPerformanceTrend(months);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "Organization Performance Trend");
+        parameters.put("months", months);
+        String jrxmlPath = "reports/org_performance_trend_report.jrxml";
+        return generateReport(jrxmlPath, parameters, data, format);
     }
 
     @Override
@@ -1500,6 +1516,101 @@ public class ReportServiceImpl implements ReportService {
         params.put("overallComment", pip.getOverallComment() != null ? pip.getOverallComment() : "");
 
         return generateReport("reports/pip_detail_report.jrxml", params, rows, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DepartmentBreakdownDTO> getTeamPerformanceBreakdown(Long cycleId, Long departmentId) {
+        List<DepartmentBreakdownDTO> result = new ArrayList<>();
+        List<Employee> employees = (departmentId != null) 
+            ? employeeDepartmentRepository.findByCurrentDepartmentIdAndIsCurrentTrue(departmentId).stream().map(EmployeeDepartment::getEmployee).collect(Collectors.toList())
+            : employeeRepository.findAll();
+
+        Map<String, Map<String, List<TeamMemberBreakdownDTO>>> grouped = new HashMap<>();
+
+        for (Employee e : employees) {
+            EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(e.getId()).orElse(null);
+            String deptName = (ed != null && ed.getCurrentDepartment() != null) ? ed.getCurrentDepartment().getDepartmentName() : "No Department";
+            
+            EmployeeTeam et = employeeTeamRepository.findFirstByEmployeeIdAndIsPrimaryTrue(e.getId()).orElse(null);
+            String tName = (et != null && et.getTeam() != null) ? et.getTeam().getTeamName() : "No Team";
+
+            double score = appraisalSummaryRepository.findByEmployee_IdAndCycle_CycleId(e.getId(), cycleId)
+                            .map(s -> s.getTotalScore() != null ? s.getTotalScore().doubleValue() : 0.0)
+                            .orElse(0.0);
+
+            if (score > 0) {
+                TeamMemberBreakdownDTO member = TeamMemberBreakdownDTO.builder()
+                        .employeeId(e.getId())
+                        .employeeName(e.getStaffName())
+                        .role(e.getPosition() != null ? e.getPosition().getPositionName() : "Employee")
+                        .averageScore(roundDouble(score))
+                        .build();
+
+                grouped.computeIfAbsent(deptName, k -> new HashMap<>())
+                       .computeIfAbsent(tName, k -> new ArrayList<>())
+                       .add(member);
+            }
+        }
+
+        for (Map.Entry<String, Map<String, List<TeamMemberBreakdownDTO>>> deptEntry : grouped.entrySet()) {
+            List<TeamBreakdownDTO> teamBreakdowns = new ArrayList<>();
+            double totalDeptScore = 0;
+            int totalDeptMembers = 0;
+
+            for (Map.Entry<String, List<TeamMemberBreakdownDTO>> teamEntry : deptEntry.getValue().entrySet()) {
+                List<TeamMemberBreakdownDTO> members = teamEntry.getValue();
+                double teamAvg = members.stream().mapToDouble(TeamMemberBreakdownDTO::getAverageScore).average().orElse(0.0);
+                
+                teamBreakdowns.add(TeamBreakdownDTO.builder()
+                        .teamName(teamEntry.getKey())
+                        .averageScore(roundDouble(teamAvg))
+                        .members(members)
+                        .build());
+                        
+                totalDeptScore += members.stream().mapToDouble(TeamMemberBreakdownDTO::getAverageScore).sum();
+                totalDeptMembers += members.size();
+            }
+
+            double deptAvg = totalDeptMembers > 0 ? totalDeptScore / totalDeptMembers : 0.0;
+            
+            result.add(DepartmentBreakdownDTO.builder()
+                    .departmentName(deptEntry.getKey())
+                    .averageScore(roundDouble(deptAvg))
+                    .teams(teamBreakdowns)
+                    .build());
+        }
+
+        result.sort((a, b) -> Double.compare(b.getAverageScore(), a.getAverageScore()));
+        return result;
+    }
+
+    @Override
+    public byte[] exportTeamPerformanceBreakdown(Long cycleId, Long departmentId, String format) {
+        List<DepartmentBreakdownDTO> data = getTeamPerformanceBreakdown(cycleId, departmentId);
+        
+        List<TeamPerformanceBreakdownFlatDTO> flatData = new ArrayList<>();
+        for (DepartmentBreakdownDTO dept : data) {
+            for (TeamBreakdownDTO team : dept.getTeams()) {
+                for (TeamMemberBreakdownDTO member : team.getMembers()) {
+                    flatData.add(TeamPerformanceBreakdownFlatDTO.builder()
+                            .departmentName(dept.getDepartmentName())
+                            .departmentAverage(dept.getAverageScore())
+                            .teamName(team.getTeamName())
+                            .teamAverage(team.getAverageScore())
+                            .employeeName(member.getEmployeeName())
+                            .role(member.getRole())
+                            .averageScore(member.getAverageScore())
+                            .build());
+                }
+            }
+        }
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "Team Performance Breakdown");
+        parameters.put("cycleId", cycleId);
+        String jrxmlPath = "reports/team_performance_breakdown.jrxml";
+        return generateReport(jrxmlPath, parameters, flatData, format);
     }
 
     @Override

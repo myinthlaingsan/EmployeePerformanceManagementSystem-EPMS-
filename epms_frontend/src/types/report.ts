@@ -164,3 +164,22 @@ export interface Feedback360SummaryAnalyticsDTO {
   selfPerceptionGap: number;
   commonThemes: string[];
 }
+
+export interface TeamMemberBreakdownDTO {
+  employeeId: number;
+  employeeName: string;
+  role: string;
+  averageScore: number;
+}
+
+export interface TeamBreakdownDTO {
+  teamName: string;
+  averageScore: number;
+  members: TeamMemberBreakdownDTO[];
+}
+
+export interface DepartmentBreakdownDTO {
+  departmentName: string;
+  averageScore: number;
+  teams: TeamBreakdownDTO[];
+}

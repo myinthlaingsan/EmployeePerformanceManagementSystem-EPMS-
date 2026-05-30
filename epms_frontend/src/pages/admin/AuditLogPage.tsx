@@ -22,7 +22,7 @@ import {
 } from "../../features/audit/auditApi";
 import type { AuditAction, AuditLogDTO, AuditStatus } from "../../features/audit/auditTypes";
 
-const ACTIONS: Array<"" | AuditAction> = ["", "CREATE", "UPDATE", "DELETE", "ACCESS", "RESTORE", "EXPORT"];
+const ACTIONS: Array<"" | AuditAction> = ["", "CREATE", "INSERT", "UPDATE", "DELETE", "ACCESS", "RESTORE", "EXPORT"];
 const STATUSES: Array<"" | AuditStatus> = ["", "SUCCESS", "FAILURE", "WARNING"];
 
 const inputStyle: React.CSSProperties = {
@@ -38,6 +38,7 @@ const inputStyle: React.CSSProperties = {
 
 const actionColors: Record<string, { bg: string; text: string }> = {
   CREATE: { bg: "#EAF3DE", text: "#27500A" },
+  INSERT: { bg: "#EAF3DE", text: "#27500A" },
   UPDATE: { bg: "#EEF3FD", text: "#0C447C" },
   DELETE: { bg: "#FCEBEB", text: "#791F1F" },
   ACCESS: { bg: "#F1EFE8", text: "#444441" },

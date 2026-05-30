@@ -13,6 +13,10 @@ import ace.org.epms_backend.model.employee.Role;
 import ace.org.epms_backend.repository.DepartmentRepository;
 import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.service.DepartmentService;
+import ace.org.epms_backend.service.AuditService;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +32,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     private final DepartmentMapper departmentMapper;
     private final ace.org.epms_backend.service.AuthService authService;
     private final ace.org.epms_backend.repository.EmployeeRoleRepository employeeRoleRepository;
+    private final AuditService auditService;
 
     @Override
     public DepartmentResponse createDepartment(DepartmentRequest request) {
@@ -36,6 +41,15 @@ public class DepartmentServiceImpl implements DepartmentService {
         }
         Department department = departmentMapper.toEntity(request);
         department = departmentRepository.save(department);
+        
+        auditService.log(AuditRequest.builder()
+                .tableName("departments")
+                .recordId(department.getId())
+                .action(AuditAction.CREATE)
+                .newState(department)
+                .status(AuditStatus.SUCCESS)
+                .build());
+                
         return departmentMapper.toResponse(department);
     }
 
@@ -80,6 +94,15 @@ public class DepartmentServiceImpl implements DepartmentService {
         }
         departmentMapper.updateEntity(request, department);
         department = departmentRepository.save(department);
+        
+        auditService.log(AuditRequest.builder()
+                .tableName("departments")
+                .recordId(department.getId())
+                .action(AuditAction.UPDATE)
+                .newState(department)
+                .status(AuditStatus.SUCCESS)
+                .build());
+                
         return departmentMapper.toResponse(department);
     }
 
@@ -96,6 +119,14 @@ public class DepartmentServiceImpl implements DepartmentService {
 
         department.setIsActive(false);
         departmentRepository.save(department);
+        
+        auditService.log(AuditRequest.builder()
+                .tableName("departments")
+                .recordId(department.getId())
+                .action(AuditAction.DELETE)
+                .newState(department)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 
     @Override
