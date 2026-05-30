@@ -22,6 +22,8 @@ public interface AppraisalCycleRepository extends JpaRepository<AppraisalCycle, 
     // --- Scheduler queries ---
     List<AppraisalCycle> findByIsActiveTrueAndStatus(CycleStatus status);
 
+    long countByFinancialYear_IdAndIsActiveTrue(Long financialYearId);
+
     @Query("SELECT c FROM AppraisalCycle c WHERE c.isActive = true AND c.status = :status AND c.startDate <= :date")
     List<AppraisalCycle> findCyclesReadyForInProgress(@Param("status") CycleStatus status, @Param("date") LocalDate date);
 
