@@ -8,7 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import type { MidcycleSummaryResponse } from './midcycleTypes';
+import type { MidcycleSummaryResponse } from '../../features/kpi/midcycleTypes';
 import { useFinalizeCompositeScoreMutation } from '../../services/midcycleApi';
 import { toast } from 'react-toastify';
 

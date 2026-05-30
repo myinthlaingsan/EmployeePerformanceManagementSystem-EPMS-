@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, AlertTriangle } from 'lucide-react';
-import type { MidcycleSummaryResponse } from './midcycleTypes';
+import type { MidcycleSummaryResponse } from '../../features/kpi/midcycleTypes';
 import { useTriggerMidcycleChangeMutation, useGetMidcycleSummaryQuery } from '../../services/midcycleApi';
 import { toast } from 'react-toastify';
 

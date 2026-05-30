@@ -12,7 +12,7 @@ import KpiSummaryReportButton from '../../components/kpi/KpiSummaryReportButton'
 import { useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import React from 'react';
 import { KPI_STATUS_STYLE, KPI_STATUS_FALLBACK } from '../../utils/kpiStatusStyles';
-import { MidcycleChangeModal } from '../../features/kpi/MidcycleChangeModal';
+import { MidcycleChangeModal } from '../../components/kpi/MidcycleChangeModal';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
