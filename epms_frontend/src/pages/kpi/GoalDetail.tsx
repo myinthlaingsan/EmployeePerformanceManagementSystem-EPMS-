@@ -38,7 +38,13 @@ const GoalDetail: React.FC = () => {
 
   const { data: goalSetResponse, isLoading, error, refetch } = useGetGoalSetByEmployeeQuery(
     { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId! },
-    { skip: !user?.id || !effectiveCycleId, refetchOnMountOrArgChange: true }
+    {
+      skip: !user?.id || !effectiveCycleId,
+      refetchOnMountOrArgChange: true,
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+      pollingInterval: 30000,
+    }
   );
 
   const goalSet = goalSetResponse?.data;
@@ -537,7 +543,11 @@ const GoalDetail: React.FC = () => {
       </div>
 
       {showProgressModal && selectedItem && (
-        <ProgressUpdateModal item={selectedItem} onClose={() => { setShowProgressModal(false); setSelectedItem(null); }} />
+        <ProgressUpdateModal
+          item={selectedItem}
+          goalSetStatus={goalSet.status}
+          onClose={() => { setShowProgressModal(false); setSelectedItem(null); }}
+        />
       )}
       {showRevisionModal && selectedItem && (
         <KpiRevisionModal item={selectedItem} onClose={() => { setShowRevisionModal(false); setSelectedItem(null); }} />

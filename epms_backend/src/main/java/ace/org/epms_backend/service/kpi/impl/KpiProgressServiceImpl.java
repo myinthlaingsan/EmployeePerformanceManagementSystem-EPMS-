@@ -19,7 +19,6 @@ import ace.org.epms_backend.repository.KpiGoalItemRepository;
 import ace.org.epms_backend.repository.KpiHistoryLogRepository;
 import ace.org.epms_backend.repository.KpiProgressRepository;
 import ace.org.epms_backend.service.kpi.KpiProgressService;
-import ace.org.epms_backend.service.kpi.KpiScoringService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,7 +39,6 @@ public class KpiProgressServiceImpl implements KpiProgressService {
     private final KpiHistoryLogRepository historyRepo;
     private final KpiMapper kpiMapper;
     private final ApplicationEventPublisher eventPublisher;
-    private final KpiScoringService kpiScoringService;
 
     @Override
     @Transactional
@@ -49,7 +47,9 @@ public class KpiProgressServiceImpl implements KpiProgressService {
                 .orElseThrow(() -> new NotFoundException("Goal item not found"));
 
         if (!item.getGoalSet().getStatus().equals(KpiGoalStatus.APPROVED)) {
-            throw new IllegalStateException("Cannot update progress for non-approved goals");
+            throw new IllegalStateException(
+                    "Cannot update progress because the goal set status is " + item.getGoalSet().getStatus()
+                            + ". It must be APPROVED.");
         }
 
         Employee currentUser = getCurrentEmployee();
@@ -119,14 +119,6 @@ public class KpiProgressServiceImpl implements KpiProgressService {
         }
         goalItemRepository.save(item);
 
-        // Auto-recalculate final score after progress update
-        try {
-            kpiScoringService.calculateFinalScore(
-                    item.getGoalSet().getEmployee().getId(),
-                    item.getGoalSet().getCycle().getCycleId());
-        } catch (Exception e) {
-            // Continue even if recalculation fails
-        }
         // Notify manager when a KPI item is completed
         if (item.getStatus() == KpiItemStatus.COMPLETED && item.getGoalSet().getManager() != null) {
             eventPublisher.publishEvent(NotificationEvent.builder()

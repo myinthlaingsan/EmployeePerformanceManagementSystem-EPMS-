@@ -13,7 +13,12 @@ const MyKpiDashboard: React.FC = () => {
 
   const { data: goalSetResponse, isLoading } = useGetGoalSetByEmployeeQuery(
     { employeeId: user?.id || 0, cycleId: activeCycleId ?? 0 },
-    { skip: !user?.id || !activeCycleId }
+    {
+      skip: !user?.id || !activeCycleId,
+      pollingInterval: 30000,
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+    }
   );
   const { data: historyResponse } = useGetProgressHistoryQuery(
     { employeeId: user?.id || 0, limit: 3 },
@@ -25,6 +30,8 @@ const MyKpiDashboard: React.FC = () => {
 
   const isDraft = goalSetResponse?.data?.status === 'DRAFT';
   const kpis = isDraft ? [] : (goalSetResponse?.data?.items || []);
+
+  const canUpdate = goalSetResponse?.data?.status === 'APPROVED';
 
   const overallProgress = useMemo(() => {
     if (kpis.length === 0) return 0;
@@ -79,7 +86,8 @@ const MyKpiDashboard: React.FC = () => {
           <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>Primary Objectives</p>
           {kpis.map((kpi, idx) => (
             <KpiGoalCard key={kpi.id} kpi={kpi} idx={idx}
-              onUpdate={(item) => { setSelectedKpi(item); setIsUpdateModalOpen(true); }} />
+              onUpdate={(item) => { setSelectedKpi(item); setIsUpdateModalOpen(true); }} 
+              canUpdate={canUpdate}/>
           ))}
           {kpis.length === 0 && (
             <div style={{ background: '#FFFFFF', border: '0.5px dashed #E0E2E8', borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
@@ -103,7 +111,11 @@ const MyKpiDashboard: React.FC = () => {
       </div>
 
       {isUpdateModalOpen && selectedKpi && (
-        <ProgressUpdateModal item={selectedKpi} onClose={() => setIsUpdateModalOpen(false)} />
+        <ProgressUpdateModal
+          item={selectedKpi}
+          goalSetStatus={goalSetResponse?.data?.status}
+          onClose={() => setIsUpdateModalOpen(false)}
+        />
       )}
     </div>
   );

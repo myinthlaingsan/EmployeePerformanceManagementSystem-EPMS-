@@ -869,7 +869,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             // for the employee to see if they were accidentally assigned to a different
             // cycle (like ID 1)
             goals = goalsRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId).stream()
-                    .filter(KpiGoals::getIsCurrent)
+                    .filter(g -> g.getIsCurrent() && g.getStatus() != KpiGoalStatus.ARCHIVED)
                     .collect(Collectors.toList());
         }
 

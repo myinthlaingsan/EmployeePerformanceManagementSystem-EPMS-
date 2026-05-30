@@ -57,7 +57,8 @@ public class KpiGoalLifecycleRepository {
     public int archiveLockedGoalsByCycleId(Long cycleId) {
         return entityManager.createQuery("""
                         UPDATE KpiGoals g
-                        SET g.status = ace.org.epms_backend.enums.KpiGoalStatus.ARCHIVED
+                        SET g.status = ace.org.epms_backend.enums.KpiGoalStatus.ARCHIVED,
+                        g.isCurrent = false
                         WHERE g.cycle.cycleId = :cycleId
                         AND g.status = ace.org.epms_backend.enums.KpiGoalStatus.LOCKED
                         """)
