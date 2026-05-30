@@ -215,6 +215,23 @@ public class ReportController {
         return createDownloadResponse(reportContent, "Performance_Summary_Report", format);
     }
 
+    // Employee KPI Summary Report
+    @GetMapping("/kpi-summary")
+    public ResponseEntity<ApiResponse<KpiSummaryReportDTO>> getKpiSummaryReport(
+            @RequestParam Long employeeId,
+            @RequestParam List<Long> cycleIds) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getKpiSummaryReport(employeeId, cycleIds)));
+    }
+
+    @GetMapping("/kpi-summary/download")
+    public ResponseEntity<byte[]> downloadKpiSummaryReport(
+            @RequestParam Long employeeId,
+            @RequestParam List<Long> cycleIds,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportKpiSummaryReport(employeeId, cycleIds, format);
+        return createDownloadResponse(reportContent, "KPI_Summary_Report", format);
+    }
+
     // High/Low Performers
     @GetMapping("/performance-ranking")
     public ResponseEntity<ApiResponse<List<PerformanceRankingReportDTO>>> getPerformanceRankingReport(

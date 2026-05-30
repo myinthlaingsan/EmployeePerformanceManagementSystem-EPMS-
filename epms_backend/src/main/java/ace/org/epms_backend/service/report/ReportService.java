@@ -47,6 +47,10 @@ public interface ReportService {
     EmployeePerformanceSummaryDTO getEmployeePerformanceSummary(Long employeeId, Long cycleId);
     byte[] exportEmployeePerformanceSummary(Long employeeId, Long cycleId, String format);
 
+    // Employee KPI Summary Report
+    KpiSummaryReportDTO getKpiSummaryReport(Long employeeId, List<Long> cycleIds);
+    byte[] exportKpiSummaryReport(Long employeeId, List<Long> cycleIds, String format);
+
     // High/Low Performers
     List<PerformanceRankingReportDTO> getPerformanceRankingReport(Long cycleId);
     byte[] exportPerformanceRankingReport(Long cycleId, String format);

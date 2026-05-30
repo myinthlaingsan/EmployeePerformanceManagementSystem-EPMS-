@@ -8,6 +8,7 @@ import ace.org.epms_backend.enums.AppraisalStatus;
 import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.exception.InvalidAppraisalStateException;
 import ace.org.epms_backend.model.appraisal.*;
+import ace.org.epms_backend.model.PerformanceCategory;
 import ace.org.epms_backend.service.feedback360.FeedbackReportService;
 import ace.org.epms_backend.model.AuditLog;
 import ace.org.epms_backend.model.employee.Employee;
@@ -73,6 +74,7 @@ public class ReportServiceImpl implements ReportService {
     private final FeedbackRepository feedbackRepository;
     private final SelfAssessmentAnswerRepository selfAssessmentAnswerRepository;
     private final ManagerEvaluationAnswerRepository managerEvaluationAnswerRepository;
+    private final PerformanceCategoryRepository performanceCategoryRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -1497,5 +1499,124 @@ public class ReportServiceImpl implements ReportService {
         params.put("overallComment", pip.getOverallComment() != null ? pip.getOverallComment() : "");
 
         return generateReport("reports/pip_detail_report.jrxml", params, rows, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public KpiSummaryReportDTO getKpiSummaryReport(Long employeeId, List<Long> cycleIds) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+        EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(employeeId).orElse(null);
+        String deptName = (ed != null && ed.getCurrentDepartment() != null)
+                ? ed.getCurrentDepartment().getDepartmentName()
+                : "Unassigned";
+        String posName = employee.getPosition() != null ? employee.getPosition().getPositionName() : "N/A";
+
+        List<KpiSummaryReportDTO.CycleSummaryDTO> cycles = new ArrayList<>();
+        BigDecimal totalScoresSum = BigDecimal.ZERO;
+        int validCyclesCount = 0;
+
+        List<AppraisalCycle> appraisalCycles = appraisalCycleRepository.findAllById(cycleIds);
+        appraisalCycles.sort((c1, c2) -> {
+            if (c1.getStartDate() == null && c2.getStartDate() == null) return 0;
+            if (c1.getStartDate() == null) return -1;
+            if (c2.getStartDate() == null) return 1;
+            return c1.getStartDate().compareTo(c2.getStartDate());
+        });
+
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+        for (AppraisalCycle cycle : appraisalCycles) {
+            Long cycleId = cycle.getCycleId();
+            
+            BigDecimal kpiScore = kpiFinalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+                    .map(KpiFinalScore::getWeightedScore)
+                    .orElse(BigDecimal.ZERO);
+
+            String performanceCategory = appraisalRepository.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
+                    .map(a -> a.getPerformanceCategory() != null ? a.getPerformanceCategory().getName() : null)
+                    .orElseGet(() -> getCategoryForScore(kpiScore));
+
+            Optional<KpiGoals> goalSetOpt = kpiGoalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
+            int totalItems = 0;
+            int achievedItems = 0;
+            if (goalSetOpt.isPresent()) {
+                List<KpiGoalItem> items = goalSetOpt.get().getItems();
+                if (items != null) {
+                    totalItems = items.size();
+                    achievedItems = (int) items.stream()
+                            .filter(item -> item.getStatus() == ace.org.epms_backend.enums.KpiItemStatus.COMPLETED)
+                            .count();
+                }
+            }
+
+            String startDateStr = cycle.getStartDate() != null ? cycle.getStartDate().format(formatter) : "N/A";
+            String endDateStr = cycle.getEndDate() != null ? cycle.getEndDate().format(formatter) : "N/A";
+
+            cycles.add(KpiSummaryReportDTO.CycleSummaryDTO.builder()
+                    .cycleName(cycle.getCycleName())
+                    .cycleStartDate(startDateStr)
+                    .cycleEndDate(endDateStr)
+                    .kpiScore(kpiScore)
+                    .performanceCategory(performanceCategory)
+                    .totalItems(totalItems)
+                    .achievedItems(achievedItems)
+                    .build());
+
+            totalScoresSum = totalScoresSum.add(kpiScore);
+            validCyclesCount++;
+        }
+
+        BigDecimal averageScore = BigDecimal.ZERO;
+        if (validCyclesCount > 0) {
+            averageScore = totalScoresSum.divide(BigDecimal.valueOf(validCyclesCount), 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        String overallCategory = getCategoryForScore(averageScore);
+        String generatedDateStr = java.time.LocalDate.now().format(formatter);
+
+        return KpiSummaryReportDTO.builder()
+                .employeeName(employee.getStaffName())
+                .departmentName(deptName)
+                .positionName(posName)
+                .generatedDate(generatedDateStr)
+                .averageScore(averageScore)
+                .overallCategory(overallCategory)
+                .cycles(cycles)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportKpiSummaryReport(Long employeeId, List<Long> cycleIds, String format) {
+        KpiSummaryReportDTO data = getKpiSummaryReport(employeeId, cycleIds);
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "Employee KPI Summary Report");
+
+        return generateReport("reports/kpi_summary_report.jrxml", parameters, List.of(data), format);
+    }
+
+    private String getCategoryForScore(BigDecimal score) {
+        if (score == null) return "N/A";
+        try {
+            List<PerformanceCategory> categories = performanceCategoryRepository.findAll();
+            for (PerformanceCategory cat : categories) {
+                if (cat.getMinScore() != null && cat.getMaxScore() != null) {
+                    if (score.compareTo(cat.getMinScore()) >= 0 && score.compareTo(cat.getMaxScore()) <= 0) {
+                        return cat.getName();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // fallback if repository query fails
+        }
+        
+        double s = score.doubleValue();
+        if (s < 60) return "Needs Improvement";
+        if (s < 75) return "Meets Expectations";
+        if (s < 90) return "Exceeds Expectations";
+        return "Outstanding";
     }
 }

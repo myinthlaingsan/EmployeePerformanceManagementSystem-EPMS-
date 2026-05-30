@@ -202,3 +202,23 @@ export interface KpiHistoryLog {
   changedBy: number;
   createdAt: string;
 }
+
+// ==================== KPI Summary Report ====================
+export interface CycleSummaryDTO {
+  cycleName: string;
+  cycleStartDate: string;
+  cycleEndDate: string;
+  kpiScore: number;
+  performanceCategory: string;
+  totalItems: number;
+  achievedItems: number;
+}
+export interface KpiSummaryReportDTO {
+  employeeName: string;
+  departmentName: string;
+  positionName: string;
+  generatedDate: string;
+  averageScore: number;
+  overallCategory: string;
+  cycles: CycleSummaryDTO[];
+}

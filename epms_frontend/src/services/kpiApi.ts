@@ -16,6 +16,7 @@ import type {
   BulkGoalAssignmentRequest,
   BulkAssignmentResponse,
   KpiHistoryLog,
+  KpiSummaryReportDTO,
 } from '../features/kpi/kpiTypes';
 import type { PagedResponse } from '../features/employee/employeeTypes';
 
@@ -310,6 +311,14 @@ export const kpiApi = api.injectEndpoints({
       query: (goalSetId) => `/kpi-history/goal-set/${goalSetId}/audit`,
       providesTags: (result, error, goalSetId) => [{ type: 'AuditTrail' as const, id: goalSetId }],
     }),
+    getKpiSummaryReport: builder.query<
+      ApiResponse<KpiSummaryReportDTO>,
+      { employeeId: number; cycleIds: number[] }
+    >({
+      query: ({ employeeId, cycleIds }) =>
+        `/reports/kpi-summary?employeeId=${employeeId}&cycleIds=${cycleIds.join(',')}`,
+      providesTags: ['GoalSet'],
+    }),
   }),
 });
 
@@ -350,4 +359,5 @@ export const {
   useBulkAssignKpiMutation,
   useGetEmployeeKpiHistoryQuery,
   useGetGoalSetAuditTrailQuery,
+  useGetKpiSummaryReportQuery,
 } = kpiApi;
