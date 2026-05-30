@@ -435,8 +435,13 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             }
 
             BigDecimal score = phase.getPhaseScore();
+            // Real-time score for open phases with assigned KPIs
+            if (phase.getStatus() == PhaseStatus.OPEN && phase.getGoalSet() != null) {
+                score = calculateWeightedScoreFromGoalSet(phase.getGoalSet());
+            }
             BigDecimal weightedContribution = null;
-            if (score != null && weight != null) {
+            // Only calculate weighted contribution for SCORED phases (finalized)
+            if (score != null && weight != null && phase.getStatus() == PhaseStatus.SCORED) {
                 weightedContribution = score.multiply(weight).setScale(4, RoundingMode.HALF_UP);
             }
 
