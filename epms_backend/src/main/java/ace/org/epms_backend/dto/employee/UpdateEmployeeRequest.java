@@ -78,7 +78,7 @@ public class UpdateEmployeeRequest {
     private Boolean isActive;
 
     //IMPORTANT (RBAC)
-    @NotEmpty(message = "at least one role must be assigned")
+//    @NotEmpty(message = "at least one role must be assigned")
     private List<Long> roleIds;
 
     private Long directManagerId;
