@@ -158,6 +158,11 @@ const KpiSummaryReportModal: React.FC<KpiSummaryReportModalProps> = ({ onClose }
     return { bg: '#FEF2F2', text: '#B91C1C', border: '#FEE2E2' };
   };
 
+  const formatMetric = (value?: number | null, suffix = '') => {
+    if (value === null || value === undefined) return '-';
+    return `${value}${suffix}`;
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-[960px] h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in duration-200">
@@ -403,27 +408,118 @@ const KpiSummaryReportModal: React.FC<KpiSummaryReportModalProps> = ({ onClose }
                         {reportData.cycles.map((c, i) => {
                           const catColors = getCategoryColor(c.performanceCategory);
                           return (
-                            <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                              <td className="px-5 py-3.5 font-bold text-gray-900">{c.cycleName}</td>
-                              <td className="px-5 py-3.5 text-gray-500 font-medium">
-                                {c.cycleStartDate} &rarr; {c.cycleEndDate}
-                              </td>
-                              <td className="px-5 py-3.5 text-center font-bold text-gray-800">
-                                {c.achievedItems} / {c.totalItems}
-                              </td>
-                              <td className="px-5 py-3.5 text-center font-black text-gray-900">{c.kpiScore}%</td>
-                              <td className="px-5 py-3.5 text-center">
-                                <span
-                                  className="inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
-                                  style={{
-                                    backgroundColor: catColors.bg,
-                                    color: catColors.text,
-                                  }}
-                                >
-                                  {c.performanceCategory}
-                                </span>
-                              </td>
-                            </tr>
+                            <React.Fragment key={`${c.cycleName}-${i}`}>
+                              <tr className="hover:bg-gray-50/50 transition-colors">
+                                <td className="px-5 py-3.5 font-bold text-gray-900">{c.cycleName}</td>
+                                <td className="px-5 py-3.5 text-gray-500 font-medium">
+                                  {c.cycleStartDate} &rarr; {c.cycleEndDate}
+                                </td>
+                                <td className="px-5 py-3.5 text-center font-bold text-gray-800">
+                                  {c.achievedItems} / {c.totalItems}
+                                </td>
+                                <td className="px-5 py-3.5 text-center font-black text-gray-900">{c.kpiScore}%</td>
+                                <td className="px-5 py-3.5 text-center">
+                                  <span
+                                    className="inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+                                    style={{
+                                      backgroundColor: catColors.bg,
+                                      color: catColors.text,
+                                    }}
+                                  >
+                                    {c.performanceCategory}
+                                  </span>
+                                </td>
+                              </tr>
+                              <tr className="bg-white">
+                                <td colSpan={5} className="px-5 py-4">
+                                  <div className="space-y-4">
+                                    <div>
+                                      <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                                        KPI Goal Items
+                                      </h5>
+                                      <div className="border border-gray-100 rounded-xl overflow-hidden">
+                                        <table className="w-full text-[11px]">
+                                          <thead className="bg-gray-50 text-gray-500 uppercase font-black">
+                                            <tr>
+                                              <th className="px-3 py-2 text-left">Goal</th>
+                                              <th className="px-3 py-2 text-left">Unit</th>
+                                              <th className="px-3 py-2 text-right">Target</th>
+                                              <th className="px-3 py-2 text-right">Actual</th>
+                                              <th className="px-3 py-2 text-right">Weight</th>
+                                              <th className="px-3 py-2 text-right">Score</th>
+                                              <th className="px-3 py-2 text-right">Weighted</th>
+                                              <th className="px-3 py-2 text-center">Status</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-gray-100">
+                                            {(c.goalItems || []).length === 0 ? (
+                                              <tr>
+                                                <td colSpan={8} className="px-3 py-3 text-center text-gray-400 font-semibold">
+                                                  No KPI goal items found for this cycle.
+                                                </td>
+                                              </tr>
+                                            ) : (
+                                              c.goalItems.map((item, itemIndex) => (
+                                                <tr key={`${item.title}-${itemIndex}`}>
+                                                  <td className="px-3 py-2 font-bold text-gray-800">{item.title}</td>
+                                                  <td className="px-3 py-2 text-gray-500">{item.unit || '-'}</td>
+                                                  <td className="px-3 py-2 text-right">{formatMetric(item.targetValue)}</td>
+                                                  <td className="px-3 py-2 text-right">{formatMetric(item.actualValue)}</td>
+                                                  <td className="px-3 py-2 text-right">{formatMetric(item.weightPercent, '%')}</td>
+                                                  <td className="px-3 py-2 text-right">{formatMetric(item.scorePercent, '%')}</td>
+                                                  <td className="px-3 py-2 text-right font-bold">{formatMetric(item.weightedScore, '%')}</td>
+                                                  <td className="px-3 py-2 text-center text-[10px] font-black text-gray-500 uppercase">
+                                                    {item.status}
+                                                  </td>
+                                                </tr>
+                                              ))
+                                            )}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+
+                                    {(c.phases || []).length > 0 && (
+                                      <div>
+                                        <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                                          KPI Phases
+                                        </h5>
+                                        <div className="border border-gray-100 rounded-xl overflow-hidden">
+                                          <table className="w-full text-[11px]">
+                                            <thead className="bg-gray-50 text-gray-500 uppercase font-black">
+                                              <tr>
+                                                <th className="px-3 py-2 text-left">Phase</th>
+                                                <th className="px-3 py-2 text-left">Period</th>
+                                                <th className="px-3 py-2 text-right">Days</th>
+                                                <th className="px-3 py-2 text-right">Weight</th>
+                                                <th className="px-3 py-2 text-right">Score</th>
+                                                <th className="px-3 py-2 text-left">Reason</th>
+                                                <th className="px-3 py-2 text-center">Status</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                              {c.phases.map((phase) => (
+                                                <tr key={phase.phaseNumber}>
+                                                  <td className="px-3 py-2 font-bold text-gray-800">Phase {phase.phaseNumber}</td>
+                                                  <td className="px-3 py-2 text-gray-500">{phase.startDate} &rarr; {phase.endDate}</td>
+                                                  <td className="px-3 py-2 text-right">{phase.days}</td>
+                                                  <td className="px-3 py-2 text-right">{formatMetric(phase.weight)}</td>
+                                                  <td className="px-3 py-2 text-right font-bold">{formatMetric(phase.score, '%')}</td>
+                                                  <td className="px-3 py-2 text-gray-500">{phase.changeReason || '-'}</td>
+                                                  <td className="px-3 py-2 text-center text-[10px] font-black text-gray-500 uppercase">
+                                                    {phase.status}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            </React.Fragment>
                           );
                         })}
                       </tbody>

@@ -204,6 +204,28 @@ export interface KpiHistoryLog {
 }
 
 // ==================== KPI Summary Report ====================
+export interface GoalItemReportDTO {
+  title: string;
+  unit: string;
+  targetValue: number;
+  actualValue: number;
+  weightPercent: number;
+  scorePercent: number;
+  weightedScore: number;
+  status: string;
+}
+
+export interface KpiPhaseReportDTO {
+  phaseNumber: number;
+  startDate: string;
+  endDate: string;
+  days: number;
+  weight: number;
+  score: number;
+  changeReason: string;
+  status: string;
+}
+
 export interface CycleSummaryDTO {
   cycleName: string;
   cycleStartDate: string;
@@ -212,6 +234,8 @@ export interface CycleSummaryDTO {
   performanceCategory: string;
   totalItems: number;
   achievedItems: number;
+  goalItems: GoalItemReportDTO[];
+  phases: KpiPhaseReportDTO[];
 }
 export interface KpiSummaryReportDTO {
   employeeName: string;

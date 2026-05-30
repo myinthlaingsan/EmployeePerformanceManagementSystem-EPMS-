@@ -8,6 +8,28 @@
 		<field name="performanceCategory" class="java.lang.String"/>
 		<field name="totalItems" class="java.lang.Integer"/>
 		<field name="achievedItems" class="java.lang.Integer"/>
+		<field name="goalItems" class="java.util.List"/>
+		<field name="phases" class="java.util.List"/>
+	</dataset>
+	<dataset name="GoalItemDataset" uuid="9e1f7a15-9b53-4619-81fb-247f15fb9c82">
+		<field name="title" class="java.lang.String"/>
+		<field name="unit" class="java.lang.String"/>
+		<field name="targetValue" class="java.math.BigDecimal"/>
+		<field name="actualValue" class="java.math.BigDecimal"/>
+		<field name="weightPercent" class="java.math.BigDecimal"/>
+		<field name="scorePercent" class="java.math.BigDecimal"/>
+		<field name="weightedScore" class="java.math.BigDecimal"/>
+		<field name="status" class="java.lang.String"/>
+	</dataset>
+	<dataset name="KpiPhaseDataset" uuid="3d0896df-d10c-433c-9b12-e62e3b5895cf">
+		<field name="phaseNumber" class="java.lang.Integer"/>
+		<field name="startDate" class="java.lang.String"/>
+		<field name="endDate" class="java.lang.String"/>
+		<field name="days" class="java.lang.Integer"/>
+		<field name="weight" class="java.math.BigDecimal"/>
+		<field name="score" class="java.math.BigDecimal"/>
+		<field name="changeReason" class="java.lang.String"/>
+		<field name="status" class="java.lang.String"/>
 	</dataset>
 	<parameter name="logoStream" class="java.io.InputStream"/>
 	<field name="employeeName" class="java.lang.String"/>
@@ -65,7 +87,7 @@
 		</element>
 	</title>
 	<detail>
-		<band height="70">
+		<band height="265">
 			<element kind="staticText" uuid="3d1e79cb-2b86-4ca4-8f05-6a254ba30840" mode="Opaque" x="0" y="10" width="120" height="30" backcolor="#E9ECEF" bold="true" vTextAlign="Middle">
 				<text><![CDATA[Performance Cycle]]></text>
 				<box leftPadding="10"/>
@@ -82,12 +104,12 @@
 			<element kind="staticText" uuid="b390aede-6767-4cbc-86ec-d08c96f72078" mode="Opaque" x="440" y="10" width="115" height="30" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
 				<text><![CDATA[Performance Category]]></text>
 			</element>
-			<element kind="component" uuid="f489ce59-5cee-421e-9910-e250610435c8" x="0" y="40" width="555" height="30">
+			<element kind="component" uuid="f489ce59-5cee-421e-9910-e250610435c8" x="0" y="40" width="555" height="215">
 				<component kind="list" printOrder="Vertical">
 					<datasetRun uuid="eb679d73-a874-4e71-9c65-bf98135d700b" subDataset="CycleSummaryDataset">
 						<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{cycles})]]></dataSourceExpression>
 					</datasetRun>
-					<contents height="30" width="555">
+					<contents height="215" width="555">
 						<element kind="textField" uuid="6f0be5c7-46c0-45f2-add7-5374e322999b" x="0" y="0" width="120" height="30" vTextAlign="Middle">
 							<expression><![CDATA[$F{cycleName}]]></expression>
 							<box leftPadding="10">
@@ -118,6 +140,146 @@
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
 							</box>
 						</element>
+						<element kind="staticText" uuid="0f3f9009-f060-46a9-99b0-83ec0a2b56ff" x="0" y="38" width="555" height="18" fontSize="9.0" bold="true" vTextAlign="Middle">
+							<text><![CDATA[KPI Goal Items]]></text>
+						</element>
+						<element kind="staticText" uuid="977cb269-d7a2-47e8-9c05-b6eddf3b6698" mode="Opaque" x="0" y="56" width="150" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" vTextAlign="Middle">
+							<text><![CDATA[Goal Title]]></text>
+							<box leftPadding="5"/>
+						</element>
+						<element kind="staticText" uuid="e0d96b63-c5b8-4758-95b9-334f4817d06f" mode="Opaque" x="150" y="56" width="45" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+							<text><![CDATA[Unit]]></text>
+						</element>
+						<element kind="staticText" uuid="09d19601-3526-45a0-8b46-2387d3832a1d" mode="Opaque" x="195" y="56" width="60" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Right" vTextAlign="Middle">
+							<text><![CDATA[Target]]></text>
+						</element>
+						<element kind="staticText" uuid="13e2371e-8188-4f12-9426-bc6692fc3b0c" mode="Opaque" x="255" y="56" width="60" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Right" vTextAlign="Middle">
+							<text><![CDATA[Actual]]></text>
+						</element>
+						<element kind="staticText" uuid="f3c0cb7c-5a28-4087-85df-43e48bafda1e" mode="Opaque" x="315" y="56" width="55" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Right" vTextAlign="Middle">
+							<text><![CDATA[Weight]]></text>
+						</element>
+						<element kind="staticText" uuid="c3111a42-c0bc-4d67-85fb-1d1998b3174a" mode="Opaque" x="370" y="56" width="55" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Right" vTextAlign="Middle">
+							<text><![CDATA[Score]]></text>
+						</element>
+						<element kind="staticText" uuid="5ac0870a-563b-4d81-8127-f28ca915c95a" mode="Opaque" x="425" y="56" width="65" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Right" vTextAlign="Middle">
+							<text><![CDATA[Weighted]]></text>
+						</element>
+						<element kind="staticText" uuid="886175e7-19d5-489d-9013-6c188a11d665" mode="Opaque" x="490" y="56" width="65" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+							<text><![CDATA[Status]]></text>
+						</element>
+						<element kind="component" uuid="dbfd030b-e64e-4eb8-802e-bc1e2e4cd8cf" x="0" y="74" width="555" height="54">
+							<component kind="list" printOrder="Vertical">
+								<datasetRun uuid="ea44b3e4-91c4-4775-9bf7-e8c2b6e83b44" subDataset="GoalItemDataset">
+									<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{goalItems})]]></dataSourceExpression>
+								</datasetRun>
+								<contents height="18" width="555">
+									<element kind="textField" uuid="01b0a3b7-8652-4e98-9cbf-44975b7bcd46" x="0" y="0" width="150" height="18" fontSize="8.0" textAdjust="StretchHeight" vTextAlign="Middle">
+										<expression><![CDATA[$F{title}]]></expression>
+										<box leftPadding="5"><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="e5d0f8db-df60-40e1-91b5-a8e7b6d2c88c" x="150" y="0" width="45" height="18" fontSize="8.0" hTextAlign="Center" vTextAlign="Middle">
+										<expression><![CDATA[$F{unit}]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="44199922-3b8c-470e-977c-898b6268f9aa" x="195" y="0" width="60" height="18" fontSize="8.0" hTextAlign="Right" vTextAlign="Middle">
+										<expression><![CDATA[$F{targetValue}]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="8b9306bc-ee63-413d-aa2c-c45b3bcfaeb2" x="255" y="0" width="60" height="18" fontSize="8.0" hTextAlign="Right" vTextAlign="Middle">
+										<expression><![CDATA[$F{actualValue}]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="0756a34e-0245-46ef-a92f-2c359fcdb095" x="315" y="0" width="55" height="18" fontSize="8.0" hTextAlign="Right" vTextAlign="Middle">
+										<expression><![CDATA[$F{weightPercent} != null ? $F{weightPercent} + "%" : "-"]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="85132c80-5f66-48b8-a1b6-172e392bff64" x="370" y="0" width="55" height="18" fontSize="8.0" hTextAlign="Right" vTextAlign="Middle">
+										<expression><![CDATA[$F{scorePercent} != null ? $F{scorePercent} + "%" : "-"]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="58c61c3d-7f8b-49da-a9b2-b8ce36bc6da7" x="425" y="0" width="65" height="18" fontSize="8.0" hTextAlign="Right" vTextAlign="Middle">
+										<expression><![CDATA[$F{weightedScore} != null ? $F{weightedScore} + "%" : "-"]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="11ae6682-b68a-40cd-aa65-995008d9ddda" x="490" y="0" width="65" height="18" fontSize="8.0" hTextAlign="Center" vTextAlign="Middle">
+										<expression><![CDATA[$F{status}]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+								</contents>
+							</component>
+						</element>
+						<element kind="staticText" uuid="c80fa086-d426-43f1-9e2a-6fa6e8e2f82a" x="0" y="136" width="555" height="18" fontSize="9.0" bold="true" vTextAlign="Middle">
+							<printWhenExpression><![CDATA[$F{phases} != null && !$F{phases}.isEmpty()]]></printWhenExpression>
+							<text><![CDATA[KPI Goal Phases]]></text>
+						</element>
+						<element kind="staticText" uuid="b93303a5-c11d-4dff-b1b8-017e25d8d51b" mode="Opaque" x="0" y="154" width="55" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" vTextAlign="Middle">
+							<printWhenExpression><![CDATA[$F{phases} != null && !$F{phases}.isEmpty()]]></printWhenExpression>
+							<text><![CDATA[Phase]]></text>
+							<box leftPadding="5"/>
+						</element>
+						<element kind="staticText" uuid="6df39d27-9a85-41f5-ac34-1f7dc5e26fe2" mode="Opaque" x="55" y="154" width="120" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+							<printWhenExpression><![CDATA[$F{phases} != null && !$F{phases}.isEmpty()]]></printWhenExpression>
+							<text><![CDATA[Period]]></text>
+						</element>
+						<element kind="staticText" uuid="78f8d5d5-8314-487e-98de-9d68a762bcf1" mode="Opaque" x="175" y="154" width="45" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Right" vTextAlign="Middle">
+							<printWhenExpression><![CDATA[$F{phases} != null && !$F{phases}.isEmpty()]]></printWhenExpression>
+							<text><![CDATA[Days]]></text>
+						</element>
+						<element kind="staticText" uuid="445d3318-8629-4550-a703-6955d42dc7f7" mode="Opaque" x="220" y="154" width="60" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Right" vTextAlign="Middle">
+							<printWhenExpression><![CDATA[$F{phases} != null && !$F{phases}.isEmpty()]]></printWhenExpression>
+							<text><![CDATA[Weight]]></text>
+						</element>
+						<element kind="staticText" uuid="2c6d93ba-d275-4c2c-a913-cd30c96e7804" mode="Opaque" x="280" y="154" width="60" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Right" vTextAlign="Middle">
+							<printWhenExpression><![CDATA[$F{phases} != null && !$F{phases}.isEmpty()]]></printWhenExpression>
+							<text><![CDATA[Score]]></text>
+						</element>
+						<element kind="staticText" uuid="5e15f5ab-2e23-427e-b94b-c743c245a601" mode="Opaque" x="340" y="154" width="135" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" vTextAlign="Middle">
+							<printWhenExpression><![CDATA[$F{phases} != null && !$F{phases}.isEmpty()]]></printWhenExpression>
+							<text><![CDATA[Change Reason]]></text>
+						</element>
+						<element kind="staticText" uuid="7d97a4f4-7912-4107-a287-24d87c98ef7a" mode="Opaque" x="475" y="154" width="80" height="18" backcolor="#F4F6F8" fontSize="8.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+							<printWhenExpression><![CDATA[$F{phases} != null && !$F{phases}.isEmpty()]]></printWhenExpression>
+							<text><![CDATA[Status]]></text>
+						</element>
+						<element kind="component" uuid="be1b25b1-169c-48fd-a915-483ac689f3ad" x="0" y="172" width="555" height="36">
+							<printWhenExpression><![CDATA[$F{phases} != null && !$F{phases}.isEmpty()]]></printWhenExpression>
+							<component kind="list" printOrder="Vertical">
+								<datasetRun uuid="82d1b369-35e2-406a-9a47-ac8de98a24fe" subDataset="KpiPhaseDataset">
+									<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{phases})]]></dataSourceExpression>
+								</datasetRun>
+								<contents height="18" width="555">
+									<element kind="textField" uuid="c5501f73-4148-4b02-bd50-c7ebcd20b196" x="0" y="0" width="55" height="18" fontSize="8.0" vTextAlign="Middle">
+										<expression><![CDATA["Phase " + $F{phaseNumber}]]></expression>
+										<box leftPadding="5"><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="ec239f89-8194-4b51-acd3-b10f1766bec7" x="55" y="0" width="120" height="18" fontSize="8.0" hTextAlign="Center" vTextAlign="Middle">
+										<expression><![CDATA[$F{startDate} + " to " + $F{endDate}]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="fdf0b635-a5e5-4105-91af-06cd8da90bfd" x="175" y="0" width="45" height="18" fontSize="8.0" hTextAlign="Right" vTextAlign="Middle">
+										<expression><![CDATA[$F{days}]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="b11b8f5d-8f37-4fa5-9338-ad469397b8fc" x="220" y="0" width="60" height="18" fontSize="8.0" hTextAlign="Right" vTextAlign="Middle">
+										<expression><![CDATA[$F{weight}]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="f485fc36-07df-4c73-b8bf-9fb58cfdb463" x="280" y="0" width="60" height="18" fontSize="8.0" hTextAlign="Right" vTextAlign="Middle">
+										<expression><![CDATA[$F{score} != null ? $F{score} + "%" : "-"]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="23d9f27f-8b31-4576-b9f4-d2ddcaee92df" x="340" y="0" width="135" height="18" fontSize="8.0" textAdjust="StretchHeight" vTextAlign="Middle">
+										<expression><![CDATA[$F{changeReason}]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+									<element kind="textField" uuid="faf02222-4a5c-4382-a3ea-c579c0348c2d" x="475" y="0" width="80" height="18" fontSize="8.0" hTextAlign="Center" vTextAlign="Middle">
+										<expression><![CDATA[$F{status}]]></expression>
+										<box><bottomPen lineWidth="0.25" lineColor="#EEEEEE"/></box>
+									</element>
+								</contents>
+							</component>
+						</element>
 					</contents>
 				</component>
 			</element>
@@ -132,13 +294,13 @@
 		</element>
 	</pageFooter>
 	<summary height="30">
-		<element kind="line" uuid="summary-line" x="0" y="5" width="555" height="1">
+		<element kind="line" uuid="47fbab33-7df7-40cc-8d03-155d59172120" x="0" y="5" width="555" height="1">
 			<pen lineWidth="1.0" lineColor="#34495E"/>
 		</element>
-		<element kind="staticText" uuid="summary-label" x="0" y="10" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+		<element kind="staticText" uuid="17ac9435-ebf4-45fe-a026-0dd65c2e3293" x="0" y="10" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
 			<text><![CDATA[Total Cycles Evaluated:]]></text>
 		</element>
-		<element kind="textField" uuid="summary-value" x="150" y="10" width="100" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+		<element kind="textField" uuid="6ce48f54-ec53-4282-85ba-e9d450c8b83d" x="150" y="10" width="100" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
 			<expression><![CDATA[$F{cycles} != null ? $F{cycles}.size() : 0]]></expression>
 		</element>
 	</summary>

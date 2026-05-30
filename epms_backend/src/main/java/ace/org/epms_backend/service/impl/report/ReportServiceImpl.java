@@ -61,6 +61,7 @@ public class ReportServiceImpl implements ReportService {
     private final AuditLogRepository auditLogRepository;
     private final EmployeeRepository employeeRepository;
     private final KpiFinalScoreRepository kpiFinalScoreRepository;
+    private final KpiGoalPhaseRepository kpiGoalPhaseRepository;
     private final AppraisalCycleRepository appraisalCycleRepository;
     private final SelfAssessmentRepository selfAssessmentRepository;
     private final ManagerEvaluationRepository managerEvaluationRepository;
@@ -1541,6 +1542,7 @@ public class ReportServiceImpl implements ReportService {
             Optional<KpiGoals> goalSetOpt = kpiGoalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
             int totalItems = 0;
             int achievedItems = 0;
+            List<KpiSummaryReportDTO.GoalItemReportDTO> goalItems = new ArrayList<>();
             if (goalSetOpt.isPresent()) {
                 List<KpiGoalItem> items = goalSetOpt.get().getItems();
                 if (items != null) {
@@ -1548,11 +1550,37 @@ public class ReportServiceImpl implements ReportService {
                     achievedItems = (int) items.stream()
                             .filter(item -> item.getStatus() == ace.org.epms_backend.enums.KpiItemStatus.COMPLETED)
                             .count();
+                    goalItems = items.stream()
+                            .map(item -> KpiSummaryReportDTO.GoalItemReportDTO.builder()
+                                    .title(item.getTitle())
+                                    .unit(item.getUnit())
+                                    .targetValue(item.getTargetValue())
+                                    .actualValue(item.getActualValue())
+                                    .weightPercent(item.getWeightPercent())
+                                    .scorePercent(item.getScorePercent())
+                                    .weightedScore(item.getWeightedScore())
+                                    .status(item.getStatus() != null ? item.getStatus().name() : "N/A")
+                                    .build())
+                            .collect(Collectors.toList());
                 }
             }
 
             String startDateStr = cycle.getStartDate() != null ? cycle.getStartDate().format(formatter) : "N/A";
             String endDateStr = cycle.getEndDate() != null ? cycle.getEndDate().format(formatter) : "N/A";
+            List<KpiSummaryReportDTO.KpiPhaseReportDTO> phases = kpiGoalPhaseRepository
+                    .findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId)
+                    .stream()
+                    .map(phase -> KpiSummaryReportDTO.KpiPhaseReportDTO.builder()
+                            .phaseNumber(phase.getPhaseNumber() != null ? phase.getPhaseNumber() : 0)
+                            .startDate(phase.getPhaseStartDate() != null ? phase.getPhaseStartDate().format(formatter) : "N/A")
+                            .endDate(phase.getPhaseEndDate() != null ? phase.getPhaseEndDate().format(formatter) : "Open")
+                            .days(resolvePhaseDays(phase))
+                            .weight(phase.getPhaseWeight())
+                            .score(phase.getPhaseScore())
+                            .changeReason(phase.getChangeReason() != null ? phase.getChangeReason() : "")
+                            .status(phase.getStatus() != null ? phase.getStatus().name() : "N/A")
+                            .build())
+                    .collect(Collectors.toList());
 
             cycles.add(KpiSummaryReportDTO.CycleSummaryDTO.builder()
                     .cycleName(cycle.getCycleName())
@@ -1562,6 +1590,8 @@ public class ReportServiceImpl implements ReportService {
                     .performanceCategory(performanceCategory)
                     .totalItems(totalItems)
                     .achievedItems(achievedItems)
+                    .goalItems(goalItems)
+                    .phases(phases)
                     .build());
 
             totalScoresSum = totalScoresSum.add(kpiScore);
@@ -1596,6 +1626,17 @@ public class ReportServiceImpl implements ReportService {
         parameters.put("reportTitle", "Employee KPI Summary Report");
 
         return generateReport("reports/kpi_summary_report.jrxml", parameters, List.of(data), format);
+    }
+
+    private int resolvePhaseDays(KpiGoalPhase phase) {
+        if (phase.getPhaseDays() != null) {
+            return phase.getPhaseDays();
+        }
+        if (phase.getPhaseStartDate() == null || phase.getPhaseEndDate() == null) {
+            return 0;
+        }
+        return (int) java.time.temporal.ChronoUnit.DAYS.between(
+                phase.getPhaseStartDate(), phase.getPhaseEndDate()) + 1;
     }
 
     private String getCategoryForScore(BigDecimal score) {
