@@ -491,6 +491,10 @@ public class AppraisalServiceImpl implements AppraisalService {
         for (int i = 0; i < appraisals.size(); i++) {
             Appraisal a = appraisals.get(i);
             AppraisalResponse r = responses.get(i);
+            r.setDepartmentName(empDeptRepo.findByEmployeeIdAndIsCurrentTrue(a.getEmployee().getId())
+                .map(EmployeeDepartment::getCurrentDepartment)
+                .map(Department::getDepartmentName)
+                .orElse("N/A"));
             summaryRepo.findByEmployee_IdAndCycle_CycleId(a.getEmployee().getId(), a.getCycle().getCycleId())
                 .ifPresent(s -> {
                     r.setFinalScore(s.getTotalScore());

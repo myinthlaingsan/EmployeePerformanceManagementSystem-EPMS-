@@ -18,6 +18,7 @@ public class AppraisalResponse {
     private Long employeeId;
     private String employeeName;
     private String employeeCode;
+    private String departmentName;
 
     private Long managerId;
     private String managerName;
