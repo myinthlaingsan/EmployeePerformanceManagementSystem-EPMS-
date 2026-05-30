@@ -43,6 +43,7 @@ public class KpiSummaryReportDTO {
     public static class GoalItemReportDTO {
         private String title;
         private String unit;
+        private String categoryName;
         private BigDecimal targetValue;
         private BigDecimal actualValue;
         private BigDecimal weightPercent;

@@ -1664,6 +1664,7 @@ public class ReportServiceImpl implements ReportService {
                     goalItems = items.stream()
                             .map(item -> KpiSummaryReportDTO.GoalItemReportDTO.builder()
                                     .title(item.getTitle())
+                                    .categoryName(item.getCategory() != null ? item.getCategory().getName() : "Uncategorized") 
                                     .unit(item.getUnit())
                                     .targetValue(item.getTargetValue())
                                     .actualValue(item.getActualValue())
