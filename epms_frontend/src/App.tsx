@@ -103,6 +103,9 @@ const App = () => {
               {kpiRoutes.filter(r => ['/kpi/team', '/kpi/manage', '/kpi/assign/:employeeId', '/kpi/org-history'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
+              {adminRoutes.filter(r => r.path === '/employees/:id/profile').map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
             </Route>
 
             {/* HR/Admin Management Routes */}
@@ -113,7 +116,7 @@ const App = () => {
               ))}
 
               {/* Shared HR + Admin routes (employees, departments, org, etc.) */}
-              {adminRoutes.filter(r => !['/roles', '/permissions', '/permissions/matrix', '/permissions/assign'].includes(r.path)).map((route) => (
+              {adminRoutes.filter(r => !['/roles', '/permissions', '/permissions/matrix', '/permissions/assign', '/employees/:id/profile'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
 

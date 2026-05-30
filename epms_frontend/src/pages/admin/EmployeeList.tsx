@@ -19,7 +19,7 @@ import { useRef, useState } from "react";
 import {
   Plus,
   Pencil,
-  Trash2,
+  Eye,
   Building2,
   Download,
   Search,
@@ -564,6 +564,22 @@ const EmployeeList = () => {
                     {/* Actions */}
                     <td style={{ padding: "11px 18px", textAlign: "right" }}>
                       <div className="flex justify-end items-center gap-1">
+                        <Link
+                          to={`/employees/${emp.id}/profile`}
+                          title="View profile"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "#9EA3B0",
+                            borderRadius: 6,
+                          }}
+                          className="hover:bg-info-fill hover:text-[#1A56DB] transition-colors"
+                        >
+                          <Eye size={14} aria-hidden="true" />
+                        </Link>
                         <Link
                           to={`/employees/${emp.id}/departments`}
                           title="Manage departments"

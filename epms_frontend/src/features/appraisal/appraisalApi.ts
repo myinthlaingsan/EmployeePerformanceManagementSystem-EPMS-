@@ -109,6 +109,27 @@ export interface ScoreBreakdownResponse {
   performanceCategoryName?: string;
 }
 
+export interface AppraisalResponse {
+  appraisalId: number;
+  id?: number;
+  status?: string;
+  cycleName?: string;
+  finalScore?: number;
+  createdAt?: string;
+  employee?: {
+    id?: number;
+    staffName?: string;
+  };
+  manager?: {
+    id?: number;
+    staffName?: string;
+  };
+  cycle?: {
+    cycleId?: number;
+    cycleName?: string;
+  };
+}
+
 const transformResponse = (response: any) => response?.data ?? response;
 
 export const appraisalApi = api.injectEndpoints({
@@ -244,6 +265,12 @@ export const appraisalApi = api.injectEndpoints({
     }),
     getTeamEvaluations: builder.query<any[], void>({
       query: () => '/appraisals/team-evaluations',
+      transformResponse,
+      providesTags: ['Appraisal'],
+    }),
+
+    getAppraisalByEmployeeAndCycle: builder.query<AppraisalResponse, { employeeId: number; cycleId: number }>({
+      query: ({ employeeId, cycleId }) => `/appraisals/employee/${employeeId}/cycle/${cycleId}`,
       transformResponse,
       providesTags: ['Appraisal'],
     }),
@@ -494,6 +521,7 @@ export const {
   useGetAppraisalsQuery,
   useGetTeamEvaluationsQuery,
   useGetAppraisalsByCycleQuery,
+  useGetAppraisalByEmployeeAndCycleQuery,
   useCreateAppraisalMutation,
   useGetEmployeeAssessmentQuery,
   useSubmitAppraisalSelfMutation,

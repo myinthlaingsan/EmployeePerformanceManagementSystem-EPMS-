@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useGetCurrentUserQuery, useUpdateProfileMutation, useChangePasswordMutation, useGetManagerQuery, useGetDirectReportsQuery, useUploadProfileImageMutation } from "../features/employee/employeeapi";
+import { useGetCurrentUserQuery, useUpdateProfileMutation, useChangePasswordMutation, useUploadProfileImageMutation } from "../features/employee/employeeapi";
 import { toast } from "react-toastify";
 import { validatePassword } from "../utils/validation";
 import type { UpdateProfileRequest, MaritalStatus } from "../features/employee/employeeTypes";
-import { User, Lock, Building2 } from "lucide-react";
+import { User, Lock } from "lucide-react";
 
 const AVATAR_COLORS = [
   { bg: "#EEF3FD", text: "#0C447C" },
@@ -31,11 +31,9 @@ const EditProfilePage = () => {
   const { data: profile, isLoading } = useGetCurrentUserQuery();
   const [updateProfile] = useUpdateProfileMutation();
   const [changePassword] = useChangePasswordMutation();
-  const { data: manager } = useGetManagerQuery(profile?.id ?? 0, { skip: !profile?.id });
-  const { data: directReports } = useGetDirectReportsQuery(profile?.id ?? 0, { skip: !profile?.id });
   const [uploadProfileImage] = useUploadProfileImageMutation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imageTimestamp, setImageTimestamp] = useState(Date.now());
+  const [imageTimestamp, setImageTimestamp] = useState(() => Date.now());
   const [fileInputKey, setFileInputKey] = useState(0);
 
   const [formData, setFormData] = useState<UpdateProfileRequest>({
@@ -48,16 +46,18 @@ const EditProfilePage = () => {
 
   useEffect(() => {
     if (profile) {
+      // Profile data arrives asynchronously; keep the edit form in sync with it.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         staffName: profile.staffName || "",
-        otherName: (profile as any).otherName || "",
+        otherName: profile.otherName || "",
         email: profile.email || "",
         phoneNo: profile.phoneNo || "",
-        contactAddress: (profile as any).contactAddress || "",
-        permanentAddress: (profile as any).permanentAddress || "",
-        maritalStatus: (profile as any).maritalStatus || undefined,
-        spouseName: (profile as any).spouseName || "",
-        fatherName: (profile as any).fatherName || "",
+        contactAddress: profile.contactAddress || "",
+        permanentAddress: profile.permanentAddress || "",
+        maritalStatus: profile.maritalStatus || undefined,
+        spouseName: profile.spouseName || "",
+        fatherName: profile.fatherName || "",
       });
     }
   }, [profile]);
@@ -73,7 +73,7 @@ const EditProfilePage = () => {
         setFileInputKey(prev => prev + 1);
       }
       toast.success("Profile updated successfully!");
-    } catch (err) {
+    } catch {
       toast.error("Failed to update profile.");
     }
   };
@@ -96,12 +96,12 @@ const EditProfilePage = () => {
       await changePassword({ id: profile.id, body: passwordData }).unwrap();
       setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
       toast.success("Password changed successfully!");
-    } catch (err) {
+    } catch {
       toast.error("Failed to change password.");
     }
   };
 
-  if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading profile…</div>;
+  if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading profile...</div>;
 
   const avatarColor = AVATAR_COLORS[(profile?.staffName?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length];
 
@@ -117,13 +117,11 @@ const EditProfilePage = () => {
         </div>
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>{profile?.staffName}</h1>
-          <p style={{ fontSize: 12, color: "#1A56DB", marginTop: 2 }}>{profile?.positionName} · {profile?.currentDepartmentName}</p>
+          <p style={{ fontSize: 12, color: "#1A56DB", marginTop: 2 }}>{profile?.positionName} / {profile?.currentDepartmentName}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left: personal info + security */}
-        <div className="lg:col-span-2 space-y-4">
+      <div className="space-y-4">
           {/* Personal information */}
           <div style={panelStyle}>
             <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
@@ -220,97 +218,6 @@ const EditProfilePage = () => {
               </button>
             </form>
           </div>
-        </div>
-
-        {/* Right sidebar */}
-        <div className="space-y-4">
-          {/* Org info */}
-          <div style={panelStyle}>
-            <div className="flex items-center gap-2" style={{ marginBottom: 14 }}>
-              <Building2 size={15} style={{ color: "#1A56DB" }} aria-hidden="true" />
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Organisational info</p>
-            </div>
-            <div className="space-y-3">
-              {[
-                { label: "Employee code", value: profile?.employeeCode, mono: true },
-                { label: "Job level", value: `${profile?.levelName} (Rank ${profile?.levelRank})` },
-                { label: "Position", value: profile?.positionName },
-                { label: "Department", value: profile?.currentDepartmentName },
-              ].map(({ label, value, mono }) => (
-                <div key={label}>
-                  <p style={{ fontSize: 11, color: "#9EA3B0", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</p>
-                  <p style={{ fontSize: 13, fontWeight: 500, color: "#111827", marginTop: 2, fontFamily: mono ? "monospace" : undefined }}>{value ?? "—"}</p>
-                </div>
-              ))}
-              <div>
-                <p style={{ fontSize: 11, color: "#9EA3B0", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Roles</p>
-                <div className="flex flex-wrap gap-1">
-                  {profile?.roles.map(r => (
-                    <span key={r} style={{ background: "#EEF3FD", color: "#0C447C", fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 20 }}>
-                      {r.replace("ROLE_", "")}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Reporting structure */}
-          {(manager || (directReports && directReports.length > 0)) && (
-            <div style={panelStyle}>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 14 }}>Reporting structure</p>
-              {manager && (
-                <div style={{ marginBottom: 14 }}>
-                  <p style={{ fontSize: 11, color: "#9EA3B0", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Reports to</p>
-                  <div className="flex items-center gap-2" style={{ background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 8, padding: "8px 10px" }}>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#EEF3FD", color: "#1A56DB", fontSize: 11, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      {manager.staffName.charAt(0)}
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{manager.staffName}</p>
-                      <p style={{ fontSize: 11, color: "#9EA3B0" }}>{manager.positionName}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {directReports && directReports.length > 0 && (
-                <div>
-                  <p style={{ fontSize: 11, color: "#9EA3B0", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>
-                    Direct reports ({directReports.length})
-                  </p>
-                  <div className="space-y-1">
-                    {directReports.map(report => (
-                      <div key={report.id} className="flex items-center gap-2" style={{ padding: "6px 0", borderBottom: "0.5px solid #F0F2F6" }}>
-                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#F1EFE8", color: "#444441", fontSize: 10, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          {report.staffName.charAt(0)}
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 12, fontWeight: 500, color: "#111827" }}>{report.staffName}</p>
-                          <p style={{ fontSize: 11, color: "#9EA3B0" }}>{report.positionName}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Permissions */}
-          {profile?.permissions && profile.permissions.length > 0 && (
-            <div style={panelStyle}>
-              <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 12 }}>System permissions</p>
-              <div className="space-y-1">
-                {profile.permissions.map(p => (
-                  <div key={p} className="flex items-center gap-2">
-                    <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#1A56DB", flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, color: "#5A6070" }}>{p}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

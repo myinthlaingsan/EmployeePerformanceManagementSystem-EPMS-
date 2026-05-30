@@ -175,7 +175,7 @@ const AppraisalAssignment: React.FC = () => {
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 }}>4. Position</label>
                 <div className="relative">
                   <Briefcase size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
-                  <select style={{ ...selectStyle, paddingLeft: 30 }} value={posFilter} onChange={e => setPosFilter(e.target.value)} disabled={!deptFilter}>
+                  <select style={{ ...selectStyle, paddingLeft: 30 }} value={posFilter} onChange={e => setPosFilter(e.target.value)}>
                     <option value="">All Positions</option>
                     {positions.map(pos => <option key={pos} value={pos}>{pos}</option>)}
                   </select>
