@@ -145,7 +145,7 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {/* Quick actions */}
-      <QuickActionPanel actions={quickActions} />
+      {/* <QuickActionPanel actions={quickActions} /> */}
 
       {/* Activity feed */}
       <ActivityFeed

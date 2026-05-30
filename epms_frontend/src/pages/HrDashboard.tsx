@@ -167,7 +167,7 @@ const HrDashboard: React.FC = () => {
       )}
 
       {/* Quick actions */}
-      <QuickActionPanel actions={quickActions} />
+      {/* <QuickActionPanel actions={quickActions} /> */}
 
       {/* Tasks & Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
