@@ -284,7 +284,7 @@ const AppraisalList: React.FC = () => {
                 >
                   {isActivating ? 'Activating...' : 'Activate Cycle'}
                 </button>
-              ) : isAdmin && cycle?.isActive ? (
+              ) : isPrivileged && cycle?.isActive ? (
                 <button
                   onClick={() => {
                     setConfirmModal({
