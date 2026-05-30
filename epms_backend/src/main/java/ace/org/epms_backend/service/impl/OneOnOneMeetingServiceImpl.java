@@ -37,6 +37,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.NotificationType;
 import ace.org.epms_backend.enums.ReferenceType;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
+import ace.org.epms_backend.service.AuditService;
 
 @Service
 @Transactional
@@ -54,6 +58,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
     private final ApplicationEventPublisher eventPublisher;
     private final ace.org.epms_backend.service.ReportingChainService reportingChainService;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
+    private final AuditService auditService;
 
     public OneOnOneMeetingServiceImpl(
             OneOnOneMeetingRepository meetingRepository,
@@ -67,7 +72,8 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
             MeetingActionItemRepository actionItemRepository,
             ApplicationEventPublisher eventPublisher,
             ace.org.epms_backend.service.ReportingChainService reportingChainService,
-            EmployeeDepartmentRepository employeeDepartmentRepository) {
+            EmployeeDepartmentRepository employeeDepartmentRepository,
+            AuditService auditService) {
         this.meetingRepository = meetingRepository;
         this.commentRepository = commentRepository;
         this.employeeRepository = employeeRepository;
@@ -80,6 +86,7 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
         this.eventPublisher = eventPublisher;
         this.reportingChainService = reportingChainService;
         this.employeeDepartmentRepository = employeeDepartmentRepository;
+        this.auditService = auditService;
     }
 
     @Override
@@ -175,6 +182,14 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                     .actionUrl("/meetings")
                     .build());
         }
+
+        auditService.log(AuditRequest.builder()
+                .tableName("one_on_one_meetings")
+                .recordId(savedMeeting.getMeetingId())
+                .action(AuditAction.INSERT)
+                .newState(savedMeeting)
+                .status(AuditStatus.SUCCESS)
+                .build());
 
         return meetingMapper.toResponse(savedMeeting);
     }
@@ -325,6 +340,14 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                     .build());
         }
 
+        auditService.log(AuditRequest.builder()
+                .tableName("one_on_one_meetings")
+                .recordId(updatedMeeting.getMeetingId())
+                .action(AuditAction.UPDATE)
+                .newState(updatedMeeting)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return meetingMapper.toResponse(updatedMeeting);
     }
 
@@ -394,6 +417,14 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                     .actionUrl("/meetings")
                     .build());
         }
+
+        auditService.log(AuditRequest.builder()
+                .tableName("one_on_one_meetings")
+                .recordId(meetingId)
+                .action(AuditAction.DELETE)
+                .oldState(meeting)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 
     @Override
@@ -590,6 +621,14 @@ public class OneOnOneMeetingServiceImpl implements OneOnOneMeetingService {
                 .referenceType(ReferenceType.MEETING)
                 .referenceId(publishedMeeting.getMeetingId())
                 .actionUrl("/meetings")
+                .build());
+
+        auditService.log(AuditRequest.builder()
+                .tableName("one_on_one_meetings")
+                .recordId(publishedMeeting.getMeetingId())
+                .action(AuditAction.UPDATE)
+                .newState(publishedMeeting)
+                .status(AuditStatus.SUCCESS)
                 .build());
 
         return meetingMapper.toResponse(publishedMeeting);
