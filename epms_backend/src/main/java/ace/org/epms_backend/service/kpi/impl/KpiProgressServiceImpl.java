@@ -47,7 +47,9 @@ public class KpiProgressServiceImpl implements KpiProgressService {
                 .orElseThrow(() -> new NotFoundException("Goal item not found"));
 
         if (!item.getGoalSet().getStatus().equals(KpiGoalStatus.APPROVED)) {
-            throw new IllegalStateException("Cannot update progress for non-approved goals");
+            throw new IllegalStateException(
+                    "Cannot update progress because the goal set status is " + item.getGoalSet().getStatus()
+                            + ". It must be APPROVED.");
         }
 
         Employee currentUser = getCurrentEmployee();
@@ -55,9 +57,9 @@ public class KpiProgressServiceImpl implements KpiProgressService {
             // Check if compliance row being verified by manager/HR/Admin
             boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_HR") || a.getAuthority().equals("ROLE_ADMIN"));
-            
-            boolean isManager = item.getGoalSet().getManager() != null && 
-                               item.getGoalSet().getManager().getId().equals(currentUser.getId());
+
+            boolean isManager = item.getGoalSet().getManager() != null &&
+                    item.getGoalSet().getManager().getId().equals(currentUser.getId());
 
             if (Boolean.TRUE.equals(item.getIsCompliance()) && (isHrOrAdmin || isManager)) {
                 // Allowed for manager verification
@@ -87,7 +89,8 @@ public class KpiProgressServiceImpl implements KpiProgressService {
         BigDecimal scorePercent = BigDecimal.ZERO;
         if (item.getTargetValue() != null) {
             if (item.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
-                // If target is 0, 100% achievement if actual is 0, else 0% (Zero Tolerance Item)
+                // If target is 0, 100% achievement if actual is 0, else 0% (Zero Tolerance
+                // Item)
                 scorePercent = request.getActualValue().compareTo(BigDecimal.ZERO) == 0
                         ? new BigDecimal("100")
                         : BigDecimal.ZERO;

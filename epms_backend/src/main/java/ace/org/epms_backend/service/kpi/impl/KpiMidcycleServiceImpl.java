@@ -31,6 +31,7 @@ import ace.org.epms_backend.repository.KpiMidcycleFinalScoreRepository;
 import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.kpi.KpiGoalService;
 import ace.org.epms_backend.service.kpi.KpiMidcycleService;
+import ace.org.epms_backend.service.kpi.KpiPhaseLinkerService;
 import ace.org.epms_backend.service.kpi.KpiScoringService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -66,6 +67,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
     private final KpiScoringService kpiScoringService;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
+    private final KpiPhaseLinkerService phaseLinkerService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -88,8 +90,9 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         }
 
         if (changeDate.isBefore(cycle.getStartDate()) || changeDate.isAfter(cycle.getEndDate().minusDays(1))) {
-            throw new IllegalArgumentException("Change date must be between cycle start date (" 
-                    + cycle.getStartDate() + ") and one day before cycle end date (" + cycle.getEndDate().minusDays(1) + ")");
+            throw new IllegalArgumentException("Change date must be between cycle start date ("
+                    + cycle.getStartDate() + ") and one day before cycle end date (" + cycle.getEndDate().minusDays(1)
+                    + ")");
         }
 
         Employee employee = employeeRepository.findById(employeeId)
@@ -97,16 +100,20 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         Employee currentUser = getCurrentEmployee();
 
-        Optional<KpiGoalPhase> openPhaseOpt = phaseRepository.findByEmployee_IdAndCycle_CycleIdAndStatus(employeeId, cycleId, PhaseStatus.OPEN);
+        Optional<KpiGoalPhase> openPhaseOpt = phaseRepository.findByEmployee_IdAndCycle_CycleIdAndStatus(employeeId,
+                cycleId, PhaseStatus.OPEN);
 
         KpiGoalPhase currentPhase;
         int nextPhaseNumber = 1;
 
         if (openPhaseOpt.isEmpty()) {
-            KpiGoals currentGoalSet = goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
-                    .orElseThrow(() -> new NotFoundException("No active goal set found for this employee and cycle. Please assign KPIs first."));
+            KpiGoals currentGoalSet = goalsRepository
+                    .findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
+                    .orElseThrow(() -> new NotFoundException(
+                            "No active goal set found for this employee and cycle. Please assign KPIs first."));
 
-            List<KpiGoalPhase> existingPhases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId);
+            List<KpiGoalPhase> existingPhases = phaseRepository
+                    .findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId);
             if (!existingPhases.isEmpty()) {
                 currentPhase = createOpenPhaseAfterLatest(employee, cycle, currentGoalSet, existingPhases);
                 nextPhaseNumber = currentPhase.getPhaseNumber() + 1;
@@ -127,12 +134,14 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             nextPhaseNumber = currentPhase.getPhaseNumber() + 1;
 
             if (currentPhase.getGoalSet() == null) {
-                throw new IllegalStateException("Cannot trigger midcycle change: No goal set has been assigned to the current phase yet.");
+                throw new IllegalStateException(
+                        "Cannot trigger midcycle change: No goal set has been assigned to the current phase yet.");
             }
         }
 
         if (changeDate.isBefore(currentPhase.getPhaseStartDate())) {
-            throw new IllegalArgumentException("Change date cannot be before current phase start date (" + currentPhase.getPhaseStartDate() + ")");
+            throw new IllegalArgumentException(
+                    "Change date cannot be before current phase start date (" + currentPhase.getPhaseStartDate() + ")");
         }
 
         currentPhase.setPhaseEndDate(changeDate);
@@ -143,21 +152,30 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         KpiGoals goalSet = currentPhase.getGoalSet();
         if (goalSet.getStatus() == KpiGoalStatus.DRAFT) {
-            throw new IllegalStateException("Goal set for the current phase is in DRAFT status. It must be approved before triggering a midcycle change.");
+            throw new IllegalStateException(
+                    "Goal set for the current phase is in DRAFT status. It must be approved before triggering a midcycle change.");
         }
 
         if (goalSet.getStatus() == KpiGoalStatus.APPROVED) {
             kpiGoalService.lockGoalSet(goalSet.getId());
         }
 
-        kpiScoringService.calculateFinalScore(employeeId, cycleId);
+        // kpiScoringService.calculateFinalScore(employeeId, cycleId);
 
-        KpiFinalScore finalScore = finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
-                .orElseThrow(() -> new NotFoundException("Calculated final score not found"));
+        // KpiFinalScore finalScore =
+        // finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId,
+        // cycleId)
+        // .orElseThrow(() -> new NotFoundException("Calculated final score not
+        // found"));
 
-        currentPhase.setPhaseScore(finalScore.getWeightedScore());
+        // currentPhase.setPhaseScore(finalScore.getWeightedScore());
+
+        // Calculate phase score directly from goal set items (NO KpiFinalScore created)
+        BigDecimal phaseScore = calculateWeightedScoreFromGoalSet(goalSet);
+        currentPhase.setPhaseScore(phaseScore);
+
         currentPhase.setStatus(PhaseStatus.SCORED);
-        
+
         phaseRepository.save(currentPhase);
 
         goalSet.setIsCurrent(false);
@@ -170,7 +188,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                 .phaseStartDate(changeDate.plusDays(1))
                 .status(PhaseStatus.OPEN)
                 .build();
-        
+
         phaseRepository.save(newPhase);
 
         Employee manager = goalSet.getManager();
@@ -180,7 +198,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                     .senderId(currentUser.getId())
                     .type(NotificationType.KPI_ASSIGNED)
                     .title("Action Required: Assign New KPIs")
-                    .message("A midcycle change was triggered for " + employee.getStaffName() 
+                    .message("A midcycle change was triggered for " + employee.getStaffName()
                             + ". Please assign KPIs for the new phase starting on " + changeDate.plusDays(1) + ".")
                     .referenceType(ReferenceType.KPI)
                     .referenceId(goalSet.getId())
@@ -200,7 +218,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                         + " and is waiting for KPI assignment.")
                 .changedBy(currentUser.getId())
                 .build());
-        
+
         auditService.log(AuditRequest.builder()
                 .tableName("kpi_goal_phases")
                 .recordId(currentPhase.getId())
@@ -221,11 +239,14 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         Employee currentUser = getCurrentEmployee();
 
-        List<KpiGoalPhase> phases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId);
+        List<KpiGoalPhase> phases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId,
+                cycleId);
 
         if (phases.isEmpty()) {
-            KpiGoals currentGoalSet = goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
-                    .orElseThrow(() -> new IllegalStateException("No midcycle phases or active goal set found for this employee and cycle."));
+            KpiGoals currentGoalSet = goalsRepository
+                    .findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "No midcycle phases or active goal set found for this employee and cycle."));
 
             KpiGoalPhase defaultPhase = KpiGoalPhase.builder()
                     .employee(employee)
@@ -241,7 +262,8 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         KpiGoalPhase lastPhase = phases.get(phases.size() - 1);
         if (lastPhase.getStatus() == PhaseStatus.OPEN) {
             if (cycle.getEndDate().isBefore(lastPhase.getPhaseStartDate())) {
-                throw new IllegalStateException("Cannot finalize composite score: cycle end date is before the last phase start date.");
+                throw new IllegalStateException(
+                        "Cannot finalize composite score: cycle end date is before the last phase start date.");
             }
 
             lastPhase.setPhaseEndDate(cycle.getEndDate());
@@ -252,11 +274,13 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
             KpiGoals goalSet = lastPhase.getGoalSet();
             if (goalSet == null) {
-                throw new IllegalStateException("Cannot finalize composite score: The last phase does not have KPIs assigned.");
+                throw new IllegalStateException(
+                        "Cannot finalize composite score: The last phase does not have KPIs assigned.");
             }
 
             if (goalSet.getStatus() == KpiGoalStatus.DRAFT) {
-                throw new IllegalStateException("The goal set for the final phase is in DRAFT status. It must be approved before finalization.");
+                throw new IllegalStateException(
+                        "The goal set for the final phase is in DRAFT status. It must be approved before finalization.");
             }
 
             if (goalSet.getStatus() == KpiGoalStatus.APPROVED) {
@@ -265,12 +289,13 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
             kpiScoringService.calculateFinalScore(employeeId, cycleId);
 
-            KpiFinalScore finalScore = finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+            KpiFinalScore finalScore = finalScoreRepository
+                    .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
                     .orElseThrow(() -> new NotFoundException("Calculated final score for last phase not found"));
 
             lastPhase.setPhaseScore(finalScore.getWeightedScore());
             lastPhase.setStatus(PhaseStatus.SCORED);
-            
+
             phaseRepository.save(lastPhase);
 
             goalSet.setIsCurrent(false);
@@ -279,14 +304,16 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         int totalCycleDays = (int) ChronoUnit.DAYS.between(cycle.getStartDate(), cycle.getEndDate()) + 1;
         if (totalCycleDays <= 0) {
-            throw new IllegalStateException("Cannot finalize composite score: cycle end date must be on or after cycle start date.");
+            throw new IllegalStateException(
+                    "Cannot finalize composite score: cycle end date must be on or after cycle start date.");
         }
         BigDecimal totalWeightedScoreSum = BigDecimal.ZERO;
         BigDecimal totalAchievementPercentSum = BigDecimal.ZERO;
 
         for (KpiGoalPhase phase : phases) {
             if (phase.getPhaseDays() == null || phase.getPhaseDays() <= 0) {
-                throw new IllegalStateException("Cannot finalize composite score: phase " + phase.getPhaseNumber() + " has invalid duration.");
+                throw new IllegalStateException(
+                        "Cannot finalize composite score: phase " + phase.getPhaseNumber() + " has invalid duration.");
             }
 
             BigDecimal days = BigDecimal.valueOf(phase.getPhaseDays());
@@ -298,14 +325,16 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             totalWeightedScoreSum = totalWeightedScoreSum.add(score.multiply(weight));
 
             TypedQuery<KpiFinalScore> query = entityManager.createQuery(
-                "SELECT f FROM KpiFinalScore f WHERE f.employee.id = :empId AND f.goalSet.id = :gsId", KpiFinalScore.class);
+                    "SELECT f FROM KpiFinalScore f WHERE f.employee.id = :empId AND f.goalSet.id = :gsId",
+                    KpiFinalScore.class);
             query.setParameter("empId", employeeId);
             query.setParameter("gsId", phase.getGoalSet().getId());
             List<KpiFinalScore> list = query.getResultList();
             KpiFinalScore phaseFinalScore = list.isEmpty() ? null : list.get(0);
-            
-            BigDecimal achievement = (phaseFinalScore != null && phaseFinalScore.getTotalAchievementPercent() != null) 
-                    ? phaseFinalScore.getTotalAchievementPercent() : BigDecimal.ZERO;
+
+            BigDecimal achievement = (phaseFinalScore != null && phaseFinalScore.getTotalAchievementPercent() != null)
+                    ? phaseFinalScore.getTotalAchievementPercent()
+                    : BigDecimal.ZERO;
             totalAchievementPercentSum = totalAchievementPercentSum.add(achievement.multiply(weight));
         }
 
@@ -314,17 +343,18 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             KpiGoalPhase p = phases.get(i);
             breakdownBuilder.append(String.format(
                     "{\"phaseNumber\":%d,\"startDate\":\"%s\",\"endDate\":\"%s\",\"days\":%d,\"weight\":%s,\"score\":%s}",
-                    p.getPhaseNumber(), p.getPhaseStartDate(), p.getPhaseEndDate(), p.getPhaseDays(), p.getPhaseWeight(), p.getPhaseScore()
-            ));
+                    p.getPhaseNumber(), p.getPhaseStartDate(), p.getPhaseEndDate(), p.getPhaseDays(),
+                    p.getPhaseWeight(), p.getPhaseScore()));
             if (i < phases.size() - 1) {
                 breakdownBuilder.append(",");
             }
         }
         breakdownBuilder.append("]");
 
-        KpiMidcycleFinalScore midcycleScore = midcycleFinalScoreRepository.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
+        KpiMidcycleFinalScore midcycleScore = midcycleFinalScoreRepository
+                .findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
                 .orElse(new KpiMidcycleFinalScore());
-        
+
         midcycleScore.setEmployee(employee);
         midcycleScore.setCycle(cycle);
         midcycleScore.setTotalPhases(phases.size());
@@ -336,16 +366,36 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         midcycleFinalScoreRepository.save(midcycleScore);
 
         KpiGoals lastPhaseGoalSet = lastPhase.getGoalSet();
-        KpiFinalScore finalScore = finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
-                .orElse(new KpiFinalScore());
+        // KpiFinalScore finalScore =
+        // finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId,
+        // cycleId)
+        // .orElse(new KpiFinalScore());
 
-        finalScore.setEmployee(employee);
-        finalScore.setGoalSet(lastPhaseGoalSet);
-        finalScore.setWeightedScore(totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP));
-        finalScore.setTotalAchievementPercent(totalAchievementPercentSum.setScale(2, RoundingMode.HALF_UP));
-        finalScore.setCalculatedAt(Instant.now());
-        finalScore.setFinalizedBy(currentUser.getId());
+        // finalScore.setEmployee(employee);
+        // finalScore.setGoalSet(lastPhaseGoalSet);
+        // finalScore.setWeightedScore(totalWeightedScoreSum.setScale(4,
+        // RoundingMode.HALF_UP));
+        // finalScore.setTotalAchievementPercent(totalAchievementPercentSum.setScale(2,
+        // RoundingMode.HALF_UP));
+        // finalScore.setCalculatedAt(Instant.now());
+        // finalScore.setFinalizedBy(currentUser.getId());
 
+        // Delete any existing KpiFinalScore to ensure only ONE record per
+        // employee/cycle
+        finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+                .ifPresent(existing -> {
+                    finalScoreRepository.delete(existing);
+                });
+
+        // Create new composite final score
+        KpiFinalScore finalScore = KpiFinalScore.builder()
+                .employee(employee)
+                .goalSet(lastPhaseGoalSet)
+                .weightedScore(totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP))
+                .totalAchievementPercent(totalAchievementPercentSum.setScale(2, RoundingMode.HALF_UP))
+                .calculatedAt(Instant.now())
+                .finalizedBy(currentUser.getId())
+                .build();
         appraisalRepository.findByEmployeeAndCycleIds(employeeId, cycleId).ifPresent(finalScore::setAppraisal);
 
         finalScoreRepository.save(finalScore);
@@ -365,11 +415,13 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
 
-        List<KpiGoalPhase> phases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId);
+        List<KpiGoalPhase> phases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId,
+                cycleId);
 
         int totalCycleDays = (int) ChronoUnit.DAYS.between(cycle.getStartDate(), cycle.getEndDate()) + 1;
 
-        Optional<KpiMidcycleFinalScore> compositeOpt = midcycleFinalScoreRepository.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId);
+        Optional<KpiMidcycleFinalScore> compositeOpt = midcycleFinalScoreRepository
+                .findByEmployee_IdAndCycle_CycleId(employeeId, cycleId);
         BigDecimal compositeScore = compositeOpt.map(KpiMidcycleFinalScore::getCompositeScore).orElse(null);
 
         boolean hasOpenPhase = phases.stream().anyMatch(p -> p.getStatus() == PhaseStatus.OPEN);
@@ -383,8 +435,13 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             }
 
             BigDecimal score = phase.getPhaseScore();
+            // Real-time score for open phases with assigned KPIs
+            if (phase.getStatus() == PhaseStatus.OPEN && phase.getGoalSet() != null) {
+                score = calculateWeightedScoreFromGoalSet(phase.getGoalSet());
+            }
             BigDecimal weightedContribution = null;
-            if (score != null && weight != null) {
+            // Only calculate weighted contribution for SCORED phases (finalized)
+            if (score != null && weight != null && phase.getStatus() == PhaseStatus.SCORED) {
                 weightedContribution = score.multiply(weight).setScale(4, RoundingMode.HALF_UP);
             }
 
@@ -417,7 +474,8 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
     @Override
     @Transactional
     public void linkGoalSetToOpenPhase(Long employeeId, Long cycleId, Long goalSetId) {
-        Optional<KpiGoalPhase> openPhaseOpt = phaseRepository.findByEmployee_IdAndCycle_CycleIdAndStatus(employeeId, cycleId, PhaseStatus.OPEN);
+        Optional<KpiGoalPhase> openPhaseOpt = phaseRepository.findByEmployee_IdAndCycle_CycleIdAndStatus(employeeId,
+                cycleId, PhaseStatus.OPEN);
         KpiGoals goalSet = goalsRepository.findById(goalSetId)
                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
         if (!goalSet.getEmployee().getId().equals(employeeId) || !goalSet.getCycle().getCycleId().equals(cycleId)) {
@@ -433,18 +491,19 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             return;
         }
 
-        List<KpiGoalPhase> existingPhases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId);
+        List<KpiGoalPhase> existingPhases = phaseRepository
+                .findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId);
         if (!existingPhases.isEmpty()) {
             createOpenPhaseAfterLatest(goalSet.getEmployee(), goalSet.getCycle(), goalSet, existingPhases);
         } else {
             phaseRepository.save(KpiGoalPhase.builder()
-                .employee(goalSet.getEmployee())
-                .cycle(goalSet.getCycle())
-                .goalSet(goalSet)
-                .phaseNumber(1)
-                .phaseStartDate(goalSet.getCycle().getStartDate())
-                .status(PhaseStatus.OPEN)
-                .build());
+                    .employee(goalSet.getEmployee())
+                    .cycle(goalSet.getCycle())
+                    .goalSet(goalSet)
+                    .phaseNumber(1)
+                    .phaseStartDate(goalSet.getCycle().getStartDate())
+                    .status(PhaseStatus.OPEN)
+                    .build());
         }
     }
 
@@ -497,5 +556,22 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                 .build();
 
         return phaseRepository.save(recoveredPhase);
+    }
+
+    /**
+     * Calculates the total weighted score directly from a goal set's items.
+     * This is used for phase scores and does NOT create KpiFinalScore records.
+     * 
+     * @param goalSet the goal set to calculate score for
+     * @return the total weighted score (sum of weightedScore from all active items)
+     */
+    private BigDecimal calculateWeightedScoreFromGoalSet(KpiGoals goalSet) {
+        if (goalSet == null || goalSet.getItems() == null || goalSet.getItems().isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        return goalSet.getItems().stream()
+                .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+                .map(item -> item.getWeightedScore() != null ? item.getWeightedScore() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
