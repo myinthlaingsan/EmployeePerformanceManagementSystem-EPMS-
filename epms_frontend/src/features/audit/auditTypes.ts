@@ -1,6 +1,6 @@
 import type { EmployeeResponse, PagedResponse } from "../employee/employeeTypes";
 
-export type AuditAction = "CREATE" | "UPDATE" | "DELETE" | "ACCESS" | "RESTORE" | "EXPORT";
+export type AuditAction = "CREATE" | "INSERT" | "UPDATE" | "DELETE" | "ACCESS" | "RESTORE" | "EXPORT";
 export type AuditStatus = "SUCCESS" | "FAILURE" | "WARNING";
 export type ReportType = "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY" | "CUSTOM_RANGE";
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
