@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
 import KpiSummaryReportButton from '../../components/kpi/KpiSummaryReportButton';
+import KpiActualsReportButton from '../../components/kpi/KpiActualsReportButton';
 import React from 'react';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
@@ -117,6 +118,7 @@ const TeamKpiDashboard: React.FC = () => {
             style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
             <LayoutTemplate size={13} /> Bulk Assign Team
           </button>
+          <KpiActualsReportButton />
           <KpiSummaryReportButton />
         </div>
       </div>

@@ -246,3 +246,29 @@ export interface KpiSummaryReportDTO {
   overallCategory: string;
   cycles: CycleSummaryDTO[];
 }
+
+export interface KpiActualsEmployeeRowDTO {
+  employeeId: number;
+  employeeName: string;
+  departmentName: string;
+  positionName: string;
+  totalKpiItems: number;
+  overdueItemCount: number;
+  lastUpdatedAt: string;
+  daysSinceLastUpdate: number;
+  isOverdue: boolean;
+  status: string;
+}
+
+export interface KpiActualsCompletionReportDTO {
+  generatedAt: string;
+  cycleId: number;
+  cycleName: string;
+  thresholdDays: number;
+  totalEmployees: number;
+  overdueEmployeeCount: number;
+  upToDateEmployeeCount: number;
+  noGoalEmployeeCount: number;
+  overdueRate: number;
+  employeeRows: KpiActualsEmployeeRowDTO[];
+}

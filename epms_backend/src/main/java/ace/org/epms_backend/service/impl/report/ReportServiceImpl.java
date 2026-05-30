@@ -35,6 +35,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
+import java.time.Instant;
 import ace.org.epms_backend.exception.NotFoundException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +48,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -719,6 +722,201 @@ public class ReportServiceImpl implements ReportService {
         parameters.put("reportTitle", "KPI Achievement Report");
         String jrxmlPath = "reports/kpi_achievement_report.jrxml";
         return generateReport(jrxmlPath, parameters, data, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public KpiActualsCompletionReportDTO getKpiActualsCompletionReport(
+            Long cycleId, Long managerId, Long departmentId, int thresholdDays) {
+
+        String cycleName = appraisalCycleRepository.findById(cycleId)
+                .map(AppraisalCycle::getCycleName)
+                .orElse("Unknown Cycle");
+
+        List<Employee> targetEmployees;
+        if (managerId != null) {
+            targetEmployees = reportingLineRepository
+        .findAllByManager_IdAndIsActiveTrue(managerId)
+        .stream()
+        .map(ReportingLine::getEmployee)
+        .filter(Objects::nonNull)
+        .filter(Employee::getIsActive)
+        .toList();
+        } else if (departmentId != null) {
+            targetEmployees = employeeDepartmentRepository
+        .findByCurrentDepartmentIdAndIsCurrentTrue(departmentId)
+        .stream()
+        .map(EmployeeDepartment::getEmployee)
+        .filter(Objects::nonNull)
+        .filter(e -> Boolean.TRUE.equals(e.getIsActive()))
+        .collect(Collectors.toList());
+        } else {
+            targetEmployees = employeeRepository.findAll().stream()
+                    .filter(e -> Boolean.TRUE.equals(e.getIsActive()))
+                    .collect(Collectors.toList());
+        }
+
+        List<KpiGoals> goalsList = kpiGoalsRepository.findApprovedGoalsForActualsReport(cycleId, managerId);
+        
+        Map<Long, KpiGoals> goalsMap = goalsList.stream()
+                .filter(g -> g.getEmployee() != null)
+                .collect(Collectors.toMap(g -> g.getEmployee().getId(), g -> g, (existing, replacement) -> existing));
+
+        List<KpiActualsEmployeeRowDTO> employeeRows = new ArrayList<>();
+        int overdueEmployeeCount = 0;
+        int upToDateEmployeeCount = 0;
+        int noGoalEmployeeCount = 0;
+
+        Instant now = Instant.now();
+
+        for (Employee emp : targetEmployees) {
+            KpiGoals goalSet = goalsMap.get(emp.getId());
+
+            KpiActualsEmployeeRowDTO row;
+            EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId()).orElse(null);
+            String deptName = (ed != null && ed.getCurrentDepartment() != null) ? ed.getCurrentDepartment().getDepartmentName() : "N/A";
+            String posName = emp.getPosition() != null ? emp.getPosition().getPositionName() : "N/A";
+
+            if (goalSet == null) {
+                row = KpiActualsEmployeeRowDTO.builder()
+                        .employeeId(emp.getId())
+                        .employeeName(emp.getStaffName())
+                        .departmentName(deptName)
+                        .positionName(posName)
+                        .totalKpiItems(0)
+                        .overdueItemCount(0)
+                        .lastUpdatedAt("N/A")
+                        .daysSinceLastUpdate(-1)
+                        .overdue(false)
+                        .status("NO GOAL SET")
+                        .build();
+                noGoalEmployeeCount++;
+            } else {
+                List<KpiGoalItem> activeItems = goalSet.getItems() == null ? Collections.emptyList() :
+                        goalSet.getItems().stream()
+                                .filter(item -> item.getIsActive() != null && item.getIsActive())
+                                .collect(Collectors.toList());
+
+                if (activeItems.isEmpty()) {
+                    row = KpiActualsEmployeeRowDTO.builder()
+                            .employeeId(emp.getId())
+                            .employeeName(emp.getStaffName())
+                            .departmentName(deptName)
+                            .positionName(posName)
+                            .totalKpiItems(0)
+                            .overdueItemCount(0)
+                            .lastUpdatedAt("N/A")
+                            .daysSinceLastUpdate(-1)
+                            .overdue(false)
+                            .status("NO GOAL SET")
+                            .build();
+                    noGoalEmployeeCount++;
+                } else {
+                    int overdueItems = 0;
+                    Instant mostRecentUpdate = null;
+
+                    for (KpiGoalItem item : activeItems) {
+                        Instant itemUpdated = item.getUpdatedAt() != null ? item.getUpdatedAt() : item.getCreatedAt();
+                        if (itemUpdated != null) {
+                            if (mostRecentUpdate == null || itemUpdated.isAfter(mostRecentUpdate)) {
+                                mostRecentUpdate = itemUpdated;
+                            }
+                        }
+
+                        boolean itemOverdue = false;
+                        if (item.getActualValue() == null) {
+                            itemOverdue = true;
+                        } else if (itemUpdated != null) {
+                            long days = java.time.temporal.ChronoUnit.DAYS.between(itemUpdated, now);
+                            if (days >= thresholdDays) {
+                                itemOverdue = true;
+                            }
+                        }
+                        if (itemOverdue) {
+                            overdueItems++;
+                        }
+                    }
+
+                    long daysSinceLast = -1;
+                    String lastUpdatedStr = "N/A";
+                    if (mostRecentUpdate != null) {
+                        daysSinceLast = java.time.temporal.ChronoUnit.DAYS.between(mostRecentUpdate, now);
+                        lastUpdatedStr = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+                                .withZone(java.time.ZoneId.systemDefault())
+                                .format(mostRecentUpdate);
+                    }
+
+                    boolean employeeOverdue = overdueItems > 0;
+                    String status = employeeOverdue ? "OVERDUE" : "UP TO DATE";
+
+                    row = KpiActualsEmployeeRowDTO.builder()
+                            .employeeId(emp.getId())
+                            .employeeName(emp.getStaffName())
+                            .departmentName(deptName)
+                            .positionName(posName)
+                            .totalKpiItems(activeItems.size())
+                            .overdueItemCount(overdueItems)
+                            .lastUpdatedAt(lastUpdatedStr)
+                            .daysSinceLastUpdate(daysSinceLast)
+                            .overdue(employeeOverdue)
+                            .status(status)
+                            .build();
+
+                    if (employeeOverdue) {
+                        overdueEmployeeCount++;
+                    } else {
+                        upToDateEmployeeCount++;
+                    }
+                }
+            }
+            employeeRows.add(row);
+        }
+
+        employeeRows.sort((r1, r2) -> {
+            int p1 = "OVERDUE".equals(r1.getStatus()) ? 1 : ("NO GOAL SET".equals(r1.getStatus()) ? 2 : 3);
+            int p2 = "OVERDUE".equals(r2.getStatus()) ? 1 : ("NO GOAL SET".equals(r2.getStatus()) ? 2 : 3);
+            if (p1 != p2) {
+                return Integer.compare(p1, p2);
+            }
+            return Long.compare(r2.getDaysSinceLastUpdate(), r1.getDaysSinceLastUpdate());
+        });
+
+        int totalEmployees = targetEmployees.size();
+        double overdueRate = totalEmployees == 0 ? 0.0 : roundDouble(((double) overdueEmployeeCount / totalEmployees) * 100.0);
+
+        String generatedAt = Instant.now().toString();
+
+        return KpiActualsCompletionReportDTO.builder()
+                .generatedAt(generatedAt)
+                .cycleId(cycleId)
+                .cycleName(cycleName)
+                .thresholdDays(thresholdDays)
+                .totalEmployees(totalEmployees)
+                .overdueEmployeeCount(overdueEmployeeCount)
+                .upToDateEmployeeCount(upToDateEmployeeCount)
+                .noGoalEmployeeCount(noGoalEmployeeCount)
+                .overdueRate(overdueRate)
+                .employeeRows(employeeRows)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportKpiActualsCompletionReport(
+            Long cycleId, Long managerId, Long departmentId, int thresholdDays, String format) {
+        KpiActualsCompletionReportDTO data = getKpiActualsCompletionReport(cycleId, managerId, departmentId, thresholdDays);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "KPI Actuals Completion Rate Report");
+        parameters.put("cycleName", data.getCycleName());
+        parameters.put("thresholdDays", data.getThresholdDays());
+        parameters.put("totalEmployees", data.getTotalEmployees());
+        parameters.put("overdueEmployees", data.getOverdueEmployeeCount());
+        parameters.put("upToDateEmployees", data.getUpToDateEmployeeCount());
+        parameters.put("noGoalEmployees", data.getNoGoalEmployeeCount());
+        parameters.put("overdueRate", String.format("%.2f%%", data.getOverdueRate()));
+        parameters.put("generatedAt", data.getGeneratedAt());
+        
+        return generateReport("reports/kpi_actuals_completion_report.jrxml", parameters, data.getEmployeeRows(), format);
     }
 
     @Override

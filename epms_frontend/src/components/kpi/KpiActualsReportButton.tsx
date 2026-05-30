@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { FileText } from 'lucide-react';
-import KpiSummaryReportModal from './KpiSummaryReportModal';
+import { AlertCircle } from 'lucide-react';
+import KpiActualsReportModal from './KpiActualsReportModal';
 
-const KpiSummaryReportButton: React.FC = () => {
+const KpiActualsReportButton: React.FC = () => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -20,11 +20,11 @@ const KpiSummaryReportButton: React.FC = () => {
           fontWeight: 500,
         }}
       >
-        <FileText size={13} /> KPI Summary 
+        <AlertCircle size={13} /> Actuals Completion
       </button>
-      {open && <KpiSummaryReportModal onClose={() => setOpen(false)} />}
+      {open && <KpiActualsReportModal onClose={() => setOpen(false)} />}
     </>
   );
 };
 
-export default KpiSummaryReportButton;
+export default KpiActualsReportButton;

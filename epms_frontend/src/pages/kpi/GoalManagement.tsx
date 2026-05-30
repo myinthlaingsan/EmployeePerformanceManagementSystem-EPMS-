@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { Search, ClipboardList, CheckCircle2, XCircle, Eye, Pencil, UserPlus, Archive, Calendar } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
 import KpiSummaryReportButton from '../../components/kpi/KpiSummaryReportButton';
+import KpiActualsReportButton from '../../components/kpi/KpiActualsReportButton';
 import { useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import React from 'react';
 import { KPI_STATUS_STYLE, KPI_STATUS_FALLBACK } from '../../utils/kpiStatusStyles';
@@ -182,6 +183,7 @@ const GoalManagement: React.FC = () => {
             <ClipboardList size={14} />
             Bulk Assign Templates {selectedIds.length > 0 && `(${selectedIds.length})`}
           </button>
+          <KpiActualsReportButton />
           <KpiSummaryReportButton />
         </div>
       </div>

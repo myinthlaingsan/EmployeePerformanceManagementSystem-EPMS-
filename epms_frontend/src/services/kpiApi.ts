@@ -17,6 +17,7 @@ import type {
   BulkAssignmentResponse,
   KpiHistoryLog,
   KpiSummaryReportDTO,
+  KpiActualsCompletionReportDTO,
 } from '../features/kpi/kpiTypes';
 import type { PagedResponse } from '../features/employee/employeeTypes';
 
@@ -319,6 +320,16 @@ export const kpiApi = api.injectEndpoints({
         `/reports/kpi-summary?employeeId=${employeeId}&cycleIds=${cycleIds.join(',')}`,
       providesTags: ['GoalSet'],
     }),
+    getKpiActualsCompletionReport: builder.query<
+      ApiResponse<KpiActualsCompletionReportDTO>,
+      { cycleId: number; managerId?: number; departmentId?: number; thresholdDays?: number }
+    >({
+      query: ({ cycleId, managerId, departmentId, thresholdDays = 30 }) => ({
+        url: `/reports/kpi-actuals-completion`,
+        params: { cycleId, managerId, departmentId, thresholdDays },
+      }),
+      providesTags: ['GoalSet'],
+    }),
   }),
 });
 
@@ -360,4 +371,5 @@ export const {
   useGetEmployeeKpiHistoryQuery,
   useGetGoalSetAuditTrailQuery,
   useGetKpiSummaryReportQuery,
+  useGetKpiActualsCompletionReportQuery,
 } = kpiApi;
