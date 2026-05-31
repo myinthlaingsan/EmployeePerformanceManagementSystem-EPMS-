@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PipOutcome } from '../../features/pip/types';
+import { AlertTriangle } from 'lucide-react';
 
 interface FinalizeModalProps {
     currentEndDate: string;
@@ -15,23 +16,29 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ currentEndDate, existingR
         scheduledReviewDates: [...existingReviewDates]
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [errors, setErrors] = useState<{ comment?: string; endDate?: string }>({});
+    const [showConfirm, setShowConfirm] = useState(false);
 
-    const handleSubmit = async () => {
-        if (!data.comment) {
-            alert("Please provide final comments/justification.");
-            return;
+    const validate = (): boolean => {
+        const newErrors: { comment?: string; endDate?: string } = {};
+        if (!data.comment.trim()) {
+            newErrors.comment = "Please provide final comments or justification.";
         }
         if (data.outcome === PipOutcome.EXTEND && !data.newEndDate) {
-            alert("Please select a new end date for the extension.");
+            newErrors.endDate = "Please select a new end date for the extension.";
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = async () => {
+        if (!validate()) return;
+
+        if (data.outcome !== PipOutcome.EXTEND && !showConfirm) {
+            setShowConfirm(true);
             return;
         }
 
-        if (data.outcome !== PipOutcome.EXTEND) {
-            if (!window.confirm("Warning: Once the PIP is finalized, it cannot be reopened. Are you sure you want to proceed?")) {
-                return;
-            }
-        }
-        
         setIsSaving(true);
         try {
             await onSave(data);
@@ -40,6 +47,83 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ currentEndDate, existingR
         }
     };
 
+    // ── Confirmation view ──
+    if (showConfirm) {
+        return (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full flex flex-col animate-in fade-in zoom-in duration-200">
+                    <div className="p-8 pb-0 flex-shrink-0 flex flex-col items-center text-center">
+                        <div style={{
+                            width: 48, height: 48, borderRadius: 14,
+                            background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 16
+                        }}>
+                            <AlertTriangle size={22} style={{ color: '#D97706' }} />
+                        </div>
+                        <h3 style={{ fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 6 }}>
+                            Confirm finalization
+                        </h3>
+                        <p style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.5 }}>
+                            Once the PIP is finalized, it <strong style={{ color: '#111827' }}>cannot be reopened</strong> or edited. This action is permanent.
+                        </p>
+                    </div>
+
+                    <div style={{
+                        margin: '20px 32px 0',
+                        background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12,
+                        padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10
+                    }}>
+                        <AlertTriangle size={14} style={{ color: '#D97706', flexShrink: 0, marginTop: 2 }} />
+                        <p style={{ fontSize: 12, color: '#92400E', lineHeight: 1.5, margin: 0 }}>
+                            The outcome will be recorded as <strong>{data.outcome === PipOutcome.PASS ? 'PASS' : 'FAIL'}</strong> and all stakeholders will be notified.
+                        </p>
+                    </div>
+
+                    <div className="p-8 pt-5 flex-shrink-0">
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowConfirm(false)}
+                                style={{
+                                    flex: 1, padding: '10px 16px', background: '#F3F4F6',
+                                    border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 600,
+                                    color: '#374151', cursor: 'pointer'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#E5E7EB'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#F3F4F6'; }}
+                            >
+                                Go back
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                disabled={isSaving}
+                                style={{
+                                    flex: 1, padding: '10px 16px',
+                                    background: data.outcome === PipOutcome.FAIL ? '#DC2626' : '#16A34A',
+                                    border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 600,
+                                    color: '#FFFFFF', cursor: isSaving ? 'not-allowed' : 'pointer',
+                                    opacity: isSaving ? 0.7 : 1,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                                }}
+                                onMouseEnter={e => {
+                                    if (!isSaving) e.currentTarget.style.background = data.outcome === PipOutcome.FAIL ? '#B91C1C' : '#15803D';
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.background = data.outcome === PipOutcome.FAIL ? '#DC2626' : '#16A34A';
+                                }}
+                            >
+                                {isSaving
+                                    ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    : 'Yes, finalize'
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Main form view ──
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
@@ -53,7 +137,7 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ currentEndDate, existingR
                         <select 
                             className="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition appearance-none bg-white" 
                             value={data.outcome}
-                            onChange={e => setData({ ...data, outcome: e.target.value as PipOutcome })}
+                            onChange={e => { setData({ ...data, outcome: e.target.value as PipOutcome }); setErrors(prev => ({ ...prev, endDate: undefined })); }}
                         >
                             <option value={PipOutcome.PASS}>PASS - Performance Improved</option>
                             <option value={PipOutcome.EXTEND}>EXTEND - Needs More Time</option>
@@ -67,11 +151,19 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ currentEndDate, existingR
                                 <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">New End Date</label>
                                 <input 
                                     type="date" 
-                                    className="w-full px-4 py-2 border rounded-xl border-yellow-200 bg-yellow-50/30 outline-none focus:ring-2 focus:ring-yellow-500 transition" 
-                                    onChange={e => setData({ ...data, newEndDate: e.target.value })} 
+                                    className={`w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 transition ${
+                                        errors.endDate
+                                            ? 'border-red-300 bg-red-50/30 focus:ring-red-500'
+                                            : 'border-yellow-200 bg-yellow-50/30 focus:ring-yellow-500'
+                                    }`}
+                                    onChange={e => { setData({ ...data, newEndDate: e.target.value }); setErrors(prev => ({ ...prev, endDate: undefined })); }}
                                     min={currentEndDate}
                                 />
-                                <p className="text-[10px] text-yellow-600 mt-1 font-medium italic">Selecting EXTEND will allow the employee more time to meet objectives.</p>
+                                {errors.endDate ? (
+                                    <p className="text-[10px] text-red-600 mt-1 font-medium">{errors.endDate}</p>
+                                ) : (
+                                    <p className="text-[10px] text-yellow-600 mt-1 font-medium italic">Selecting EXTEND will allow the employee more time to meet objectives.</p>
+                                )}
                             </div>
 
                             <div>
@@ -122,10 +214,16 @@ const FinalizeModal: React.FC<FinalizeModalProps> = ({ currentEndDate, existingR
                         <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Final Comments / Justification</label>
                         <textarea 
                             placeholder="Explain the reasoning behind this decision..." 
-                            className="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition" 
+                            className={`w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 transition ${
+                                errors.comment ? 'border-red-300 focus:ring-red-500' : 'focus:ring-blue-500'
+                            }`}
                             rows={4}
-                            onChange={e => setData({ ...data, comment: e.target.value })} 
+                            value={data.comment}
+                            onChange={e => { setData({ ...data, comment: e.target.value }); setErrors(prev => ({ ...prev, comment: undefined })); }}
                         />
+                        {errors.comment && (
+                            <p className="text-[11px] text-red-600 mt-1 font-medium">{errors.comment}</p>
+                        )}
                     </div>
                 </div>
                 
