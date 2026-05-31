@@ -26,6 +26,9 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
   const [finalizeScore, { isLoading: isFinalizing }] = useFinalizeCompositeScoreMutation();
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const hasUnassignedOpenPhase = summary.hasOpenPhase &&
+    summary.phases.some(p => p.status === 'OPEN' && p.goalSetId === null);
+
   const handleFinalize = async () => {
     try {
       await finalizeScore({ employeeId: summary.employeeId, cycleId: summary.cycleId }).unwrap();
@@ -66,7 +69,8 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
           {isPrivileged && (
             <button
               onClick={handleFinalize}
-              disabled={isFinalizing || summary.phases.length === 0}
+              disabled={isFinalizing || summary.phases.length === 0 || hasUnassignedOpenPhase}
+              title={hasUnassignedOpenPhase ? 'Cannot finalize: The current open phase has no KPIs assigned yet.' : undefined}
               style={{
                 background: '#1A56DB',
                 color: '#FFFFFF',
@@ -75,8 +79,8 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                 padding: '6px 14px',
                 fontSize: '12px',
                 fontWeight: 500,
-                cursor: isFinalizing ? 'not-allowed' : 'pointer',
-                opacity: isFinalizing ? 0.7 : 1,
+                cursor: (isFinalizing || hasUnassignedOpenPhase) ? 'not-allowed' : 'pointer',
+                opacity: (isFinalizing || hasUnassignedOpenPhase) ? 0.7 : 1,
                 transition: 'background 0.2s',
               }}
               className="hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50"
@@ -195,7 +199,11 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                         <ArrowRight size={10} className="text-gray-400" />
                         <span>{formatDate(phase.endDate)}</span>
                         <span style={{ color: '#9EA3B0' }}>-</span>
-                        <span>{phase.days} Days ({Math.round(phase.weight * 100)}%)</span>
+                        <span>
+                          {phase.days != null ? `${phase.days} Days${phase.status === 'OPEN' ? ' (est.)' : ''}` : 'In progress'}
+                          {' '}
+                          ({phase.weight != null ? `${Math.round(phase.weight * 100)}%${phase.status === 'OPEN' ? ' est.' : ''}` : 'Weight TBD'})
+                        </span>
                       </div>
 
                       {phase.changeReason && (
@@ -213,6 +221,9 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                         <p style={{ fontSize: '18px', fontWeight: 600, color: phase.score !== null ? '#111827' : '#9EA3B0', marginTop: '2px' }}>
                           {phase.score !== null ? Number(phase.score).toFixed(1) : 'Pending'}
                         </p>
+                        {phase.status === 'OPEN' && phase.score !== null && (
+                          <p style={{ fontSize: '9px', color: '#9EA3B0', marginTop: '2px' }}>Provisional preview</p>
+                        )}
                       </div>
 
                       <div style={{ textAlign: 'right', borderLeft: '1px solid #E4E6EC', paddingLeft: '24px' }}>
@@ -220,8 +231,16 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                           Contribution
                         </p>
                         <p style={{ fontSize: '18px', fontWeight: 600, color: phase.weightedContribution !== null ? '#1A56DB' : '#9EA3B0', marginTop: '2px' }}>
-                          {phase.weightedContribution !== null ? Number(phase.weightedContribution).toFixed(1) : '-'}
+                          {phase.weightedContribution !== null
+                            ? Number(phase.weightedContribution).toFixed(1)
+                            : phase.status === 'OPEN'
+                              ? <span title="Available once KPIs are assigned and scored" style={{ fontSize: '10px', color: '#9EA3B0', cursor: 'help' }}>Pending</span>
+                              : '-'
+                          }
                         </p>
+                        {phase.status === 'OPEN' && phase.weightedContribution !== null && (
+                          <p style={{ fontSize: '9px', color: '#9EA3B0', marginTop: '2px' }}>Provisional preview</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -229,6 +248,13 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
               );
             })}
           </div>
+
+          {/* Warning banner when an open phase has no KPIs assigned */}
+          {isPrivileged && hasUnassignedOpenPhase && (
+            <div style={{ marginTop: '16px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 12px', fontSize: '11px', color: '#92400E' }}>
+              ⚠ The current open phase has no KPIs assigned. The manager must assign and approve KPIs before you can finalize the composite score.
+            </div>
+          )}
 
           {/* Summary composite footer */}
           {summary.compositeScore !== null ? (

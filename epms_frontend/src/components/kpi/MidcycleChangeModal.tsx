@@ -95,10 +95,8 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
       const total = getDaysBetween(cycleStartDate, cycleEndDate);
       const current = getDaysBetween(currentPhaseStartDate, changeDate);
       
-      // Next phase starts on changeDate + 1 and ends on cycleEndDate
-      const nextStart = new Date(changeDate);
-      nextStart.setDate(nextStart.getDate() + 1);
-      const nextStartStr = nextStart.toISOString().split('T')[0];
+      // Next phase starts on changeDate and ends on cycleEndDate
+      const nextStartStr = changeDate;
       const next = getDaysBetween(nextStartStr, cycleEndDate);
 
       setCurrentPhaseDays(current);
@@ -208,7 +206,7 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
             />
             <p style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
               {hasValidDateRange
-                ? `Date boundary where Phase ${currentPhaseNumber} ends. Phase ${currentPhaseNumber + 1} begins on the next day.`
+                ? `Date boundary where Phase ${currentPhaseNumber} ends. Phase ${currentPhaseNumber + 1} begins on the same day.`
                 : currentPhaseStartsInFuture
                   ? `No valid date is available yet. The current phase starts on ${new Date(currentPhaseStartDate).toLocaleDateString()}, which is still in the future.`
                   : 'No valid date is available yet. The change date cannot be in the future.'}
@@ -227,7 +225,7 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
                 <strong>{currentPhaseDays} days ({currentPhaseWeight}%)</strong>
               </div>
               <div className="flex justify-between" style={{ fontSize: '12px', color: '#1E3A8A' }}>
-                <span>Phase {currentPhaseNumber + 1} starts on {new Date(new Date(changeDate).getTime() + 86400000).toLocaleDateString()}:</span>
+                <span>Phase {currentPhaseNumber + 1} starts immediately on {new Date(changeDate).toLocaleDateString()}:</span>
                 <strong>{nextPhaseDays} days ({nextPhaseWeight}%)</strong>
               </div>
             </div>

@@ -103,7 +103,7 @@ const GoalDetail: React.FC = () => {
     try {
       await calculateScores({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
       toast.success('Score calculated!');
-      await refetch();
+      await Promise.all([refetch(), refetchMidcycle()]);
     } catch { toast.error('Failed to calculate score'); }
   };
 

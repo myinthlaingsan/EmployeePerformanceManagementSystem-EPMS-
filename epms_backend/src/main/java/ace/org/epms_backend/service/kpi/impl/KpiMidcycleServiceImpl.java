@@ -56,6 +56,7 @@ import java.util.Optional;
 public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
     private final KpiGoalsRepository goalsRepository;
+    private final ace.org.epms_backend.repository.KpiGoalItemRepository goalItemRepository;
     private final KpiGoalPhaseRepository phaseRepository;
     private final KpiMidcycleFinalScoreRepository midcycleFinalScoreRepository;
     private final KpiFinalScoreRepository finalScoreRepository;
@@ -435,13 +436,18 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             }
 
             BigDecimal score = phase.getPhaseScore();
-            // Real-time score for open phases with assigned KPIs
-            if (phase.getStatus() == PhaseStatus.OPEN && phase.getGoalSet() != null) {
+            if (phase.getStatus() == PhaseStatus.OPEN) {
+                java.util.Optional<KpiGoals> currentGoalSetOpt = goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
+                if (currentGoalSetOpt.isPresent()) {
+                    score = calculateWeightedScoreFromGoalSet(currentGoalSetOpt.get());
+                } else if (phase.getGoalSet() != null) {
+                    score = calculateWeightedScoreFromGoalSet(phase.getGoalSet());
+                }
+            } else if (phase.getGoalSet() != null && phase.getStatus() == PhaseStatus.SCORED && score == null) {
                 score = calculateWeightedScoreFromGoalSet(phase.getGoalSet());
             }
             BigDecimal weightedContribution = null;
-            // Only calculate weighted contribution for SCORED phases (finalized)
-            if (score != null && weight != null && phase.getStatus() == PhaseStatus.SCORED) {
+            if (score != null && weight != null) {
                 weightedContribution = score.multiply(weight).setScale(4, RoundingMode.HALF_UP);
             }
 
@@ -484,7 +490,8 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         if (openPhaseOpt.isPresent()) {
             KpiGoalPhase openPhase = openPhaseOpt.get();
-            if (openPhase.getGoalSet() == null) {
+            // Always link to the latest goal set
+            if (true) {
                 openPhase.setGoalSet(goalSet);
                 phaseRepository.save(openPhase);
             }
@@ -566,10 +573,10 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
      * @return the total weighted score (sum of weightedScore from all active items)
      */
     private BigDecimal calculateWeightedScoreFromGoalSet(KpiGoals goalSet) {
-        if (goalSet == null || goalSet.getItems() == null || goalSet.getItems().isEmpty()) {
+        if (goalSet == null) {
             return BigDecimal.ZERO;
         }
-        return goalSet.getItems().stream()
+        return goalItemRepository.findByGoalSetIdAndIsActiveTrue(goalSet.getId()).stream()
                 .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
                 .map(item -> item.getWeightedScore() != null ? item.getWeightedScore() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
