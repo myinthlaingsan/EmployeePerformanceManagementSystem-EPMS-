@@ -1,5 +1,6 @@
 package ace.org.epms_backend.dto.appraisal;
 
+import ace.org.epms_backend.enums.FinancialYearStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.AllArgsConstructor;
@@ -18,6 +19,7 @@ public class FinancialYearResponse {
     private String title;
     private LocalDate startDate;
     private LocalDate endDate;
+    private FinancialYearStatus status;
 
     @JsonProperty("isCurrent")
     public boolean isCurrent() {

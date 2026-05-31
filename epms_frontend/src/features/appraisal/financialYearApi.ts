@@ -7,6 +7,7 @@ export interface FinancialYear {
   startDate: string;
   endDate: string;
   isCurrent: boolean;
+  status: "NOT_USED" | "CURRENT" | "HISTORICAL";
 }
 
 export interface FinancialYearRequest {
@@ -45,6 +46,14 @@ export const financialYearApi = api.injectEndpoints({
       transformResponse: (response: ApiResponse<FinancialYear>) => response.data,
       invalidatesTags: ["FinancialYear"],
     }),
+    deactivateFinancialYear: builder.mutation<FinancialYear, number>({
+      query: (id) => ({
+        url: `/financial-years/${id}/deactivate`,
+        method: "PATCH",
+      }),
+      transformResponse: (response: ApiResponse<FinancialYear>) => response.data,
+      invalidatesTags: ["FinancialYear"],
+    }),
     deleteFinancialYear: builder.mutation<void, number>({
       query: (id) => ({
         url: `/financial-years/${id}`,
@@ -69,6 +78,7 @@ export const {
   useGetCurrentFinancialYearQuery,
   useCreateFinancialYearMutation,
   useSetCurrentFinancialYearMutation,
+  useDeactivateFinancialYearMutation,
   useDeleteFinancialYearMutation,
   useRolloverFinancialYearMutation,
 } = financialYearApi;
