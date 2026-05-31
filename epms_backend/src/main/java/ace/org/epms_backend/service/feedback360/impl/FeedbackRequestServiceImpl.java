@@ -483,6 +483,17 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
                     .orElse("N/A");
 
+            java.time.Instant dueDate = null;
+            if (cycle.getSelfAssessmentDeadline() != null) {
+                dueDate = cycle.getSelfAssessmentDeadline().atTime(23, 59, 59)
+                        .atZone(java.time.ZoneId.systemDefault()).toInstant();
+            } else if (cycle.getEndDate() != null) {
+                dueDate = cycle.getEndDate().atTime(23, 59, 59)
+                        .atZone(java.time.ZoneId.systemDefault()).toInstant();
+            }
+
+            boolean isOverdue = dueDate != null && dueDate.isBefore(java.time.Instant.now());
+
             previewResults.add(FeedbackRequestResponse.builder()
                     .targetUserId(target.getId())
                     .targetUserName(target.getStaffName())
@@ -494,6 +505,10 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     .status(FeedbackStatus.PENDING)
                     .isAnonymous(anon)
                     .isReciprocalFallback(isReciprocal)
+                    .dueDate(dueDate)
+                    .startedAt(java.time.Instant.now())
+                    .formId(form != null ? form.getFormId() : null)
+                    .isOverdue(isOverdue)
                     .build());
             workloadMap.put(evaluator.getId(), currentWorkload + 1);
             return true;
@@ -722,6 +737,11 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                 departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(req.getEvaluator().getId())
                         .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
                         .orElse("N/A");
+        boolean isOverdue = req.getDueDate() != null
+                && req.getStatus() != FeedbackStatus.COMPLETED
+                && req.getStatus() != FeedbackStatus.CANCELLED
+                && req.getDueDate().isBefore(java.time.Instant.now());
+
         return FeedbackRequestResponse.builder()
                 .id(req.getId())
                 .targetUserId(req.getTargetUser().getId())
@@ -734,6 +754,11 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                 .relationship(req.getRelationship())
                 .status(req.getStatus())
                 .isAnonymous(req.getIsAnonymous())
+                .dueDate(req.getDueDate())
+                .startedAt(req.getStartedAt())
+                .lastReminderSentAt(req.getLastReminderSentAt())
+                .formId(req.getForm() != null ? req.getForm().getFormId() : null)
+                .isOverdue(isOverdue)
                 .build();
     }
 
