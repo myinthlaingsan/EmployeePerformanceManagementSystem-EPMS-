@@ -1,5 +1,6 @@
 package ace.org.epms_backend.model.appraisal;
 
+import ace.org.epms_backend.enums.FinancialYearStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,4 +31,7 @@ public class FinancialYear {
 
     @Column(name = "is_current")
     private boolean isCurrent;
+
+    @Enumerated(EnumType.STRING)
+    private FinancialYearStatus status = FinancialYearStatus.NOT_USED;
 }

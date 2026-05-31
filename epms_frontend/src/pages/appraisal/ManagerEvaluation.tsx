@@ -13,9 +13,9 @@ import { useAuth } from '../../hooks/useAuth';
 
 const RATING_SCALE = [
   { v: 1, label: 'Unsatisfactory', color: '#791F1F' },
-  { v: 2, label: 'Below Average',  color: '#633806' },
-  { v: 3, label: 'Meets Expects',  color: '#444441' },
-  { v: 4, label: 'Exceeds',        color: '#27500A' },
+  { v: 2, label: 'Needs improvement', color: '#633806' },
+  { v: 3, label: 'Meet requirement', color: '#444441' },
+  { v: 4, label: 'Good', color: '#27500A' },
   { v: 5, label: 'Outstanding',    color: '#0C447C' },
 ];
 

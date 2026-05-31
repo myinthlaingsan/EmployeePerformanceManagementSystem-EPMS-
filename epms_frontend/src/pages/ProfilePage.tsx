@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGetCurrentUserQuery } from "../features/employee/employeeapi";
+import { useGetCurrentUserQuery, useGetDirectReportsQuery, useGetManagerQuery } from "../features/employee/employeeapi";
 import { useGetGoalSetByEmployeeQuery, useGetActiveCycleQuery } from "../services/kpiApi";
 import { useGetAppraisalsQuery } from "../features/appraisal/appraisalApi";
+import type { GoalItemResponse } from "../features/kpi/kpiTypes";
 import {
   Settings, 
   Target,
@@ -14,7 +15,11 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Building2,
+  ShieldCheck,
+  Users,
+  UserRound
 } from "lucide-react";
 
 const AVATAR_COLORS = [
@@ -25,9 +30,42 @@ const AVATAR_COLORS = [
   { bg: "#FCEBEB", text: "#791F1F" },
 ];
 
+const SKILL_COLORS = ["#1A56DB", "#639922", "#BA7517", "#9333EA", "#0369A1", "#E11D48"];
+
+type ProfileGoalItem = GoalItemResponse & {
+  kpiName?: string;
+  customKpiName?: string;
+  weightage?: number;
+};
+
+type AppraisalHistoryItem = {
+  id?: number;
+  appraisalId?: number;
+  cycleName?: string;
+  finalScore?: number;
+  status?: string;
+  createdAt?: string;
+};
+
+const panelStyle: React.CSSProperties = {
+  background: "#FFFFFF",
+  border: "0.5px solid #E4E6EC",
+  borderRadius: 12,
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 600,
+  color: "#9EA3B0",
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+};
+
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { data: profile, isLoading: isProfileLoading } = useGetCurrentUserQuery();
+  const { data: manager } = useGetManagerQuery(profile?.id ?? 0, { skip: !profile?.id });
+  const { data: directReports } = useGetDirectReportsQuery(profile?.id ?? 0, { skip: !profile?.id });
   const { data: activeCycleResp } = useGetActiveCycleQuery();
   const activeCycle = activeCycleResp?.data;
   const activeCycleId = activeCycle?.cycleId;
@@ -40,15 +78,17 @@ const ProfilePage = () => {
 
   const { data: appraisals, isLoading: isAppraisalsLoading } = useGetAppraisalsQuery();
 
-  const skillColors = ["#1A56DB", "#639922", "#BA7517", "#9333EA", "#0369A1", "#E11D48"];
+  const goalItems = useMemo<ProfileGoalItem[]>(
+    () => goalSet?.kpiItems ?? goalSet?.items ?? [],
+    [goalSet?.items, goalSet?.kpiItems],
+  );
 
   const dynamicSkills = useMemo(() => {
-    const items = goalSet?.kpiItems || goalSet?.items || [];
-    if (!items.length) return [];
+    if (!goalItems.length) return [];
     
     const categoryMap = new Map<string, { totalProgress: number; count: number }>();
     
-    items.forEach((item: any) => {
+    goalItems.forEach((item) => {
       const cat = item.categoryName || "General Productivity";
       
       let progress = 0;
@@ -71,9 +111,9 @@ const ProfilePage = () => {
     return Array.from(categoryMap.entries()).map(([name, data], index) => ({
       name,
       value: Math.round(data.totalProgress / data.count),
-      color: skillColors[index % skillColors.length]
+      color: SKILL_COLORS[index % SKILL_COLORS.length]
     })).sort((a, b) => b.value - a.value); // Sort by highest value
-  }, [goalSet]);
+  }, [goalItems]);
 
   if (isProfileLoading) {
     return (
@@ -128,7 +168,7 @@ const ProfilePage = () => {
             </div>
             <div className="flex items-center gap-1.5 text-[13px] text-[#5A6070]">
               <MapPin size={14} className="text-[#9EA3B0]" />
-              {(profile as any)?.contactAddress || "Location not set"}
+              {profile?.contactAddress || "Location not set"}
             </div>
           </div>
           <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-3">
@@ -152,6 +192,131 @@ const ProfilePage = () => {
           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-fill text-success-text text-[11px] font-medium">
             <TrendingUp size={10} />
             On Track
+          </div>
+        </div>
+      </div>
+
+      {/* Work profile */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="xl:col-span-2" style={{ ...panelStyle, padding: "16px 18px" }}>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Building2 size={15} style={{ color: "#1A56DB" }} aria-hidden="true" />
+              <h3 style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Work profile</h3>
+            </div>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: profile?.status === "ACTIVE" ? "#27500A" : "#633806",
+                background: profile?.status === "ACTIVE" ? "#EAF3DE" : "#FAEEDA",
+                border: `0.5px solid ${profile?.status === "ACTIVE" ? "#B8DCA0" : "#F0D4A4"}`,
+                borderRadius: 20,
+                padding: "3px 8px",
+              }}
+            >
+              {profile?.status?.replace("_", " ") ?? "Unknown"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <InfoTile label="Employee code" value={profile?.employeeCode ?? "-"} mono />
+            <InfoTile label="Department" value={profile?.currentDepartmentName ?? "Not assigned"} />
+            <InfoTile label="Position" value={profile?.positionName ?? "Not assigned"} />
+            <InfoTile label="Job level" value={profile?.levelName ? `${profile.levelName} / Rank ${profile.levelRank ?? "-"}` : "Not assigned"} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <div style={{ background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 10, padding: 12 }}>
+              <div className="flex items-center gap-2 mb-3">
+                <UserRound size={14} style={{ color: "#1A56DB" }} aria-hidden="true" />
+                <p style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>Reports to</p>
+              </div>
+              {manager ? (
+                <PersonRow name={manager.staffName} detail={manager.positionName} />
+              ) : profile?.directManagerName ? (
+                <PersonRow name={profile.directManagerName} detail="Direct manager" />
+              ) : (
+                <p style={{ fontSize: 12, color: "#9EA3B0" }}>No manager assigned.</p>
+              )}
+            </div>
+
+            <div style={{ background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 10, padding: 12 }}>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <Users size={14} style={{ color: "#1A56DB" }} aria-hidden="true" />
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>Direct reports</p>
+                </div>
+                <span style={{ fontSize: 11, color: "#9EA3B0" }}>{directReports?.length ?? 0}</span>
+              </div>
+              {directReports && directReports.length > 0 ? (
+                <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                  {directReports.map((report) => (
+                    <PersonRow key={report.id} name={report.staffName} detail={report.positionName} compact />
+                  ))}
+                </div>
+              ) : (
+                <p style={{ fontSize: 12, color: "#9EA3B0" }}>No direct reports.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ ...panelStyle, padding: "16px 18px" }}>
+          <div className="flex items-center gap-2 mb-4">
+            <ShieldCheck size={15} style={{ color: "#1A56DB" }} aria-hidden="true" />
+            <h3 style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Access</h3>
+          </div>
+
+          <div>
+            <p style={{ ...labelStyle, marginBottom: 7 }}>Roles</p>
+            <div className="flex flex-wrap gap-1.5">
+              {profile?.roles?.length ? profile.roles.map((role) => (
+                <span
+                  key={role}
+                  style={{
+                    background: "#EEF3FD",
+                    color: "#0C447C",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: "3px 8px",
+                    borderRadius: 20,
+                  }}
+                >
+                  {role.replace("ROLE_", "")}
+                </span>
+              )) : (
+                <span style={{ fontSize: 12, color: "#9EA3B0" }}>No roles assigned.</span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <div className="flex items-center justify-between gap-2" style={{ marginBottom: 7 }}>
+              <p style={labelStyle}>Permissions</p>
+              <span style={{ fontSize: 11, color: "#9EA3B0" }}>{profile?.permissions?.length ?? 0}</span>
+            </div>
+            {profile?.permissions?.length ? (
+              <div className="grid grid-cols-1 gap-1.5 max-h-44 overflow-y-auto pr-1">
+                {profile.permissions.map((permission) => (
+                  <div
+                    key={permission}
+                    className="flex items-center gap-2"
+                    style={{
+                      background: "#FAFBFF",
+                      border: "0.5px solid #EEF0F6",
+                      borderRadius: 8,
+                      padding: "6px 8px",
+                    }}
+                  >
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#1A56DB", flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: "#5A6070", overflowWrap: "anywhere" }}>{permission}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 12, color: "#9EA3B0" }}>No explicit permissions found.</p>
+            )}
           </div>
         </div>
       </div>
@@ -198,8 +363,8 @@ const ProfilePage = () => {
           <div className="space-y-3">
             {isGoalsLoading ? (
               <div className="text-center py-4 text-[#9EA3B0]">Loading goals...</div>
-            ) : (goalSet?.kpiItems || goalSet?.items) && (goalSet?.kpiItems || goalSet?.items).length > 0 ? (
-              (goalSet?.kpiItems || goalSet?.items).map((item: any) => (
+            ) : goalItems.length > 0 ? (
+              goalItems.map((item) => (
                 <div key={item.id} className="p-3 bg-[#F5F6F8] border-[0.5px] border-[#E4E6EC] rounded-[10px]">
                   <div className="flex justify-between items-start gap-2 mb-2">
                     <p className="text-[13px] font-medium text-[#111827] leading-snug">{item.title || item.kpiName || item.customKpiName}</p>
@@ -236,8 +401,8 @@ const ProfilePage = () => {
             {isAppraisalsLoading ? (
               <div className="text-[#9EA3B0] text-[12px]">Loading history...</div>
             ) : appraisals && appraisals.length > 0 ? (
-              appraisals.slice(0, 5).map((appraisal: any) => (
-                <div key={appraisal.id} className="relative">
+              appraisals.slice(0, 5).map((appraisal: AppraisalHistoryItem) => (
+                <div key={appraisal.id ?? appraisal.appraisalId} className="relative">
                   <div className="absolute -left-5.75 top-1 w-2.5 h-2.5 rounded-full border-2 border-white bg-[#1A56DB]" />
                   <div className="flex justify-between items-start mb-1">
                     <p className="text-[13px] font-medium text-[#111827]">{appraisal.cycleName}</p>
@@ -246,7 +411,7 @@ const ProfilePage = () => {
                   <p className="text-[12px] text-[#5A6070]">{appraisal.status?.replace('_', ' ')}</p>
                   <p className="text-[11px] text-[#9EA3B0] mt-1">
                     <Calendar size={10} className="inline mr-1" />
-                    {new Date(appraisal.createdAt).toLocaleDateString()}
+                    {appraisal.createdAt ? new Date(appraisal.createdAt).toLocaleDateString() : "Date not set"}
                   </p>
                 </div>
               ))
@@ -260,5 +425,49 @@ const ProfilePage = () => {
     </div>
   );
 };
+
+const InfoTile = ({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) => (
+  <div style={{ background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 10, padding: 12 }}>
+    <p style={labelStyle}>{label}</p>
+    <p
+      style={{
+        fontSize: 13,
+        fontWeight: 500,
+        color: "#111827",
+        marginTop: 5,
+        fontFamily: mono ? "monospace" : undefined,
+        overflowWrap: "anywhere",
+      }}
+    >
+      {value}
+    </p>
+  </div>
+);
+
+const PersonRow = ({ name, detail, compact = false }: { name: string; detail?: string; compact?: boolean }) => (
+  <div className="flex items-center gap-2">
+    <div
+      style={{
+        width: compact ? 24 : 30,
+        height: compact ? 24 : 30,
+        borderRadius: "50%",
+        background: "#EEF3FD",
+        color: "#0C447C",
+        fontSize: compact ? 10 : 11,
+        fontWeight: 600,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      {name.charAt(0)}
+    </div>
+    <div className="min-w-0">
+      <p style={{ fontSize: compact ? 12 : 13, fontWeight: 500, color: "#111827", overflowWrap: "anywhere" }}>{name}</p>
+      {detail && <p style={{ fontSize: 11, color: "#9EA3B0", marginTop: 1 }}>{detail}</p>}
+    </div>
+  </div>
+);
 
 export default ProfilePage;

@@ -11,5 +11,6 @@ public interface FinancialYearService {
     FinancialYearResponse getCurrentFinancialYear();
     void deleteFinancialYear(Long id);
     FinancialYearResponse setCurrentFinancialYear(Long id);
+    FinancialYearResponse deactivateFinancialYear(Long id);
     FinancialYearResponse rollover();
 }
