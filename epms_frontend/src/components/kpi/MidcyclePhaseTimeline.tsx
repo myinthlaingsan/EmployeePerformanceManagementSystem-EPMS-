@@ -15,7 +15,7 @@ import { toast } from 'react-toastify';
 
 interface MidcyclePhaseTimelineProps {
   summary: MidcycleSummaryResponse;
-  isPrivileged: boolean; // HR or Admin to allow finalize
+  isPrivileged: boolean; // HR or Admin to allow calculation
   onRefetch: () => void;
 }
 
@@ -34,10 +34,10 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
   const handleFinalize = async () => {
     try {
       await finalizeScore({ employeeId: summary.employeeId, cycleId: summary.cycleId }).unwrap();
-      toast.success('Composite final score calculated and published successfully!');
+      toast.success('Composite score calculated successfully!');
       onRefetch();
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to finalize composite score');
+      toast.error(err?.data?.message || 'Failed to calculate composite score');
     }
   };
 
@@ -72,7 +72,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
             <button
               onClick={handleFinalize}
               disabled={isFinalizing || summary.phases.length === 0 || hasUnassignedOpenPhase}
-              title={hasUnassignedOpenPhase ? 'Cannot finalize: The current open phase has no KPIs assigned yet.' : undefined}
+              title={hasUnassignedOpenPhase ? 'Cannot calculate: The current open phase has no KPIs assigned yet.' : undefined}
               style={{
                 background: '#1A56DB',
                 color: '#FFFFFF',
@@ -87,7 +87,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
               }}
               className="hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50"
             >
-              {isFinalizing ? 'Finalizing...' : 'Finalize Composite Score'}
+              {isFinalizing ? 'Calculating...' : 'Calculate Composite Score'}
             </button>
           )}
 
@@ -131,7 +131,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
               )}
             </div>
             <span style={{ fontSize: '11px', fontWeight: 600, color: summary.compositeScore !== null ? '#27500A' : '#92400E', background: summary.compositeScore !== null ? '#EAF3DE' : '#FFFBEB', borderRadius: 999, padding: '4px 10px' }}>
-              {summary.compositeScore !== null ? 'Finalized' : 'Pending'}
+              {summary.compositeScore !== null ? 'Calculated' : 'Pending'}
             </span>
           </div>
         </div>
@@ -270,7 +270,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
           {/* Warning banner when an open phase has no KPIs assigned */}
           {isPrivileged && hasUnassignedOpenPhase && (
             <div style={{ marginTop: '16px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 12px', fontSize: '11px', color: '#92400E' }}>
-              ⚠ The current open phase has no KPIs assigned. The manager must assign and approve KPIs before you can finalize the composite score.
+              ⚠ The current open phase has no KPIs assigned. The manager must assign and approve KPIs before you can calculate the composite score.
             </div>
           )}
 
@@ -292,7 +292,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
               <div className="flex items-center gap-2">
                 <ShieldCheck size={18} className="text-green-700" />
                 <div>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#27500A' }}>Composite Appraisal score finalized</p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#27500A' }}>Composite Appraisal score calculated</p>
                   <p style={{ fontSize: '10px', color: '#5A7A3A' }}>Calculated by duration-weighted averages of all {summary.phases.length} phases.</p>
                 </div>
               </div>
@@ -322,7 +322,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                 <Award size={18} className="text-amber-700" />
                 <div>
                   <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400E' }}>Composite Score Pending</p>
-                  <p style={{ fontSize: '10px', color: '#B45309' }}>The score will be compiled once the cycle ends or is finalized by HR.</p>
+                  <p style={{ fontSize: '10px', color: '#B45309' }}>The score will be compiled once the cycle ends or is calculated by HR.</p>
                 </div>
               </div>
             </div>
