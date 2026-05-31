@@ -48,6 +48,12 @@ const AppraisalDetail: React.FC = () => {
   const [approveAppraisal, { isLoading: isApproving }] = useApproveAppraisalMutation();
   const [finalizeAppraisal, { isLoading: isFinalizing }] = useFinalizeAppraisalMutation();
   const [approvalComment, setApprovalComment] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   if (isLoading) return <div className="py-16 text-center" style={{ color: '#9EA3B0', fontSize: 13 }}>Loading…</div>;
   if (!appraisal) return (
@@ -77,9 +83,16 @@ const AppraisalDetail: React.FC = () => {
     try { await calculateScore(id!).unwrap(); toast.success('Scores calculated!'); }
     catch (err: any) { toast.error(err?.data?.message || 'Calculation failed'); }
   };
-  const handleApprove = async () => {
-    try { await approveAppraisal({ id: id!, comment: approvalComment }).unwrap(); toast.success('Approved!'); }
-    catch (err: any) { toast.error(err?.data?.message || 'Approval failed'); }
+  const handleApprove = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Approve Appraisal Results',
+      message: 'Are you sure you want to approve these appraisal results? This action cannot be undone once completed.',
+      onConfirm: async () => {
+        try { await approveAppraisal({ id: id!, comment: approvalComment }).unwrap(); toast.success('Approved!'); }
+        catch (err: any) { toast.error(err?.data?.message || 'Approval failed'); }
+      }
+    });
   };
   const handleFinalize = async () => {
     try { await finalizeAppraisal(id!).unwrap(); toast.success('Finalized!'); }
@@ -335,6 +348,31 @@ const AppraisalDetail: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Confirm modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '24px', maxWidth: 400, width: '100%' }}>
+            <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FAEEDA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ShieldCheck size={16} style={{ color: '#633806' }} />
+              </div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{confirmModal.title}</p>
+            </div>
+            <p style={{ fontSize: 13, color: '#5A6070', marginBottom: 20 }}>{confirmModal.message}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="flex-1 transition-colors"
+                style={{ background: '#F5F6F8', color: '#111827', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
+                Cancel
+              </button>
+              <button onClick={() => { confirmModal.onConfirm(); setConfirmModal({ ...confirmModal, isOpen: false }); }} className="flex-1 transition-colors"
+                style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
