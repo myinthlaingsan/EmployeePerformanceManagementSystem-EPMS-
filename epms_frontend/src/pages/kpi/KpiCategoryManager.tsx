@@ -63,7 +63,7 @@ const KpiCategoryManager: React.FC = () => {
       handleCloseModal();
     } catch (err: any) {
       console.error('Category Save Error:', err);
-      alert(`Error: ${err?.data?.message || err?.message || 'Failed to save category.'}`);
+      alert('Failed to save category.');
     }
   };
 
@@ -84,7 +84,7 @@ const KpiCategoryManager: React.FC = () => {
       handleCloseDeleteModal();
     } catch (err: any) {
       console.error('Delete Category Error:', err);
-      alert(err?.data?.message || 'Failed to delete category');
+      alert('Failed to delete category.');
     }
   };
 

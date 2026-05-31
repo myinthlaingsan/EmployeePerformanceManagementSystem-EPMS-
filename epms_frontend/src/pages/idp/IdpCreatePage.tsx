@@ -126,7 +126,7 @@ const IdpCreatePage = () => {
       toast.success("Development plan created.");
       navigate(`/idp/${response.data.idpId}`);
     } catch (err: any) {
-      toast.error(err?.data?.message || "Could not create development plan.");
+      toast.error("Could not create development plan.");
     }
   };
 

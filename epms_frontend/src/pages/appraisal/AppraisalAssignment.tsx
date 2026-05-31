@@ -107,7 +107,7 @@ const AppraisalAssignment: React.FC = () => {
       setSelectedEmployeeIds([]);
       refetchCycleAppraisals();
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to assign appraisals.');
+      toast.error('Failed to assign appraisals.');
     }
   };
 

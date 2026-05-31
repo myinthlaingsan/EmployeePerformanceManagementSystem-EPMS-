@@ -586,7 +586,7 @@ const GoalDetail: React.FC = () => {
                   toast.success('Goal set reverted to draft.');
                   await refetch();
                 } catch (err: any) {
-                  toast.error(err?.data?.message || 'Failed to revert goal set');
+                  toast.error('Failed to revert goal set.');
                 }
               }}
                 style={{ background: '#FEF3C7', color: '#92400E', border: '0.5px solid #FDE68A', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>
@@ -639,7 +639,7 @@ const GoalDetail: React.FC = () => {
                     toast.success('Goal set locked.');
                     await refetch();
                   } catch (err: any) {
-                    toast.error(err?.data?.message || 'Failed to lock goal set');
+                    toast.error('Failed to lock goal set.');
                   }
                 }}
                 style={{

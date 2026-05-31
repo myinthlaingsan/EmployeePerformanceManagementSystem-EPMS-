@@ -48,7 +48,7 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
       onClose();
     } catch (err: any) {
       console.error('Failed to revise KPI:', err);
-      alert(`Failed to revise KPI: ${err?.data?.message || err.message}`);
+      alert('Failed to revise KPI. Please try again.');
     }
   };
 

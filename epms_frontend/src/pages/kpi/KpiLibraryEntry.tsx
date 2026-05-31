@@ -136,7 +136,7 @@ const KpiLibraryEntry: React.FC = () => {
       else { await createLibrary(payload).unwrap(); }
       navigate('/kpi/library');
     } catch (err: any) {
-      toast.error(err?.data?.message || err?.data?.error || 'Failed to save template. Please check your inputs.');
+      toast.error('Failed to save template. Please check your inputs.');
     }
   };
 

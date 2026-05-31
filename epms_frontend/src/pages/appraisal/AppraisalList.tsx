@@ -291,7 +291,7 @@ const AppraisalList: React.FC = () => {
                       await sendReminders(Number(selectedCycleId)).unwrap();
                       toast.success("Reminder notifications sent successfully!");
                     } catch (err: any) {
-                      const errorMsg = err?.data?.message || "Failed to send reminders.";
+                      const errorMsg = "Failed to send reminders.";
                       toast.error(`Error: ${errorMsg}`);
                     }
                   }
@@ -315,7 +315,7 @@ const AppraisalList: React.FC = () => {
                           setSelectedCycleId(null);
                           resetParticipantFilters();
                         } catch (err: any) {
-                          const errorMsg = err?.data?.message || 'Failed to delete cycle';
+                          const errorMsg = 'Failed to delete cycle';
                           toast.error(`Error: ${errorMsg}`);
                         }
                       }
@@ -333,7 +333,7 @@ const AppraisalList: React.FC = () => {
                       await activateCycle(Number(selectedCycleId)).unwrap();
                       toast.success('Appraisal Cycle activated successfully!');
                     } catch (err: any) {
-                      const errorMsg = err?.data?.message || 'Failed to activate cycle';
+                      const errorMsg = 'Failed to activate cycle';
                       toast.error(`Error: ${errorMsg}`);
                     }
                   }}
@@ -610,7 +610,7 @@ const AppraisalList: React.FC = () => {
                               await deleteCycle(cycle.cycleId).unwrap();
                               toast.success('Appraisal Cycle deleted successfully!');
                             } catch (err: any) {
-                              const errorMsg = err?.data?.message || 'Failed to delete cycle';
+                              const errorMsg = 'Failed to delete cycle';
                               toast.error(`Error: ${errorMsg}`);
                             }
                           }
@@ -818,7 +818,7 @@ const AppraisalList: React.FC = () => {
                   <div className="flex items-center justify-between" style={{ marginTop: 12 }}>
                     <Can permission="APPRAISAL_FORM_DESIGN">
                       {!set.isAssigned ? (
-                        <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error(err?.data?.message || 'Delete failed'); } } }); }}
+                        <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error('Delete failed.'); } } }); }}
                           style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-danger-text transition-colors">
                           <Trash2 size={13} />
                         </button>

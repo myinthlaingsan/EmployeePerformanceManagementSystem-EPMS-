@@ -120,13 +120,13 @@ export const baseQueryWithReauth: BaseQueryFn<
     return result;
   }
 
-  if (status === 403) {
-    toast.error(`${getStatusPrefix(status)}. You don't have permission to perform this action.`, {
-      toastId: `forbidden-${url}`,
-      autoClose: 5000,
-    });
-    return result;
-  }
+  // if (status === 403) {
+  //   toast.error(`${getStatusPrefix(status)}. You don't have permission to perform this action.`, {
+  //     toastId: `forbidden-${url}`,
+  //     autoClose: 5000,
+  //   });
+  //   return result;
+  // }
 
   if (status === 423) {
     if (shouldShowToast(status, url)) {
@@ -148,12 +148,12 @@ export const baseQueryWithReauth: BaseQueryFn<
     return result;
   }
 
-  if (status === 404) {
-    if (shouldShowToast(status, url)) {
-      toast.error(`${getStatusPrefix(status)}. Resource not found.`);
-    }
-    return result;
-  }
+  // if (status === 404) {
+  //   if (shouldShowToast(status, url)) {
+  //     toast.error(`${getStatusPrefix(status)}. Resource not found.`);
+  //   }
+  //   return result;
+  // }
 
   if (typeof status === "number" && status >= 500) {
     // Generic server error message

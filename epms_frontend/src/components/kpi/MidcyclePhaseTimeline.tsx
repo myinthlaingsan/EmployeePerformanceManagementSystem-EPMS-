@@ -32,7 +32,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
       toast.success('Composite final score calculated and published successfully!');
       onRefetch();
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to finalize composite score');
+      toast.error('Failed to finalize composite score.');
     }
   };
 

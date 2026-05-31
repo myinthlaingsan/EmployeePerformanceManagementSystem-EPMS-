@@ -73,7 +73,7 @@ const AdjustModal = ({ summary, onClose }: AdjustModalProps) => {
       await adjust({ summaryId: summary.summaryId!, calibratedFinalScore: parsed, calibrationReason: reason.trim() }).unwrap();
       toast.success('Score calibrated');
       onClose();
-    } catch (e: any) { toast.error(e?.data?.message || 'Failed to adjust score'); }
+    } catch (e: any) { toast.error('Failed to adjust score.'); }
   };
 
   return (
@@ -180,17 +180,17 @@ const SummaryRow = ({
   const handleFlag = async () => {
     if (!summary.summaryId) return;
     try { await flag(summary.summaryId).unwrap(); toast.success('Flagged for review'); }
-    catch (e: any) { toast.error(e?.data?.message || 'Failed'); }
+    catch (e: any) { toast.error('Failed to flag for review.'); }
   };
   const handleApprove = async () => {
     if (!summary.summaryId) return;
     try { await approve({ summaryId: summary.summaryId }).unwrap(); toast.success('Approved'); }
-    catch (e: any) { toast.error(e?.data?.message || 'Failed'); }
+    catch (e: any) { toast.error('Failed to approve.'); }
   };
   const handleRevert = async () => {
     if (!summary.summaryId) return;
     try { await revert(summary.summaryId).unwrap(); toast.success('Reverted'); }
-    catch (e: any) { toast.error(e?.data?.message || 'Failed'); }
+    catch (e: any) { toast.error('Failed to revert.'); }
   };
 
   return (
@@ -318,7 +318,7 @@ const CreateSessionModal = ({ cycleId, onClose }: CreateSessionModalProps) => {
       toast.success('Calibration Session created successfully');
       onClose();
     } catch (e: any) {
-      toast.error(e?.data?.message || 'Failed to create session');
+      toast.error('Failed to create session.');
     }
   };
 
@@ -439,7 +439,7 @@ const AddSummariesModal = ({ session, summaries, onClose }: AddSummariesModalPro
       toast.success('Employees successfully added to session');
       onClose();
     } catch (e: any) {
-      toast.error(e?.data?.message || 'Failed to add summaries');
+      toast.error('Failed to add summaries.');
     }
   };
 
@@ -556,7 +556,7 @@ const Feedback360CalibrationPage = () => {
       await startSession(selectedSessionId).unwrap();
       toast.success('Calibration Session started!');
     } catch (e: any) {
-      toast.error(e?.data?.message || 'Failed to start session');
+      toast.error('Failed to start session.');
     }
   };
 
@@ -566,13 +566,13 @@ const Feedback360CalibrationPage = () => {
       await completeSession(selectedSessionId).unwrap();
       toast.success('Calibration Session completed and locked!');
     } catch (e: any) {
-      toast.error(e?.data?.message || 'Failed to complete session');
+      toast.error('Failed to complete session.');
     }
   };
 
   const handleLock = async () => {
     try { await lockCycle(cycleId).unwrap(); toast.success('Cycle locked — all summaries finalized'); setShowLockConfirm(false); }
-    catch (e: any) { toast.error(e?.data?.message || 'Lock failed'); }
+    catch (e: any) { toast.error('Lock failed.'); }
   };
 
   if (!cycleId) return <div style={{ padding: 24, fontSize: 13, color: '#791F1F' }}>No cycleId in URL. Add ?cycleId=X</div>;

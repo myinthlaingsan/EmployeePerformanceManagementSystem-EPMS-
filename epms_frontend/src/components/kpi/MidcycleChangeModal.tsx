@@ -129,7 +129,7 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
       toast.success('KPI phase split triggered successfully! Managers have been notified.');
       await onSuccess();
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to trigger midcycle change');
+      toast.error('Failed to trigger midcycle change.');
     }
   };
 

@@ -59,7 +59,7 @@ const CalibrateModal = ({ summary, onClose }: CalibrateModalProps) => {
       toast.success('Calibration saved.');
       onClose();
     } catch (e: any) {
-      toast.error(e?.data?.message || 'Failed to save calibration.');
+      toast.error('Failed to save calibration.');
     }
   };
 

@@ -276,7 +276,7 @@ const Feedback360SubmitPage: React.FC = () => {
       dirtyRef.current = false;
       navigate('/360-feedback/pending');
     } catch (err: any) {
-      toast.error(err?.data?.message ?? 'Submission failed.');
+      toast.error('Submission failed.');
     }
   };
 
@@ -516,7 +516,7 @@ const Feedback360SubmitPage: React.FC = () => {
           }}>
             <p style={{ fontSize: 15, fontWeight: 600, color: '#7F1D1D', margin: '0 0 6px' }}>Could not load form questions.</p>
             <p style={{ fontSize: 13, color: '#5A6070', margin: 0 }}>
-              {(formError as any)?.data?.message ?? 'No form is assigned to this request. Ask HR to create a FEEDBACK form for this cycle.'}
+              {'No form is assigned to this request. Ask HR to create a FEEDBACK form for this cycle.'}
             </p>
           </div>
         ) : (

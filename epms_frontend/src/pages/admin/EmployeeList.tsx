@@ -169,7 +169,7 @@ const EmployeeList = () => {
           errors,
         });
       } else {
-        setImportError(err?.data?.message || "Employee import failed.");
+        setImportError("Employee import failed.");
       }
     }
   };

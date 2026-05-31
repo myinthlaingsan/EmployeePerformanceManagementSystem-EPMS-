@@ -3,7 +3,14 @@ import { format, isThisYear, differenceInSeconds, differenceInMinutes, differenc
 const parseDateInput = (dateInput: Date | string | number | undefined | null): Date | null => {
   if (dateInput === undefined || dateInput === null || dateInput === '') return null;
 
-  const date = typeof dateInput === 'string' ? parseISO(dateInput) : new Date(dateInput);
+  if (typeof dateInput === 'string') {
+    const isoDate = parseISO(dateInput);
+    if (isValid(isoDate)) return isoDate;
+    const fallbackDate = new Date(dateInput);
+    return isValid(fallbackDate) ? fallbackDate : null;
+  }
+
+  const date = new Date(dateInput);
   return isValid(date) ? date : null;
 };
 
@@ -49,10 +56,8 @@ export const formatAuditDateValue = (value?: string | null): string => {
   if (typeof value !== 'string') return String(value);
 
   const date = parseDateInput(value);
-  const isoDatePattern = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
-  if (date && isoDatePattern.test(value.trim())) {
-    return value.includes('T') || value.includes(' ') ? format(date, 'dd MMM yyyy, HH:mm') : format(date, 'dd MMM yyyy');
-  }
+  if (!date) return value;
 
-  return value;
+  const hasTime = /\d{2}:\d{2}/.test(value);
+  return hasTime ? format(date, 'dd MMM yyyy, HH:mm') : format(date, 'dd MMM yyyy');
 };

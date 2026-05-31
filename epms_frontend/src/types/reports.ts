@@ -1,5 +1,6 @@
 export type {
   AppraisalStatusReportDTO as AppraisalStatusReport,
+  IdpTrackingReportDTO as IdpTrackingReport,
   KpiAchievementReportDTO as KpiAchievementReport,
   PerformanceRankingReportDTO as PerformanceRankingReport,
   PipTrackingReportDTO as PipTrackingReport,

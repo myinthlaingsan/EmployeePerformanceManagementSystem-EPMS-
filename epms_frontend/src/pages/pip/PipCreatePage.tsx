@@ -100,7 +100,7 @@ const PipCreatePage: React.FC = () => {
       if (!isDraft) await activatePip(newPipId).unwrap();
       navigate('/pip');
     } catch (err: any) {
-      setError(err?.data?.message || 'Failed to process PIP. Please check your inputs.');
+      setError('Failed to process PIP. Please check your inputs.');
     }
   };
 

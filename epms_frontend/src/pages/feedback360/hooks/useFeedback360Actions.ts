@@ -100,7 +100,7 @@ export const useFeedback360Actions = ({
     try {
       await previewTrigger(buildParams()).unwrap();
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Preview failed.');
+      toast.error('Preview failed.');
     }
   };
 
@@ -171,7 +171,7 @@ export const useFeedback360Actions = ({
       }).unwrap();
       toast.success('Requests regenerated.');
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Regeneration failed. Run Generate first.');
+      toast.error('Regeneration failed. Run Generate first.');
     }
   };
 

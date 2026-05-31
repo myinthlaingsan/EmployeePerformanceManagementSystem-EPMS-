@@ -39,7 +39,7 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, goalSet
       onClose();
     } catch (err: any) {
       console.error('Failed to update progress:', err);
-      alert(err?.data?.message || 'Failed to update progress');
+      alert('Failed to update progress.');
     }
   };
 

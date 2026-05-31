@@ -81,7 +81,7 @@ const AppraisalDetail: React.FC = () => {
 
   const handleCalculate = async () => {
     try { await calculateScore(id!).unwrap(); toast.success('Scores calculated!'); }
-    catch (err: any) { toast.error(err?.data?.message || 'Calculation failed'); }
+    catch (err: any) { toast.error('Calculation failed.'); }
   };
   const handleApprove = () => {
     setConfirmModal({
@@ -90,13 +90,13 @@ const AppraisalDetail: React.FC = () => {
       message: 'Are you sure you want to approve these appraisal results? This action cannot be undone once completed.',
       onConfirm: async () => {
         try { await approveAppraisal({ id: id!, comment: approvalComment }).unwrap(); toast.success('Approved!'); }
-        catch (err: any) { toast.error(err?.data?.message || 'Approval failed'); }
+        catch (err: any) { toast.error('Approval failed.'); }
       }
     });
   };
   const handleFinalize = async () => {
     try { await finalizeAppraisal(id!).unwrap(); toast.success('Finalized!'); }
-    catch (err: any) { toast.error(err?.data?.message || 'Failed to finalize.'); }
+    catch (err: any) { toast.error('Failed to finalize.'); }
   };
 
   const statusInfo = STATUS_INFO[appraisal.status] ?? STATUS_INFO['PENDING'];

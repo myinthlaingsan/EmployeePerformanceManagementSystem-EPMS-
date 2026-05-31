@@ -75,7 +75,7 @@ const IdpDetailsPage = () => {
       toast.success("Development plan updated.");
       await refresh();
     } catch (err: any) {
-      toast.error(err?.data?.message || "Could not update development plan.");
+      toast.error("Could not update development plan.");
     }
   };
 
@@ -85,7 +85,7 @@ const IdpDetailsPage = () => {
       toast.success("Development plan updated.");
       await refresh();
     } catch (err: any) {
-      toast.error(err?.data?.message || "Could not update development plan.");
+      toast.error("Could not update development plan.");
       throw err;
     }
   };
@@ -97,7 +97,7 @@ const IdpDetailsPage = () => {
       toast.success("Development plan deleted.");
       navigate("/idp");
     } catch (err: any) {
-      toast.error(err?.data?.message || "Could not delete development plan.");
+      toast.error("Could not delete development plan.");
     }
   };
 
@@ -108,7 +108,7 @@ const IdpDetailsPage = () => {
       toast.success("Development goal deleted.");
       await refresh();
     } catch (err: any) {
-      toast.error(err?.data?.message || "Could not delete development goal.");
+      toast.error("Could not delete development goal.");
     }
   };
 
