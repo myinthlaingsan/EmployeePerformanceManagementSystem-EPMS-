@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 public interface MeetingActionItemRepository extends JpaRepository<MeetingActionItem, Long> {
     @org.springframework.data.jpa.repository.Query("SELECT DISTINCT ai FROM MeetingActionItem ai " +
            "JOIN ai.meeting m " +
-           "WHERE m.status = 'PUBLISHED' AND ai.isDeleted = false " +
+           "WHERE m.status = 'PUBLISHED' AND ai.isDeleted = false AND (m.isDeleted = false OR m.isDeleted IS NULL) " +
            "AND (:deptId IS NULL OR m.employee.id IN (" +
            "  SELECT ed.employee.id FROM EmployeeDepartment ed " +
            "  WHERE ed.currentDepartment.id = :deptId AND ed.isCurrent = true" +
