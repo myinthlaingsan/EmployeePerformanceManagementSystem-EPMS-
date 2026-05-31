@@ -327,8 +327,14 @@ const GoalManagement: React.FC = () => {
                     )}
                     <td style={{ padding: '10px 16px' }}>
                       <div className="flex items-center gap-3">
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EEF3FD', color: '#1A56DB', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {emp.staffName.charAt(0)}
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EEF3FD', color: '#1A56DB', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                          {emp.profileImage && emp.profileImage !== 'default.jpg' ? (
+                            <img src={`http://localhost:8080${emp.profileImage}`} alt={emp.staffName}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                          ) : (
+                            emp.staffName ? emp.staffName.charAt(0) : '?'
+                          )}
                         </div>
                         <div>
                           <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{emp.staffName}</p>

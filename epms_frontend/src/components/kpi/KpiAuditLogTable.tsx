@@ -139,6 +139,7 @@ const KpiAuditLogTable: React.FC<KpiAuditLogTableProps> = ({
             <tr style={{ background: '#FAFBFF', borderBottom: '0.5px solid #E4E6EC' }}>
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Timestamp</th>
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Employee</th>
+              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Emp Code</th>
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Department</th>
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Action</th>
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Details</th>
@@ -161,6 +162,9 @@ const KpiAuditLogTable: React.FC<KpiAuditLogTableProps> = ({
                     </td>
                     <td style={{ padding: '14px 18px', fontSize: 12, fontWeight: 500, color: '#111827' }}>
                       {log.employeeName}
+                    </td>
+                    <td style={{ padding: '14px 18px', fontSize: 11, color: '#9EA3B0', fontFamily: 'monospace' }}>
+                      {log.employeeCode || '—'}
                     </td>
                     <td style={{ padding: '14px 18px', fontSize: 12, color: '#5A6070' }}>
                       {log.departmentName || 'N/A'}
@@ -193,7 +197,7 @@ const KpiAuditLogTable: React.FC<KpiAuditLogTableProps> = ({
               })
             ) : (
               <tr>
-                <td colSpan={6} style={{ padding: '40px 18px', textAlign: 'center', fontSize: 12, color: '#9EA3B0' }}>
+                <td colSpan={7} style={{ padding: '40px 18px', textAlign: 'center', fontSize: 12, color: '#9EA3B0' }}>
                   No history records found.
                 </td>
               </tr>

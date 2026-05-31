@@ -1,6 +1,7 @@
 export interface KpiAuditLogResponse {
   id: number;
   employeeId: number;
+  employeeCode?: string;
   employeeName: string;
   departmentName?: string;
   goalSetId: number;

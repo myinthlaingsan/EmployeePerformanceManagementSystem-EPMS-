@@ -13,6 +13,7 @@ import java.time.Instant;
 public class KpiAuditLogResponse {
     private Long id;
     private Long employeeId;
+    private String employeeCode;
     private String employeeName;      // resolved from EmployeeRepository
     private String departmentName;    // resolved from EmployeeDepartment
     private Long goalSetId;

@@ -74,8 +74,9 @@ public class KpiAuditLogServiceImpl implements KpiAuditLogService {
 
     // --- Helpers ---
     private KpiAuditLogResponse resolveLog(KpiHistoryLog h) {
-        String empName = employeeRepository.findById(h.getEmployeeId())
-            .map(Employee::getStaffName).orElse("Unknown");
+        Employee emp = employeeRepository.findById(h.getEmployeeId()).orElse(null);
+        String empName = emp != null ? emp.getStaffName() : "Unknown";
+        String empCode = emp != null ? emp.getEmployeeCode() : "—";
         String changedByName = employeeRepository.findById(h.getChangedBy())
             .map(Employee::getStaffName).orElse("System");
         String deptName = employeeDepartmentRepo.findFirstByEmployeeIdAndIsCurrentTrue(h.getEmployeeId())
@@ -84,6 +85,7 @@ public class KpiAuditLogServiceImpl implements KpiAuditLogService {
         return KpiAuditLogResponse.builder()
             .id(h.getId())
             .employeeId(h.getEmployeeId())
+            .employeeCode(empCode)
             .employeeName(empName)
             .departmentName(deptName)
             .goalSetId(h.getGoalSetId())
