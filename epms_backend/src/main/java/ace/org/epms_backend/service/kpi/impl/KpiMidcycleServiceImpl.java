@@ -330,7 +330,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             LocalDateTime phaseEnd = phase.getPhaseEndDate() != null
                     ? phase.getPhaseEndDate()
                     : cycle.getEndDate().plusDays(1).atStartOfDay();
-            if (phaseEnd.isBefore(phaseStart) || phaseEnd.equals(phaseStart)) {
+            if (phaseEnd.isBefore(phaseStart)) {
                 throw new IllegalStateException(
                         "Cannot finalize composite score: phase " + phase.getPhaseNumber() + " has invalid time range.");
             }
