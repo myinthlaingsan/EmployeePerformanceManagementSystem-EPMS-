@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLoginMutation } from "../features/auth/authApi";
 import { useAppDispatch } from "../hooks/reduxHooks";
 import { loginSuccess } from "../features/auth/authSlice";
@@ -6,10 +6,44 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import logo from "../assets/logo/Logo.jpg";
 import { Mail, Lock, LogIn, AlertCircle } from "lucide-react";
 
+const LOCK_THRESHOLD = 3;
+const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
+const getAttemptsKey = (email?: string) => `login_attempts:${(email || 'global').toLowerCase()}`;
+
+const loadAttempts = (email?: string) => {
+  try {
+    const raw = localStorage.getItem(getAttemptsKey(email));
+    if (!raw) return { count: 0, lockedUntil: 0 };
+    return JSON.parse(raw) as { count: number; lockedUntil: number };
+  } catch {
+    return { count: 0, lockedUntil: 0 };
+  }
+};
+
+const saveAttempts = (email: string | undefined, data: { count: number; lockedUntil: number }) => {
+  try {
+    localStorage.setItem(getAttemptsKey(email), JSON.stringify(data));
+  } catch {
+    // ignore
+  }
+};
+
+const clearAttempts = (email?: string) => {
+  try {
+    localStorage.removeItem(getAttemptsKey(email));
+  } catch {
+    // ignore
+  }
+};
+
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
+  const [attempts, setAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number>(0);
 
   const [login, { isLoading }] = useLoginMutation();
   const dispatch = useAppDispatch();
@@ -18,15 +52,63 @@ const LoginPage = () => {
 
   const from = location.state?.from?.pathname || "/dashboard";
 
+  // load attempts info for current email
+  useEffect(() => {
+    const info = loadAttempts(email);
+    setAttempts(info.count);
+    setLockedUntil(info.lockedUntil || 0);
+  }, [email]);
+
+  // unlock automatically when lock expires
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const t = setInterval(() => {
+      if (lockedUntil <= Date.now()) {
+        clearAttempts(email);
+        setAttempts(0);
+        setLockedUntil(0);
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [lockedUntil, email]);
+
+  const isLocked = lockedUntil > Date.now();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (isLocked) {
+      setError("Your account has been locked. Retry in 15 minutes later.");
+      return;
+    }
+
     try {
       const response = await login({ email, password }).unwrap();
+      // reset attempts on success
+      clearAttempts(email);
+      setAttempts(0);
+      setLockedUntil(0);
+
       dispatch(loginSuccess(response));
       navigate(from, { replace: true });
     } catch (err: any) {
-      setError(err.data?.message || "Invalid credentials. Please try again.");
+      // increment attempts
+      const newCount = attempts + 1;
+
+      // if backend signalled locked (e.g., 423) or threshold reached, lock
+      const status = err?.status || err?.data?.status;
+      let newLockedUntil = 0;
+      if (status === 423 || newCount >= LOCK_THRESHOLD) {
+        newLockedUntil = Date.now() + LOCK_DURATION_MS;
+        setError("Your account has been locked. Retry in 15 minutes later.");
+      } else {
+        setError("Invalid credentials. Please try again.");
+      }
+
+      setAttempts(newCount);
+      setLockedUntil(newLockedUntil);
+      saveAttempts(email, { count: newCount, lockedUntil: newLockedUntil });
     }
   };
 
@@ -92,11 +174,11 @@ const LoginPage = () => {
             </div>
 
             <button
-              type="submit" disabled={isLoading}
+              type="submit" disabled={isLoading || isLocked}
               className="w-full flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-              style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 500, border: "none", marginTop: 4 }}
-              onMouseEnter={(e) => { if (!isLoading) e.currentTarget.style.background = "#1648C0"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+              style={{ background: isLocked ? "#9CA3AF" : "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 500, border: "none", marginTop: 4 }}
+              onMouseEnter={(e) => { if (!isLoading && !isLocked) e.currentTarget.style.background = "#1648C0"; }}
+              onMouseLeave={(e) => { if (!isLocked) e.currentTarget.style.background = "#1A56DB"; }}
             >
               {isLoading ? (
                 <>
@@ -104,7 +186,7 @@ const LoginPage = () => {
                   Signing in…
                 </>
               ) : (
-                <><LogIn size={14} aria-hidden="true" /> Sign in</>
+                <><LogIn size={14} aria-hidden="true" /> {isLocked ? 'Locked' : 'Sign in'}</>
               )}
             </button>
 

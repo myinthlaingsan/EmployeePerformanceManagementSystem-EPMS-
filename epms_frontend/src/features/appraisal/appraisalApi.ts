@@ -112,22 +112,36 @@ export interface ScoreBreakdownResponse {
 export interface AppraisalResponse {
   appraisalId: number;
   id?: number;
-  status?: string;
+  employeeId?: number;
+  employeeName?: string;
+  employeeCode?: string;
+  departmentName?: string;
+  managerId?: number;
+  managerName?: string;
+  cycleId?: number;
   cycleName?: string;
+  formId?: number;
+  formName?: string;
+  formSetId?: number;
+  formSetName?: string;
+  status?: string;
+  positionName?: string;
+  assignedAt?: string;
+  selfSubmittedAt?: string;
+  managerSubmittedAt?: string;
+  hrApprovedAt?: string;
+  finalizedAt?: string;
+  employeeSignedAt?: string;
+  managerSignedAt?: string;
+  lockedAt?: string;
+  employeeSignComment?: string;
+  managerSignComment?: string;
+  employeeSignNote?: string;
+  managerSignNote?: string;
+  approvalComment?: string;
+  isLocked?: boolean;
   finalScore?: number;
-  createdAt?: string;
-  employee?: {
-    id?: number;
-    staffName?: string;
-  };
-  manager?: {
-    id?: number;
-    staffName?: string;
-  };
-  cycle?: {
-    cycleId?: number;
-    cycleName?: string;
-  };
+  finalGrade?: string;
 }
 
 const transformResponse = (response: any) => response?.data ?? response;

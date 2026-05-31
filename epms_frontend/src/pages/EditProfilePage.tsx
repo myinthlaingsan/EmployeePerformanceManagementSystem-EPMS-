@@ -36,6 +36,8 @@ const EditProfilePage = () => {
   const [imageTimestamp, setImageTimestamp] = useState(() => Date.now());
   const [fileInputKey, setFileInputKey] = useState(0);
 
+  
+
   const [formData, setFormData] = useState<UpdateProfileRequest>({
     staffName: "", otherName: "", email: "", phoneNo: "",
     contactAddress: "", permanentAddress: "", maritalStatus: undefined,
@@ -61,6 +63,8 @@ const EditProfilePage = () => {
       });
     }
   }, [profile]);
+
+  
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +122,7 @@ const EditProfilePage = () => {
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, color: "#111827" }}>{profile?.staffName}</h1>
           <p style={{ fontSize: 12, color: "#1A56DB", marginTop: 2 }}>{profile?.positionName} / {profile?.currentDepartmentName}</p>
+          {/* removed cycle selector — moved to admin EmployeeProfileView */}
         </div>
       </div>
 
