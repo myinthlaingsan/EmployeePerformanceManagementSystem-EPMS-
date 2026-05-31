@@ -229,7 +229,7 @@ const CommentItem = ({
             <span style={{ fontSize: 10, fontWeight: 700, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
               {isOwnComment ? 'You' : (comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)}
             </span>
-            {comment.commentType === 'MANAGER' && <span className="office-tag-badge" style={{ background: '#0F172A', color: '#FFFFFF', border: 'none', fontSize: 8, padding: '1px 5px' }}>Manager</span>}
+            {comment.commentType === 'MANAGER' && <span className="office-tag-badge" style={{ background: '#4F46E5', color: '#FFFFFF', border: 'none', fontSize: 8, padding: '1px 5px' }}>Manager</span>}
             <span style={{ fontSize: 9, color: '#64748B' }}>{comment.createdAt ? format(new Date(comment.createdAt), 'h:mm a') : ''}</span>
           </div>
 
@@ -352,6 +352,7 @@ const MeetingPage = () => {
   const [expandedMeetingId, setExpandedMeetingId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<{ id: number; name: string } | null>(null);
   const [meetingToDelete, setMeetingToDelete] = useState<number | null>(null);
   const [reopenConfig, setReopenConfig] = useState<{ meetingId: number, item: any } | null>(null);
   const [reopenReason, setReopenReason] = useState("");
@@ -446,6 +447,8 @@ const MeetingPage = () => {
 
   const handleEdit = (m: any) => {
     setEditingId(m.meetingId);
+    const emp = filteredEmployees?.find(e => e.id === m.employeeId);
+    setEditingEmployee({ id: m.employeeId, name: emp?.staffName || m.employeeName || 'Unknown' });
     setNewMeeting({
       employeeId: m.employeeId,
       meetingTitle: m.meetingTitle || "",
@@ -898,9 +901,9 @@ const MeetingPage = () => {
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
           <div className="office-panel animate-in zoom-in-95 duration-200" style={{ width: '100%', maxWidth: 540, overflow: 'hidden', padding: 0 }}>
-            <div style={{ background: '#1E293B', padding: '20px 24px' }}>
+            <div style={{ background: '#4F46E5', padding: '20px 24px' }}>
               <h2 style={{ fontSize: 16, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.2px' }}>{editingId ? 'Update Meeting Details' : 'Schedule 1-on-1 Conversation'}</h2>
-              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>Define discussion items, action steps, and schedule.</p>
+              <p style={{ fontSize: 12, color: '#E0E7FF', marginTop: 4 }}>Define discussion items, action steps, and schedule.</p>
             </div>
             <div style={{ padding: 24, maxHeight: '70vh', overflowY: 'auto' }}>
               <form onSubmit={handleSchedule} className="space-y-4">
@@ -922,12 +925,22 @@ const MeetingPage = () => {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Select Employee</label>
-                    <select required className="office-input" value={newMeeting.employeeId || ""}
-                      onChange={e => setNewMeeting({ ...newMeeting, employeeId: Number(e.target.value) })}>
-                      <option value="">Choose Member…</option>
-                      {filteredEmployees?.map(emp => <option key={emp.id} value={emp.id}>{emp.staffName}</option>)}
-                    </select>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Employee</label>
+                    {editingId && editingEmployee ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, padding: '9px 14px' }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#FFFFFF', flexShrink: 0 }}>
+                          {editingEmployee.name.charAt(0)}
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{editingEmployee.name}</span>
+                        <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', background: '#E2E8F0', borderRadius: 6, padding: '2px 6px' }}>Fixed</span>
+                      </div>
+                    ) : (
+                      <select required className="office-input" value={newMeeting.employeeId || ""}
+                        onChange={e => setNewMeeting({ ...newMeeting, employeeId: Number(e.target.value) })}>
+                        <option value="">Choose Member…</option>
+                        {filteredEmployees?.map(emp => <option key={emp.id} value={emp.id}>{emp.staffName}</option>)}
+                      </select>
+                    )}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Date &amp; Time</label>
@@ -1051,6 +1064,7 @@ const MeetingPage = () => {
                     onClick={() => {
                       setShowModal(false);
                       setEditingId(null);
+                      setEditingEmployee(null);
                       setNewMeeting({
                         employeeId: 0,
                         meetingTitle: "",
@@ -1125,7 +1139,7 @@ const MeetingPage = () => {
       {reopenConfig && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
           <div className="office-panel w-full max-w-md animate-in zoom-in-95 duration-200 overflow-hidden" style={{ padding: 0 }}>
-            <div style={{ background: '#1E293B', padding: '20px 24px', textAlign: 'center' }} className="text-white">
+            <div style={{ background: '#4F46E5', padding: '20px 24px', textAlign: 'center' }} className="text-white">
               <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-white/10">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               </div>

@@ -237,19 +237,19 @@ const FeedbackSnapshot = ({ stats }: { stats: { praise: number; improvement: num
       </div>
 
       {showTips && (
-        <div style={{ background: '#0F172A', borderRadius: 16, padding: '16px', marginTop: 4 }} className="space-y-3 shadow-xl">
+        <div style={{ background: '#4F46E5', borderRadius: 16, padding: '16px', marginTop: 4 }} className="space-y-3 shadow-xl shadow-indigo-200">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg style={{ width: 16, height: 16, color: '#F1F5F9' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg style={{ width: 16, height: 16, color: '#E0E7FF' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>Manager Tips</span>
           </div>
-          <p style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.6 }}>Giving constructive feedback works best when it's specific, actionable, and delivered within 24 hours.</p>
+          <p style={{ fontSize: 12, color: '#C7D2FE', lineHeight: 1.6 }}>Giving constructive feedback works best when it's specific, actionable, and delivered within 24 hours.</p>
           <div className="space-y-2">
             {['Use the "Situation-Behavior-Impact" model.', 'Balance praise with growth opportunities.'].map(tip => (
-              <div key={tip} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '8px 12px' }}>
-                <svg style={{ width: 12, height: 12, color: '#818CF8', flexShrink: 0, marginTop: 2 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                <p style={{ fontSize: 11, color: '#CBD5E1', lineHeight: 1.4 }}>{tip}</p>
+              <div key={tip} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '8px 12px' }}>
+                <svg style={{ width: 12, height: 12, color: '#A5B4FC', flexShrink: 0, marginTop: 2 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                <p style={{ fontSize: 11, color: '#E0E7FF', lineHeight: 1.4 }}>{tip}</p>
               </div>
             ))}
           </div>
@@ -317,10 +317,9 @@ const ReplyItem = ({
             <span style={{ fontSize: 10, fontWeight: 700, color: '#1E293B', letterSpacing: '0.1px' }}>
               {isCurrentUser ? 'You' : reply.employeeName}
             </span>
-            {isAuthor && <span style={{ background: '#0F172A', color: '#FFFFFF', fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Author</span>}
+            {isAuthor && <span style={{ background: '#4F46E5', color: '#FFFFFF', fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Author</span>}
             <span style={{ fontSize: 9, color: '#94A3B8' }}>{reply.createdAt ? format(new Date(reply.createdAt), 'h:mm a') : ''}</span>
           </div>
-
           <div style={bubbleStyle} className="group">
             <button onClick={(e) => onContextMenu(e as any, reply)}
               style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: isCurrentUser ? '#C7D2FE' : '#94A3B8', cursor: 'pointer', padding: 2, display: 'flex' }}
@@ -436,6 +435,7 @@ const FeedbackPage = () => {
   const [tagToDelete, setTagToDelete] = useState<number | null>(null);
   const [feedbackToDelete, setFeedbackToDelete] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<{ id: number; name: string } | null>(null);
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<number | null>(null);
 
   const deptEmployees = employees?.filter(emp =>
@@ -508,6 +508,7 @@ const FeedbackPage = () => {
 
       setShowModal(false);
       setEditingId(null);
+      setEditingEmployee(null);
       setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "" });
     } catch (err: any) {
       toast.error(err.data?.message || "Failed to save feedback");
@@ -546,12 +547,13 @@ const FeedbackPage = () => {
 
   const handleEdit = (fb: any) => {
     setEditingId(fb.feedbackId);
+    const emp = employees?.find(e => e.id === fb.employeeId);
+    setEditingEmployee({ id: fb.employeeId, name: emp?.staffName || fb.employeeName || 'Unknown' });
     setNewFeedback({
       employeeId: fb.employeeId,
       tagId: fb.tag?.tagId || 0,
       feedbackType: fb.feedbackType,
       description: fb.description,
-
     });
     setShowModal(true);
   };
@@ -661,7 +663,7 @@ const FeedbackPage = () => {
                 <button key={label} type="button"
                   onClick={() => { setFilterStatus(value as string | undefined); setCurrentPage(1); }}
                   className="office-pill-filter"
-                  style={{ background: filterStatus === value ? '#0F172A' : '#F1F5F9', color: filterStatus === value ? '#FFFFFF' : '#475569', border: filterStatus === value ? '1px solid #0F172A' : '1px solid #E2E8F0' }}>
+                  style={{ background: filterStatus === value ? '#4F46E5' : '#F1F5F9', color: filterStatus === value ? '#FFFFFF' : '#475569', border: filterStatus === value ? '1px solid #4F46E5' : '1px solid #E2E8F0' }}>
                   {label}
                 </button>
               ))}
@@ -870,19 +872,29 @@ const FeedbackPage = () => {
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
           <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 20, width: '100%', maxWidth: 520, overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
-            <div style={{ background: '#0F172A', padding: '16px 24px' }}>
+            <div style={{ background: '#4F46E5', padding: '16px 24px' }}>
               <h2 style={{ fontSize: 16, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.3px' }}>{editingId ? 'Edit Feedback' : 'Give Performance Feedback'}</h2>
             </div>
             <div style={{ padding: 24, maxHeight: '80vh', overflowY: 'auto' }}>
               <form onSubmit={handleCreate} className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label style={labelStyle}>Select Employee</label>
-                    <select required className="office-input" value={newFeedback.employeeId}
-                      onChange={e => setNewFeedback({ ...newFeedback, employeeId: Number(e.target.value) })}>
-                      <option value="">Choose Staff</option>
-                      {filteredEmployees?.map(emp => <option key={emp.id} value={emp.id}>{emp.staffName}</option>)}
-                    </select>
+                    <label style={labelStyle}>Employee</label>
+                    {editingId && editingEmployee ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 10, padding: '9px 14px' }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#FFFFFF', flexShrink: 0 }}>
+                          {editingEmployee.name.charAt(0)}
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{editingEmployee.name}</span>
+                        <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', background: '#E2E8F0', borderRadius: 6, padding: '2px 6px' }}>Fixed</span>
+                      </div>
+                    ) : (
+                      <select required className="office-input" value={newFeedback.employeeId}
+                        onChange={e => setNewFeedback({ ...newFeedback, employeeId: Number(e.target.value) })}>
+                        <option value="">Choose Staff</option>
+                        {filteredEmployees?.map(emp => <option key={emp.id} value={emp.id}>{emp.staffName}</option>)}
+                      </select>
+                    )}
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
@@ -972,7 +984,7 @@ const FeedbackPage = () => {
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 16, borderTop: '1px solid #E2E8F0', flexWrap: 'wrap' }}>
                   <button type="button"
-                    onClick={() => { setShowModal(false); setEditingId(null); setNewFeedback({ employeeId: 0, tagId: '', feedbackType: FeedbackType.PRAISE, description: '' }); }}
+                    onClick={() => { setShowModal(false); setEditingId(null); setEditingEmployee(null); setNewFeedback({ employeeId: 0, tagId: '', feedbackType: FeedbackType.PRAISE, description: '' }); }}
                     className="office-button-secondary">
                     Cancel
                   </button>
