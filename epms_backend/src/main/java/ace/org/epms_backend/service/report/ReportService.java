@@ -8,6 +8,10 @@ public interface ReportService {
     List<KpiAchievementReportDTO> getKpiAchievementReport(Long cycleId, Long departmentId);
     byte[] exportKpiAchievementReport(Long cycleId, Long departmentId, String format);
 
+    // KPI Actuals Completion
+    KpiActualsCompletionReportDTO getKpiActualsCompletionReport(Long cycleId, Long managerId, Long departmentId, int thresholdDays);
+    byte[] exportKpiActualsCompletionReport(Long cycleId, Long managerId, Long departmentId, int thresholdDays, String format);
+
     // Appraisal Status
     AppraisalStatusReportDTO getAppraisalStatusReport(Long cycleId);
     byte[] exportAppraisalStatusReport(Long cycleId, String format);
@@ -49,6 +53,10 @@ public interface ReportService {
     // Employee Performance Summary
     EmployeePerformanceSummaryDTO getEmployeePerformanceSummary(Long employeeId, Long cycleId);
     byte[] exportEmployeePerformanceSummary(Long employeeId, Long cycleId, String format);
+
+    // Employee KPI Summary Report
+    KpiSummaryReportDTO getKpiSummaryReport(Long employeeId, List<Long> cycleIds);
+    byte[] exportKpiSummaryReport(Long employeeId, List<Long> cycleIds, String format);
 
     // High/Low Performers
     List<PerformanceRankingReportDTO> getPerformanceRankingReport(Long cycleId);

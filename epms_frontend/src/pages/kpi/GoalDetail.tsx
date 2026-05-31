@@ -18,8 +18,8 @@ import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
 import { ChevronLeft, CheckCircle2, AlertCircle, Lock, Award, ShieldCheck, History, Archive } from 'lucide-react';
 import { Can } from '../../components/Can';
 import { useGetMidcycleSummaryQuery } from '../../services/midcycleApi';
-import { MidcyclePhaseTimeline } from '../../features/kpi/MidcyclePhaseTimeline';
-import { MidcycleChangeModal } from '../../features/kpi/MidcycleChangeModal';
+import { MidcyclePhaseTimeline } from '../../components/kpi/MidcyclePhaseTimeline';
+import { MidcycleChangeModal } from '../../components/kpi/MidcycleChangeModal';
 import { formatRelativeTime } from '../../utils/timeUtils';
 
 const STEPS = [

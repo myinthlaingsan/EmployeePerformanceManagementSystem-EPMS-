@@ -35,6 +35,30 @@ public class ReportController {
         return createDownloadResponse(reportContent, "KPI_Achievement_Report", format);
     }
 
+    // KPI Actuals Completion
+    @GetMapping("/kpi-actuals-completion")
+    public ResponseEntity<ApiResponse<KpiActualsCompletionReportDTO>> getKpiActualsCompletionReport(
+            @RequestParam Long cycleId,
+            @RequestParam(required = false) Long managerId,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(defaultValue = "30") int thresholdDays) {
+        KpiActualsCompletionReportDTO data = reportService.getKpiActualsCompletionReport(
+                cycleId, managerId, departmentId, thresholdDays);
+        return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
+    @GetMapping("/kpi-actuals-completion/download")
+    public ResponseEntity<byte[]> downloadKpiActualsCompletionReport(
+            @RequestParam Long cycleId,
+            @RequestParam(required = false) Long managerId,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(defaultValue = "30") int thresholdDays,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportKpiActualsCompletionReport(
+                cycleId, managerId, departmentId, thresholdDays, format);
+        return createDownloadResponse(reportContent, "KPI_Actuals_Completion_Report", format);
+    }
+
     // Appraisal Status
     @GetMapping("/appraisal-status")
     public ResponseEntity<ApiResponse<AppraisalStatusReportDTO>> getAppraisalStatusReport(@RequestParam Long cycleId) {
@@ -221,6 +245,23 @@ public class ReportController {
             @RequestParam(defaultValue = "pdf") String format) {
         byte[] reportContent = reportService.exportEmployeePerformanceSummary(employeeId, cycleId, format);
         return createDownloadResponse(reportContent, "Performance_Summary_Report", format);
+    }
+
+    // Employee KPI Summary Report
+    @GetMapping("/kpi-summary")
+    public ResponseEntity<ApiResponse<KpiSummaryReportDTO>> getKpiSummaryReport(
+            @RequestParam Long employeeId,
+            @RequestParam List<Long> cycleIds) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getKpiSummaryReport(employeeId, cycleIds)));
+    }
+
+    @GetMapping("/kpi-summary/download")
+    public ResponseEntity<byte[]> downloadKpiSummaryReport(
+            @RequestParam Long employeeId,
+            @RequestParam List<Long> cycleIds,
+            @RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportKpiSummaryReport(employeeId, cycleIds, format);
+        return createDownloadResponse(reportContent, "KPI_Summary_Report", format);
     }
 
     // High/Low Performers

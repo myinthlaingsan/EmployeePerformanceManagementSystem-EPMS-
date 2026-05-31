@@ -95,4 +95,15 @@ public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
                         "AND k.cycle.cycleId = :cycleId")
         List<KpiGoals> findByDepartmentIdAndCycleId(@Param("departmentId") Long departmentId,
                         @Param("cycleId") Long cycleId);
+
+        @Query("SELECT DISTINCT k FROM KpiGoals k LEFT JOIN FETCH k.items i " +
+                        "WHERE k.cycle.cycleId = :cycleId " +
+                        "AND k.isCurrent = true " +
+                        "AND k.status IN ('APPROVED', 'LOCKED', 'SCORED') " +
+                        "AND (:managerId IS NULL OR k.manager.id = :managerId OR k.employee.id IN " +
+                        "  (SELECT rl.employee.id FROM ReportingLine rl " +
+                        "   WHERE rl.manager.id = :managerId AND rl.isActive = true))")
+        List<KpiGoals> findApprovedGoalsForActualsReport(
+                        @Param("cycleId") Long cycleId,
+                        @Param("managerId") Long managerId);
 }

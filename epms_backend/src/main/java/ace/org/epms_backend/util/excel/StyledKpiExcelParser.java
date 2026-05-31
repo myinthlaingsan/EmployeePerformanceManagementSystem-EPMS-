@@ -346,7 +346,7 @@ public class StyledKpiExcelParser {
     private BigDecimal parseBigDecimal(String value, String fieldName, String kpiTitle, int rowNum) {
         if (value == null || value.isEmpty()) {
             if (fieldName.equals("Target Value"))
-                return null;
+                return BigDecimal.ONE;
             throw new IllegalArgumentException(fieldName + " is missing for KPI: " + kpiTitle);
         }
         try {
@@ -354,7 +354,11 @@ public class StyledKpiExcelParser {
             if (cleanValue.isEmpty()) {
                 throw new IllegalArgumentException("Invalid " + fieldName + ": '" + value + "' for KPI: " + kpiTitle);
             }
-            return new BigDecimal(cleanValue);
+            BigDecimal parsedValue = new BigDecimal(cleanValue);
+            if (fieldName.equals("Target Value") && parsedValue.compareTo(BigDecimal.ZERO) == 0) {
+                return BigDecimal.ONE;
+            }
+            return parsedValue;
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Failed to parse " + fieldName + " from value: '"
                     + value + "' for KPI: " + kpiTitle + ". Ensure it is numeric.");
