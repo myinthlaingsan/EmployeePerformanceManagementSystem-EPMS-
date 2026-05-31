@@ -30,7 +30,17 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
   const urlCycleId = searchParams.get('cycleId');
   const editMode = searchParams.get('mode') === 'edit';
-  const resolvedCycleId = urlCycleId ? Number(urlCycleId) : activeCycleId;
+
+  const { data: cyclesData, isLoading: isLoadingCycles } = useGetCyclesQuery();
+  const cycles = cyclesData || [];
+
+  const resolvedCycleId = useMemo(() => {
+    if (urlCycleId) return Number(urlCycleId);
+    if (activeCycleId) return activeCycleId;
+    // Fallback: If activeCycleId is not found (e.g. active cycle closed), pick the first active or available cycle
+    const activeOrFirst = (cycles as any[]).find((c: any) => c.status?.toUpperCase() === 'ACTIVE') || cycles?.[0];
+    return activeOrFirst ? (activeOrFirst.cycleId || activeOrFirst.id) : undefined;
+  }, [urlCycleId, activeCycleId, cycles]);
 
   const { data: employee } = useGetEmployeeByIdQuery(Number(employeeId), { skip: !employeeId });
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
@@ -44,8 +54,6 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const { data: categoriesResponse } = useGetKpiCategoriesQuery();
   const categories = categoriesResponse?.data || [];
 
-  const { data: cyclesData, isLoading: isLoadingCycles } = useGetCyclesQuery();
-  const cycles = cyclesData || [];
   const resolvedCycleObj = (cycles as any[]).find((c: any) => (c.cycleId || c.id) === resolvedCycleId);
   const isArchivedCycle = resolvedCycleObj?.status?.toUpperCase() === 'ARCHIVED';
   // In edit mode (navigated from GoalDetail), treat as non-historical even if cycle differs from active
