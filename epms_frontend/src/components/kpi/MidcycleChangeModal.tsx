@@ -71,11 +71,12 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
   };
 
   // Calculate constraints
+  const phaseStartDateObj = parseLocalDateTime(currentPhaseStartDate);
   const minDateObj = parseLocalDateTime(currentPhaseStartDate);
   minDateObj.setMinutes(minDateObj.getMinutes() + 1);
   const minDateStr = toDateTimeLocalValue(minDateObj);
 
-  const cycleEndDateTime = parseLocalDateTime(`${cycleEndDate}T23:59`);
+  const cycleEndDateTime = parseLocalDateTime(`${cycleEndDate}T23:59:59`);
   const todayObj = new Date();
   const maxDateObj = cycleEndDateTime < todayObj ? cycleEndDateTime : todayObj;
   const maxDateStr = toDateTimeLocalValue(maxDateObj);
@@ -84,7 +85,8 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
   const [changeDate, setChangeDate] = useState(minDateStr);
   const [changeReason, setChangeReason] = useState('');
   const hasValidDateRange = minDateStr <= maxDateStr;
-  const currentPhaseStartsInFuture = parseLocalDateTime(currentPhaseStartDate) > new Date();
+  const currentPhaseStartsInFuture = phaseStartDateObj > new Date();
+  const currentPhaseStartsAfterCycleEnd = phaseStartDateObj > cycleEndDateTime;
 
   // Live preview metrics
   const [currentPhaseDays, setCurrentPhaseDays] = useState(0);
@@ -224,9 +226,11 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
             <p style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
               {hasValidDateRange
                 ? `Date and time boundary where Phase ${currentPhaseNumber} ends. Phase ${currentPhaseNumber + 1} begins immediately afterward.`
-                : currentPhaseStartsInFuture
-                  ? `No valid date/time is available yet. The current phase starts on ${formatDateTime(currentPhaseStartDate)}, which is still in the future.`
-                  : 'No valid date/time is available yet. The change date cannot be in the future.'}
+                : currentPhaseStartsAfterCycleEnd
+                  ? `No valid date/time is available because Phase ${currentPhaseNumber} begins after the cycle end date (${formatDate(cycleEndDate)}). Please verify the cycle and phase dates before triggering a split.`
+                  : currentPhaseStartsInFuture
+                    ? `No valid date/time is available yet. The current phase starts on ${formatDateTime(currentPhaseStartDate)}, which is still in the future.`
+                    : 'No valid date/time is available yet. The change date cannot be in the future.'}
             </p>
           </div>
 
