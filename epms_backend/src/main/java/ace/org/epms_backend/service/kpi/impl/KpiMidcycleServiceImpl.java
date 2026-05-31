@@ -436,12 +436,8 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                 LocalDate actualStartDate = phase.getPhaseStartDate() != null ? phase.getPhaseStartDate() : cycle.getStartDate();
                 if (actualStartDate != null) {
                     if (phase.getStatus() == PhaseStatus.OPEN) {
-                        LocalDate today = LocalDate.now();
-                        LocalDate endDate = phase.getPhaseEndDate() != null ? phase.getPhaseEndDate() : today;
-                        if (cycle.getEndDate() != null && endDate.isAfter(cycle.getEndDate())) {
-                            endDate = cycle.getEndDate();
-                        }
-                        if (!endDate.isBefore(actualStartDate)) {
+                        LocalDate endDate = phase.getPhaseEndDate() != null ? phase.getPhaseEndDate() : cycle.getEndDate();
+                        if (endDate != null && !endDate.isBefore(actualStartDate)) {
                             days = BigDecimal.valueOf(ChronoUnit.DAYS.between(actualStartDate, endDate) + 1);
                         }
                     } else if (phase.getPhaseEndDate() != null) {

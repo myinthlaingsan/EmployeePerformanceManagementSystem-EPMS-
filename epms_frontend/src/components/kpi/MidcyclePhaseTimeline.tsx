@@ -222,7 +222,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                           {phase.score !== null ? Number(phase.score).toFixed(1) : 'Pending'}
                         </p>
                         {phase.status === 'OPEN' && phase.score !== null && (
-                          <p style={{ fontSize: '9px', color: '#9EA3B0', marginTop: '2px' }}>Provisional preview</p>
+                          <p style={{ fontSize: '9px', color: '#9EA3B0', marginTop: '2px' }}>Provisional score</p>
                         )}
                       </div>
 
@@ -239,7 +239,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                           }
                         </p>
                         {phase.status === 'OPEN' && phase.weightedContribution !== null && (
-                          <p style={{ fontSize: '9px', color: '#9EA3B0', marginTop: '2px' }}>Provisional preview</p>
+                          <p style={{ fontSize: '9px', color: '#9EA3B0', marginTop: '2px' }}>Projected to cycle end</p>
                         )}
                       </div>
                     </div>
