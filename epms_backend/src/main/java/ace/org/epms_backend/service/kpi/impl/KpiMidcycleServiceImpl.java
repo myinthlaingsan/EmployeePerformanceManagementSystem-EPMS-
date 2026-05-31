@@ -431,6 +431,25 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         for (KpiGoalPhase phase : phases) {
             BigDecimal days = phase.getPhaseDays() != null ? BigDecimal.valueOf(phase.getPhaseDays()) : null;
             BigDecimal weight = phase.getPhaseWeight();
+
+            if (days == null) {
+                LocalDate actualStartDate = phase.getPhaseStartDate() != null ? phase.getPhaseStartDate() : cycle.getStartDate();
+                if (actualStartDate != null) {
+                    if (phase.getStatus() == PhaseStatus.OPEN) {
+                        LocalDate today = LocalDate.now();
+                        LocalDate endDate = phase.getPhaseEndDate() != null ? phase.getPhaseEndDate() : today;
+                        if (cycle.getEndDate() != null && endDate.isAfter(cycle.getEndDate())) {
+                            endDate = cycle.getEndDate();
+                        }
+                        if (!endDate.isBefore(actualStartDate)) {
+                            days = BigDecimal.valueOf(ChronoUnit.DAYS.between(actualStartDate, endDate) + 1);
+                        }
+                    } else if (phase.getPhaseEndDate() != null) {
+                        days = BigDecimal.valueOf(ChronoUnit.DAYS.between(actualStartDate, phase.getPhaseEndDate()) + 1);
+                    }
+                }
+            }
+
             if (weight == null && days != null) {
                 weight = days.divide(BigDecimal.valueOf(totalCycleDays), 6, RoundingMode.HALF_UP);
             }
@@ -455,7 +474,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                     .phaseNumber(phase.getPhaseNumber())
                     .startDate(phase.getPhaseStartDate())
                     .endDate(phase.getPhaseEndDate())
-                    .days(phase.getPhaseDays())
+                    .days(days != null ? days.intValue() : null)
                     .weight(weight)
                     .score(score)
                     .weightedContribution(weightedContribution)
