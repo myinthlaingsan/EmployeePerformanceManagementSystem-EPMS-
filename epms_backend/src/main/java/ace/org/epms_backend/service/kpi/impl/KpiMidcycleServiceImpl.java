@@ -213,6 +213,26 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         historyRepo.save(KpiHistoryLog.builder()
                 .employeeId(employee.getId())
                 .goalSetId(goalSet.getId())
+                .action("PHASE_CLOSED")
+                .changeReason(request.getChangeReason())
+                .changeDetails("Phase " + currentPhase.getPhaseNumber() + " closed on " + changeDate
+                        + " with score " + currentPhase.getPhaseScore() + ".")
+                .changedBy(currentUser.getId())
+                .build());
+
+        historyRepo.save(KpiHistoryLog.builder()
+                .employeeId(employee.getId())
+                .goalSetId(goalSet.getId())
+                .action("PHASE_OPENED")
+                .changeReason(request.getChangeReason())
+                .changeDetails("Phase " + newPhase.getPhaseNumber() + " opened on " + newPhase.getPhaseStartDate()
+                        + " and is waiting for KPI assignment.")
+                .changedBy(currentUser.getId())
+                .build());
+
+        historyRepo.save(KpiHistoryLog.builder()
+                .employeeId(employee.getId())
+                .goalSetId(goalSet.getId())
                 .action("MID_CYCLE_EVENT")
                 .changeReason(request.getChangeReason())
                 .changeDetails("Midcycle KPI split triggered for " + employee.getStaffName()

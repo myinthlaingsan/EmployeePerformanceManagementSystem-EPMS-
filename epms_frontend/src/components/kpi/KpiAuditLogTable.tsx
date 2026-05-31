@@ -17,12 +17,14 @@ const ACTION_COLORS: Record<string, { bg: string; text: string }> = {
   PHASE_OPENED: { bg: '#EAF3DE', text: '#27500A' },
   PHASE_CLOSED: { bg: '#F1EFE8', text: '#444441' },
   PHASE_LOCKED: { bg: '#F5F3FF', text: '#7C3AED' },
+  KPI_ASSIGNED: { bg: '#EFF6FF', text: '#1D4ED8' },
+  KPI_APPROVED: { bg: '#ECFDF5', text: '#059669' },
+  KPI_REVERTED: { bg: '#FFFBEB', text: '#D97706' },
+  KPI_LOCKED: { bg: '#F5F3FF', text: '#7C3AED' },
   KPI_ADDED: { bg: '#EEF3FD', text: '#0C447C' },
   KPI_REVISED: { bg: '#FEF3C7', text: '#92400E' },
   KPI_DELETED: { bg: '#FEF2F2', text: '#DC2626' },
   MID_CYCLE_EVENT: { bg: '#E0E7FF', text: '#4F46E5' },
-  GOAL_APPROVED: { bg: '#ECFDF5', text: '#059669' },
-  GOAL_REVERTED: { bg: '#FFFBEB', text: '#D97706' },
 };
 
 const KpiAuditLogTable: React.FC<KpiAuditLogTableProps> = ({

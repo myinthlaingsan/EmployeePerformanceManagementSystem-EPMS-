@@ -13,7 +13,7 @@ public class OrgKpiHistorySummary {
     private long totalEvents;
     private long phasesOpened;
     private long phasesClosed;
-    private long kpisRevised;
-    private long kpisDeleted;
+    private long kpisApproved;
+    private long kpisReverted;
     private long midCycleEvents;
 }

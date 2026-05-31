@@ -18,8 +18,8 @@ export interface OrgKpiHistorySummary {
   totalEvents: number;
   phasesOpened: number;
   phasesClosed: number;
-  kpisRevised: number;
-  kpisDeleted: number;
+  kpisApproved: number;
+  kpisReverted: number;
   midCycleEvents: number;
 }
 

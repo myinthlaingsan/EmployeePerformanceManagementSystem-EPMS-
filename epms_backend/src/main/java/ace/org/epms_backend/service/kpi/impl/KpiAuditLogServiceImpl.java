@@ -104,8 +104,8 @@ public class KpiAuditLogServiceImpl implements KpiAuditLogService {
             .totalEvents(logs.size())
             .phasesOpened(logs.stream().filter(l -> "PHASE_OPENED".equals(l.getAction())).count())
             .phasesClosed(logs.stream().filter(l -> "PHASE_CLOSED".equals(l.getAction()) || "PHASE_LOCKED".equals(l.getAction())).count())
-            .kpisRevised(logs.stream().filter(l -> "KPI_REVISED".equals(l.getAction())).count())
-            .kpisDeleted(logs.stream().filter(l -> "KPI_DELETED".equals(l.getAction())).count())
+            .kpisApproved(logs.stream().filter(l -> "KPI_APPROVED".equals(l.getAction())).count())
+            .kpisReverted(logs.stream().filter(l -> "KPI_REVERTED".equals(l.getAction())).count())
             .midCycleEvents(logs.stream().filter(l -> "MID_CYCLE_EVENT".equals(l.getAction())).count())
             .build();
     }
