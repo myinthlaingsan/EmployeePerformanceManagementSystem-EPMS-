@@ -29,11 +29,13 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
 }) => {
   const [triggerChange, { isLoading }] = useTriggerMidcycleChangeMutation();
 
-  const toDateInputValue = (date: Date) => {
+  const toDateTimeLocalValue = (date: Date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   const { data: internalSummaryResponse } = useGetMidcycleSummaryQuery(
@@ -46,26 +48,43 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
   // Find the start date of the current open phase
   const openPhase = effectiveSummary?.phases.find((p) => p.status === 'OPEN');
   const currentPhaseNumber = openPhase ? openPhase.phaseNumber : 1;
-  const currentPhaseStartDate = openPhase ? openPhase.startDate : cycleStartDate;
+  const currentPhaseStartDate = openPhase ? openPhase.startDate : `${cycleStartDate}T00:00`;
+
+  const parseLocalDateTime = (value: string) => new Date(value);
+
+  const formatDate = (value: string | Date) => {
+    const date = typeof value === 'string' ? parseLocalDateTime(value) : value;
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatDateTime = (value: string | Date) => {
+    const date = typeof value === 'string' ? parseLocalDateTime(value) : value;
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  };
 
   // Calculate constraints
-  // Min date: currentPhaseStartDate + 1 day
-  const minDateObj = new Date(currentPhaseStartDate);
-  minDateObj.setDate(minDateObj.getDate() + 1);
-  const minDateStr = toDateInputValue(minDateObj);
+  const minDateObj = parseLocalDateTime(currentPhaseStartDate);
+  minDateObj.setMinutes(minDateObj.getMinutes() + 1);
+  const minDateStr = toDateTimeLocalValue(minDateObj);
 
-  // Max date: earlier of today and cycleEndDate - 1 day
-  const cycleMaxDateObj = new Date(cycleEndDate);
-  cycleMaxDateObj.setDate(cycleMaxDateObj.getDate() - 1);
+  const cycleEndDateTime = parseLocalDateTime(`${cycleEndDate}T23:59`);
   const todayObj = new Date();
-  const maxDateObj = cycleMaxDateObj < todayObj ? cycleMaxDateObj : todayObj;
-  const maxDateStr = toDateInputValue(maxDateObj);
+  const maxDateObj = cycleEndDateTime < todayObj ? cycleEndDateTime : todayObj;
+  const maxDateStr = toDateTimeLocalValue(maxDateObj);
 
   // Selected date defaults to minDateStr
   const [changeDate, setChangeDate] = useState(minDateStr);
   const [changeReason, setChangeReason] = useState('');
   const hasValidDateRange = minDateStr <= maxDateStr;
-  const currentPhaseStartsInFuture = currentPhaseStartDate > toDateInputValue(new Date());
+  const currentPhaseStartsInFuture = parseLocalDateTime(currentPhaseStartDate) > new Date();
 
   // Live preview metrics
   const [currentPhaseDays, setCurrentPhaseDays] = useState(0);
@@ -74,8 +93,8 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
   const [nextPhaseWeight, setNextPhaseWeight] = useState(0);
 
   const getDaysBetween = (start: string, end: string) => {
-    const s = new Date(start);
-    const e = new Date(end);
+    const s = parseLocalDateTime(start);
+    const e = parseLocalDateTime(end);
     const diff = e.getTime() - s.getTime();
     return Math.max(1, Math.round(diff / (1000 * 60 * 60 * 24)) + 1);
   };
@@ -92,12 +111,10 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
     }
 
     if (cycleStartDate && cycleEndDate && changeDate) {
-      const total = getDaysBetween(cycleStartDate, cycleEndDate);
+      const total = getDaysBetween(`${cycleStartDate}T00:00`, `${cycleEndDate}T23:59`);
       const current = getDaysBetween(currentPhaseStartDate, changeDate);
-      
-      // Next phase starts on changeDate and ends on cycleEndDate
-      const nextStartStr = changeDate;
-      const next = getDaysBetween(nextStartStr, cycleEndDate);
+
+      const next = getDaysBetween(changeDate, `${cycleEndDate}T23:59`);
 
       setCurrentPhaseDays(current);
       setCurrentPhaseWeight(Math.round((current / total) * 100));
@@ -175,20 +192,20 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
               Employee: <strong>{employeeName}</strong>
             </p>
             <p style={{ fontSize: '12px', color: '#374151', marginTop: '4px' }}>
-              Cycle: <strong>{cycleName}</strong> ({new Date(cycleStartDate).toLocaleDateString()} - {new Date(cycleEndDate).toLocaleDateString()})
+              Cycle: <strong>{cycleName}</strong> ({formatDate(cycleStartDate)} - {formatDate(cycleEndDate)})
             </p>
             <p style={{ fontSize: '12px', color: '#374151', marginTop: '4px' }}>
-              Current Phase: <strong>Phase {currentPhaseNumber}</strong> (Started: {new Date(currentPhaseStartDate).toLocaleDateString()})
+              Current Phase: <strong>Phase {currentPhaseNumber}</strong> (Started: {formatDateTime(currentPhaseStartDate)})
             </p>
           </div>
 
           {/* Date Picker */}
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
-              Effective Date of Change
+              Effective Date and Time of Change
             </label>
             <input
-              type="date"
+              type="datetime-local"
               min={minDateStr}
               max={maxDateStr}
               value={changeDate}
@@ -206,10 +223,10 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
             />
             <p style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
               {hasValidDateRange
-                ? `Date boundary where Phase ${currentPhaseNumber} ends. Phase ${currentPhaseNumber + 1} begins on the same day.`
+                ? `Date and time boundary where Phase ${currentPhaseNumber} ends. Phase ${currentPhaseNumber + 1} begins immediately afterward.`
                 : currentPhaseStartsInFuture
-                  ? `No valid date is available yet. The current phase starts on ${new Date(currentPhaseStartDate).toLocaleDateString()}, which is still in the future.`
-                  : 'No valid date is available yet. The change date cannot be in the future.'}
+                  ? `No valid date/time is available yet. The current phase starts on ${formatDateTime(currentPhaseStartDate)}, which is still in the future.`
+                  : 'No valid date/time is available yet. The change date cannot be in the future.'}
             </p>
           </div>
 
@@ -221,11 +238,11 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
               <div className="flex justify-between" style={{ fontSize: '12px', color: '#1E3A8A' }}>
-                <span>Phase {currentPhaseNumber} ends on {new Date(changeDate).toLocaleDateString()}:</span>
+                <span>Phase {currentPhaseNumber} ends on {formatDateTime(changeDate)}:</span>
                 <strong>{currentPhaseDays} days ({currentPhaseWeight}%)</strong>
               </div>
               <div className="flex justify-between" style={{ fontSize: '12px', color: '#1E3A8A' }}>
-                <span>Phase {currentPhaseNumber + 1} starts immediately on {new Date(changeDate).toLocaleDateString()}:</span>
+                <span>Phase {currentPhaseNumber + 1} starts immediately on {formatDateTime(changeDate)}:</span>
                 <strong>{nextPhaseDays} days ({nextPhaseWeight}%)</strong>
               </div>
             </div>

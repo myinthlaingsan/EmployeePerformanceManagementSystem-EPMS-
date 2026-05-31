@@ -1,12 +1,13 @@
 package ace.org.epms_backend.dto.kpi;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -14,8 +15,12 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class MidcyclePhaseResponse {
     private int phaseNumber;
-    private LocalDate startDate;
-    private LocalDate endDate;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime startDate;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime endDate;
     private Integer days;
     private BigDecimal weight;
     private BigDecimal score;

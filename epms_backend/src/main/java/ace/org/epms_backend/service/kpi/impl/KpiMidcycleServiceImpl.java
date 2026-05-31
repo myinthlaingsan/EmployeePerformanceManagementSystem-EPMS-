@@ -44,8 +44,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -76,7 +78,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
     @Override
     @Transactional
     public void triggerMidcycleChange(MidcycleChangeRequest request) {
-        LocalDate changeDate = request.getChangeDate();
+        LocalDateTime changeDate = request.getChangeDate();
         Long employeeId = request.getEmployeeId();
         Long cycleId = request.getCycleId();
 
@@ -85,15 +87,16 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         ensureCycleAllowsMidcycleChange(cycle);
 
-        LocalDate today = LocalDate.now();
-        if (changeDate.isAfter(today)) {
-            throw new IllegalArgumentException("Change date cannot be in the future. Latest allowed date is " + today);
+        LocalDateTime now = LocalDateTime.now();
+        if (changeDate.isAfter(now)) {
+            throw new IllegalArgumentException("Change date cannot be in the future. Latest allowed date is " + now);
         }
 
-        if (changeDate.isBefore(cycle.getStartDate()) || changeDate.isAfter(cycle.getEndDate().minusDays(1))) {
-            throw new IllegalArgumentException("Change date must be between cycle start date ("
-                    + cycle.getStartDate() + ") and one day before cycle end date (" + cycle.getEndDate().minusDays(1)
-                    + ")");
+        LocalDateTime cycleStart = cycle.getStartDate().atStartOfDay();
+        LocalDateTime cycleEnd = cycle.getEndDate().plusDays(1).atStartOfDay();
+        if (changeDate.isBefore(cycleStart) || !changeDate.isBefore(cycleEnd)) {
+            throw new IllegalArgumentException("Change date must be within the appraisal cycle period ("
+                    + cycleStart + " - " + cycle.getEndDate().atTime(23, 59, 59) + ")");
         }
 
         Employee employee = employeeRepository.findById(employeeId)
@@ -124,7 +127,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                         .cycle(cycle)
                         .goalSet(currentGoalSet)
                         .phaseNumber(1)
-                        .phaseStartDate(cycle.getStartDate())
+                        .phaseStartDate(cycle.getStartDate().atStartOfDay())
                         .status(PhaseStatus.OPEN)
                         .build();
 
@@ -140,14 +143,14 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             }
         }
 
-        if (changeDate.isBefore(currentPhase.getPhaseStartDate())) {
+        if (!changeDate.isAfter(currentPhase.getPhaseStartDate())) {
             throw new IllegalArgumentException(
-                    "Change date cannot be before current phase start date (" + currentPhase.getPhaseStartDate() + ")");
+                    "Change date must be after current phase start date (" + currentPhase.getPhaseStartDate() + ")");
         }
 
         currentPhase.setPhaseEndDate(changeDate);
-        int phaseDays = (int) ChronoUnit.DAYS.between(currentPhase.getPhaseStartDate(), changeDate) + 1;
-        currentPhase.setPhaseDays(phaseDays);
+        int phaseDays = (int) ChronoUnit.DAYS.between(currentPhase.getPhaseStartDate().toLocalDate(), changeDate.toLocalDate()) + 1;
+        currentPhase.setPhaseDays(Math.max(1, phaseDays));
         currentPhase.setChangeReason(request.getChangeReason());
         currentPhase.setTriggeredBy(currentUser.getId());
 
@@ -186,7 +189,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                 .employee(employee)
                 .cycle(cycle)
                 .phaseNumber(nextPhaseNumber)
-                .phaseStartDate(changeDate.plusDays(1))
+                .phaseStartDate(changeDate)
                 .status(PhaseStatus.OPEN)
                 .build();
 
@@ -200,7 +203,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                     .type(NotificationType.KPI_ASSIGNED)
                     .title("Action Required: Assign New KPIs")
                     .message("A midcycle change was triggered for " + employee.getStaffName()
-                            + ". Please assign KPIs for the new phase starting on " + changeDate.plusDays(1) + ".")
+                            + ". Please assign KPIs for the new phase starting on " + changeDate + ".")
                     .referenceType(ReferenceType.KPI)
                     .referenceId(goalSet.getId())
                     .actionUrl("/kpi/management")
@@ -254,7 +257,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                     .cycle(cycle)
                     .goalSet(currentGoalSet)
                     .phaseNumber(1)
-                    .phaseStartDate(cycle.getStartDate())
+                    .phaseStartDate(cycle.getStartDate().atStartOfDay())
                     .status(PhaseStatus.OPEN)
                     .build();
             phases = List.of(phaseRepository.save(defaultPhase));
@@ -262,14 +265,15 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         KpiGoalPhase lastPhase = phases.get(phases.size() - 1);
         if (lastPhase.getStatus() == PhaseStatus.OPEN) {
-            if (cycle.getEndDate().isBefore(lastPhase.getPhaseStartDate())) {
+            LocalDateTime cycleEnd = cycle.getEndDate().plusDays(1).atStartOfDay();
+            if (cycleEnd.isBefore(lastPhase.getPhaseStartDate())) {
                 throw new IllegalStateException(
                         "Cannot finalize composite score: cycle end date is before the last phase start date.");
             }
 
-            lastPhase.setPhaseEndDate(cycle.getEndDate());
-            int phaseDays = (int) ChronoUnit.DAYS.between(lastPhase.getPhaseStartDate(), cycle.getEndDate()) + 1;
-            lastPhase.setPhaseDays(phaseDays);
+            lastPhase.setPhaseEndDate(cycleEnd);
+            int phaseDays = (int) ChronoUnit.DAYS.between(lastPhase.getPhaseStartDate().toLocalDate(), cycle.getEndDate()) + 1;
+            lastPhase.setPhaseDays(Math.max(1, phaseDays));
             lastPhase.setChangeReason("Appraisal cycle end finalization");
             lastPhase.setTriggeredBy(currentUser.getId());
 
@@ -311,14 +315,27 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         BigDecimal totalWeightedScoreSum = BigDecimal.ZERO;
         BigDecimal totalAchievementPercentSum = BigDecimal.ZERO;
 
+        long totalCycleMinutes = Duration.between(cycle.getStartDate().atStartOfDay(), cycle.getEndDate().plusDays(1).atStartOfDay()).toMinutes();
+        if (totalCycleMinutes <= 0) {
+            throw new IllegalStateException("Cannot finalize composite score: cycle duration must be positive.");
+        }
+
         for (KpiGoalPhase phase : phases) {
             if (phase.getPhaseDays() == null || phase.getPhaseDays() <= 0) {
                 throw new IllegalStateException(
                         "Cannot finalize composite score: phase " + phase.getPhaseNumber() + " has invalid duration.");
             }
 
-            BigDecimal days = BigDecimal.valueOf(phase.getPhaseDays());
-            BigDecimal weight = days.divide(BigDecimal.valueOf(totalCycleDays), 6, RoundingMode.HALF_UP);
+            LocalDateTime phaseStart = phase.getPhaseStartDate();
+            LocalDateTime phaseEnd = phase.getPhaseEndDate() != null
+                    ? phase.getPhaseEndDate()
+                    : cycle.getEndDate().plusDays(1).atStartOfDay();
+            if (phaseEnd.isBefore(phaseStart) || phaseEnd.equals(phaseStart)) {
+                throw new IllegalStateException(
+                        "Cannot finalize composite score: phase " + phase.getPhaseNumber() + " has invalid time range.");
+            }
+            long phaseMinutes = Duration.between(phaseStart, phaseEnd).toMinutes();
+            BigDecimal weight = BigDecimal.valueOf(phaseMinutes).divide(BigDecimal.valueOf(totalCycleMinutes), 6, RoundingMode.HALF_UP);
             phase.setPhaseWeight(weight);
             phaseRepository.save(phase);
 
@@ -433,15 +450,17 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             BigDecimal weight = phase.getPhaseWeight();
 
             if (days == null) {
-                LocalDate actualStartDate = phase.getPhaseStartDate() != null ? phase.getPhaseStartDate() : cycle.getStartDate();
+                LocalDateTime actualStartDate = phase.getPhaseStartDate() != null ? phase.getPhaseStartDate() : cycle.getStartDate().atStartOfDay();
                 if (actualStartDate != null) {
+                    LocalDateTime endDate = phase.getPhaseEndDate() != null
+                            ? phase.getPhaseEndDate()
+                            : cycle.getEndDate().plusDays(1).atStartOfDay();
                     if (phase.getStatus() == PhaseStatus.OPEN) {
-                        LocalDate endDate = phase.getPhaseEndDate() != null ? phase.getPhaseEndDate() : cycle.getEndDate();
-                        if (endDate != null && !endDate.isBefore(actualStartDate)) {
-                            days = BigDecimal.valueOf(ChronoUnit.DAYS.between(actualStartDate, endDate) + 1);
+                        if (!endDate.isBefore(actualStartDate)) {
+                            days = BigDecimal.valueOf(ChronoUnit.DAYS.between(actualStartDate.toLocalDate(), endDate.toLocalDate()) + 1);
                         }
                     } else if (phase.getPhaseEndDate() != null) {
-                        days = BigDecimal.valueOf(ChronoUnit.DAYS.between(actualStartDate, phase.getPhaseEndDate()) + 1);
+                        days = BigDecimal.valueOf(ChronoUnit.DAYS.between(actualStartDate.toLocalDate(), phase.getPhaseEndDate().toLocalDate()) + 1);
                     }
                 }
             }
@@ -452,14 +471,20 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
             BigDecimal score = phase.getPhaseScore();
             if (phase.getStatus() == PhaseStatus.OPEN) {
-                java.util.Optional<KpiGoals> currentGoalSetOpt = goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
-                if (currentGoalSetOpt.isPresent()) {
-                    score = calculateWeightedScoreFromGoalSet(currentGoalSetOpt.get());
-                } else if (phase.getGoalSet() != null) {
+                if (score == null) {
+                    if (phase.getGoalSet() != null) {
+                        score = calculateWeightedScoreFromGoalSet(phase.getGoalSet());
+                    } else {
+                        java.util.Optional<KpiGoals> currentGoalSetOpt = goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
+                        if (currentGoalSetOpt.isPresent()) {
+                            score = calculateWeightedScoreFromGoalSet(currentGoalSetOpt.get());
+                        }
+                    }
+                }
+            } else {
+                if (score == null && phase.getGoalSet() != null) {
                     score = calculateWeightedScoreFromGoalSet(phase.getGoalSet());
                 }
-            } else if (phase.getGoalSet() != null && phase.getStatus() == PhaseStatus.SCORED && score == null) {
-                score = calculateWeightedScoreFromGoalSet(phase.getGoalSet());
             }
             BigDecimal weightedContribution = null;
             if (score != null && weight != null) {
@@ -523,7 +548,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                     .cycle(goalSet.getCycle())
                     .goalSet(goalSet)
                     .phaseNumber(1)
-                    .phaseStartDate(goalSet.getCycle().getStartDate())
+                    .phaseStartDate(goalSet.getCycle().getStartDate().atStartOfDay())
                     .status(PhaseStatus.OPEN)
                     .build());
         }
@@ -564,8 +589,8 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             List<KpiGoalPhase> existingPhases) {
 
         KpiGoalPhase latestPhase = existingPhases.get(existingPhases.size() - 1);
-        LocalDate nextStartDate = latestPhase.getPhaseEndDate() != null
-                ? latestPhase.getPhaseEndDate().plusDays(1)
+        LocalDateTime nextStartDate = latestPhase.getPhaseEndDate() != null
+                ? latestPhase.getPhaseEndDate()
                 : latestPhase.getPhaseStartDate();
 
         KpiGoalPhase recoveredPhase = KpiGoalPhase.builder()

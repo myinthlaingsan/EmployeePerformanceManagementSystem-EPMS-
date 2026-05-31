@@ -1946,7 +1946,7 @@ public class ReportServiceImpl implements ReportService {
             return 0;
         }
         return (int) java.time.temporal.ChronoUnit.DAYS.between(
-                phase.getPhaseStartDate(), phase.getPhaseEndDate()) + 1;
+                phase.getPhaseStartDate().toLocalDate(), phase.getPhaseEndDate().toLocalDate()) + 1;
     }
 
     private String getCategoryForScore(BigDecimal score) {
