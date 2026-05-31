@@ -207,8 +207,12 @@ public class AppraisalController {
 
 
     @GetMapping("/employee/{employeeId}/cycle/{cycleId}")
-    public ResponseEntity<Appraisal> getAppraisalIntegration(@PathVariable Long employeeId, @PathVariable Long cycleId) {
-        return ResponseEntity.ok(appraisalIntegrationService.getAppraisal(employeeId, cycleId));
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
+    public ResponseEntity<ApiResponse<AppraisalResponse>> getAppraisalByEmployeeAndCycle(
+            @PathVariable Long employeeId,
+            @PathVariable Long cycleId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                appraisalService.getByEmployeeAndCycle(employeeId, cycleId)));
     }
 
     @PutMapping("/{appraisalId}/score")
