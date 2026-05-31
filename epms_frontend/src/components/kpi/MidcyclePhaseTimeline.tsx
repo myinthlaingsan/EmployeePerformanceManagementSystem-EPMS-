@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { MidcycleSummaryResponse } from '../../features/kpi/midcycleTypes';
 import { useFinalizeCompositeScoreMutation } from '../../services/midcycleApi';
+import PastPhaseGoalsModal from './PastPhaseGoalsModal';
 import { toast } from 'react-toastify';
 
 interface MidcyclePhaseTimelineProps {
@@ -25,6 +26,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
 }) => {
   const [finalizeScore, { isLoading: isFinalizing }] = useFinalizeCompositeScoreMutation();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedPhase, setSelectedPhase] = useState<any | null>(null);
 
   const hasUnassignedOpenPhase = summary.hasOpenPhase &&
     summary.phases.some(p => p.status === 'OPEN' && p.goalSetId === null);
@@ -234,7 +236,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                           {phase.weightedContribution !== null
                             ? Number(phase.weightedContribution).toFixed(1)
                             : phase.status === 'OPEN'
-                              ? <span title="Available once KPIs are assigned and scored" style={{ fontSize: '10px', color: '#9EA3B0', cursor: 'help' }}>Pending</span>
+                              ? 'Pending'
                               : '-'
                           }
                         </p>
@@ -242,12 +244,28 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                           <p style={{ fontSize: '9px', color: '#9EA3B0', marginTop: '2px' }}>Projected to cycle end</p>
                         )}
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPhase(phase)}
+                        style={{ background: '#FFFFFF', color: '#1A56DB', border: '1px solid #D1D5DB', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        View Goals
+                      </button>
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {selectedPhase && (
+            <PastPhaseGoalsModal
+              phase={selectedPhase}
+              categories={(summary as any).categories || []}
+              onClose={() => setSelectedPhase(null)}
+            />
+          )}
 
           {/* Warning banner when an open phase has no KPIs assigned */}
           {isPrivileged && hasUnassignedOpenPhase && (
