@@ -66,6 +66,8 @@ const CollapsibleSection: React.FC<{
   );
 };
 
+import { isKpiEligible } from '../../utils/kpiLevelFilter';
+
 const KpiSummaryReportModal: React.FC<KpiSummaryReportModalProps> = ({ onClose }) => {
   const { user, isAdmin, isHR, activeCycleId } = useAuth();
   const token = useAppSelector((state) => state.auth.accessToken);
@@ -114,7 +116,7 @@ const KpiSummaryReportModal: React.FC<KpiSummaryReportModalProps> = ({ onClose }
       const matchesSearch = !searchTerm ||
         emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (emp.employeeCode && emp.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()));
-      return matchesDept && matchesSearch;
+      return matchesDept && matchesSearch && isKpiEligible(emp);
     });
   }, [employees, deptFilter, searchTerm]);
 
