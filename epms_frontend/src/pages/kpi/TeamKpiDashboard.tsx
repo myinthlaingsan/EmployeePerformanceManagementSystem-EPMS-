@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, AlertCircle, CheckCircle2, Search, Filter,
-  Download, ChevronRight, LayoutTemplate
+  ChevronDown, ChevronRight, LayoutTemplate
 } from 'lucide-react';
 import { useGetAllEmployeesQuery, useGetDirectReportsQuery } from '../../features/employee/employeeapi';
+import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
@@ -25,6 +26,17 @@ const TeamKpiDashboard: React.FC = () => {
   const { user, activeCycleId, activeCycleName, isAdmin, isHR } = useAuth();
   const isAdminOrHr = isAdmin || isHR;
 
+  const [selectedCycle, setSelectedCycle] = useState('All');
+  const { data: cyclesResponse } = useGetCyclesQuery();
+  const cycles = Array.isArray(cyclesResponse) ? cyclesResponse : ((cyclesResponse as any)?.data || []);
+  const activeCycles = cycles.filter((c: any) => (c.cycleId || c.id) === activeCycleId);
+  const inactiveCycles = cycles.filter((c: any) => (c.cycleId || c.id) !== activeCycleId);
+  const getCycleStatusLabel = (c: any) => {
+    if (!c.status) return '';
+    return ` (${c.status.charAt(0).toUpperCase() + c.status.slice(1).toLowerCase()})`;
+  };
+  const effectiveCycleId = selectedCycle === 'All' ? activeCycleId : Number(selectedCycle);
+
   const { data: allEmployees = [], isLoading: loadingAll } = useGetAllEmployeesQuery(undefined, { skip: !isAdminOrHr });
   const { data: directReports = [], isLoading: loadingReports } = useGetDirectReportsQuery(Number(user?.id), { skip: isAdminOrHr || !user?.id });
 
@@ -32,8 +44,8 @@ const TeamKpiDashboard: React.FC = () => {
   const isLoading = isAdminOrHr ? loadingAll : loadingReports;
 
   const { data: teamGoalsResponse } = useGetTeamGoalSetsQuery(
-    { managerId: Number(user?.id), cycleId: Number(activeCycleId) },
-    { skip: !user?.id || !activeCycleId }
+    { managerId: Number(user?.id), cycleId: Number(effectiveCycleId) },
+    { skip: !user?.id || !effectiveCycleId }
   );
   const teamGoals = teamGoalsResponse?.data || [];
 
@@ -88,6 +100,11 @@ const TeamKpiDashboard: React.FC = () => {
     setSelectedIds(e.target.checked ? teamMembers.map(m => m.id) : []);
   };
 
+  const selectStyle: React.CSSProperties = {
+    background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
+    padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none', appearance: 'none' as any,
+  };
+
   const getProgressColor = (p: number) => p >= 80 ? '#27500A' : p >= 40 ? '#1A56DB' : p > 0 ? '#633806' : '#9EA3B0';
   const getProgressBg = (p: number) => p >= 80 ? '#EAF3DE' : p >= 40 ? '#EEF3FD' : p > 0 ? '#FAEEDA' : '#F5F6F8';
 
@@ -106,16 +123,6 @@ const TeamKpiDashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
-            <input type="text" placeholder="Search reports…"
-              style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px 7px 30px', fontSize: 13, color: '#111827', outline: 'none', width: 200 }}
-              value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-          </div>
-          <button className="inline-flex items-center gap-2 transition-colors"
-            style={{ background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}>
-            <Download size={13} /> Report
-          </button>
           <button onClick={() => { if (teamMembers.length > 0) { setSelectedIds(teamMembers.map(m => m.id)); setIsBulkModalOpen(true); } }}
             className="inline-flex items-center gap-2 transition-colors"
             style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
@@ -171,9 +178,49 @@ const TeamKpiDashboard: React.FC = () => {
 
       {/* Table */}
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p style={{ fontSize: 11, fontWeight: 500, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Direct Reports Tracking</p>
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative" style={{ minWidth: 280 }}>
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+              <input type="text" placeholder="Search by name or employee code…"
+                style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '8px 12px 8px 30px', fontSize: 13, color: '#111827', outline: 'none', width: '100%' }}
+                value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
+            <div className="relative" style={{ minWidth: 240 }}>
+              <select style={{
+                ...selectStyle,
+                paddingRight: 30,
+                paddingLeft: 12,
+                background: '#F5F6F8',
+                width: '100%',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                appearance: 'none',
+              }} value={selectedCycle} onChange={e => { setSelectedCycle(e.target.value); setSelectedIds([]); }}>
+                <option value="All">Cycle: {activeCycleName || 'All'}</option>
+                {activeCycles.length > 0 && (
+                  <optgroup label="Active Cycle">
+                    {activeCycles.map((c: any, i: number) => (
+                      <option key={`${c.cycleId || c.id}-${i}`} value={c.cycleId || c.id}>
+                        {(c.cycleName || c.name) + getCycleStatusLabel(c)}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {inactiveCycles.length > 0 && (
+                  <optgroup label="Other Cycles">
+                    {inactiveCycles.map((c: any, i: number) => (
+                      <option key={`${c.cycleId || c.id}-${i}`} value={c.cycleId || c.id}>
+                        {(c.cycleName || c.name) + getCycleStatusLabel(c)}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Filter size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
               <select
@@ -214,9 +261,14 @@ const TeamKpiDashboard: React.FC = () => {
                   const ss = STATUS_STYLE[status || ''] || { bg: '#F5F6F8', text: '#9EA3B0', border: '#E0E2E8' };
                   return (
                     <tr key={emp.id}
-                      style={{ borderBottom: idx < teamMembers.length - 1 ? '0.5px solid #F0F2F6' : 'none', background: selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF', cursor: 'pointer' }}
-                      className="hover:bg-[#FAFBFF] transition-colors"
+                      style={{
+                        borderBottom: idx < teamMembers.length - 1 ? '0.5px solid #F0F2F6' : 'none',
+                        background: selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF',
+                        cursor: status ? 'pointer' : 'default',
+                      }}
+                      className={status ? 'hover:bg-[#FAFBFF] transition-colors' : 'transition-colors'}
                       onClick={() => {
+                        if (!status) return;
                         if (status === 'APPROVED' || status === 'LOCKED') navigate(`/kpi/goals/${emp.id}`);
                         else navigate(`/kpi/assign/${emp.id}`);
                       }}>
