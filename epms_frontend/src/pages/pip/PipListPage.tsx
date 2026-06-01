@@ -120,8 +120,8 @@ const PipListPage: React.FC = () => {
 
   const metrics = [
     { label: scope === 'MINE' ? 'My active plans' : 'Active plans', value: visiblePips.filter(p => ['ACTIVE','IN_PROGRESS','EXTENDED'].includes(p.status)).length, icon: <Activity size={15} />, color: "blue" as const },
-    { label: 'Successful', value: completedCount, icon: <CheckCircle2 size={15} />, color: "green" as const },
-    { label: 'Unsuccessful', value: closedCount, icon: <AlertCircle size={15} />, color: "red" as const },
+    { label: 'Completed', value: completedCount, icon: <CheckCircle2 size={15} />, color: "green" as const },
+    { label: 'Closed', value: closedCount, icon: <AlertCircle size={15} />, color: "red" as const },
   ];
 
   const COLOR_MAP = {
