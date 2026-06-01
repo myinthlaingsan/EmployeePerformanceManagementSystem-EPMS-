@@ -80,7 +80,7 @@ const FinancialYearManagement = () => {
   const handleSetCurrent = async (id: number) => {
     if (window.confirm('Activate this financial year?')) {
       try { await setCurrent(id).unwrap(); }
-      catch (err: any) { toast.warning(err?.data?.message || 'Failed to activate financial year.'); }
+      catch (err: any) { toast.warning('Failed to activate financial year.'); }
     }
   };
 
@@ -92,7 +92,7 @@ const FinancialYearManagement = () => {
       setWarningModal({
         isOpen: true,
         title: 'Active Appraisal Cycle Found',
-        message: err?.data?.message || 'Finalize the active appraisal cycle related to this financial year before deactivating it.',
+        message: 'Finalize the active appraisal cycle related to this financial year before deactivating it.',
       });
     }
   };

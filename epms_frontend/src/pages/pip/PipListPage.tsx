@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetPipsQuery, useGetPipsByInvolvedUserQuery } from '../../services/pipApi';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
 import { useGetActiveDepartmentsQuery } from '../../features/org/departmentApi';
 import { format, parseISO, isAfter, startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import { CheckCircle2, AlertCircle, Plus, ChevronRight, Activity, Target, User } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Plus, ChevronLeft, ChevronRight, Activity, User } from 'lucide-react';
 import { Can } from '../../components/Can';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
@@ -62,6 +62,12 @@ const PipListPage: React.FC = () => {
   const [deptFilter, setDeptFilter] = useState('All Departments');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [severityFilter, setSeverityFilter] = useState('All Severities');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
+
+  useEffect(() => {
+    setPage(0);
+  }, [deptFilter, statusFilter, severityFilter, scope]);
 
   const { data: allPipsResponse, isLoading: isLoadingAll } = useGetPipsQuery(undefined, { skip: !isHR && !isAdmin });
   const shouldFetchInvolved = !!user?.id && (!isHR && !isAdmin || scope === 'MINE');
@@ -99,10 +105,12 @@ const PipListPage: React.FC = () => {
     return matchesDept && matchesStatus && matchesSeverity;
   });
 
+  const totalPages = Math.ceil(pips.length / PAGE_SIZE);
+  const safePage = Math.min(page, Math.max(0, totalPages - 1));
+  const paginatedPips = pips.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
   const completedCount = visiblePips.filter(p => p.status === 'COMPLETED').length;
   const closedCount = visiblePips.filter(p => p.status === 'CLOSED').length;
-  const totalFinished = completedCount + closedCount;
-  const successRate = totalFinished > 0 ? Math.round((completedCount / totalFinished) * 100) : 0;
 
   if (isLoading) return (
     <div className="flex justify-center items-center h-64">
@@ -234,7 +242,7 @@ const PipListPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {pips.length > 0 ? pips.map((pip, idx) => {
+              {paginatedPips.length > 0 ? paginatedPips.map((pip, idx) => {
                 const employee = getEmployee(pip.employeeId);
                 const manager = getEmployee(pip.managerId);
                 const today = new Date();
@@ -244,7 +252,7 @@ const PipListPage: React.FC = () => {
                 const severityStyle = pip.severity ? SEVERITY_STYLE[pip.severity] ?? SEVERITY_STYLE.STANDARD : null;
 
                 return (
-                  <tr key={pip.pipId} style={{ borderBottom: idx < pips.length - 1 ? "0.5px solid #F0F2F6" : "none" }}
+                  <tr key={pip.pipId} style={{ borderBottom: idx < paginatedPips.length - 1 ? "0.5px solid #F0F2F6" : "none" }}
                     className="hover:bg-[#FAFBFF] transition-colors">
                     <td style={{ padding: "11px 16px" }}>
                       <div className="flex items-center gap-2">
@@ -312,59 +320,61 @@ const PipListPage: React.FC = () => {
           </table>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2" style={{ borderTop: "0.5px solid #E4E6EC", padding: "10px 16px" }}>
-          <p style={{ fontSize: 12, color: "#9EA3B0" }}>Showing {pips.length} of {visiblePips.length} records</p>
+          <p style={{ fontSize: 12, color: "#9EA3B0" }}>
+            {pips.length > 0 
+              ? `Showing ${safePage * PAGE_SIZE + 1}–${Math.min((safePage + 1) * PAGE_SIZE, pips.length)} of ${pips.length} records`
+              : "Showing 0–0 of 0 records"
+            }
+          </p>
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <button
+                type="button"
+                disabled={safePage === 0}
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                style={{
+                  width: 28,
+                  height: 28,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: safePage === 0 ? '#F5F6F8' : '#FFFFFF',
+                  border: '0.5px solid #E0E2E8',
+                  borderRadius: 6,
+                  color: safePage === 0 ? '#D1D5DB' : '#5A6070',
+                  cursor: safePage === 0 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span style={{ fontSize: 12, color: '#5A6070', padding: '0 6px' }}>
+                Page {safePage + 1} of {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={safePage >= totalPages - 1}
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                style={{
+                  width: 28,
+                  height: 28,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: safePage >= totalPages - 1 ? '#F5F6F8' : '#FFFFFF',
+                  border: '0.5px solid #E0E2E8',
+                  borderRadius: 6,
+                  color: safePage >= totalPages - 1 ? '#D1D5DB' : '#5A6070',
+                  cursor: safePage >= totalPages - 1 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Insights panel */}
-      {(isHR || isAdmin || isManager) && scope === 'ALL' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Chart */}
-          <div className="lg:col-span-2" style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: "16px 18px" }}>
-            <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", marginBottom: 16 }}>Quarterly success rate</p>
-            <div className="flex items-end justify-between gap-3" style={{ height: 120 }}>
-              {[5, 4, 3, 2, 1, 0].map((monthsAgo) => {
-                const date = subMonths(new Date(), monthsAgo);
-                const monthStart = startOfMonth(date);
-                const monthEnd = endOfMonth(date);
-                const count = visiblePips.filter(p => { const d = parseISO(p.startDate); return d >= monthStart && d <= monthEnd; }).length;
-                const height = Math.min(100, (count / 10) * 100);
-                return (
-                  <div key={monthsAgo} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full flex flex-col justify-end" style={{ height: 96, background: "#F5F6F8", borderRadius: "4px 4px 0 0", overflow: "hidden" }}>
-                      <div style={{ width: "100%", height: `${height || 4}%`, background: "#1A56DB", borderRadius: "4px 4px 0 0" }} />
-                    </div>
-                    <span style={{ fontSize: 11, color: "#9EA3B0" }}>{format(date, "MMM")}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Insights */}
-          <div style={{ background: "#EEF3FD", border: "0.5px solid #B5D4F4", borderRadius: 12, padding: "16px 18px" }}>
-            <p style={{ fontSize: 14, fontWeight: 500, color: "#0C447C", marginBottom: 8 }}>Performance insights</p>
-            <p style={{ fontSize: 12, color: "#5A6070", marginBottom: 16 }}>
-              Successful completion rate: <span style={{ fontWeight: 500, color: "#27500A" }}>{successRate}%</span>
-            </p>
-            <div className="flex items-center gap-2" style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 8, padding: "10px 12px", marginBottom: 14 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: "#EAF3DE", color: "#27500A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Target size={13} aria-hidden="true" />
-              </div>
-              <div>
-                <p style={{ fontSize: 11, color: "#9EA3B0" }}>Success metrics</p>
-                <p style={{ fontSize: 12, fontWeight: 500, color: "#111827" }}>{completedCount} employees retained</p>
-              </div>
-            </div>
-            <button className="w-full transition-colors"
-              style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 0", fontSize: 12, fontWeight: 500, border: "none" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}>
-              View detailed report
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

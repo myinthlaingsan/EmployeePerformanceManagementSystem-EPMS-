@@ -157,7 +157,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
       refetchGoals();
       toast.success(overwrite ? 'Goals replaced successfully!' : 'Template items appended successfully!');
     } catch (err: any) {
-      toast.error(`Failed to apply template: ${err?.data?.message || err?.message || 'Check network/permissions'}`);
+      toast.error('Failed to apply template. Check network/permissions.');
     } finally {
       setIsSubmitting(false);
     }
@@ -245,7 +245,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
       setIsModified(false);
       toast.success('Draft saved successfully!');
     } catch (err: any) {
-      toast.error(`Failed to save draft: ${err?.data?.message || err.message}`);
+      toast.error('Failed to save draft. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -261,7 +261,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
     setShowEditConfirm(false);
     setIsSubmitting(true);
     try { await revertToDraft(goalSet.id).unwrap(); }
-    catch (err: any) { toast.error(`Failed to revert: ${err?.data?.message || err.message}`); }
+    catch (err: any) { toast.error('Failed to revert. Please try again.'); }
     finally { setIsSubmitting(false); }
   };
 
@@ -279,7 +279,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
       await deleteGoalItem(itemId).unwrap();
       setLocalItems(prev => prev.filter(i => i.id !== itemId));
       await refetchGoals();
-    } catch (err: any) { toast.error(err?.data?.message || 'Cannot delete: progress records exist for this goal.'); }
+    } catch (err: any) { toast.error('Cannot delete: progress records exist for this goal.'); }
   };
 
   const handleApprove = async () => {
@@ -293,7 +293,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
       toast.success('Goals approved and locked!');
       const dest = isAdmin || isHR ? '/kpi/manage' : '/kpi/team';
       navigate(isHistoricalCycle ? `${dest}?cycleId=${resolvedCycleId}` : dest);
-    } catch (err: any) { toast.error(`Failed to approve: ${err?.data?.message || err.message}`); }
+    } catch (err: any) { toast.error('Failed to approve. Please try again.'); }
     finally { setIsSubmitting(false); }
   };
 

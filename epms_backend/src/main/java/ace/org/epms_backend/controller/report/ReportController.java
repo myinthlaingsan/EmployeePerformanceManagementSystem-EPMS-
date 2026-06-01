@@ -187,6 +187,18 @@ public class ReportController {
         return createDownloadResponse(reportContent, "PIP_Tracking_Report", format);
     }
 
+    // IDP Tracking
+    @GetMapping("/idp-tracking")
+    public ResponseEntity<ApiResponse<IdpTrackingReportDTO>> getIdpTrackingReport() {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getIdpTrackingReport()));
+    }
+
+    @GetMapping("/idp-tracking/download")
+    public ResponseEntity<byte[]> downloadIdpTrackingReport(@RequestParam(defaultValue = "pdf") String format) {
+        byte[] reportContent = reportService.exportIdpTrackingReport(format);
+        return createDownloadResponse(reportContent, "IDP_Tracking_Report", format);
+    }
+
     // Audit Trail
     @GetMapping("/audit-trail")
     public ResponseEntity<ApiResponse<List<AuditTrailReportDTO>>> getAuditTrailReport(

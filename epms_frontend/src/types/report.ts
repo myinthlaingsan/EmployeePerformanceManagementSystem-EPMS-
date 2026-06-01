@@ -46,9 +46,27 @@ export interface PipDetailDTO {
 
 export interface PipTrackingReportDTO {
   totalActivePip: number;
+  completedPip?: number;
   successfulCount: number;
   failedCount: number;
   details: PipDetailDTO[];
+  pipDetails?: PipDetailDTO[];
+}
+
+export interface IdpDetailDTO {
+  employeeName: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  developmentGoals: string;
+  progressUpdate: string;
+  mentorFeedback: string;
+}
+
+export interface IdpTrackingReportDTO {
+  totalActiveIDP: number;
+  completedIDP: number;
+  idpDetails: IdpDetailDTO[];
 }
 
 export interface AuditTrailReportDTO {

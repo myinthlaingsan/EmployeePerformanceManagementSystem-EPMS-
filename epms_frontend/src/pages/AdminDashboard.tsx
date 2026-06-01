@@ -8,7 +8,7 @@ import ChartCard from '../components/dashboard/ChartCard';
 import ActivityFeed from '../components/dashboard/ActivityFeed';
 import QuickActionPanel, { type Action } from '../components/dashboard/QuickActionPanel';
 import { alertColors } from '../constants/dashboardColors';
-import { formatAuditDateTime } from '../utils/timeUtils';
+import { formatAuditDateTime, formatAuditDateValue} from '../utils/timeUtils';
 
 const PIE_COLORS = ['#639922', '#E24B4A', '#BA7517'];
 
@@ -111,11 +111,11 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <span style={{ fontSize: 11, color: "#9EA3B0", display: "block", marginBottom: 4 }}>Start date</span>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{data.cycleStartDate}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{formatAuditDateValue(data.cycleStartDate)}</span>
             </div>
             <div>
               <span style={{ fontSize: 11, color: "#9EA3B0", display: "block", marginBottom: 4 }}>End date</span>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{data.cycleEndDate}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{formatAuditDateValue(data.cycleEndDate)}</span>
             </div>
           </div>
         </div>

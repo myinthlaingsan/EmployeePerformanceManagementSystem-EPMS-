@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
   ArrowLeft,
   Briefcase,
   Calendar,
+  ChevronDown,
   CheckCircle2,
   Clock,
   Mail,
@@ -16,6 +17,8 @@ import {
 import { useGetEmployeeByIdQuery } from "../../features/employee/employeeapi";
 import {
   useGetActiveCycleQuery,
+  useGetAppraisalsByCycleQuery,
+  useGetCyclesQuery,
   useGetAppraisalByEmployeeAndCycleQuery,
   useGetScoreBreakdownQuery,
 } from "../../features/appraisal/appraisalApi";
@@ -94,17 +97,58 @@ const EmployeeProfileView = () => {
   const { data: employee, isLoading: isEmployeeLoading, error: employeeError } =
     useGetEmployeeByIdQuery(employeeId, { skip: !employeeId });
   const { data: activeCycle } = useGetActiveCycleQuery();
-  const activeCycleId = activeCycle?.cycleId;
+  const { data: allCycles = [] } = useGetCyclesQuery();
+
+  // Sorted cycles, most recent first
+  const sortedCycles = useMemo(
+    () => [...allCycles].sort((a, b) => b.cycleId - a.cycleId),
+    [allCycles],
+  );
+
+  const [selectedCycleId, setSelectedCycleId] = useState<number | undefined>(undefined);
+
+  // Default to active cycle when data loads
+  useEffect(() => {
+    if (selectedCycleId === undefined) {
+      if (activeCycle?.cycleId) {
+        setSelectedCycleId(activeCycle.cycleId);
+        return;
+      }
+      if (sortedCycles && sortedCycles.length > 0) {
+        setSelectedCycleId(sortedCycles[0].cycleId);
+      }
+    }
+  }, [activeCycle?.cycleId, selectedCycleId, sortedCycles]);
+
+  const selectedCycle = sortedCycles.find((c) => c.cycleId === selectedCycleId);
+  const isActiveCycle = selectedCycleId === activeCycle?.cycleId;
 
   const {
     data: appraisal,
     isLoading: isAppraisalLoading,
     error: appraisalError,
   } = useGetAppraisalByEmployeeAndCycleQuery(
-    { employeeId, cycleId: activeCycleId ?? 0 },
-    { skip: !employeeId || !activeCycleId },
+    { employeeId, cycleId: selectedCycleId ?? 0 },
+    { skip: !employeeId || !selectedCycleId },
   );
-  const appraisalId = appraisal?.appraisalId ?? appraisal?.id;
+  const directAppraisalId = appraisal?.appraisalId ?? appraisal?.id;
+
+  const { data: cycleAppraisals = [], isLoading: isCycleAppraisalsLoading } = useGetAppraisalsByCycleQuery(
+    selectedCycleId ?? 0,
+    { skip: !employeeId || !selectedCycleId || !!directAppraisalId },
+  );
+
+  const cycleAppraisal = useMemo(
+    () =>
+      cycleAppraisals.find((item: any) =>
+        Number(item.employeeId ?? item.employee?.id) === employeeId,
+      ),
+    [cycleAppraisals, employeeId],
+  );
+
+  const resolvedAppraisal = appraisal ?? cycleAppraisal;
+  const appraisalId = directAppraisalId ?? cycleAppraisal?.appraisalId ?? cycleAppraisal?.id;
+  const isAppraisalLookupLoading = isAppraisalLoading || (!directAppraisalId && isCycleAppraisalsLoading);
 
   const { data: scoreBreakdown, isLoading: isScoreLoading } = useGetScoreBreakdownQuery(
     String(appraisalId),
@@ -112,8 +156,8 @@ const EmployeeProfileView = () => {
   );
 
   const { data: goalSetResp, isLoading: isGoalsLoading } = useGetGoalSetByEmployeeQuery(
-    { employeeId, cycleId: activeCycleId ?? 0 },
-    { skip: !employeeId || !activeCycleId },
+    { employeeId, cycleId: selectedCycleId ?? 0 },
+    { skip: !employeeId || !selectedCycleId },
   );
   const goalSet = goalSetResp?.data;
   const goalItems = useMemo<ProfileGoalItem[]>(
@@ -158,6 +202,36 @@ const EmployeeProfileView = () => {
       .sort((a, b) => b.value - a.value);
   }, [goalItems]);
 
+  const scoreRows = useMemo(
+    () => [
+      {
+        label: "Key Performance Indicators",
+        raw: scoreBreakdown?.kpiRawScore,
+        weight: scoreBreakdown?.kpiWeight ?? selectedCycle?.kpiWeight,
+        weighted: scoreBreakdown?.kpiWeightedScore,
+      },
+      {
+        label: "Manager Evaluation",
+        raw: scoreBreakdown?.managerRawScore,
+        weight: scoreBreakdown?.managerWeight ?? selectedCycle?.managerWeight,
+        weighted: scoreBreakdown?.managerWeightedScore,
+      },
+      {
+        label: "Self Assessment",
+        raw: scoreBreakdown?.selfRawScore,
+        weight: scoreBreakdown?.selfWeight ?? selectedCycle?.selfWeight,
+        weighted: scoreBreakdown?.selfWeightedScore,
+      },
+      {
+        label: "360 Peer Feedback",
+        raw: scoreBreakdown?.feedbackRawScore,
+        weight: scoreBreakdown?.feedbackWeight ?? selectedCycle?.feedbackWeight,
+        weighted: scoreBreakdown?.feedbackWeightedScore,
+      },
+    ],
+    [scoreBreakdown, selectedCycle],
+  );
+
   if (isEmployeeLoading) {
     return (
       <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>
@@ -175,6 +249,9 @@ const EmployeeProfileView = () => {
   }
 
   const avatarColor = AVATAR_COLORS[(employee.staffName?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length];
+
+  const finalScore = scoreBreakdown?.finalTotalScore ?? resolvedAppraisal?.finalScore ?? goalSet?.score;
+  const finalGrade = scoreBreakdown?.finalGrade ?? resolvedAppraisal?.finalGrade;
 
   return (
     <div className="space-y-4 pb-8">
@@ -259,58 +336,182 @@ const EmployeeProfileView = () => {
           </div>
         </div>
 
-        <div style={{ background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: 16 }} className="w-full lg:w-56">
-          <p style={{ fontSize: 10, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Active cycle score
-          </p>
-          <div style={{ fontSize: 34, fontWeight: 500, color: "#1A56DB", lineHeight: 1, marginTop: 8 }}>
-            {scoreBreakdown?.finalTotalScore?.toFixed(1) ?? goalSet?.score?.toFixed(1) ?? "--"}
+        {/* Score + Cycle Selector panel */}
+        <div style={{ background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 12, padding: 16 }} className="w-full lg:w-64 shrink-0 space-y-3">
+          {/* Cycle dropdown */}
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+              Appraisal Cycle
+            </p>
+            <div style={{ position: "relative" }}>
+              <select
+                id="cycle-select"
+                value={selectedCycleId ?? ""}
+                onChange={(e) => setSelectedCycleId(Number(e.target.value))}
+                style={{
+                  width: "100%",
+                  appearance: "none",
+                  background: "#FFFFFF",
+                  border: "0.5px solid #D1D5E0",
+                  borderRadius: 8,
+                  padding: "7px 30px 7px 10px",
+                  fontSize: 12,
+                  color: "#111827",
+                  cursor: "pointer",
+                  outline: "none",
+                }}
+              >
+                {sortedCycles.length === 0 && (
+                  <option value="">No cycles available</option>
+                )}
+                {sortedCycles.map((c) => (
+                  <option key={c.cycleId} value={c.cycleId}>
+                    {c.cycleName} {c.cycleId === activeCycle?.cycleId ? "(active)" : ""}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={13}
+                style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", color: "#9EA3B0", pointerEvents: "none" }}
+              />
+            </div>
+            {isActiveCycle && (
+              <p style={{ fontSize: 10, color: "#27500A", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#27500A", display: "inline-block" }} />
+                Current active cycle
+              </p>
+            )}
+            {!isActiveCycle && selectedCycle && (
+              <p style={{ fontSize: 10, color: "#9EA3B0", marginTop: 4 }}>
+                Historical cycle / {selectedCycle.status}
+              </p>
+            )}
           </div>
-          <div className="mt-2 inline-flex items-center gap-1" style={{ fontSize: 12, color: "#27500A" }}>
-            <TrendingUp size={12} aria-hidden="true" />
-            {scoreBreakdown?.finalGrade ?? "Grade pending"}
+
+          {/* Score display */}
+          <div style={{ borderTop: "0.5px solid #E4E6EC", paddingTop: 12 }}>
+            <p style={{ fontSize: 10, fontWeight: 500, color: "#9EA3B0", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Cycle Score
+            </p>
+            <div style={{ fontSize: 34, fontWeight: 500, color: "#1A56DB", lineHeight: 1, marginTop: 8 }}>
+              {isScoreLoading || isAppraisalLookupLoading
+                ? "..."
+                : finalScore != null
+                  ? Number(finalScore).toFixed(1)
+                  : "--"}
+            </div>
+            <div className="mt-2 inline-flex items-center gap-1" style={{ fontSize: 12, color: "#27500A" }}>
+              <TrendingUp size={12} aria-hidden="true" />
+              {finalGrade ?? "Grade pending"}
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Score breakdown cards */}
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
         <ScoreCard
           label="Self assessment"
           raw={scoreBreakdown?.selfRawScore}
           weighted={scoreBreakdown?.selfWeightedScore}
-          loading={isScoreLoading || isAppraisalLoading}
+          weight={scoreBreakdown?.selfWeight ?? selectedCycle?.selfWeight}
+          loading={isScoreLoading || isAppraisalLookupLoading}
         />
         <ScoreCard
           label="Manager evaluation"
           raw={scoreBreakdown?.managerRawScore}
           weighted={scoreBreakdown?.managerWeightedScore}
-          loading={isScoreLoading || isAppraisalLoading}
+          weight={scoreBreakdown?.managerWeight ?? selectedCycle?.managerWeight}
+          loading={isScoreLoading || isAppraisalLookupLoading}
         />
         <ScoreCard
           label="360 feedback"
           raw={scoreBreakdown?.feedbackRawScore}
           weighted={scoreBreakdown?.feedbackWeightedScore}
-          loading={isScoreLoading || isAppraisalLoading}
+          weight={scoreBreakdown?.feedbackWeight ?? selectedCycle?.feedbackWeight}
+          loading={isScoreLoading || isAppraisalLookupLoading}
         />
         <ScoreCard
           label="KPI"
           raw={scoreBreakdown?.kpiRawScore}
           weighted={scoreBreakdown?.kpiWeightedScore}
-          loading={isScoreLoading || isAppraisalLoading}
+          weight={scoreBreakdown?.kpiWeight ?? selectedCycle?.kpiWeight}
+          loading={isScoreLoading || isAppraisalLookupLoading}
         />
       </div>
 
-      {appraisalError && (
+      {appraisalError && !cycleAppraisal && (
         <div style={{ ...cardStyle, padding: "12px 14px", background: "#FAEEDA", borderColor: "#F0D4A4" }}>
           <p style={{ fontSize: 12, color: "#633806" }}>
-            No appraisal data is available for this employee in the active cycle.
+            No appraisal data is available for this employee in the selected cycle.
           </p>
         </div>
       )}
 
+      <div style={{ background: "#FFFFFF", border: "0.5px solid #E4E6EC", borderRadius: 12, overflow: "hidden" }}>
+        <div className="flex items-center gap-2" style={{ padding: "12px 18px", borderBottom: "0.5px solid #E4E6EC", background: "#FAFBFF" }}>
+          <Target size={14} style={{ color: "#1A56DB" }} />
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>Weighted Score Breakdown</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left" style={{ minWidth: 560 }}>
+            <thead>
+              <tr style={{ borderBottom: "0.5px solid #E4E6EC" }}>
+                {["Performance Category", "Raw Score (1-5)", "Weightage", "Weighted Score"].map((header, index) => (
+                  <th
+                    key={header}
+                    style={{
+                      padding: "10px 18px",
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color: "#9EA3B0",
+                      textTransform: "uppercase",
+                      letterSpacing: 0.5,
+                      textAlign: index > 0 ? "center" : "left",
+                    }}
+                  >
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {scoreRows.map((row) => (
+                <tr key={row.label} style={{ borderBottom: "0.5px solid #F0F2F6" }} className="hover:bg-[#FAFBFF] transition-colors">
+                  <td style={{ padding: "10px 18px", fontSize: 13, color: "#111827" }}>{row.label}</td>
+                  <td style={{ padding: "10px 18px", textAlign: "center", fontSize: 12, fontWeight: 500, color: "#5A6070" }}>
+                    {isScoreLoading || isAppraisalLookupLoading ? "..." : row.raw !== undefined ? Number(row.raw).toFixed(2) : "--"}
+                  </td>
+                  <td style={{ padding: "10px 18px", textAlign: "center", fontSize: 12, color: "#9EA3B0" }}>
+                    {row.weight !== undefined ? `${Number(row.weight).toFixed(0)}%` : "--"}
+                  </td>
+                  <td style={{ padding: "10px 18px", textAlign: "center", fontSize: 13, fontWeight: 500, color: "#1A56DB" }}>
+                    {isScoreLoading || isAppraisalLookupLoading ? "..." : row.weighted !== undefined ? Number(row.weighted).toFixed(2) : "--"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: "#111827" }}>
+                <td colSpan={3} style={{ padding: "12px 18px", fontSize: 13, fontWeight: 500, color: "#FFFFFF" }}>
+                  Calculated Performance Total
+                </td>
+                <td style={{ padding: "12px 18px", textAlign: "center", fontSize: 18, fontWeight: 500, color: "#FFFFFF" }}>
+                  {isScoreLoading || isAppraisalLookupLoading
+                    ? "..."
+                    : scoreBreakdown?.finalTotalScore !== undefined
+                      ? Number(scoreBreakdown.finalTotalScore).toFixed(2)
+                      : "--"}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div style={{ ...cardStyle, padding: 16 }}>
-          <SectionHeader title="Active Goals" subtitle={activeCycle?.cycleName || "Current cycle"} />
+          <SectionHeader title="Active Goals" subtitle={selectedCycle?.cycleName || "Selected cycle"} />
           <div className="space-y-3 mt-4">
             {isGoalsLoading ? (
               <p style={{ fontSize: 12, color: "#9EA3B0" }}>Loading goals...</p>
@@ -421,11 +622,13 @@ const ScoreCard = ({
   label,
   raw,
   weighted,
+  weight,
   loading,
 }: {
   label: string;
   raw?: number;
   weighted?: number;
+  weight?: number;
   loading: boolean;
 }) => (
   <div style={{ ...cardStyle, padding: "14px 16px" }}>
@@ -440,9 +643,16 @@ const ScoreCard = ({
     <p style={{ fontSize: 22, fontWeight: 500, color: "#111827", marginTop: 10 }}>
       {loading ? "..." : raw !== undefined ? raw.toFixed(1) : "--"}
     </p>
-    <p style={{ fontSize: 11, color: "#9EA3B0", marginTop: 2 }}>
-      Weighted: {weighted !== undefined ? weighted.toFixed(1) : "--"}
-    </p>
+    <div className="flex items-center justify-between mt-1">
+      <p style={{ fontSize: 11, color: "#9EA3B0" }}>
+        Weighted: {weighted !== undefined ? weighted.toFixed(1) : "--"}
+      </p>
+      {weight !== undefined && (
+        <span style={{ fontSize: 10, color: "#9EA3B0", background: "#F5F6F8", border: "0.5px solid #E4E6EC", borderRadius: 10, padding: "1px 6px" }}>
+          {Number(weight).toFixed(0)}%
+        </span>
+      )}
+    </div>
   </div>
 );
 

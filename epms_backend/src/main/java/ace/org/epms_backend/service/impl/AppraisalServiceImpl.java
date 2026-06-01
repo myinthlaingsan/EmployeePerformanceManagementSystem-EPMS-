@@ -504,6 +504,19 @@ public class AppraisalServiceImpl implements AppraisalService {
         return responses;
     }
 
+    @Override
+    public AppraisalResponse getByEmployeeAndCycle(Long employeeId, Long cycleId) {
+        Appraisal appraisal = appraisalRepo.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found for employee " + employeeId + " in cycle " + cycleId));
+        AppraisalResponse response = appraisalMapper.toResponse(appraisal);
+        summaryRepo.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
+                .ifPresent(s -> {
+                    response.setFinalScore(s.getTotalScore());
+                    response.setFinalGrade(s.getFinalGrade() != null ? s.getFinalGrade().name() : null);
+                });
+        return response;
+    }
+
     private final String UPLOAD_DIR = "uploads/signatures/";
 
     private String saveSignatureFile(MultipartFile file, Long appraisalId, String type) throws java.io.IOException {

@@ -41,7 +41,7 @@ const BulkAssignModal: React.FC<BulkAssignModalProps> = ({ selectedEmployeeIds, 
       setAssignmentResult(response.data);
     } catch (err: any) {
       console.error('Bulk assignment failed:', err);
-      alert(`Failed to assign: ${err?.data?.message || 'Network error'}`);
+      alert('Failed to assign. Please try again.');
     }
   };
 

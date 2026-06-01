@@ -78,11 +78,14 @@ const AppraisalList: React.FC = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [departmentFilter, setDepartmentFilter] = React.useState('ALL');
   const [statusFilter, setStatusFilter] = React.useState('ALL');
+  const [participantPage, setParticipantPage] = React.useState(1);
+  const participantPageSize = 10;
 
   const resetParticipantFilters = () => {
     setSearchTerm('');
     setDepartmentFilter('ALL');
     setStatusFilter('ALL');
+    setParticipantPage(1);
   };
 
   const [confirmModal, setConfirmModal] = React.useState<{
@@ -252,6 +255,13 @@ const AppraisalList: React.FC = () => {
         departmentFilter !== 'ALL' ||
         statusFilter !== 'ALL';
 
+      const participantTotalPages = Math.max(1, Math.ceil(filteredAppraisalsByCycle.length / participantPageSize));
+      const currentParticipantPage = Math.min(participantPage, participantTotalPages);
+      const paginatedAppraisalsByCycle = filteredAppraisalsByCycle.slice(
+        (currentParticipantPage - 1) * participantPageSize,
+        currentParticipantPage * participantPageSize
+      );
+
       return (
         <div className="space-y-4">
           {/* Breadcrumb & actions */}
@@ -281,7 +291,7 @@ const AppraisalList: React.FC = () => {
                       await sendReminders(Number(selectedCycleId)).unwrap();
                       toast.success("Reminder notifications sent successfully!");
                     } catch (err: any) {
-                      const errorMsg = err?.data?.message || "Failed to send reminders.";
+                      const errorMsg = "Failed to send reminders.";
                       toast.error(`Error: ${errorMsg}`);
                     }
                   }
@@ -305,7 +315,7 @@ const AppraisalList: React.FC = () => {
                           setSelectedCycleId(null);
                           resetParticipantFilters();
                         } catch (err: any) {
-                          const errorMsg = err?.data?.message || 'Failed to delete cycle';
+                          const errorMsg = 'Failed to delete cycle';
                           toast.error(`Error: ${errorMsg}`);
                         }
                       }
@@ -323,7 +333,7 @@ const AppraisalList: React.FC = () => {
                       await activateCycle(Number(selectedCycleId)).unwrap();
                       toast.success('Appraisal Cycle activated successfully!');
                     } catch (err: any) {
-                      const errorMsg = err?.data?.message || 'Failed to activate cycle';
+                      const errorMsg = 'Failed to activate cycle';
                       toast.error(`Error: ${errorMsg}`);
                     }
                   }}
@@ -466,7 +476,7 @@ const AppraisalList: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredAppraisalsByCycle.map((appraisal: any, idx: number, arr: any[]) => {
+                    paginatedAppraisalsByCycle.map((appraisal: any, idx: number, arr: any[]) => {
                     const s = getStatusStyle(appraisal.status);
                     return (
                       <tr key={appraisal.appraisalId} style={{ borderBottom: idx < arr.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
@@ -498,6 +508,73 @@ const AppraisalList: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            {/* Pagination Controls */}
+            {participantTotalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-[#E4E6EC] bg-white px-4 py-3 sm:px-6">
+                <div className="flex flex-1 justify-between sm:hidden">
+                  <button
+                    disabled={currentParticipantPage === 1}
+                    onClick={() => setParticipantPage(prev => Math.max(prev - 1, 1))}
+                    className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    disabled={currentParticipantPage === participantTotalPages}
+                    onClick={() => setParticipantPage(prev => Math.min(prev + 1, participantTotalPages))}
+                    className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500">
+                      Showing <span className="font-semibold text-gray-700">{((currentParticipantPage - 1) * participantPageSize) + 1}</span> to <span className="font-semibold text-gray-700">{Math.min(currentParticipantPage * participantPageSize, filteredAppraisalsByCycle.length)}</span> of{' '}
+                      <span className="font-semibold text-gray-700">{filteredAppraisalsByCycle.length}</span> results
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="isolate inline-flex -space-x-px rounded-md shadow-xs" aria-label="Pagination">
+                      <button
+                        disabled={currentParticipantPage === 1}
+                        onClick={() => setParticipantPage(prev => Math.max(prev - 1, 1))}
+                        className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="sr-only">Previous</span>
+                        <ChevronRight size={16} className="rotate-180" />
+                      </button>
+                      {Array.from({ length: participantTotalPages }).map((_, index) => {
+                        const pageNum = index + 1;
+                        const isCurrent = pageNum === currentParticipantPage;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setParticipantPage(pageNum)}
+                            aria-current={isCurrent ? "page" : undefined}
+                            className={`relative inline-flex items-center px-4 py-2 text-xs font-semibold focus:z-20 focus:outline-offset-0 ${
+                              isCurrent
+                                ? "z-10 bg-indigo-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                                : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      <button
+                        disabled={currentParticipantPage === participantTotalPages}
+                        onClick={() => setParticipantPage(prev => Math.min(prev + 1, participantTotalPages))}
+                        className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="sr-only">Next</span>
+                        <ChevronRight size={16} />
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -533,7 +610,7 @@ const AppraisalList: React.FC = () => {
                               await deleteCycle(cycle.cycleId).unwrap();
                               toast.success('Appraisal Cycle deleted successfully!');
                             } catch (err: any) {
-                              const errorMsg = err?.data?.message || 'Failed to delete cycle';
+                              const errorMsg = 'Failed to delete cycle';
                               toast.error(`Error: ${errorMsg}`);
                             }
                           }
@@ -628,9 +705,6 @@ const AppraisalList: React.FC = () => {
                   </div>
                   {form && <span style={{ fontSize: 11, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 20, padding: '2px 8px' }}>Ready</span>}
                 </div>
-                <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 14 }}>
-                  {form ? `${form.categories?.length || 0} sections configured.` : `No ${label.toLowerCase()} template designed.`}
-                </p>
                 <div className="space-y-2">
                   {form ? (
                     <>
@@ -744,7 +818,7 @@ const AppraisalList: React.FC = () => {
                   <div className="flex items-center justify-between" style={{ marginTop: 12 }}>
                     <Can permission="APPRAISAL_FORM_DESIGN">
                       {!set.isAssigned ? (
-                        <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error(err?.data?.message || 'Delete failed'); } } }); }}
+                        <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error('Delete failed.'); } } }); }}
                           style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-danger-text transition-colors">
                           <Trash2 size={13} />
                         </button>

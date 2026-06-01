@@ -169,7 +169,7 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
       );
       await onSuccess();
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to trigger midcycle change');
+      toast.error('Failed to trigger midcycle change.');
     }
   };
 

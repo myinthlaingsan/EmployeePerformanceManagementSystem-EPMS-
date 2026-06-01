@@ -20,8 +20,11 @@ import ace.org.epms_backend.model.feedback360.FeedbackResponse;
 import ace.org.epms_backend.model.feedback360.FeedbackRequest;
 import ace.org.epms_backend.model.feedback360.FeedbackSummary;
 import ace.org.epms_backend.model.kpi.*;
+import ace.org.epms_backend.model.idp.DevelopmentGoal;
+import ace.org.epms_backend.model.idp.DevelopmentPlan;
 import ace.org.epms_backend.model.pip.PipRecord;
 import ace.org.epms_backend.model.pip.PipObjective;
+import ace.org.epms_backend.enums.IdpStatus;
 import ace.org.epms_backend.enums.PipStatus;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.repository.employee.EmployeeTeamRepository;
@@ -61,6 +64,8 @@ public class ReportServiceImpl implements ReportService {
     private final FeedbackRequestRepository feedbackRequestRepository;
     private final PipRecordRepository pipRecordRepository;
     private final PipProgressLogRepository pipProgressLogRepository;
+    private final DevelopmentPlanRepository developmentPlanRepository;
+    private final DevelopmentProgressUpdateRepository developmentProgressUpdateRepository;
     private final AuditLogRepository auditLogRepository;
     private final EmployeeRepository employeeRepository;
     private final KpiFinalScoreRepository kpiFinalScoreRepository;
@@ -496,6 +501,50 @@ public class ReportServiceImpl implements ReportService {
                 .totalActivePip(active)
                 .completedPip(completed)
                 .pipDetails(details)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public IdpTrackingReportDTO getIdpTrackingReport() {
+        List<DevelopmentPlan> plans = developmentPlanRepository.findAll();
+        int active = (int) plans.stream().filter(plan -> plan.getStatus() == IdpStatus.ACTIVE).count();
+        int completed = (int) plans.stream().filter(plan -> plan.getStatus() == IdpStatus.COMPLETED).count();
+
+        List<IdpDetailDTO> details = plans.stream().map(plan -> {
+            List<DevelopmentGoal> goals = plan.getGoals() != null ? plan.getGoals() : Collections.emptyList();
+
+            String developmentGoals = goals.stream()
+                    .map(goal -> goal.getTitle() + " (" + goal.getStatus().name() + ")")
+                    .collect(Collectors.joining("\n"));
+
+            String progressUpdate = goals.stream()
+                    .flatMap(goal -> developmentProgressUpdateRepository
+                            .findByGoal_GoalIdOrderByCreatedAtDesc(goal.getGoalId()).stream())
+                    .map(update -> update.getGoal().getTitle() + ": " + update.getProgressPercent() + "% - "
+                            + update.getProgressNote())
+                    .collect(Collectors.joining("\n"));
+
+            String mentorFeedback = goals.stream()
+                    .map(DevelopmentGoal::getManagerComment)
+                    .filter(comment -> comment != null && !comment.isBlank())
+                    .collect(Collectors.joining("\n"));
+
+            return IdpDetailDTO.builder()
+                    .employeeName(plan.getEmployee().getStaffName())
+                    .startDate(plan.getStartDate() != null ? plan.getStartDate().toString() : "N/A")
+                    .endDate(plan.getEndDate() != null ? plan.getEndDate().toString() : "N/A")
+                    .status(plan.getStatus().name())
+                    .developmentGoals(developmentGoals)
+                    .progressUpdate(progressUpdate)
+                    .mentorFeedback(mentorFeedback)
+                    .build();
+        }).collect(Collectors.toList());
+
+        return IdpTrackingReportDTO.builder()
+                .totalActiveIDP(active)
+                .completedIDP(completed)
+                .idpDetails(details)
                 .build();
     }
 
@@ -967,6 +1016,16 @@ public class ReportServiceImpl implements ReportService {
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("reportTitle", "PIP Tracking Report");
         String jrxmlPath = "reports/pip_tracking_report.jrxml";
+        return generateReport(jrxmlPath, parameters, List.of(data), format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportIdpTrackingReport(String format) {
+        IdpTrackingReportDTO data = getIdpTrackingReport();
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "IDP Tracking Report");
+        String jrxmlPath = "reports/idp_tracking_report.jrxml";
         return generateReport(jrxmlPath, parameters, List.of(data), format);
     }
 

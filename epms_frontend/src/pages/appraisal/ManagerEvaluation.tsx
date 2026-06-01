@@ -96,7 +96,7 @@ const ManagerEvaluation = () => {
       await saveAnswers({ id: formData.evaluationId, answers: buildPayload() }).unwrap();
       await saveManagerDraft({ evaluationId: formData.evaluationId, finalComment: managerComment }).unwrap();
       toast.success('Draft saved!');
-    } catch (err: any) { toast.error(err?.data?.message || 'Save failed'); }
+    } catch (err: any) { toast.error('Save failed.'); }
   };
 
   const handleSubmit = async () => {
@@ -107,7 +107,7 @@ const ManagerEvaluation = () => {
       await submitEvaluation(formData.evaluationId).unwrap();
       toast.success('Manager evaluation submitted!');
       navigate('/appraisal');
-    } catch (err: any) { toast.error(err?.data?.message || 'Operation failed.'); }
+    } catch (err: any) { toast.error('Operation failed.'); }
   };
 
   if (isLoading) return (
@@ -156,7 +156,7 @@ const ManagerEvaluation = () => {
                   fileName: `Manager_Evaluation_${formData.employeeName ?? 'Form'}.pdf`,
                 }).unwrap();
               } catch (err: any) {
-                toast.error(err?.data?.message || 'Export failed');
+                toast.error('Export failed.');
               }
             }}
             disabled={(formData.appraisalStatus !== 'HR_APPROVED' && formData.appraisalStatus !== 'FINALIZED' && formData.appraisalStatus !== 'ARCHIVED') || isExporting}

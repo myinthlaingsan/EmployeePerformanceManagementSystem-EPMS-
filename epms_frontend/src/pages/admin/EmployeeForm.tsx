@@ -101,7 +101,7 @@ const EmployeeForm = () => {
       navigate("/employees");
     } catch (err: any) {
       console.error("Failed to save employee", err);
-      toast.error(err?.data?.message || "Failed to save employee. Please check all required fields.");
+      toast.error("Failed to save employee. Please check all required fields.");
     }
   };
 

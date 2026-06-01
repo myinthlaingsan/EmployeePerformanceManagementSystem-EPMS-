@@ -440,7 +440,7 @@ const MeetingPage = () => {
         followUpDate: "",
       });
     } catch (err: any) {
-      toast.error(err.data?.message || "Failed to save meeting");
+      toast.error("Failed to save meeting.");
     }
   };
 
@@ -463,7 +463,7 @@ const MeetingPage = () => {
     try {
       await publishMeeting(id).unwrap();
     } catch (err: any) {
-      alert(err.data?.message || "Failed to publish meeting");
+      alert("Failed to publish meeting.");
     }
   };
 
@@ -473,7 +473,7 @@ const MeetingPage = () => {
       await deleteMeeting(meetingToDelete).unwrap();
       setMeetingToDelete(null);
     } catch (err: any) {
-      toast.error(err.data?.message || "Failed to delete meeting");
+      toast.error("Failed to delete meeting.");
     }
   };
 

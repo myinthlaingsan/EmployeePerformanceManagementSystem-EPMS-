@@ -143,7 +143,7 @@ const AppraisalCycleCreate: React.FC = () => {
       toast.success('Appraisal Cycle created!');
       navigate('/appraisal', { state: { activeTab: 'forms', expandedCycle: formData.cycleName } });
     } catch (err: any) {
-      toast.error(`Error: ${err?.data?.message || err?.message || 'Unknown error'}`);
+      toast.error('Error: Failed to create cycle.');
     }
   };
 
