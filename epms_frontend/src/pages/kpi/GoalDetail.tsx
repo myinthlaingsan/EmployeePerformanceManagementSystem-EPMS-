@@ -584,7 +584,7 @@ const GoalDetail: React.FC = () => {
                 try {
                   await revertGoal(goalSet!.id).unwrap();
                   toast.success('Goal set reverted to draft.');
-                  await refetch();
+                  await Promise.all([refetch(), refetchMidcycle()]);
                 } catch (err: any) {
                   toast.error(err?.data?.message || 'Failed to revert goal set');
                 }
