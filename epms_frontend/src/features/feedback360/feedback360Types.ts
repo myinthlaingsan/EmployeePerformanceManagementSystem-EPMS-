@@ -78,9 +78,11 @@ export interface FeedbackRequestResponse {
   targetUserId:             number;
   targetUserName:           string;
   targetDepartmentName?:    string;
+  targetLevelCode?:         string;
   evaluatorId:              number;
   evaluatorName:            string;
   evaluatorDepartmentName?: string;
+  evaluatorLevelCode?:      string;
   relationship:             FeedbackRelationship;
   status:                   FeedbackStatus;
   isAnonymous:              boolean;

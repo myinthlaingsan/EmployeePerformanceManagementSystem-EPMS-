@@ -57,6 +57,10 @@ const Feedback360AdminPage = () => {
 
   const { data: allEmployees = [] } = useGetAllEmployeesQuery();
   const [selectedManagerId, setSelectedManagerId] = useState<string>('');
+  const [filterName, setFilterName] = useState<string>('');
+  const [filterDepartment, setFilterDepartment] = useState<string>('');
+  const [filterLevel, setFilterLevel] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
 
   const cycleLocked = !!(summaries && summaries.length > 0 && summaries.every((s) => s.isFinalized));
   const selectedCycle = cycles.find((c) => c.cycleId === cycleId);
@@ -96,7 +100,7 @@ const Feedback360AdminPage = () => {
 
   useEffect(() => {
     setAssignmentPage(1);
-  }, [cycleId, hasGenerated, showPreview, savedRequests.length, previewData?.length]);
+  }, [cycleId, hasGenerated, showPreview, savedRequests.length, previewData?.length, filterDepartment, filterLevel, filterStatus]);
 
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -298,12 +302,67 @@ const Feedback360AdminPage = () => {
           {/* Request table — preview or saved */}
           {(showPreview || hasGenerated) && (() => {
             const rows: FeedbackRequestResponse[] = hasGenerated ? savedRequests : (previewData ?? []);
-            const totalPages = Math.max(1, Math.ceil(rows.length / assignmentPageSize));
+            
+            const filteredRows = rows.filter(r => {
+              const matchName = !filterName || 
+                r.targetUserName?.toLowerCase().includes(filterName.toLowerCase()) || 
+                r.evaluatorName?.toLowerCase().includes(filterName.toLowerCase());
+              const matchDept = !filterDepartment || r.targetDepartmentName === filterDepartment;
+              const matchLevel = !filterLevel || r.targetLevelCode === filterLevel;
+              const matchStatus = !filterStatus || r.status === filterStatus;
+              return matchName && matchDept && matchLevel && matchStatus;
+            });
+
+            const totalPages = Math.max(1, Math.ceil(filteredRows.length / assignmentPageSize));
             const currentPage = Math.min(assignmentPage, totalPages);
-            const pagedRows = rows.slice((currentPage - 1) * assignmentPageSize, currentPage * assignmentPageSize);
+            const pagedRows = filteredRows.slice((currentPage - 1) * assignmentPageSize, currentPage * assignmentPageSize);
             return (
               <div style={panel}>
                 <p style={sectionTitle}>{hasGenerated ? 'Generated Assignments' : 'Preview — Assignments'}</p>
+                
+                {/* Filters */}
+                {rows.length > 0 && (
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                    <input
+                      type="text"
+                      placeholder="Search by name..."
+                      style={{ ...inputStyle, width: 220 }}
+                      value={filterName}
+                      onChange={(e) => setFilterName(e.target.value)}
+                    />
+                    <select
+                      style={{ ...inputStyle, width: 220 }}
+                      value={filterDepartment}
+                      onChange={(e) => setFilterDepartment(e.target.value)}
+                    >
+                      <option value="">All Departments</option>
+                      {Array.from(new Set(rows.map(r => r.targetDepartmentName).filter(Boolean))).sort().map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                    <select
+                      style={{ ...inputStyle, width: 220 }}
+                      value={filterLevel}
+                      onChange={(e) => setFilterLevel(e.target.value)}
+                    >
+                      <option value="">All Levels</option>
+                      {Array.from(new Set(rows.map(r => r.targetLevelCode).filter(Boolean))).sort().map(lvl => (
+                        <option key={lvl} value={lvl}>{lvl}</option>
+                      ))}
+                    </select>
+                    <select
+                      style={{ ...inputStyle, width: 220 }}
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                    >
+                      <option value="">All Status</option>
+                      {['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].map(status => (
+                        <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {!hasGenerated && rows.length > 0 && (
                   <div style={{ background: '#FFFBEB', border: '0.5px solid #FDE68A', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#92400E', marginBottom: 12 }}>
                     Preview mode — click <strong>Generate Requests</strong> to persist these rows. Reassign and Cancel are disabled until then.
@@ -344,7 +403,7 @@ const Feedback360AdminPage = () => {
                     <PaginationControls
                       currentPage={currentPage}
                       pageSize={assignmentPageSize}
-                      totalItems={rows.length}
+                      totalItems={filteredRows.length}
                       onPageChange={setAssignmentPage}
                       onPageSizeChange={(nextPageSize) => {
                         setAssignmentPageSize(nextPageSize);

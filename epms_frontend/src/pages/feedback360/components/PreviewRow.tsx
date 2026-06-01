@@ -50,9 +50,23 @@ const PreviewRow = ({ req, cycleLocked, onRegenerate, onCancel, onReassign, onRe
       borderBottom: '0.5px solid #F0F2F8',
       background: req.isReciprocalFallback ? '#FFFBEB' : 'transparent',
     }}>
-      <td style={{ padding: '8px 10px', fontWeight: 500, color: '#111827' }}>{req.targetUserName}</td>
-      <td style={{ padding: '8px 10px', color: shouldHide ? '#9EA3B0' : '#374151', fontStyle: shouldHide ? 'italic' : 'normal' }}>
-        {shouldHide ? 'Anonymous' : req.evaluatorName}
+      <td style={{ padding: '8px 10px' }}>
+        <div style={{ fontWeight: 500, color: '#111827' }}>{req.targetUserName}</div>
+        <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+          {req.targetLevelCode && req.targetLevelCode !== 'N/A' ? `${req.targetLevelCode} • ` : ''}
+          {req.targetDepartmentName || 'No Dept'}
+        </div>
+      </td>
+      <td style={{ padding: '8px 10px' }}>
+        <div style={{ color: shouldHide ? '#9EA3B0' : '#374151', fontStyle: shouldHide ? 'italic' : 'normal', fontWeight: 500 }}>
+          {shouldHide ? 'Anonymous' : req.evaluatorName}
+        </div>
+        {!shouldHide && (
+          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+            {req.evaluatorLevelCode && req.evaluatorLevelCode !== 'N/A' ? `${req.evaluatorLevelCode} • ` : ''}
+            {req.evaluatorDepartmentName || 'No Dept'}
+          </div>
+        )}
       </td>
       <td style={{ padding: '8px 10px' }}><RelBadge rel={req.relationship} /></td>
       <td style={{ padding: '8px 10px' }}><StatusBadge status={req.status} /></td>
