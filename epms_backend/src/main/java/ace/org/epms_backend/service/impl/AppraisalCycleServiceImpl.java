@@ -17,6 +17,7 @@ import ace.org.epms_backend.repository.KpiHistoryLogRepository;
 import ace.org.epms_backend.repository.appraisal.FinancialYearRepository;
 import ace.org.epms_backend.repository.ScoringWeightRepository;
 import ace.org.epms_backend.service.AppraisalCycleService;
+import ace.org.epms_backend.service.kpi.KpiMidcycleService;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.KpiGoalStatus;
 import ace.org.epms_backend.enums.NotificationType;
@@ -46,6 +47,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
     private final AppraisalRepository appraisalRepository;
     private final KpiGoalsRepository kpiGoalsRepository;
     private final KpiHistoryLogRepository kpiHistoryLogRepository;
+    private final KpiMidcycleService kpiMidcycleService;
     private final ace.org.epms_backend.repository.appraisal.AppraisalFormSetRepository appraisalFormSetRepository;
     private final ace.org.epms_backend.service.AppraisalFormService appraisalFormService;
 
@@ -303,6 +305,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         rejectIfArchived(cycle, "close");
 
         int lockedCount = lockDraftAndApprovedGoalSets(id);
+        finalizeMidcycleScoresForCycle(id);
 
         cycle.setIsActive(false);
         cycle.setStatus(CycleStatus.ARCHIVED);
@@ -396,6 +399,19 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
         return goalSets.size();
     }
 
+    private void finalizeMidcycleScoresForCycle(Long cycleId) {
+        List<KpiGoals> goalSets = kpiGoalsRepository.findByCycle_CycleIdAndStatusInAndIsCurrentTrue(
+                cycleId,
+                List.of(KpiGoalStatus.LOCKED, KpiGoalStatus.LOCKED));
+
+        for (KpiGoals goalSet : goalSets) {
+            if (goalSet.getEmployee() == null) {
+                continue;
+            }
+            kpiMidcycleService.finalizeCompositeScore(goalSet.getEmployee().getId(), cycleId);
+        }
+    }
+
     private void checkForActiveCycles(Long excludeCycleId) {
         List<AppraisalCycle> activeCycles = appraisalCycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
         for (AppraisalCycle c : activeCycles) {
@@ -457,6 +473,7 @@ public class AppraisalCycleServiceImpl implements AppraisalCycleService {
 
         // 1.b. Auto-lock DRAFT/APPROVED goal sets when the cycle is archived
         lockDraftAndApprovedGoalSets(cycleId);
+        finalizeMidcycleScoresForCycle(cycleId);
 
         // 2. Find any appraisals that are NOT finalized/archived (incomplete)
         List<Appraisal> incomplete = appraisalRepository.findByCycleIdAndStatusNotIn(

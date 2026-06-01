@@ -195,6 +195,10 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         goalSet.setIsCurrent(false);
         goalsRepository.save(goalSet);
 
+        // Recalculate and persist the current midcycle composite score after closing
+        // the current phase so the score stays up-to-date before the next open phase.
+        calculateCompositeFinalScore(employeeId, cycleId);
+
         KpiGoalPhase newPhase = KpiGoalPhase.builder()
                 .employee(employee)
                 .cycle(cycle)
@@ -275,6 +279,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             .orElseThrow(() -> new NotFoundException("Employee not found"));
 
         Employee currentUser = getCurrentEmployee();
+        Long currentUserId = currentUser != null ? currentUser.getId() : null;
 
         List<KpiGoalPhase> phases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId,
             cycleId);
@@ -382,13 +387,14 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
             .ifPresent(existing -> finalScoreRepository.delete(existing));
 
+        BigDecimal finalCompositeScore = totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP);
         KpiFinalScore composite = KpiFinalScore.builder()
             .employee(employee)
             .goalSet(lastPhase.getGoalSet())
-            .weightedScore(totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP))
-            .totalAchievementPercent(totalAchievementPercentSum.setScale(2, RoundingMode.HALF_UP))
+            .weightedScore(finalCompositeScore)
+            .totalAchievementPercent(finalCompositeScore)
             .calculatedAt(Instant.now())
-            .finalizedBy(currentUser.getId())
+            .finalizedBy(currentUserId)
             .build();
         appraisalRepository.findByEmployeeAndCycleIds(employeeId, cycleId).ifPresent(composite::setAppraisal);
 
@@ -438,6 +444,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
 
         Employee currentUser = getCurrentEmployee();
+        Long currentUserId = currentUser != null ? currentUser.getId() : null;
 
         List<KpiGoalPhase> phases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId,
                 cycleId);
@@ -537,7 +544,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         midcycleScore.setCompositeScore(totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP));
         midcycleScore.setPhaseBreakdown(breakdownBuilder.toString());
         midcycleScore.setCalculatedAt(Instant.now());
-        midcycleScore.setCalculatedBy(currentUser.getId());
+        midcycleScore.setCalculatedBy(currentUserId);
 
         midcycleFinalScoreRepository.save(midcycleScore);
 
@@ -550,7 +557,20 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         KpiGoals currentGoalSet = goalsRepository
                 .findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
-                .orElseThrow(() -> new NotFoundException("Active goal set not found"));
+                .orElse(null);
+
+        if (currentGoalSet == null) {
+            for (KpiGoalPhase phase : phases) {
+                if (phase.getGoalSet() != null) {
+                    currentGoalSet = phase.getGoalSet();
+                    break;
+                }
+            }
+        }
+
+        if (currentGoalSet == null) {
+            throw new NotFoundException("Active goal set not found");
+        }
 
         midcycleKpiScore.setEmployee(employee);
         midcycleKpiScore.setGoalSet(currentGoalSet);
@@ -699,9 +719,13 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
     }
 
     private Employee getCurrentEmployee() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return employeeRepository.findByEmail(email)
-                .orElseThrow(() -> new NotFoundException("Current user not found"));
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null || "anonymousUser".equals(auth.getPrincipal())) {
+            return null;
+        }
+
+        String email = auth.getName();
+        return employeeRepository.findByEmail(email).orElse(null);
     }
 
     private boolean canViewEmployeeSummary(Employee currentUser, Long targetEmployeeId) {
