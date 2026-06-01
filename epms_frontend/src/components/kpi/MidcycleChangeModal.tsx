@@ -83,8 +83,17 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
   const maxDateObj = cycleEndDateTime < todayObj ? cycleEndDateTime : todayObj;
   const maxDateStr = toDateTimeLocalValue(maxDateObj);
 
-  // Selected date defaults to minDateStr
-  const [changeDate, setChangeDate] = useState(minDateStr);
+  const getInitialChangeDate = () => {
+    const now = new Date();
+    now.setSeconds(0);
+    now.setMilliseconds(0);
+    const nowStr = toDateTimeLocalValue(now);
+    if (nowStr < minDateStr) return minDateStr;
+    if (nowStr > maxDateStr) return maxDateStr;
+    return nowStr;
+  };
+
+  const [changeDate, setChangeDate] = useState(getInitialChangeDate());
   const [changeReason, setChangeReason] = useState('');
   const hasValidDateRange = minDateStr <= maxDateStr;
   const currentPhaseStartsInFuture = phaseStartDateObj > new Date();
