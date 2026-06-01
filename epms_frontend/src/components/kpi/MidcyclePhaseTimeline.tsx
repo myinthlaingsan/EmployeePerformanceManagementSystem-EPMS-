@@ -345,7 +345,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
               <div className="flex items-center gap-2">
                 <ShieldCheck size={18} className="text-green-700" />
                 <div>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#27500A' }}>Composite Appraisal score calculated</p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#27500A' }}>Composite KPI score calculated</p>
                   <p style={{ fontSize: '10px', color: '#5A7A3A' }}>Calculated by duration-weighted averages of all {summary.phases.length} phases.</p>
                 </div>
               </div>
