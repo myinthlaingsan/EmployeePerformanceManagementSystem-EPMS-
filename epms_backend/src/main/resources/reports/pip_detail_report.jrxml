@@ -218,8 +218,7 @@
 
     <!-- ===================== SUMMARY (final overall comments) ===================== -->
     <summary height="125">
-        <element kind="textField" uuid="summary-objectives-count"
-                 x="0" y="5" width="555" height="15" fontSize="9.5" bold="true" forecolor="#1F2937">
+        <element kind="textField" x="0" y="5" width="555" height="15" fontSize="9.5" bold="true" forecolor="#1F2937">
             <expression><![CDATA["Total Objectives: " + $V{REPORT_COUNT}]]></expression>
         </element>
         <element kind="staticText" uuid="bb000060-0001-0001-0001-000000000060"
