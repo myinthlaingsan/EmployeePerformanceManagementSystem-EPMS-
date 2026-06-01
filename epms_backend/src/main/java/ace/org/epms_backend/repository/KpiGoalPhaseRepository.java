@@ -14,5 +14,8 @@ public interface KpiGoalPhaseRepository extends JpaRepository<KpiGoalPhase, Long
     
     Optional<KpiGoalPhase> findByEmployee_IdAndCycle_CycleIdAndStatus(Long employeeId, Long cycleId, PhaseStatus status);
     
+    // Get the latest (most recent) OPEN phase by phase number to avoid ambiguity
+    Optional<KpiGoalPhase> findFirstByEmployee_IdAndCycle_CycleIdAndStatusOrderByPhaseNumberDesc(Long employeeId, Long cycleId, PhaseStatus status);
+    
     boolean existsByEmployee_IdAndCycle_CycleId(Long employeeId, Long cycleId);
 }

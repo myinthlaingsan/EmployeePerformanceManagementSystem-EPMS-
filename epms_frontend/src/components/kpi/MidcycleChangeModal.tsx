@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { MidcycleSummaryResponse } from '../../features/kpi/midcycleTypes';
 import { useTriggerMidcycleChangeMutation, useGetMidcycleSummaryQuery } from '../../services/midcycleApi';
 import { toast } from 'react-toastify';
@@ -27,6 +28,7 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const navigate = useNavigate();
   const [triggerChange, { isLoading }] = useTriggerMidcycleChangeMutation();
 
   const toDateTimeLocalValue = (date: Date) => {
@@ -143,7 +145,28 @@ export const MidcycleChangeModal: React.FC<MidcycleChangeModalProps> = ({
         changeDate,
         changeReason,
       }).unwrap();
-      toast.success('KPI phase split triggered successfully! Managers have been notified.');
+      toast.success(
+        <div>
+          KPI phase split triggered successfully!<br />
+          <button
+            type="button"
+            onClick={() => navigate(`/kpi/assign/${employeeId}?cycleId=${cycleId}&mode=edit`)}
+            style={{
+              marginTop: 8,
+              padding: '6px 10px',
+              borderRadius: 6,
+              border: '1px solid #1A56DB',
+              background: '#EFF6FF',
+              color: '#1A56DB',
+              cursor: 'pointer',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            Go to KPI Assignment
+          </button>
+        </div>
+      );
       await onSuccess();
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to trigger midcycle change');

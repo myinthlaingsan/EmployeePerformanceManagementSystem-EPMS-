@@ -104,7 +104,8 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         Employee currentUser = getCurrentEmployee();
 
-        Optional<KpiGoalPhase> openPhaseOpt = phaseRepository.findByEmployee_IdAndCycle_CycleIdAndStatus(employeeId,
+        // Get the latest OPEN phase (by phase number) to avoid ambiguity if multiple exist
+        Optional<KpiGoalPhase> openPhaseOpt = phaseRepository.findFirstByEmployee_IdAndCycle_CycleIdAndStatusOrderByPhaseNumberDesc(employeeId,
                 cycleId, PhaseStatus.OPEN);
 
         KpiGoalPhase currentPhase;
@@ -143,9 +144,18 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             }
         }
 
+        // Validate that the change date is after the current phase start date
         if (!changeDate.isAfter(currentPhase.getPhaseStartDate())) {
             throw new IllegalArgumentException(
-                    "Change date must be after current phase start date (" + currentPhase.getPhaseStartDate() + ")");
+                    String.format("Change date (%s) must be after current phase start date (%s). Phase %d started on %s.",
+                            changeDate, currentPhase.getPhaseStartDate(), currentPhase.getPhaseNumber(), currentPhase.getPhaseStartDate()));
+        }
+        
+        // Validate that current phase start date is within cycle range
+        if (currentPhase.getPhaseStartDate().isBefore(cycleStart) || currentPhase.getPhaseStartDate().isAfter(cycleEnd)) {
+            throw new IllegalStateException(
+                    String.format("Invalid phase start date: Phase %d has start date %s, which is outside the cycle range [%s, %s). This indicates data corruption. Please contact your administrator.",
+                            currentPhase.getPhaseNumber(), currentPhase.getPhaseStartDate(), cycleStart, cycleEnd));
         }
 
         currentPhase.setPhaseEndDate(changeDate);
@@ -206,7 +216,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                             + ". Please assign KPIs for the new phase starting on " + changeDate + ".")
                     .referenceType(ReferenceType.KPI)
                     .referenceId(goalSet.getId())
-                    .actionUrl("/kpi/management")
+                    .actionUrl("/kpi/assign/" + employeeId + "?cycleId=" + cycleId + "&mode=edit")
                     .build());
         }
 
@@ -540,7 +550,8 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
     @Override
     @Transactional
     public void linkGoalSetToOpenPhase(Long employeeId, Long cycleId, Long goalSetId) {
-        Optional<KpiGoalPhase> openPhaseOpt = phaseRepository.findByEmployee_IdAndCycle_CycleIdAndStatus(employeeId,
+        // Get the latest OPEN phase (by phase number) to avoid ambiguity if multiple exist
+        Optional<KpiGoalPhase> openPhaseOpt = phaseRepository.findFirstByEmployee_IdAndCycle_CycleIdAndStatusOrderByPhaseNumberDesc(employeeId,
                 cycleId, PhaseStatus.OPEN);
         KpiGoals goalSet = goalsRepository.findById(goalSetId)
                 .orElseThrow(() -> new NotFoundException("Goal set not found"));
@@ -612,6 +623,18 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         LocalDateTime nextStartDate = latestPhase.getPhaseEndDate() != null
                 ? latestPhase.getPhaseEndDate()
                 : latestPhase.getPhaseStartDate();
+
+        // Validate that the new phase start date is within the cycle range
+        LocalDateTime cycleStart = cycle.getStartDate().atStartOfDay();
+        LocalDateTime cycleEnd = cycle.getEndDate().plusDays(1).atStartOfDay();
+        
+        if (nextStartDate.isBefore(cycleStart) || !nextStartDate.isBefore(cycleEnd)) {
+            throw new IllegalStateException(
+                    String.format("Cannot create new phase: calculated start date %s is outside cycle range [%s, %s). " +
+                            "Phase %d has an invalid end date. Please check phase dates and contact administrator if needed.",
+                            nextStartDate, cycleStart, cycle.getEndDate().atTime(23, 59, 59), 
+                            latestPhase.getPhaseNumber()));
+        }
 
         KpiGoalPhase recoveredPhase = KpiGoalPhase.builder()
                 .employee(employee)
