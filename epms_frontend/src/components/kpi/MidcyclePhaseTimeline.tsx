@@ -352,7 +352,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
               <div className="flex items-center gap-1">
                 <Award size={16} className="text-green-700" />
                 <span style={{ fontSize: '20px', fontWeight: 700, color: '#27500A' }}>
-                  {Number(summary.compositeScore).toFixed(2)}
+                  {Number(summary.compositeScore).toFixed(1)}
                 </span>
                 <span style={{ fontSize: '12px', color: '#5A7A3A', alignSelf: 'flex-end', marginBottom: '2px' }}>/ 100</span>
               </div>

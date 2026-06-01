@@ -361,7 +361,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             phase.setPhaseWeight(weight);
             phaseRepository.save(phase);
 
-            BigDecimal score = phase.getPhaseScore() != null ? phase.getPhaseScore() : BigDecimal.ZERO;
+            BigDecimal score = resolvePhaseScore(phase, employeeId, cycleId);
             totalWeightedScoreSum = totalWeightedScoreSum.add(score.multiply(weight));
 
             TypedQuery<KpiFinalScore> query = entityManager.createQuery(
@@ -497,7 +497,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
             phase.setPhaseWeight(weight);
             phaseRepository.save(phase);
 
-            BigDecimal score = phase.getPhaseScore() != null ? phase.getPhaseScore() : BigDecimal.ZERO;
+            BigDecimal score = resolvePhaseScore(phase, employeeId, cycleId);
             totalWeightedScoreSum = totalWeightedScoreSum.add(score.multiply(weight));
 
             TypedQuery<KpiFinalScore> query = entityManager.createQuery(
@@ -760,5 +760,27 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                 .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
                 .map(item -> item.getWeightedScore() != null ? item.getWeightedScore() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal resolvePhaseScore(KpiGoalPhase phase, Long employeeId, Long cycleId) {
+        if (phase == null) {
+            return BigDecimal.ZERO;
+        }
+
+        if (phase.getPhaseScore() != null) {
+            return phase.getPhaseScore();
+        }
+
+        if (phase.getGoalSet() != null) {
+            return calculateWeightedScoreFromGoalSet(phase.getGoalSet());
+        }
+
+        if (phase.getStatus() == PhaseStatus.OPEN) {
+            return goalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
+                    .map(this::calculateWeightedScoreFromGoalSet)
+                    .orElse(BigDecimal.ZERO);
+        }
+
+        return BigDecimal.ZERO;
     }
 }
