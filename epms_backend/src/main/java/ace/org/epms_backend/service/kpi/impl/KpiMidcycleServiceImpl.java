@@ -541,9 +541,25 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         midcycleFinalScoreRepository.save(midcycleScore);
 
-        // Do not persist a canonical KpiFinalScore here. The explicit
-        // `finalizeCompositeScore` flow will perform finalization and persist
-        // the final composite score record.
+        // Also update KpiFinalScore with the midcycle composite so the employee
+        // always sees their current KPI score during the appraisal cycle.
+        // This is a transient record that will be overwritten during finalization.
+        KpiFinalScore midcycleKpiScore = finalScoreRepository
+                .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+                .orElse(new KpiFinalScore());
+
+        KpiGoals currentGoalSet = goalsRepository
+                .findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId)
+                .orElseThrow(() -> new NotFoundException("Active goal set not found"));
+
+        midcycleKpiScore.setEmployee(employee);
+        midcycleKpiScore.setGoalSet(currentGoalSet);
+        midcycleKpiScore.setWeightedScore(totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP));
+        midcycleKpiScore.setTotalAchievementPercent(totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP));
+        midcycleKpiScore.setCalculatedAt(Instant.now());
+        midcycleKpiScore.setFinalizedBy(currentUser.getId());
+
+        finalScoreRepository.save(midcycleKpiScore);
     }
 
     @Override
