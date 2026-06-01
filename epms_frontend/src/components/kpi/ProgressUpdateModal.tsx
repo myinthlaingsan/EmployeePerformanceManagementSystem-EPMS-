@@ -45,25 +45,24 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, goalSet
 
   return (
     <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden transition-all">
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-xl overflow-hidden transition-all">
         <form onSubmit={handleSubmit}>
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="text-lg font-bold text-gray-900">Update Progress</h3>
+          <div className="p-4 border-b border-gray-100">
+            <h3 className="text-base font-bold text-gray-900">Update Progress</h3>
             <p className="text-sm text-gray-500 mt-1">{item.title}</p>
           </div>
 
-          <div className="p-6 space-y-4">
-            <div>
+          <div className="p-4 space-y-3">
+            <div className="rounded-xl border border-gray-200 bg-slate-50 p-3">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Actual Value {item.isCompliance ? '(Verification)' : `(${item.unit || 'units'})`}
               </label>
-              
               {item.isCompliance ? (
                 <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={() => setActualValue(item.targetValue)}
-                    className={`flex-1 py-3 px-4 rounded-lg border-2 font-bold transition-all ${
+                    className={`flex-1 py-2 rounded-lg border-2 font-bold transition-all ${
                       actualValue === item.targetValue
                         ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                         : 'border-gray-200 bg-white text-gray-500 hover:border-emerald-200 hover:bg-emerald-50/50'
@@ -74,7 +73,7 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, goalSet
                   <button
                     type="button"
                     onClick={() => setActualValue(0)}
-                    className={`flex-1 py-3 px-4 rounded-lg border-2 font-bold transition-all ${
+                    className={`flex-1 py-2 rounded-lg border-2 font-bold transition-all ${
                       actualValue === 0
                         ? 'border-rose-500 bg-rose-50 text-rose-700'
                         : 'border-gray-200 bg-white text-gray-500 hover:border-rose-200 hover:bg-rose-50/50'
@@ -107,7 +106,7 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, goalSet
                         }
                       }
                     }}
-                    className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-right"
+                    className="w-full border border-gray-300 rounded-lg bg-white px-3 py-2 focus:ring-2 focus:ring-blue-500 text-sm text-right"
                     style={{ textAlign: 'right' }}
                   />
                   <span className="text-sm font-bold text-gray-400">/ {item.targetValue}</span>
@@ -115,45 +114,36 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ item, goalSet
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Evidence / Notes</label>
+            <div className="rounded-xl border border-gray-200 bg-slate-50 p-3">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Evidence / Notes</label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
                 placeholder="Achievement details..."
-                className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 space-y-3">
-              <div>
-                <div className="flex justify-between text-xs font-bold mb-1.5">
-                  <span className="text-blue-700">Calculated Completion</span>
-                  <span className="text-blue-700">
-                    {previewScore}%
-                  </span>
-                </div>
-                <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-blue-600 h-full transition-all duration-500"
-                    style={{ width: `${previewScore}%` }}
-                  />
-                </div>
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+              <div className="flex justify-between text-xs font-bold mb-2">
+                <span className="text-blue-700">Calculated Completion</span>
+                <span className="text-blue-700">{previewScore}%</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-blue-100">
-                <div>
+              <div className="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-full transition-all duration-500"
+                  style={{ width: `${previewScore}%` }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-3 text-sm">
+                <div className="rounded-lg border border-blue-100 bg-white p-3">
                   <p className="text-[10px] uppercase tracking-wider text-blue-500 font-bold">Score</p>
-                  <p className="text-lg font-black text-blue-700">
-                    {previewScore}%
-                  </p>
+                  <p className="text-lg font-black text-blue-700">{previewScore}%</p>
                 </div>
-                <div>
+                <div className="rounded-lg border border-blue-100 bg-white p-3">
                   <p className="text-[10px] uppercase tracking-wider text-blue-500 font-bold">Weighted Score</p>
-                  <p className="text-lg font-black text-blue-700">
-                    {previewWeighted.toFixed(2)}
-                  </p>
+                  <p className="text-lg font-black text-blue-700">{previewWeighted.toFixed(2)}</p>
                 </div>
               </div>
             </div>
