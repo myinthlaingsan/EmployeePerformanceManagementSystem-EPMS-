@@ -9,7 +9,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { MidcycleSummaryResponse } from '../../features/kpi/midcycleTypes';
-import { useFinalizeCompositeScoreMutation } from '../../services/midcycleApi';
+import { useFinalizeCompositeScoreMutation, useCalculateCompositeScoreMutation } from '../../services/midcycleApi';
 import PastPhaseGoalsModal from './PastPhaseGoalsModal';
 import { toast } from 'react-toastify';
 
@@ -25,19 +25,43 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
   onRefetch,
 }) => {
   const [finalizeScore, { isLoading: isFinalizing }] = useFinalizeCompositeScoreMutation();
+  const [calculateScore, { isLoading: isCalculating }] = useCalculateCompositeScoreMutation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedPhase, setSelectedPhase] = useState<any | null>(null);
 
   const hasUnassignedOpenPhase = summary.hasOpenPhase &&
     summary.phases.some(p => p.status === 'OPEN' && p.goalSetId === null);
 
-  const handleFinalize = async () => {
+  const hasInvalidPhaseDuration = summary.totalCycleDays <= 0 || summary.phases.some(p => {
+    if (p.days == null || p.days <= 0) return true;
+    if (p.endDate) {
+      const s = new Date(p.startDate);
+      const e = new Date(p.endDate);
+      if (e < s) return true;
+    }
+    return false;
+  });
+
+  const invalidPhases = summary.phases.filter(p => (p.days == null || p.days <= 0) || (p.endDate && new Date(p.endDate) < new Date(p.startDate)));
+
+  const handleCalculate = async () => {
     try {
-      await finalizeScore({ employeeId: summary.employeeId, cycleId: summary.cycleId }).unwrap();
+      await calculateScore({ employeeId: summary.employeeId, cycleId: summary.cycleId }).unwrap();
       toast.success('Composite score calculated successfully!');
       onRefetch();
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to calculate composite score');
+    }
+  };
+
+  const handleFinalize = async () => {
+    if (!window.confirm('Finalize composite score? This is a permanent action.')) return;
+    try {
+      await finalizeScore({ employeeId: summary.employeeId, cycleId: summary.cycleId }).unwrap();
+      toast.success('Composite score finalized successfully!');
+      onRefetch();
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to finalize composite score');
     }
   };
 
@@ -69,26 +93,49 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
 
         <div className="flex items-center gap-2">
           {isPrivileged && (
-            <button
-              onClick={handleFinalize}
-              disabled={isFinalizing || summary.phases.length === 0 || hasUnassignedOpenPhase}
-              title={hasUnassignedOpenPhase ? 'Cannot calculate: The current open phase has no KPIs assigned yet.' : undefined}
-              style={{
-                background: '#1A56DB',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '6px 14px',
-                fontSize: '12px',
-                fontWeight: 500,
-                cursor: (isFinalizing || hasUnassignedOpenPhase) ? 'not-allowed' : 'pointer',
-                opacity: (isFinalizing || hasUnassignedOpenPhase) ? 0.7 : 1,
-                transition: 'background 0.2s',
-              }}
-              className="hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50"
-            >
-              {isFinalizing ? 'Calculating...' : 'Calculate Composite Score'}
-            </button>
+            <>
+              <button
+                onClick={handleCalculate}
+                disabled={isCalculating || summary.phases.length === 0 || hasUnassignedOpenPhase || hasInvalidPhaseDuration}
+                title={hasUnassignedOpenPhase ? 'Cannot calculate: The current open phase has no KPIs assigned yet.' : (hasInvalidPhaseDuration ? 'Cannot calculate: one or more phases have invalid duration or date ranges.' : undefined)}
+                style={{
+                  background: '#1A56DB',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: (isCalculating || hasUnassignedOpenPhase || hasInvalidPhaseDuration) ? 'not-allowed' : 'pointer',
+                  opacity: (isCalculating || hasUnassignedOpenPhase || hasInvalidPhaseDuration) ? 0.7 : 1,
+                  transition: 'background 0.2s',
+                }}
+                className="hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50"
+              >
+                {isCalculating ? 'Calculating...' : 'Calculate Composite Score'}
+              </button>
+
+              <button
+                onClick={handleFinalize}
+                disabled={isFinalizing || summary.phases.length === 0 || hasUnassignedOpenPhase || hasInvalidPhaseDuration}
+                title={hasUnassignedOpenPhase ? 'Cannot finalize: The current open phase has no KPIs assigned yet.' : (hasInvalidPhaseDuration ? 'Cannot finalize: one or more phases have invalid duration or date ranges.' : undefined)}
+                style={{
+                  background: '#DC2626',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: (isFinalizing || hasUnassignedOpenPhase || hasInvalidPhaseDuration) ? 'not-allowed' : 'pointer',
+                  opacity: (isFinalizing || hasUnassignedOpenPhase || hasInvalidPhaseDuration) ? 0.7 : 1,
+                  transition: 'background 0.2s',
+                }}
+                className="hover:bg-red-700 active:bg-red-800 disabled:opacity-50 ml-2"
+              >
+                {isFinalizing ? 'Finalizing...' : 'Finalize Composite Score'}
+              </button>
+            </>
           )}
 
           <button
@@ -271,6 +318,12 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
           {isPrivileged && hasUnassignedOpenPhase && (
             <div style={{ marginTop: '16px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 12px', fontSize: '11px', color: '#92400E' }}>
               ⚠ The current open phase has no KPIs assigned. The manager must assign and approve KPIs before you can calculate the composite score.
+            </div>
+          )}
+
+          {isPrivileged && hasInvalidPhaseDuration && (
+            <div style={{ marginTop: '12px', background: '#FFF1F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', fontSize: '11px', color: '#991B1B' }}>
+              ⚠ Invalid phase duration detected in: {invalidPhases.map(p => `Phase ${p.phaseNumber}`).join(', ')}. Please correct phase dates before calculating or finalizing.
             </div>
           )}
 

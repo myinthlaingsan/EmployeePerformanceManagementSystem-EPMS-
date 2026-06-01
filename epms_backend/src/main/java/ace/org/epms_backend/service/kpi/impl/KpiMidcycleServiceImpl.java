@@ -262,6 +262,172 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                 .build());
     }
 
+        @Override
+        @Transactional
+        public void finalizeCompositeScore(Long employeeId, Long cycleId) {
+        // Ensure midcycle composite is up-to-date and persisted
+        calculateCompositeFinalScore(employeeId, cycleId);
+
+        AppraisalCycle cycle = cycleRepository.findById(cycleId)
+            .orElseThrow(() -> new NotFoundException("Appraisal cycle not found"));
+
+        Employee employee = employeeRepository.findById(employeeId)
+            .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+        Employee currentUser = getCurrentEmployee();
+
+        List<KpiGoalPhase> phases = phaseRepository.findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId,
+            cycleId);
+        if (phases.isEmpty()) {
+            throw new IllegalStateException("No midcycle phases found to finalize.");
+        }
+
+        KpiGoalPhase lastPhase = phases.get(phases.size() - 1);
+        if (lastPhase.getStatus() == PhaseStatus.OPEN) {
+            LocalDateTime cycleEnd = cycle.getEndDate().plusDays(1).atStartOfDay();
+            if (cycleEnd.isBefore(lastPhase.getPhaseStartDate())) {
+            throw new IllegalStateException(
+                "Cannot finalize composite score: cycle end date is before the last phase start date.");
+            }
+
+            lastPhase.setPhaseEndDate(cycleEnd);
+            int phaseDays = (int) ChronoUnit.DAYS.between(lastPhase.getPhaseStartDate().toLocalDate(), cycle.getEndDate()) + 1;
+            lastPhase.setPhaseDays(Math.max(1, phaseDays));
+            lastPhase.setChangeReason("Appraisal cycle end finalization");
+            lastPhase.setTriggeredBy(currentUser.getId());
+
+            KpiGoals goalSet = lastPhase.getGoalSet();
+            if (goalSet == null) {
+            throw new IllegalStateException(
+                "Cannot finalize composite score: The last phase does not have KPIs assigned.");
+            }
+
+            if (goalSet.getStatus() == KpiGoalStatus.DRAFT) {
+            throw new IllegalStateException(
+                "The goal set for the final phase is in DRAFT status. It must be approved before finalization.");
+            }
+
+            if (goalSet.getStatus() == KpiGoalStatus.APPROVED) {
+            kpiGoalService.lockGoalSet(goalSet.getId());
+            }
+
+            // generate per-goal-set final scores via scoring service
+            kpiScoringService.calculateFinalScore(employeeId, cycleId);
+
+            KpiFinalScore finalScore = finalScoreRepository
+                .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+                .orElseThrow(() -> new NotFoundException("Calculated final score for last phase not found"));
+
+            lastPhase.setPhaseScore(finalScore.getWeightedScore());
+            lastPhase.setStatus(PhaseStatus.SCORED);
+
+            phaseRepository.save(lastPhase);
+
+            goalSet.setIsCurrent(false);
+            goalsRepository.save(goalSet);
+        }
+
+        // Recompute composite totals (weights + achievement) and persist canonical KpiFinalScore
+        int totalCycleDays = (int) ChronoUnit.DAYS.between(cycle.getStartDate(), cycle.getEndDate()) + 1;
+        if (totalCycleDays <= 0) {
+            throw new IllegalStateException(
+                "Cannot finalize composite score: cycle end date must be on or after cycle start date.");
+        }
+
+        long totalCycleMinutes = Duration.between(cycle.getStartDate().atStartOfDay(), cycle.getEndDate().plusDays(1).atStartOfDay()).toMinutes();
+        if (totalCycleMinutes <= 0) {
+            throw new IllegalStateException("Cannot finalize composite score: cycle duration must be positive.");
+        }
+
+        BigDecimal totalWeightedScoreSum = BigDecimal.ZERO;
+        BigDecimal totalAchievementPercentSum = BigDecimal.ZERO;
+
+        for (KpiGoalPhase phase : phases) {
+            if (phase.getPhaseDays() == null || phase.getPhaseDays() <= 0) {
+            throw new IllegalStateException(
+                "Cannot finalize composite score: phase " + phase.getPhaseNumber() + " has invalid duration.");
+            }
+
+            LocalDateTime phaseStart = phase.getPhaseStartDate();
+            LocalDateTime phaseEnd = phase.getPhaseEndDate() != null
+                ? phase.getPhaseEndDate()
+                : cycle.getEndDate().plusDays(1).atStartOfDay();
+            if (phaseEnd.isBefore(phaseStart)) {
+            throw new IllegalStateException(
+                "Cannot finalize composite score: phase " + phase.getPhaseNumber() + " has invalid time range.");
+            }
+            long phaseMinutes = Duration.between(phaseStart, phaseEnd).toMinutes();
+            BigDecimal weight = BigDecimal.valueOf(phaseMinutes).divide(BigDecimal.valueOf(totalCycleMinutes), 6, RoundingMode.HALF_UP);
+            phase.setPhaseWeight(weight);
+            phaseRepository.save(phase);
+
+            BigDecimal score = phase.getPhaseScore() != null ? phase.getPhaseScore() : BigDecimal.ZERO;
+            totalWeightedScoreSum = totalWeightedScoreSum.add(score.multiply(weight));
+
+            TypedQuery<KpiFinalScore> query = entityManager.createQuery(
+                "SELECT f FROM KpiFinalScore f WHERE f.employee.id = :empId AND f.goalSet.id = :gsId",
+                KpiFinalScore.class);
+            query.setParameter("empId", employeeId);
+            query.setParameter("gsId", phase.getGoalSet().getId());
+            List<KpiFinalScore> list = query.getResultList();
+            KpiFinalScore phaseFinalScore = list.isEmpty() ? null : list.get(0);
+
+            BigDecimal achievement = (phaseFinalScore != null && phaseFinalScore.getTotalAchievementPercent() != null)
+                ? phaseFinalScore.getTotalAchievementPercent()
+                : BigDecimal.ZERO;
+            totalAchievementPercentSum = totalAchievementPercentSum.add(achievement.multiply(weight));
+        }
+
+        // Delete any existing KpiFinalScore to ensure only ONE canonical record per employee/cycle
+        finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+            .ifPresent(existing -> finalScoreRepository.delete(existing));
+
+        KpiFinalScore composite = KpiFinalScore.builder()
+            .employee(employee)
+            .goalSet(lastPhase.getGoalSet())
+            .weightedScore(totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP))
+            .totalAchievementPercent(totalAchievementPercentSum.setScale(2, RoundingMode.HALF_UP))
+            .calculatedAt(Instant.now())
+            .finalizedBy(currentUser.getId())
+            .build();
+        appraisalRepository.findByEmployeeAndCycleIds(employeeId, cycleId).ifPresent(composite::setAppraisal);
+
+        finalScoreRepository.save(composite);
+
+        // history + audit
+        historyRepo.save(KpiHistoryLog.builder()
+            .employeeId(employee.getId())
+            .goalSetId(lastPhase.getGoalSet() != null ? lastPhase.getGoalSet().getId() : null)
+            .action("FINALIZED")
+            .changeReason("Composite score finalized")
+            .changeDetails("Composite score finalized with weighted score " + composite.getWeightedScore())
+            .changedBy(currentUser.getId())
+            .build());
+
+        auditService.log(AuditRequest.builder()
+            .tableName("kpi_final_scores")
+            .recordId(composite.getId())
+            .action(ace.org.epms_backend.enums.AuditAction.CREATE)
+            .newState(composite)
+            .status(ace.org.epms_backend.enums.AuditStatus.SUCCESS)
+            .build());
+
+        // notify manager if available
+        if (lastPhase.getGoalSet() != null && lastPhase.getGoalSet().getManager() != null) {
+            Employee manager = lastPhase.getGoalSet().getManager();
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                .recipientId(manager.getId())
+                .senderId(currentUser.getId())
+                .type(NotificationType.KPI_ASSIGNED)
+                .title("KPI Composite Finalized")
+                .message("Composite KPI score has been finalized for " + employee.getStaffName() + ".")
+                .referenceType(ReferenceType.KPI)
+                .referenceId(lastPhase.getGoalSet().getId())
+                .actionUrl("/kpi/goals/" + employeeId + "?cycleId=" + cycleId)
+                .build());
+        }
+        }
+
     @Override
     @Transactional
     public void calculateCompositeFinalScore(Long employeeId, Long cycleId) {
@@ -282,88 +448,50 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
                     .orElseThrow(() -> new IllegalStateException(
                             "No midcycle phases or active goal set found for this employee and cycle."));
 
+            int estimatedDays = (int) ChronoUnit.DAYS.between(cycle.getStartDate(), cycle.getEndDate()) + 1;
             KpiGoalPhase defaultPhase = KpiGoalPhase.builder()
                     .employee(employee)
                     .cycle(cycle)
                     .goalSet(currentGoalSet)
                     .phaseNumber(1)
                     .phaseStartDate(cycle.getStartDate().atStartOfDay())
+                    .phaseDays(Math.max(1, estimatedDays))
                     .status(PhaseStatus.OPEN)
                     .build();
             phases = List.of(phaseRepository.save(defaultPhase));
         }
 
-        KpiGoalPhase lastPhase = phases.get(phases.size() - 1);
-        if (lastPhase.getStatus() == PhaseStatus.OPEN) {
-            LocalDateTime cycleEnd = cycle.getEndDate().plusDays(1).atStartOfDay();
-            if (cycleEnd.isBefore(lastPhase.getPhaseStartDate())) {
-                throw new IllegalStateException(
-                        "Cannot finalize composite score: cycle end date is before the last phase start date.");
-            }
-
-            lastPhase.setPhaseEndDate(cycleEnd);
-            int phaseDays = (int) ChronoUnit.DAYS.between(lastPhase.getPhaseStartDate().toLocalDate(), cycle.getEndDate()) + 1;
-            lastPhase.setPhaseDays(Math.max(1, phaseDays));
-            lastPhase.setChangeReason("Appraisal cycle end finalization");
-            lastPhase.setTriggeredBy(currentUser.getId());
-
-            KpiGoals goalSet = lastPhase.getGoalSet();
-            if (goalSet == null) {
-                throw new IllegalStateException(
-                        "Cannot finalize composite score: The last phase does not have KPIs assigned.");
-            }
-
-            if (goalSet.getStatus() == KpiGoalStatus.DRAFT) {
-                throw new IllegalStateException(
-                        "The goal set for the final phase is in DRAFT status. It must be approved before finalization.");
-            }
-
-            if (goalSet.getStatus() == KpiGoalStatus.APPROVED) {
-                kpiGoalService.lockGoalSet(goalSet.getId());
-            }
-
-            kpiScoringService.calculateFinalScore(employeeId, cycleId);
-
-            KpiFinalScore finalScore = finalScoreRepository
-                    .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
-                    .orElseThrow(() -> new NotFoundException("Calculated final score for last phase not found"));
-
-            lastPhase.setPhaseScore(finalScore.getWeightedScore());
-            lastPhase.setStatus(PhaseStatus.SCORED);
-
-            phaseRepository.save(lastPhase);
-
-            goalSet.setIsCurrent(false);
-            goalsRepository.save(goalSet);
-        }
+        // Calculate-only: do not close the last open phase or lock goal sets here.
+        // Finalization is handled explicitly by `finalizeCompositeScore`.
 
         int totalCycleDays = (int) ChronoUnit.DAYS.between(cycle.getStartDate(), cycle.getEndDate()) + 1;
         if (totalCycleDays <= 0) {
             throw new IllegalStateException(
-                    "Cannot finalize composite score: cycle end date must be on or after cycle start date.");
+                    "Cannot calculate composite score: cycle end date must be on or after cycle start date.");
         }
         BigDecimal totalWeightedScoreSum = BigDecimal.ZERO;
         BigDecimal totalAchievementPercentSum = BigDecimal.ZERO;
 
         long totalCycleMinutes = Duration.between(cycle.getStartDate().atStartOfDay(), cycle.getEndDate().plusDays(1).atStartOfDay()).toMinutes();
         if (totalCycleMinutes <= 0) {
-            throw new IllegalStateException("Cannot finalize composite score: cycle duration must be positive.");
+            throw new IllegalStateException("Cannot calculate composite score: cycle duration must be positive.");
         }
 
         for (KpiGoalPhase phase : phases) {
-            if (phase.getPhaseDays() == null || phase.getPhaseDays() <= 0) {
-                throw new IllegalStateException(
-                        "Cannot finalize composite score: phase " + phase.getPhaseNumber() + " has invalid duration.");
-            }
-
             LocalDateTime phaseStart = phase.getPhaseStartDate();
             LocalDateTime phaseEnd = phase.getPhaseEndDate() != null
                     ? phase.getPhaseEndDate()
                     : cycle.getEndDate().plusDays(1).atStartOfDay();
             if (phaseEnd.isBefore(phaseStart)) {
                 throw new IllegalStateException(
-                        "Cannot finalize composite score: phase " + phase.getPhaseNumber() + " has invalid time range.");
+                        "Cannot calculate composite score: phase " + phase.getPhaseNumber() + " has invalid time range.");
             }
+
+            if (phase.getPhaseDays() == null || phase.getPhaseDays() <= 0) {
+                int computedPhaseDays = (int) ChronoUnit.DAYS.between(phaseStart.toLocalDate(), phaseEnd.toLocalDate()) + 1;
+                phase.setPhaseDays(Math.max(1, computedPhaseDays));
+            }
+
             long phaseMinutes = Duration.between(phaseStart, phaseEnd).toMinutes();
             BigDecimal weight = BigDecimal.valueOf(phaseMinutes).divide(BigDecimal.valueOf(totalCycleMinutes), 6, RoundingMode.HALF_UP);
             phase.setPhaseWeight(weight);
@@ -413,40 +541,9 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
 
         midcycleFinalScoreRepository.save(midcycleScore);
 
-        KpiGoals lastPhaseGoalSet = lastPhase.getGoalSet();
-        // KpiFinalScore finalScore =
-        // finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId,
-        // cycleId)
-        // .orElse(new KpiFinalScore());
-
-        // finalScore.setEmployee(employee);
-        // finalScore.setGoalSet(lastPhaseGoalSet);
-        // finalScore.setWeightedScore(totalWeightedScoreSum.setScale(4,
-        // RoundingMode.HALF_UP));
-        // finalScore.setTotalAchievementPercent(totalAchievementPercentSum.setScale(2,
-        // RoundingMode.HALF_UP));
-        // finalScore.setCalculatedAt(Instant.now());
-        // finalScore.setFinalizedBy(currentUser.getId());
-
-        // Delete any existing KpiFinalScore to ensure only ONE record per
-        // employee/cycle
-        finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
-                .ifPresent(existing -> {
-                    finalScoreRepository.delete(existing);
-                });
-
-        // Create new composite final score
-        KpiFinalScore finalScore = KpiFinalScore.builder()
-                .employee(employee)
-                .goalSet(lastPhaseGoalSet)
-                .weightedScore(totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP))
-                .totalAchievementPercent(totalAchievementPercentSum.setScale(2, RoundingMode.HALF_UP))
-                .calculatedAt(Instant.now())
-                .finalizedBy(currentUser.getId())
-                .build();
-        appraisalRepository.findByEmployeeAndCycleIds(employeeId, cycleId).ifPresent(finalScore::setAppraisal);
-
-        finalScoreRepository.save(finalScore);
+        // Do not persist a canonical KpiFinalScore here. The explicit
+        // `finalizeCompositeScore` flow will perform finalization and persist
+        // the final composite score record.
     }
 
     @Override
