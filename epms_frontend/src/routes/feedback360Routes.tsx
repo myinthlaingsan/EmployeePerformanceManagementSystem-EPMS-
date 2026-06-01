@@ -12,7 +12,7 @@ export const feedback360Routes = [
   { path: '/360-feedback/submit',               element: <Feedback360SubmitPage />,         adminOnly: false },
   { path: '/360-feedback/my-report',            element: <Feedback360ReportPage />,        adminOnly: false },
   { path: '/360-feedback/team-reports/:empId',  element: <Feedback360ReportPage />,        adminOnly: false }, // manager view
-  { path: '/360-feedback/nominations',          element: <Feedback360NominationsPage />,   adminOnly: false }, // Phase 4
+  // { path: '/360-feedback/nominations',          element: <Feedback360NominationsPage />,   adminOnly: false }, // Phase 4
 
   // HR / Admin only
   { path: '/360-feedback/admin',                element: <Feedback360AdminPage />,         adminOnly: true  },
