@@ -269,8 +269,8 @@ const TeamKpiDashboard: React.FC = () => {
                       className={status ? 'hover:bg-[#FAFBFF] transition-colors' : 'transition-colors'}
                       onClick={() => {
                         if (!status) return;
-                        if (status === 'APPROVED' || status === 'LOCKED') navigate(`/kpi/goals/${emp.id}`);
-                        else navigate(`/kpi/assign/${emp.id}`);
+                        const base = (status === 'APPROVED' || status === 'LOCKED') ? `/kpi/goals/${emp.id}` : `/kpi/assign/${emp.id}`;
+                        navigate(`${base}?cycleId=${effectiveCycleId}`);
                       }}>
                       <td style={{ padding: '10px 16px' }} onClick={e => e.stopPropagation()}>
                         <input type="checkbox" style={{ accentColor: '#1A56DB' }}
