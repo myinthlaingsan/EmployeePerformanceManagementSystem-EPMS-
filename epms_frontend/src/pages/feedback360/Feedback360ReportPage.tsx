@@ -105,7 +105,7 @@ const ScoreCard = ({
     {score !== null ? (
       <>
         <p style={{ fontSize: 26, fontWeight: 700, color, lineHeight: 1 }}>{score.toFixed(2)}</p>
-        <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 4 }}>/ 5.00</p>
+        <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 4 }}>/ 100.00</p>
       </>
     ) : (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
@@ -661,7 +661,7 @@ const Feedback360ReportPage = () => {
               Pre-calibration: {summary.totalAverageScore.toFixed(2)}
             </p>
           )}
-          {!isCalibrated && <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 4 }}>/ 5.00</p>}
+          {!isCalibrated && <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 4 }}>/ 100.00</p>}
         </div>
       </div>
 
@@ -707,7 +707,7 @@ const Feedback360ReportPage = () => {
             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
               <PolarGrid stroke="#E4E6EC" />
               <PolarAngleAxis dataKey="category" tick={{ fontSize: 11, fill: '#5A6070' }} />
-              <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fontSize: 10, fill: '#9EA3B0' }} />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10, fill: '#9EA3B0' }} />
               {presentKeys.map((c) => (
                 <Radar
                   key={c.label}
@@ -731,7 +731,7 @@ const Feedback360ReportPage = () => {
             <BarChart data={barData} margin={{ top: 4, right: 16, left: -10, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F8" />
               <XAxis dataKey="category" tick={{ fontSize: 11, fill: '#5A6070' }} angle={-30} textAnchor="end" interval={0} />
-              <YAxis domain={[0, 5]} tick={{ fontSize: 11, fill: '#9EA3B0' }} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#9EA3B0' }} />
               <Tooltip
                 contentStyle={{ fontSize: 12, border: '0.5px solid #E4E6EC', borderRadius: 8 }}
                 formatter={fmtScore}
