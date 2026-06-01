@@ -73,12 +73,9 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
 
   history.forEach(h => {
     if (!h.createdAt) return;
-    const datePart = h.createdAt.split('T')[0];
-    const [yStr, mStr] = datePart.split('-');
-    const year = parseInt(yStr, 10);
-    const month = parseInt(mStr, 10) - 1;
-    const monthKey = `${year}-${month}`;
-    const monthData = chartData.find(m => m.month === month && m.year === year);
+    const date = new Date(h.createdAt);
+    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+    const monthData = chartData.find(m => m.month === date.getMonth() && m.year === date.getFullYear());
     
     if (monthData) {
       if (h.sourceType === 'MEETING') {
@@ -104,35 +101,28 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
     }
   });
 
-  // Current-month slot used as a fallback bucket for undated items
-  const currentMonthSlot = chartData.length > 0 ? chartData[chartData.length - 1] : null;
+  const nowMonth = now.getMonth();
+  const nowYear = now.getFullYear();
 
   actionItems.forEach(ai => {
+    let targetMonth: { month: number; year: number } | undefined;
     if (ai.dueDate) {
-      const [yStr, mStr] = ai.dueDate.split('-');
-      const year = parseInt(yStr, 10);
-      const month = parseInt(mStr, 10) - 1;
-      const monthData = chartData.find(m => m.month === month && m.year === year);
-      if (monthData) {
-        monthData.totalActionItems++;
-      } else if (currentMonthSlot) {
-        // Due date is outside the chart time range — still count it in current month
-        currentMonthSlot.totalActionItems++;
-      }
-    } else if (currentMonthSlot) {
-      // No due date set — bucket in current month so it isn't silently lost
-      currentMonthSlot.totalActionItems++;
+      const dueDate = new Date(ai.dueDate);
+      const slot = chartData.find(m => m.month === dueDate.getMonth() && m.year === dueDate.getFullYear());
+      if (slot) targetMonth = slot;
     }
+    if (!targetMonth) {
+      targetMonth = chartData.find(m => m.month === nowMonth && m.year === nowYear);
+    }
+    if (targetMonth) {
+      (targetMonth as any).totalActionItems++;
+    }
+
     if (ai.status === 'DONE' && ai.completedAt) {
-      const datePart = ai.completedAt.split('T')[0];
-      const [yStr, mStr] = datePart.split('-');
-      const year = parseInt(yStr, 10);
-      const month = parseInt(mStr, 10) - 1;
-      const monthData = chartData.find(m => m.month === month && m.year === year);
+      const completedDate = new Date(ai.completedAt);
+      const monthData = chartData.find(m => m.month === completedDate.getMonth() && m.year === completedDate.getFullYear());
       if (monthData) {
         monthData.actionItemsCompleted++;
-      } else if (currentMonthSlot) {
-        currentMonthSlot.actionItemsCompleted++;
       }
     }
   });
