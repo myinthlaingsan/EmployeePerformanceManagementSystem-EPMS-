@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useReviseKpiMutation, useGetKpiCategoriesQuery } from '../../services/kpiApi';
-import type { GoalItemResponse, Priority } from '../../features/kpi/kpiTypes';
+import { useReviseKpiMutation } from '../../services/kpiApi';
+import type { GoalItemResponse } from '../../features/kpi/kpiTypes';
 
 interface KpiRevisionModalProps {
   item: GoalItemResponse;
@@ -9,18 +9,11 @@ interface KpiRevisionModalProps {
 
 const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) => {
   const [reviseKpi, { isLoading }] = useReviseKpiMutation();
-  const { data: categoriesResponse } = useGetKpiCategoriesQuery();
-  const categories = categoriesResponse?.data || [];
 
   const [formData, setFormData] = useState({
-    goalTitle: item.title,
     unit: item.unit || '',
     targetValue: item.targetValue,
-    weightPercent: item.weightPercent,
-    categoryId: item.categoryId || 0,
   });
-
-
 
   const [changeReason, setChangeReason] = useState('');
 
@@ -35,7 +28,6 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
       const updatedDetails = {
         ...formData,
         targetValue: (formData.targetValue as any) === '' ? 0 : formData.targetValue,
-        weightPercent: (formData.weightPercent as any) === '' ? 0 : formData.weightPercent,
       };
 
       await reviseKpi({
@@ -54,97 +46,84 @@ const KpiRevisionModal: React.FC<KpiRevisionModalProps> = ({ item, onClose }) =>
 
   return (
     <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden transition-all">
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-xl overflow-hidden transition-all">
         <form onSubmit={handleSubmit}>
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="text-lg font-bold text-gray-900">Revise KPI Goal</h3>
+          <div className="p-4 border-b border-gray-100">
+            <h3 className="text-base font-bold text-gray-900">Revise KPI Goal</h3>
             <p className="text-sm text-gray-500 mt-1">Modifications will be logged in the revision history.</p>
           </div>
 
-          <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
+          <div className="p-4 space-y-3 max-h-[72vh] overflow-y-auto">
+            <div className="grid grid-cols-1 gap-3">
+              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Goal Title</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.goalTitle}
-                  onChange={(e) => setFormData({ ...formData, goalTitle: e.target.value })}
-                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                />
+                <div className="rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-sm text-gray-700">
+                  {item.title}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
-                <select
-                  required
-                  value={formData.categoryId}
-                  onChange={(e) => setFormData({ ...formData, categoryId: parseInt(e.target.value) })}
-                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                >
-                  <option value={0}>Select Category</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.categoryName || c.name}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
+                  <div className="rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-sm text-gray-700">
+                    {item.categoryName || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Weight (%)</label>
+                  <div className="rounded-lg border border-gray-200 bg-slate-50 px-3 py-2 text-sm text-gray-700 text-right" style={{ textAlign: 'right' }}>
+                    {item.weightPercent ?? 0}
+                  </div>
+                </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-gray-200 bg-slate-50 p-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Unit</label>
+                  <input
+                    type="text"
+                    value={formData.unit}
+                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg bg-white px-2 py-2 focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
 
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Target Value</label>
-                <input
-                  type="number"
-                  min="0"
-                  required
-                  value={(formData.targetValue as any) === '' ? '' : formData.targetValue}
-                  onKeyDown={e => {
-                    if (e.key === '-') {
-                      e.preventDefault();
-                    }
-                  }}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFormData({ ...formData, targetValue: val === '' ? '' : Math.max(0, parseFloat(val)) } as any);
-                  }}
-                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-right"
-                  style={{ textAlign: 'right' }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Weight (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max={35}
-                  required
-                  value={(formData.weightPercent as any) === '' ? '' : formData.weightPercent}
-                  onKeyDown={e => {
-                    if (e.key === '-') {
-                      e.preventDefault();
-                    }
-                  }}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFormData({ ...formData, weightPercent: val === '' ? '' : Math.max(0, parseFloat(val)) } as any);
-                  }}
-                  className="w-full border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-right"
-                  style={{ textAlign: 'right' }}
-                />
+                <div className="rounded-xl border border-gray-200 bg-slate-50 p-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Target Value</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={(formData.targetValue as any) === '' ? '' : formData.targetValue}
+                    onKeyDown={e => {
+                      if (e.key === '-') {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData({ ...formData, targetValue: val === '' ? '' : Math.max(0, parseFloat(val)) } as any);
+                    }}
+                    className="w-full border border-gray-300 rounded-lg bg-white px-2 py-2 focus:ring-2 focus:ring-blue-500 text-sm text-right"
+                    style={{ textAlign: 'right' }}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100">
-              <label className="block text-sm font-bold text-red-600 mb-1">Reason for Revision *</label>
-              <textarea
-                required
-                value={changeReason}
-                onChange={(e) => setChangeReason(e.target.value)}
-                rows={3}
-                placeholder="Explain the reason for this change..."
-                className="w-full border-red-100 bg-red-50 rounded-lg focus:ring-2 focus:ring-red-500 text-sm"
-              />
+            <div className="border-t border-gray-100 pt-3">
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3">
+                <label className="block text-sm font-bold text-red-600 mb-1">Reason for Revision *</label>
+                <textarea
+                  required
+                  value={changeReason}
+                  onChange={(e) => setChangeReason(e.target.value)}
+                  rows={3}
+                  placeholder="Explain the reason for this change..."
+                  className="w-full rounded-lg border border-red-200 bg-white px-2 py-2 focus:ring-2 focus:ring-red-500 text-sm"
+                />
+              </div>
             </div>
           </div>
 
