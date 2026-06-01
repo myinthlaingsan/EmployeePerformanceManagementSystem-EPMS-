@@ -194,7 +194,7 @@ const IdpCreatePage = () => {
                   : isResolvingManager
                     ? "Resolving manager..."
                     : directManager
-                      ? `${directManager.staffName} (${directManager.employeeCode})`
+                      ? `${directManager.staffName}${directManager.employeeCode && directManager.employeeCode !== 'null' ? ` (${directManager.employeeCode})` : ''}`
                       : selectedEmployee?.directManagerName || "No active reporting line found."}
               </p>
               <p style={{ fontSize: 11, color: "#6B7280", marginTop: 3 }}>

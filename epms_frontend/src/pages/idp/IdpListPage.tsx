@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type React from "react";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import { Activity, CheckCircle2, ChevronRight, Plus, TrendingUp, User } from "lucide-react";
+import { Activity, CheckCircle2, ChevronLeft, ChevronRight, Plus, TrendingUp, User } from "lucide-react";
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { useGetActiveDepartmentsQuery } from "../../features/org/departmentApi";
 import { IdpStatus } from "../../features/idp/idpTypes";
@@ -51,6 +51,12 @@ const IdpListPage = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("SELF");
   const [deptFilter, setDeptFilter] = useState("All Departments");
   const [statusFilter, setStatusFilter] = useState("All Status");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
+
+  useEffect(() => {
+    setPage(0);
+  }, [deptFilter, statusFilter, activeTab]);
 
   const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000 });
   const employees = employeeData?.content ?? [];
@@ -81,6 +87,10 @@ const IdpListPage = () => {
     const matchesStatus = statusFilter === "All Status" || plan.status === statusFilter.toUpperCase();
     return matchesDept && matchesStatus;
   }), [activePlans, deptFilter, statusFilter, employees]);
+
+  const totalPages = Math.ceil(filteredPlans.length / PAGE_SIZE);
+  const safePage = Math.min(page, Math.max(0, totalPages - 1));
+  const paginatedPlans = filteredPlans.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   const allVisiblePlans = activeTab === "SELF" || !canViewOthers ? selfPlans : otherPlans;
   const activeCount = allVisiblePlans.filter(plan => plan.status === IdpStatus.ACTIVE).length;
@@ -188,12 +198,12 @@ const IdpListPage = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredPlans.length > 0 ? filteredPlans.map((plan: IdpResponse, index) => {
+              {paginatedPlans.length > 0 ? paginatedPlans.map((plan: IdpResponse, index) => {
                 const employee = getEmployee(plan.employeeId);
                 const avatarColor = AVATAR_COLORS[(plan.employeeName?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length];
                 const statusStyle = STATUS_STYLE[plan.status] ?? STATUS_STYLE.DRAFT;
                 return (
-                  <tr key={plan.idpId} style={{ borderBottom: index < filteredPlans.length - 1 ? "0.5px solid #F0F2F6" : "none" }} className="hover:bg-[#FAFBFF] transition-colors">
+                  <tr key={plan.idpId} style={{ borderBottom: index < paginatedPlans.length - 1 ? "0.5px solid #F0F2F6" : "none" }} className="hover:bg-[#FAFBFF] transition-colors">
                     <td style={{ padding: "11px 16px" }}>
                       <div className="flex items-center gap-2">
                         <div style={{ width: 30, height: 30, borderRadius: "50%", background: avatarColor.bg, color: avatarColor.text, fontSize: 11, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -249,7 +259,59 @@ const IdpListPage = () => {
           </table>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2" style={{ borderTop: "0.5px solid #E4E6EC", padding: "10px 16px" }}>
-          <p style={{ fontSize: 12, color: "#9EA3B0" }}>Showing {filteredPlans.length} of {activePlans.length} records</p>
+          <p style={{ fontSize: 12, color: "#9EA3B0" }}>
+            {filteredPlans.length > 0
+              ? `Showing ${safePage * PAGE_SIZE + 1}–${Math.min((safePage + 1) * PAGE_SIZE, filteredPlans.length)} of ${filteredPlans.length} records`
+              : "Showing 0–0 of 0 records"
+            }
+          </p>
+          {totalPages > 1 && (
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <button
+                type="button"
+                disabled={safePage === 0}
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                style={{
+                  width: 28,
+                  height: 28,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: safePage === 0 ? "#F5F6F8" : "#FFFFFF",
+                  border: "0.5px solid #E0E2E8",
+                  borderRadius: 6,
+                  color: safePage === 0 ? "#D1D5DB" : "#5A6070",
+                  cursor: safePage === 0 ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span style={{ fontSize: 12, color: "#5A6070", padding: "0 6px" }}>
+                Page {safePage + 1} of {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={safePage >= totalPages - 1}
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                style={{
+                  width: 28,
+                  height: 28,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: safePage >= totalPages - 1 ? "#F5F6F8" : "#FFFFFF",
+                  border: "0.5px solid #E0E2E8",
+                  borderRadius: 6,
+                  color: safePage >= totalPages - 1 ? "#D1D5DB" : "#5A6070",
+                  cursor: safePage >= totalPages - 1 ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
