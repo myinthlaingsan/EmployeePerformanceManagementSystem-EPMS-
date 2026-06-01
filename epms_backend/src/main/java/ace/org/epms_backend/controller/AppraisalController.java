@@ -144,7 +144,7 @@ public class AppraisalController {
     }
 
     @PostMapping("/{id}/employee-sign-off")
-    @PreAuthorize("hasRole('EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MANAGER','HR','ADMIN')")
     public ResponseEntity<ApiResponse<AppraisalResponse>> employeeSignOff(
             @PathVariable Long id,
             @RequestParam(required = false) String comment
@@ -155,7 +155,8 @@ public class AppraisalController {
     }
 
     @PostMapping("/{id}/manager-sign-off")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+//    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MANAGER','HR','ADMIN')")
     public ResponseEntity<ApiResponse<AppraisalResponse>> managerSignOff(
             @PathVariable Long id,
             @RequestParam(required = false) String comment
@@ -179,7 +180,7 @@ public class AppraisalController {
     }
 
     @PostMapping(value = "/{id}/employee-signature", consumes = "multipart/form-data")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MANAGER','HR','ADMIN')")
     public ResponseEntity<ApiResponse<Void>> uploadEmployeeSignature(
             @PathVariable("id") Long id,
             @RequestParam("file") MultipartFile file
@@ -189,7 +190,7 @@ public class AppraisalController {
     }
 
     @PostMapping(value = "/{id}/manager-signature", consumes = "multipart/form-data")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MANAGER','HR','ADMIN')")
     public ResponseEntity<ApiResponse<Void>> uploadManagerSignature(
             @PathVariable("id") Long id,
             @RequestParam("file") MultipartFile file
@@ -204,7 +205,6 @@ public class AppraisalController {
         appraisalIntegrationService.syncFeedbackToAppraisal(request.getCycleId());
         return ResponseEntity.ok().build();
     }
-
 
     @GetMapping("/employee/{employeeId}/cycle/{cycleId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
