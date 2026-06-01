@@ -1,5 +1,6 @@
 import React from "react";
 import { Activity } from "lucide-react";
+import { formatAuditDateTime } from "../../utils/timeUtils";
 
 interface ActivityItem {
   id: string | number;
@@ -89,7 +90,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
                   )}
                 </p>
                 <p style={{ fontSize: 11, color: "#9EA3B0", marginTop: 2 }}>
-                  {item.timestamp}
+                  {formatAuditDateTime(item.timestamp)}
                 </p>
               </div>
             </div>

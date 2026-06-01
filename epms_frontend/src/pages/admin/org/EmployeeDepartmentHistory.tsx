@@ -26,7 +26,7 @@ const EmployeeDepartmentHistory = () => {
       setFormData({ currentDepartmentId: 0, parentDepartmentId: 0 });
       alert("Department assigned successfully!");
     } catch (error: any) {
-      alert(error?.data?.message || "Failed to assign department");
+      alert("Failed to assign department.");
     }
   };
 

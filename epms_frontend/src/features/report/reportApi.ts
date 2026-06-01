@@ -5,6 +5,7 @@ import type {
   AppraisalStatusReportDTO,
   PerformanceTrendReportDTO,
   FeedbackParticipationReportDTO,
+  IdpTrackingReportDTO,
   PipTrackingReportDTO,
   AuditTrailReportDTO,
   DeptPerformanceReportDTO,
@@ -17,6 +18,7 @@ import type {
   PerformancePotentialMatrixDTO,
   GoalCompletionReportDTO,
   Feedback360SummaryAnalyticsDTO,
+  DepartmentBreakdownDTO,
 } from "../../types/report";
 
 export const reportApi = api.injectEndpoints({
@@ -75,6 +77,12 @@ export const reportApi = api.injectEndpoints({
         params: { cycleId },
       }),
     }),
+    getTeamPerformanceBreakdown: builder.query<ApiResponse<DepartmentBreakdownDTO[]>, { cycleId: number; departmentId?: number }>({
+      query: ({ cycleId, departmentId }) => ({
+        url: "/reports/team-performance-breakdown",
+        params: { cycleId, departmentId },
+      }),
+    }),
     getFeedbackParticipationReport: builder.query<ApiResponse<FeedbackParticipationReportDTO>, number>({
       query: (cycleId) => ({
         url: "/reports/feedback-participation",
@@ -83,6 +91,9 @@ export const reportApi = api.injectEndpoints({
     }),
     getPipTrackingReport: builder.query<ApiResponse<PipTrackingReportDTO>, void>({
       query: () => "/reports/pip-tracking",
+    }),
+    getIdpTrackingReport: builder.query<ApiResponse<IdpTrackingReportDTO>, void>({
+      query: () => "/reports/idp-tracking",
     }),
     getAuditTrailReport: builder.query<ApiResponse<AuditTrailReportDTO[]>, { tableName?: string; recordId?: number }>({
       query: (params) => ({
@@ -155,10 +166,12 @@ export const {
   useGetFeedback360SummaryAnalyticsQuery,
   useGetFeedbackParticipationReportQuery,
   useGetPipTrackingReportQuery,
+  useGetIdpTrackingReportQuery,
   useGetAuditTrailReportQuery,
   useGetDeptComparisonReportQuery,
   useGetPromotionReadinessReportQuery,
   useGetEmployeePerformanceSummaryQuery,
   useGetPerformanceRankingReportQuery,
+  useGetTeamPerformanceBreakdownQuery,
   useDownloadReportMutation,
 } = reportApi;

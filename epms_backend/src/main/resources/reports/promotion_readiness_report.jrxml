@@ -11,6 +11,10 @@
 	<field name="isReady" class="java.lang.Boolean"/>
 	<field name="recommendation" class="java.lang.String"/>
 	<field name="justification" class="java.lang.String"/>
+	<variable name="ROW_COUNT" class="java.lang.Integer" calculation="Count">
+		<expression><![CDATA[$F{employeeName}]]></expression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
 	<title height="90">
 		<element kind="image" uuid="d654321a-da6c-490e-a08e-25cba038ec31" x="0" y="0" width="120" height="50">
 			<expression><![CDATA[$P{logoStream}]]></expression>
@@ -95,11 +99,22 @@
 		</band>
 	</detail>
 	<pageFooter height="30">
-		<element kind="textField" uuid="9e48a7fb-3449-4d2c-92c0-f10f6a229488" x="0" y="10" width="200" height="20" pattern="MMMMM dd, yyyy">
+		<element kind="textField" uuid="9e48a7fb-3449-4d2c-92c0-f10f6a229488" x="0" y="10" width="200" height="20" pattern="dd-MM-yyyy">
 			<expression><![CDATA[new java.util.Date()]]></expression>
 		</element>
 		<element kind="textField" uuid="6d02fbbb-9f25-48ae-99b8-3f4dff3f6aad" x="702" y="10" width="100" height="20" hTextAlign="Right">
 			<expression><![CDATA["Page " + $V{PAGE_NUMBER}]]></expression>
 		</element>
 	</pageFooter>
+	<summary height="30">
+		<element kind="line" x="0" y="5" width="802" height="1">
+			<pen lineWidth="1.0" lineColor="#34495E"/>
+		</element>
+		<element kind="staticText" x="0" y="10" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<text><![CDATA[Total Recommendations:]]></text>
+		</element>
+		<element kind="textField" x="150" y="10" width="100" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<expression><![CDATA[$V{ROW_COUNT}]]></expression>
+		</element>
+	</summary>
 </jasperReport>

@@ -61,3 +61,8 @@ export const getScoreTone = (score: number) => {
 
 export const getTopRows = (rows?: PerformanceRankingReportDTO[], pageSize = 5) =>
   (rows || []).slice(0, pageSize);
+
+export const getUnderRows = (rows?: PerformanceRankingReportDTO[], pageSize = 5) =>
+  [...(rows || [])]
+    .sort((left, right) => Number(left.currentScore || 0) - Number(right.currentScore || 0))
+    .slice(0, pageSize);

@@ -40,7 +40,15 @@ export interface CreateEmployeeRequest {
   directManagerId?: number;
 }
 
+export interface EmployeeImportResult {
+  totalRows: number;
+  successfulImports: number;
+  failedImports: number;
+  errors: string[];
+}
+
 export interface SetPasswordRequest {
+  token: string;
   password: string;
 }
 
@@ -148,6 +156,7 @@ export interface EmployeeResponse {
 
   status?: EmployeeStatus;
   isActive?: boolean;
+  accountLocked?: boolean;
 
   directManagerId?: number;
   directManagerName?: string;

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -19,7 +19,7 @@ import {
   YAxis,
   ZAxis,
 } from 'recharts';
-import { Download, FileSpreadsheet, FileText, Gauge, MessageSquare } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, Gauge, MessageSquare, ChevronDown, ChevronRight } from 'lucide-react';
 import { DashboardCard, EmptyState, SkeletonBlock } from './DashboardPrimitives';
 import { chartPalette, DASHBOARD_COLORS, DASHBOARD_BORDER, dashboardStyles } from '../../styles/dashboardStyles';
 import { calculateCompletionRate, formatScore, getScoreTone, transformGoalData, type PieDatum } from '../../utils/reportUtils';
@@ -32,6 +32,7 @@ import type {
   PerformanceDistributionReportDTO,
   PerformancePotentialMatrixDTO,
   PerformanceTrendPointDTO,
+  DepartmentBreakdownDTO,
 } from '../../types/report';
 
 interface DownloadButtonProps {
@@ -77,19 +78,26 @@ export const AppraisalCompletionCard = memo(({
   pieData,
   loading,
   isError,
-  onDownload,
+  onDownloadPdf,
+  onDownloadExcel,
 }: {
   data?: AppraisalStatusReportDTO;
   pieData: PieDatum[];
   loading: boolean;
   isError?: boolean;
-  onDownload: () => void;
+  onDownloadPdf: () => void;
+  onDownloadExcel: () => void;
 }) => (
   <DashboardCard
     title="Appraisal Completion Status"
     className="lg:col-span-4"
     isError={isError}
-    action={<DownloadButton iconOnly ariaLabel="Download appraisal status report" onClick={onDownload} />}
+    action={(
+      <div style={{ display: 'flex', gap: 6 }}>
+        <DownloadButton label="PDF" tone="primary" ariaLabel="Download appraisal status PDF" onClick={onDownloadPdf} />
+        <DownloadButton label="Excel" tone="success" ariaLabel="Download appraisal status Excel" onClick={onDownloadExcel} />
+      </div>
+    )}
   >
     <div style={{ ...dashboardStyles.chartHeightSm, position: 'relative' }}>
       {loading ? <SkeletonBlock height={220} /> : pieData.length === 0 ? (
@@ -225,8 +233,25 @@ export const DepartmentHeatmap = memo(({ data }: { data?: DepartmentAnalyticsDTO
   </DashboardCard>
 ));
 
-export const PerformanceTrendChart = memo(({ data }: { data?: PerformanceTrendPointDTO[] }) => (
-  <DashboardCard title="Performance Trend" className="lg:col-span-7">
+export const PerformanceTrendChart = memo(({
+  data,
+  onDownloadPdf,
+  onDownloadExcel,
+}: {
+  data?: PerformanceTrendPointDTO[];
+  onDownloadPdf: () => void;
+  onDownloadExcel: () => void;
+}) => (
+  <DashboardCard
+    title="Performance Trend"
+    className="lg:col-span-7"
+    action={(
+      <div style={{ display: 'flex', gap: 6 }}>
+        <DownloadButton label="PDF" tone="primary" ariaLabel="Download performance trend PDF" onClick={onDownloadPdf} />
+        <DownloadButton label="Excel" tone="success" ariaLabel="Download performance trend Excel" onClick={onDownloadExcel} />
+      </div>
+    )}
+  >
     <div style={dashboardStyles.chartHeightMd}>
       {!data?.length ? <EmptyState title="No trend data" body="Trend data needs at least one appraisal cycle." /> : (
         <ResponsiveContainer width="100%" height="100%">
@@ -308,3 +333,100 @@ export const PerformancePotentialMatrixCard = memo(({ data }: { data?: Performan
     </div>
   </DashboardCard>
 ));
+
+export const TeamPerformanceBreakdownCard = memo(({
+  data,
+  loading,
+  isError,
+  onDownloadPdf,
+  onDownloadExcel,
+}: {
+  data?: DepartmentBreakdownDTO[];
+  loading: boolean;
+  isError?: boolean;
+  onDownloadPdf: () => void;
+  onDownloadExcel: () => void;
+}) => {
+  const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({});
+  const [expandedTeams, setExpandedTeams] = useState<Record<string, boolean>>({});
+
+  const toggleDept = (name: string) => setExpandedDepts(prev => ({ ...prev, [name]: !prev[name] }));
+  const toggleTeam = (name: string) => setExpandedTeams(prev => ({ ...prev, [name]: !prev[name] }));
+
+  return (
+    <DashboardCard
+      title="Team Performance Breakdown"
+      isError={isError}
+      action={(
+        <div style={{ display: 'flex', gap: 6 }}>
+          <DownloadButton label="PDF" tone="primary" ariaLabel="Download Team Breakdown PDF" onClick={onDownloadPdf} />
+          <DownloadButton label="Excel" tone="success" ariaLabel="Download Team Breakdown Excel" onClick={onDownloadExcel} />
+        </div>
+      )}
+    >
+      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+        {loading ? <SkeletonBlock height={300} /> : !data?.length ? (
+          <EmptyState title="No Breakdown Data" body="Performance breakdown will appear after appraisals." />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {data.map((dept) => (
+              <div key={dept.departmentName} style={{ background: DASHBOARD_COLORS.surfaceAlt, borderRadius: 8, border: DASHBOARD_BORDER, overflow: 'hidden' }}>
+                <div onClick={() => toggleDept(dept.departmentName)} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', background: DASHBOARD_COLORS.surface }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {expandedDepts[dept.departmentName] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    <span style={{ fontWeight: 600, color: DASHBOARD_COLORS.ink }}>{dept.departmentName}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 12, color: DASHBOARD_COLORS.subtle }}>Avg Score:</span>
+                    <span style={{ ...getScoreTone(dept.averageScore), padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{formatScore(dept.averageScore)}</span>
+                  </div>
+                </div>
+                
+                {expandedDepts[dept.departmentName] && (
+                  <div style={{ padding: '0 0 12px 24px' }}>
+                    {dept.teams.map((team) => (
+                      <div key={team.teamName} style={{ marginTop: 8 }}>
+                        <div onClick={() => toggleTeam(team.teamName)} style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderBottom: DASHBOARD_BORDER }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {expandedTeams[team.teamName] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            <span style={{ fontWeight: 600, fontSize: 13, color: DASHBOARD_COLORS.ink }}>{team.teamName}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ ...getScoreTone(team.averageScore), padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>{formatScore(team.averageScore)}</span>
+                          </div>
+                        </div>
+
+                        {expandedTeams[team.teamName] && (
+                          <div style={{ padding: '8px 16px 8px 32px' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr>
+                                  <th style={{ textAlign: 'left', fontSize: 11, color: DASHBOARD_COLORS.subtle, paddingBottom: 4 }}>Employee</th>
+                                  <th style={{ textAlign: 'left', fontSize: 11, color: DASHBOARD_COLORS.subtle, paddingBottom: 4 }}>Role</th>
+                                  <th style={{ textAlign: 'right', fontSize: 11, color: DASHBOARD_COLORS.subtle, paddingBottom: 4 }}>Score</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {team.members.map((member) => (
+                                  <tr key={member.employeeId}>
+                                    <td style={{ fontSize: 12, padding: '4px 0', color: DASHBOARD_COLORS.ink }}>{member.employeeName}</td>
+                                    <td style={{ fontSize: 12, padding: '4px 0', color: DASHBOARD_COLORS.subtle }}>{member.role}</td>
+                                    <td style={{ fontSize: 12, padding: '4px 0', textAlign: 'right', fontWeight: 600, color: DASHBOARD_COLORS.ink }}>{formatScore(member.averageScore)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </DashboardCard>
+  );
+});

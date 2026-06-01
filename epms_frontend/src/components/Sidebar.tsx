@@ -9,7 +9,6 @@ import {
   TrendingUp,
   BarChart3,
   ChevronDown,
-  Plus,
   LogOut,
   Building2,
   ShieldCheck,
@@ -21,6 +20,8 @@ import {
   Layers,
   X,
   Repeat2,
+  FileClock,
+  GraduationCap,
 } from "lucide-react";
 
 interface NavItem {
@@ -43,7 +44,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Continuous Feedback", to: "/continuous-feedback", icon: MessageSquare, hideForPrivileged: true, hideForAdmin: true },
   { label: "1-on-1 Meetings", to: "/meetings", icon: Users, hideForPrivileged: true, hideForAdmin: true },
   { label: "PIP", to: "/pip", icon: TrendingUp, end: true },
+  { label: "Development Plans", to: "/idp", icon: GraduationCap, end: true },
   { label: "Analytics", to: "/analytics", icon: BarChart3, adminOnly: true },
+  { label: "Audit Logs", to: "/audit-logs", icon: FileClock },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
@@ -82,7 +85,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ onClose }: SidebarProps) => {
-  const { logout, isAdmin, isHR, user, hasPermission } = useAuth();
+  const { logout, isAdmin, isHR, isManager, user, hasPermission, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mgmtOpen, setMgmtOpen] = useState(false);
@@ -96,7 +99,9 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       case "Continuous Feedback": return hasPermission("CONTINUOUS_FEEDBACK");
       case "1-on-1 Meetings":     return hasPermission("MEETING_MANAGE");
       case "PIP":                 return hasPermission("PIP_VIEW_OWN") || hasPermission("PIP_CREATE");
+      case "Development Plans":   return true;
       case "Analytics":           return hasPermission("REPORT_VIEW_ALL");
+      case "Audit Logs":          return isAdmin || hasRole("AUDIT_VIEWER");
       default:                    return true;
     }
   });
@@ -107,8 +112,14 @@ const Sidebar = ({ onClose }: SidebarProps) => {
   const perfSubItems: Array<{ to: string; label: string; end?: boolean }> = [
     { to: "/kpi", label: "KPI Intelligence Hub", end: true },
     ...(hasPermission("KPI_VIEW_OWN") ? [{ to: "/kpi/my", label: "My Goals" }] : []),
-    ...(hasPermission("KPI_VIEW_TEAM") ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
     ...(hasPermission("KPI_VIEW_OWN") && user ? [{ to: `/kpi/history/${user.id}`, label: "My KPI Journey" }] : []),
+    ...(hasPermission("KPI_VIEW_TEAM") ? [{ to: "/kpi/team", label: "Team Performance" }] : []),
+    ...(isHR || isAdmin
+      ? [{ to: "/kpi/org-history", label: "Org KPI History" }]
+      : []),
+    ...(isManager && !isHR && !isAdmin
+      ? [{ to: "/kpi/org-history", label: "Team KPI History" }]
+      : []),
     ...(hasPermission("KPI_LIBRARY_MANAGE")
       ? [
           { to: "/kpi/manage", label: "Goal Management" },
@@ -132,7 +143,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         className="flex items-center justify-between"
         style={{ padding: "20px 18px", borderBottom: "0.5px solid #E4E6EC" }}
       >
-        <div className="flex items-center gap-[9px]">
+        <div className="flex items-center gap-2.25">
           <div
             className="flex items-center justify-center text-white shrink-0"
             style={{ width: 28, height: 28, background: "#1A56DB", borderRadius: 7 }}
@@ -143,7 +154,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         </div>
         {/* Close button — mobile only */}
         <button
-          className="md:hidden flex items-center justify-center rounded-[8px] transition-colors hover:bg-[#F0F2F8]"
+          className="md:hidden flex items-center justify-center rounded-lg transition-colors hover:bg-[#F0F2F8]"
           style={{ width: 28, height: 28, color: "#5A6070" }}
           onClick={onClose}
           aria-label="Close menu"
@@ -178,9 +189,9 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             <button
               onClick={() => setFeedback360Open(!feedback360Open)}
               style={{ padding: "8px 10px" }}
-              className="w-full flex items-center justify-between rounded-[8px] text-[13px] font-normal text-[#5A6070] hover:bg-[#F0F2F8] hover:text-[#111827] transition-colors"
+              className="w-full flex items-center justify-between rounded-lg text-[13px] font-normal text-[#5A6070] hover:bg-[#F0F2F8] hover:text-[#111827] transition-colors"
             >
-              <span className="flex items-center gap-[9px]">
+              <span className="flex items-center gap-2.25">
                 <Repeat2 size={16} aria-hidden="true" />
                 360° Feedback
               </span>
@@ -199,7 +210,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                     className={({ isActive }) => navCls(isActive)}
                     onClick={handleNavClick}
                   >
-                    My Pending
+                    Feedback Requests
                   </NavLink>
                 )}
                 {hasPermission("FEEDBACK360_VIEW_REPORT") && (
@@ -233,16 +244,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                     Admin Panel
                   </NavLink>
                 )}
-                {hasPermission("FEEDBACK360_MANAGE") && (
-                  <NavLink
-                    to="/360-feedback/admin/competencies"
-                    style={{ padding: "7px 10px" }}
-                    className={({ isActive }) => navCls(isActive)}
-                    onClick={handleNavClick}
-                  >
-                    Competencies
-                  </NavLink>
-                )}
+
               </div>
             )}
           </div>
@@ -252,11 +254,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             <button
               onClick={() => setPerfOpen(!perfOpen)}
               style={{ padding: "8px 10px" }}
-              className="w-full flex items-center justify-between rounded-[8px] text-[13px] font-normal text-[#5A6070] hover:bg-[#F0F2F8] hover:text-[#111827] transition-colors"
+              className="w-full flex items-center justify-between rounded-lg text-[13px] font-normal text-[#5A6070] hover:bg-[#F0F2F8] hover:text-[#111827] transition-colors"
             >
-              <span className="flex items-center gap-[9px]">
+              <span className="flex items-center gap-2.25">
                 <Target size={16} aria-hidden="true" />
-                Performance Hub
+                KPIs Hub
               </span>
               <ChevronDown
                 size={14}
@@ -288,9 +290,9 @@ const Sidebar = ({ onClose }: SidebarProps) => {
               <button
                 onClick={() => setMgmtOpen(!mgmtOpen)}
                 style={{ padding: "8px 10px" }}
-                className="w-full flex items-center justify-between rounded-[8px] text-[13px] font-normal text-[#5A6070] hover:bg-[#F0F2F8] hover:text-[#111827] transition-colors"
+                className="w-full flex items-center justify-between rounded-lg text-[13px] font-normal text-[#5A6070] hover:bg-[#F0F2F8] hover:text-[#111827] transition-colors"
               >
-                <span className="flex items-center gap-[9px]">
+                <span className="flex items-center gap-2.25">
                   <Building2 size={16} aria-hidden="true" />
                   Management
                 </span>
@@ -322,28 +324,28 @@ const Sidebar = ({ onClose }: SidebarProps) => {
         </div>
       </nav>
 
-      {/* Primary action button */}
+      {/* Logout button - moved to New Review position */}
       <div style={{ padding: "0 10px 10px" }}>
         <button
-          onClick={() => { navigate("/appraisal/new"); handleNavClick(); }}
-          className="w-full flex items-center justify-center gap-[9px] text-white text-[13px] font-medium transition-colors"
-          style={{ background: "#1A56DB", borderRadius: 8, padding: "8px 14px", border: "none" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+          onClick={(e) => { e.stopPropagation(); logout(); }}
+          className="w-full flex items-center justify-center gap-2.25 text-white text-[13px] font-medium transition-colors"
+          style={{ background: "#DC2626", borderRadius: 8, padding: "8px 14px", border: "none" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#B91C1C"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "#DC2626"; }}
         >
-          <Plus size={14} aria-hidden="true" />
-          New Review
+          <LogOut size={14} aria-hidden="true" />
+          Logout
         </button>
       </div>
 
       {/* User profile row */}
       <div
-        className="flex items-center gap-[10px] cursor-pointer hover:bg-[#F0F2F8] transition-colors"
+        className="flex items-center gap-2.5 cursor-pointer hover:bg-[#F0F2F8] transition-colors"
         style={{ borderTop: "0.5px solid #E4E6EC", padding: "12px 14px" }}
         onClick={() => { navigate("/profile"); handleNavClick(); }}
       >
         <div
-          className="flex items-center justify-center shrink-0"
+          className="flex items-center justify-center shrink-0 overflow-hidden"
           style={{
             width: 28,
             height: 28,
@@ -354,7 +356,18 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             fontWeight: 500,
           }}
         >
-          {user?.staffName?.charAt(0) ?? "U"}
+          {user?.profileImage && user.profileImage !== "default.jpg" ? (
+            <img
+              src={`http://localhost:8080${user.profileImage}`}
+              alt={user?.staffName ?? "User"}
+              className="w-full h-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            user?.staffName?.charAt(0) ?? "U"
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="truncate" style={{ fontSize: 13, fontWeight: 500, color: "#111827", lineHeight: 1.2 }}>
@@ -364,14 +377,6 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             {user?.positionName ?? ""}
           </p>
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); logout(); }}
-          className="shrink-0 hover:text-[#5A6070] transition-colors"
-          style={{ color: "#9EA3B0" }}
-          aria-label="Log out"
-        >
-          <LogOut size={14} />
-        </button>
       </div>
     </aside>
   );

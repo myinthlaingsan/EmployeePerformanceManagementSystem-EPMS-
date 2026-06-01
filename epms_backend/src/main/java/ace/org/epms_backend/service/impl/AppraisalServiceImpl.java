@@ -491,6 +491,10 @@ public class AppraisalServiceImpl implements AppraisalService {
         for (int i = 0; i < appraisals.size(); i++) {
             Appraisal a = appraisals.get(i);
             AppraisalResponse r = responses.get(i);
+            r.setDepartmentName(empDeptRepo.findByEmployeeIdAndIsCurrentTrue(a.getEmployee().getId())
+                .map(EmployeeDepartment::getCurrentDepartment)
+                .map(Department::getDepartmentName)
+                .orElse("N/A"));
             summaryRepo.findByEmployee_IdAndCycle_CycleId(a.getEmployee().getId(), a.getCycle().getCycleId())
                 .ifPresent(s -> {
                     r.setFinalScore(s.getTotalScore());
@@ -498,6 +502,19 @@ public class AppraisalServiceImpl implements AppraisalService {
                 });
         }
         return responses;
+    }
+
+    @Override
+    public AppraisalResponse getByEmployeeAndCycle(Long employeeId, Long cycleId) {
+        Appraisal appraisal = appraisalRepo.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
+                .orElseThrow(() -> new NotFoundException("Appraisal not found for employee " + employeeId + " in cycle " + cycleId));
+        AppraisalResponse response = appraisalMapper.toResponse(appraisal);
+        summaryRepo.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
+                .ifPresent(s -> {
+                    response.setFinalScore(s.getTotalScore());
+                    response.setFinalGrade(s.getFinalGrade() != null ? s.getFinalGrade().name() : null);
+                });
+        return response;
     }
 
     private final String UPLOAD_DIR = "uploads/signatures/";

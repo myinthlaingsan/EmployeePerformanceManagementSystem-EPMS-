@@ -5,6 +5,7 @@ import ace.org.epms_backend.dto.appraisal.AppraisalCycleResponse;
 import ace.org.epms_backend.dto.kpi.*;
 import ace.org.epms_backend.dto.notification.NotificationEvent;
 import ace.org.epms_backend.enums.*;
+import ace.org.epms_backend.exception.CannotAssignException;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.KpiMapper;
 import ace.org.epms_backend.model.appraisal.AppraisalCycle;
@@ -15,15 +16,20 @@ import ace.org.epms_backend.repository.employee.ReportingLineRepository;
 import ace.org.epms_backend.model.employee.ReportingLine;
 import ace.org.epms_backend.service.AuditService;
 import ace.org.epms_backend.service.kpi.KpiGoalService;
+import ace.org.epms_backend.service.kpi.KpiMidcycleService;
+import ace.org.epms_backend.service.kpi.KpiPhaseLinkerService;
+import ace.org.epms_backend.service.kpi.KpiScoringService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ace.org.epms_backend.service.kpi.KpiPhaseLinkerService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -43,22 +49,47 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
     private final ReportingLineRepository reportingLineRepo;
+    private final KpiPhaseLinkerService phaseLinkerService;
+    private final KpiScoringService kpiScoringService;
 
     @Override
     @Transactional(readOnly = true)
     public AppraisalCycleResponse getActiveCycle() {
         List<AppraisalCycle> cycles = cycleRepository.findActiveCyclesByStatus(List.of(
-            CycleStatus.PLANNING, CycleStatus.IN_PROGRESS, CycleStatus.EVALUATION
-        ));
+                CycleStatus.PLANNING, CycleStatus.IN_PROGRESS, CycleStatus.EVALUATION));
 
-        AppraisalCycle cycle = cycles.stream().findFirst()
-                .orElseThrow(() -> new NotFoundException("No active appraisal cycle found"));
-        System.out.println(cycle.getCycleId());
-        System.out.println(cycle.getCycleName());
+        if (cycles.isEmpty()) {
+            cycles = cycleRepository.findByIsActiveTrueOrderByCycleIdDesc();
+        }
+
+        AppraisalCycle cycle = cycles.stream().findFirst().orElse(null);
+
+        if (cycle == null) {
+            return null;
+        }
+
         return AppraisalCycleResponse.builder()
                 .cycleId(cycle.getCycleId())
                 .cycleName(cycle.getCycleName())
                 .build();
+    }
+
+    private void ensureAssignmentAllowed(AppraisalCycle cycle) {
+        if (cycle == null || cycle.getManagerEvaluationDeadline() == null || cycle.getIsActive() == null
+                || !cycle.getIsActive()) {
+            return;
+        }
+
+        LocalDate today = LocalDate.now();
+        boolean deadlinePassed = !cycle.getManagerEvaluationDeadline().isAfter(today);
+        boolean cycleStatusOpen = cycle.getStatus() == null
+                || cycle.getStatus() == CycleStatus.IN_PROGRESS
+                || cycle.getStatus() == CycleStatus.EVALUATION;
+
+        if (deadlinePassed && cycleStatusOpen) {
+            throw new CannotAssignException(
+                    "KPI assignment is locked for this cycle because the manager evaluation deadline has passed.");
+        }
     }
 
     @Override
@@ -76,7 +107,10 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             }
         }
         AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
-                .orElseThrow(() -> new NotFoundException("Selected appraisal cycle not found. ID: " + request.getAppraisalCycleId()));
+                .orElseThrow(() -> new NotFoundException(
+                        "Selected appraisal cycle not found. ID: " + request.getAppraisalCycleId()));
+
+        ensureAssignmentAllowed(cycle);
 
         Employee currentManager = getCurrentEmployee();
 
@@ -120,7 +154,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             employeeManager = rl.getManager();
         }
         // Only fall back to the assigning user as manager when they are a MANAGER role.
-        // HR/Admin assigning on behalf should not overwrite the manager field with themselves.
+        // HR/Admin assigning on behalf should not overwrite the manager field with
+        // themselves.
         if (employeeManager == null && isManager) {
             employeeManager = currentManager;
         }
@@ -192,6 +227,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
+        // Link this goal set to an open phase if one exists (midcycle split scenario)
+        phaseLinkerService.assignGoalSetToOpenPhase(employee.getId(), cycle.getCycleId(), savedGoalSet.getId());
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
@@ -206,7 +243,10 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         }
 
         AppraisalCycle cycle = cycleRepository.findById(request.getAppraisalCycleId())
-                .orElseThrow(() -> new NotFoundException("Selected appraisal cycle not found. ID: " + request.getAppraisalCycleId()));
+                .orElseThrow(() -> new NotFoundException(
+                        "Selected appraisal cycle not found. ID: " + request.getAppraisalCycleId()));
+
+        ensureAssignmentAllowed(cycle);
 
         Employee currentManager = getCurrentEmployee();
 
@@ -334,7 +374,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         .goalSetId(savedGoalSet.getId())
                         .action("KPI_ASSIGNED")
                         .changeDetails(
-                                "Goal set bulk-assigned to " + employee.getStaffName() + " for cycle: " + cycle.getCycleName() + " from library: " + library.getTitle())
+                                "Goal set bulk-assigned to " + employee.getStaffName() + " for cycle: "
+                                        + cycle.getCycleName() + " from library: " + library.getTitle())
                         .changedBy(currentManager.getId())
                         .build());
 
@@ -346,6 +387,9 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                         .newState(savedGoalSet)
                         .status(AuditStatus.SUCCESS)
                         .build());
+
+                // link to midcycle open phase if exists
+                phaseLinkerService.assignGoalSetToOpenPhase(employee.getId(), cycle.getCycleId(), savedGoalSet.getId());
 
                 response.setSuccessfulCount(response.getSuccessfulCount() + 1);
                 response.getResults().add(AssignmentResult.builder()
@@ -572,6 +616,14 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                 .status(AuditStatus.SUCCESS)
                 .build());
 
+        // Auto-calculate initial score after approval
+        try {
+            kpiScoringService.calculateFinalScore(
+                    savedGoalSet.getEmployee().getId(),
+                    savedGoalSet.getCycle().getCycleId());
+        } catch (Exception e) {
+            // Continue even if calculation fails
+        }
         return kpiMapper.toGoalSetResponse(savedGoalSet);
     }
 
@@ -607,7 +659,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     .senderId(getCurrentEmployee().getId())
                     .type(NotificationType.KPI_REJECTED)
                     .title("KPI Reverted to Draft")
-                    .message("Your KPI goals have been returned to draft by your manager. Please check with your manager for further instructions.")
+                    .message(
+                            "Your KPI goals have been returned to draft by your manager. Please check with your manager for further instructions.")
                     .referenceType(ReferenceType.KPI)
                     .referenceId(goalSet.getId())
                     .actionUrl("/kpi/my")
@@ -658,7 +711,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     .senderId(getCurrentEmployee().getId())
                     .type(NotificationType.KPI_LOCKED)
                     .title("KPI Goals Locked")
-                    .message("Your KPI goals have been locked by your manager. No further progress updates can be made.")
+                    .message(
+                            "Your KPI goals have been locked by your manager. No further progress updates can be made.")
                     .referenceType(ReferenceType.KPI)
                     .referenceId(goalSet.getId())
                     .actionUrl("/kpi/my")
@@ -773,7 +827,8 @@ public class KpiGoalServiceImpl implements KpiGoalService {
                     .senderId(currentUser.getId())
                     .type(NotificationType.KPI_REVISED)
                     .title("KPI Goal Revised")
-                    .message("Your KPI goal '" + item.getTitle() + "' has been revised by your manager. Reason: " + request.getChangeReason())
+                    .message("Your KPI goal '" + item.getTitle() + "' has been revised by your manager. Reason: "
+                            + request.getChangeReason())
                     .referenceType(ReferenceType.KPI)
                     .referenceId(goalSet.getId())
                     .actionUrl("/kpi/my")
@@ -805,13 +860,16 @@ public class KpiGoalServiceImpl implements KpiGoalService {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new NotFoundException("Employee not found with ID: " + employeeId));
         // First try finding for the specific cycle provided
-        List<KpiGoals> goals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
-        
+        List<KpiGoals> goals = goalsRepository.findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId,
+                cycleId);
+
         if (goals.isEmpty()) {
-            // Fallback: If cycleId was not provided or correctly matched, look for ANY current goal set 
-            // for the employee to see if they were accidentally assigned to a different cycle (like ID 1)
+            // Fallback: If cycleId was not provided or correctly matched, look for ANY
+            // current goal set
+            // for the employee to see if they were accidentally assigned to a different
+            // cycle (like ID 1)
             goals = goalsRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId).stream()
-                    .filter(KpiGoals::getIsCurrent)
+                    .filter(g -> g.getIsCurrent() && g.getStatus() != KpiGoalStatus.ARCHIVED)
                     .collect(Collectors.toList());
         }
 
@@ -819,7 +877,7 @@ public class KpiGoalServiceImpl implements KpiGoalService {
             throw new NotFoundException(String.format("Current goal set not found for employee: %s (ID: %s)",
                     employee.getStaffName(), employeeId));
         }
-        
+
         return kpiMapper.toGoalSetResponse(goals.get(0));
     }
 
@@ -873,18 +931,20 @@ public class KpiGoalServiceImpl implements KpiGoalService {
     }
 
     private void recalculateItemScores(KpiGoalItem item) {
-        if (item.getActualValue() == null) return;
+        if (item.getActualValue() == null)
+            return;
 
         BigDecimal scorePercent = BigDecimal.ZERO;
         if (item.getTargetValue() != null) {
             if (item.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
                 scorePercent = item.getActualValue().compareTo(BigDecimal.ZERO) == 0
-                        ? new BigDecimal("100") : BigDecimal.ZERO;
+                        ? new BigDecimal("100")
+                        : BigDecimal.ZERO;
             } else {
                 scorePercent = item.getActualValue()
                         .divide(item.getTargetValue(), 4, RoundingMode.HALF_UP)
                         .multiply(new BigDecimal("100"))
-                        .min(new BigDecimal("100"));  // cap — also fixes Bug 2
+                        .min(new BigDecimal("100")); // cap — also fixes Bug 2
             }
         }
         item.setScorePercent(scorePercent);

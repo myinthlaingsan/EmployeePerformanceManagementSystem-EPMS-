@@ -109,18 +109,18 @@ const PipDetailsPage: React.FC = () => {
 
   const handleActivate = async () => {
     try { await activatePip(pipId).unwrap(); toast.success('PIP Activated Successfully!'); }
-    catch (err: any) { toast.error('Failed to activate PIP: ' + (err.data?.message || 'Check permissions or state.')); }
+    catch (err: any) { toast.error('Failed to activate PIP. Check permissions or state.'); }
   };
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this PIP? This action cannot be undone.')) return;
     try { await deletePip(pipId).unwrap(); navigate('/pip'); }
-    catch (err: any) { toast.error('Failed to delete PIP: ' + (err?.data?.message || 'Check permissions.')); }
+    catch (err: any) { toast.error('Failed to delete PIP. Check permissions.'); }
   };
 
   const handleCreateReview = async (data: any) => {
     try { await createReview({ ...data, pipId }).unwrap(); setIsReviewModalOpen(false); toast.success('Review added successfully!'); }
-    catch (err: any) { toast.error('Failed to add review: ' + (err?.data?.message || 'Check permissions.')); }
+    catch (err: any) { toast.error('Failed to add review. Check permissions.'); }
   };
 
   const handleCreateObjective = async (data: any) => {
@@ -135,12 +135,12 @@ const PipDetailsPage: React.FC = () => {
 
   const handleSaveReason = async () => {
     try { await updatePip({ id: pipId, body: { reason: editedReason } }).unwrap(); setIsEditingReason(false); toast.success('PIP Reason updated successfully!'); }
-    catch (err: any) { toast.error('Failed to update reason: ' + (err?.data?.message || 'Check permissions.')); }
+    catch (err: any) { toast.error('Failed to update reason. Check permissions.'); }
   };
 
   const handleStatusChange = async (objectiveId: number, status: ObjectiveStatus) => {
     try { await updateObjectiveStatus({ id: objectiveId, status }).unwrap(); }
-    catch (err: any) { toast.error('Failed to update objective status: ' + (err?.data?.message || 'Check permissions.')); }
+    catch (err: any) { toast.error('Failed to update objective status. Check permissions.'); }
   };
 
   const handleAddProgress = async (data: any) => {
@@ -155,7 +155,7 @@ const PipDetailsPage: React.FC = () => {
       }
       setIsProgressModalOpen(false);
       toast.success('Progress logged successfully!');
-    } catch (err: any) { toast.error('Failed to log progress: ' + (err?.data?.message || 'Check permissions.')); }
+    } catch (err: any) { toast.error('Failed to log progress. Check permissions.'); }
   };
 
   const handleFinalize = async (data: { outcome: PipOutcome; comment: string; newEndDate?: string; scheduledReviewDates?: string[] }) => {
@@ -166,7 +166,7 @@ const PipDetailsPage: React.FC = () => {
       await finalizePip({ pipId, outcome: data.outcome, comment: data.comment }).unwrap();
       setIsFinalizeModalOpen(false);
       toast.success(`PIP Finalized as ${data.outcome}`);
-    } catch (err: any) { toast.error('Failed to finalize: ' + (err.data?.message || 'Check fields and permissions.')); }
+    } catch (err: any) { toast.error('Failed to finalize. Check fields and permissions.'); }
   };
 
   const handleSavePrivateNote = async () => {
@@ -174,7 +174,7 @@ const PipDetailsPage: React.FC = () => {
       const body = isCurrentEmployee ? { employeePrivateNote: privateNote } : { managerPrivateNote: privateNote };
       await updatePip({ id: pipId, body }).unwrap();
       toast.success('Private note saved successfully!');
-    } catch (err: any) { toast.error('Failed to save private note: ' + (err?.data?.message || 'Check permissions.')); }
+    } catch (err: any) { toast.error('Failed to save private note. Check permissions.'); }
   };
 
   const toggleObjectiveHistory = (id: number) => {
@@ -190,7 +190,7 @@ const PipDetailsPage: React.FC = () => {
       }).unwrap();
       toast.success('PIP report exported successfully!');
     } catch (err: any) {
-      toast.error('Export failed: ' + (err?.data?.message || 'PIP must be COMPLETED or CLOSED.'));
+      toast.error('Export failed. PIP must be COMPLETED or CLOSED.');
     }
   };
 

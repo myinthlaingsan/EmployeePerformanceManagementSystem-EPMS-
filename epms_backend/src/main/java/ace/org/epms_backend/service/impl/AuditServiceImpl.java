@@ -13,6 +13,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import org.springframework.scheduling.annotation.Async;
+
 import java.time.Instant;
 
 @Service
@@ -25,7 +27,7 @@ public class AuditServiceImpl implements AuditService {
     // private final AuthService authService;
 
     @Override
-    // @Async
+    @Async
     public void log(AuditRequest auditRequest) {
         try {
             String oldValues = auditRequest.getOldState() != null
@@ -58,8 +60,7 @@ public class AuditServiceImpl implements AuditService {
 
         if (authentication == null || !authentication.isAuthenticated()
                 || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new InvalidTokenException(
-                    "No user logged in or session expired. Please provide a valid authentication token.");
+            return null;
         }
 
         Object principal = authentication.getPrincipal();

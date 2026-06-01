@@ -38,6 +38,11 @@ public class FinancialYearController {
         return ResponseEntity.ok(ApiResponse.success(financialYearService.setCurrentFinancialYear(id)));
     }
 
+    @PatchMapping("/{id}/deactivate")
+    public ResponseEntity<ApiResponse<FinancialYearResponse>> deactivate(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(financialYearService.deactivateFinancialYear(id)));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         financialYearService.deleteFinancialYear(id);

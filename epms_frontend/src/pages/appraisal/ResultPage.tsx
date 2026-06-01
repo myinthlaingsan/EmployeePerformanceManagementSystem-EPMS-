@@ -88,15 +88,15 @@ const ResultPage: React.FC = () => {
 
   const handleCalculate = async () => {
     try { await calculateScore(id!).unwrap(); toast.success('Scores calculated!'); }
-    catch (err: any) { toast.error(err?.data?.message || 'Calculation failed'); }
+    catch (err: any) { toast.error('Calculation failed.'); }
   };
   const handleEmployeeSign = async (file: File) => {
     try { await uploadEmployeeSignature({ id: id!, file }).unwrap(); toast.success('Sign-off successful!'); }
-    catch (err: any) { toast.error(err?.data?.message || 'Upload failed'); }
+    catch (err: any) { toast.error('Upload failed.'); }
   };
   const handleManagerSign = async (file: File) => {
     try { await uploadManagerSignature({ id: id!, file }).unwrap(); toast.success('Manager sign-off successful!'); }
-    catch (err: any) { toast.error(err?.data?.message || 'Upload failed'); }
+    catch (err: any) { toast.error('Upload failed.'); }
   };
 
   const getScoreBg = (score: number) => {

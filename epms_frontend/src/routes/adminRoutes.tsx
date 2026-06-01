@@ -1,6 +1,8 @@
 import EmployeeList from "../pages/admin/EmployeeList";
 import EmployeeForm from "../pages/admin/EmployeeForm";
+import EmployeeProfileView from "../pages/admin/EmployeeProfileView";
 import DepartmentList from "../pages/admin/DepartmentList";
+import DepartmentMembers from "../pages/admin/DepartmentMembers";
 import RoleList from "../pages/admin/RoleList";
 import JobLevelList from "../pages/admin/JobLevelList";
 import PositionList from "../pages/admin/PositionList";
@@ -19,8 +21,10 @@ export const adminRoutes = [
   { path: "/employees", element: <EmployeeList /> },
   { path: "/employees/new", element: <EmployeeForm /> },
   { path: "/employees/edit/:id", element: <EmployeeForm /> },
+  { path: "/employees/:id/profile", element: <EmployeeProfileView /> },
   { path: "/employees/:id/departments", element: <EmployeeDepartmentHistory /> },
   { path: "/departments", element: <DepartmentList /> },
+  { path: "/departments/:id/members", element: <DepartmentMembers /> },
   { path: "/roles", element: <RoleList /> },
   { path: "/job-levels", element: <JobLevelList /> },
   { path: "/positions", element: <PositionList /> },

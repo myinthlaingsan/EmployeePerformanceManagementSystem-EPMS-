@@ -8,6 +8,8 @@ import { useGetAllEmployeesQuery, useGetDirectReportsQuery } from '../../feature
 import { useAuth } from '../../hooks/useAuth';
 import { useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
+import KpiSummaryReportButton from '../../components/kpi/KpiSummaryReportButton';
+import KpiActualsReportButton from '../../components/kpi/KpiActualsReportButton';
 import React from 'react';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
@@ -18,8 +20,8 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }>
 
 const TeamKpiDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user, activeCycleId, activeCycleName } = useAuth();
-  const isAdminOrHr = user?.roles?.some(r => r === 'ADMIN' || r === 'HR');
+  const { user, activeCycleId, activeCycleName, isAdmin, isHR } = useAuth();
+  const isAdminOrHr = isAdmin || isHR;
 
   const { data: allEmployees = [], isLoading: loadingAll } = useGetAllEmployeesQuery(undefined, { skip: !isAdminOrHr });
   const { data: directReports = [], isLoading: loadingReports } = useGetDirectReportsQuery(Number(user?.id), { skip: isAdminOrHr || !user?.id });
@@ -116,6 +118,8 @@ const TeamKpiDashboard: React.FC = () => {
             style={{ background: '#1A56DB', color: '#FFFFFF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, border: 'none' }}>
             <LayoutTemplate size={13} /> Bulk Assign Team
           </button>
+          <KpiActualsReportButton />
+          <KpiSummaryReportButton />
         </div>
       </div>
 

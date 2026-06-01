@@ -32,7 +32,7 @@ const ResetPasswordPage = () => {
       setMessage({ type: 'success', text: "Password reset successfully! Redirecting to login…" });
       setTimeout(() => navigate("/login"), 3000);
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.data?.message || "Failed to reset password. The link may have expired." });
+      setMessage({ type: 'error', text: "Failed to reset password. The link may have expired." });
     }
   };
 

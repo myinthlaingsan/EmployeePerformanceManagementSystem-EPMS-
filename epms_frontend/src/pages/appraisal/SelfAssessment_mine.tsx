@@ -96,7 +96,7 @@ const SelfAssessment = () => {
       await saveDraftMutation(formData.selfAssessmentId).unwrap();
       toast.success('Draft saved successfully!');
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Operation failed. Please try again.');
+      toast.error('Operation failed. Please try again.');
     }
   };
 
@@ -123,7 +123,7 @@ const SelfAssessment = () => {
       toast.success('Self-assessment submitted successfully!');
       navigate('/appraisal');
     } catch (err: any) {
-      const errMsg = err?.data?.message || 'Operation failed. Please try again.';
+      const errMsg = 'Operation failed. Please try again.';
       toast.error(errMsg);
     }
   };

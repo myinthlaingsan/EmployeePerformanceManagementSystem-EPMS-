@@ -41,7 +41,7 @@ const ObjectiveModal: React.FC<ObjectiveModalProps> = ({ pipStartDate, initialDa
         try {
             await onSave(data);
         } catch (err: any) {
-            alert("Failed to save objective: " + (err?.data?.message || "Check permissions"));
+            alert("Failed to save objective. Check permissions.");
         } finally {
             setIsSaving(false);
         }

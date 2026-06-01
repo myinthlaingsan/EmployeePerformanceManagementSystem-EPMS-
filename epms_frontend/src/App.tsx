@@ -11,13 +11,15 @@ import {
   appraisalRoutes,
   adminRoutes,
   pipRoutes,
+  idpRoutes,
   generalRoutes,
   kpiRoutes,
   continuousRoutes,
   feedback360Routes,
 } from "./routes";
 import { ActiveCycleProvider } from "./context/ActiveCycleContext";
-import KpiCategoryManager from './pages/admin/kpi/KpiCategoryManager';
+import KpiCategoryManager from './pages/kpi/KpiCategoryManager';
+import AuditLogPage from './pages/admin/AuditLogPage';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -86,14 +88,22 @@ const App = () => {
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
+            {/* IDP Routes */}
+            {idpRoutes.filter(r => r.path !== "/idp/new").map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
+
             {/* KPI General Routes */}
-            {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId', '/kpi/team'].includes(r.path)).map((route) => (
+            {kpiRoutes.filter(r => !['/kpi/library', '/kpi/manage', '/kpi/library/new', '/kpi/library/edit/:id', '/kpi/assign/:employeeId', '/kpi/team', '/kpi/org-history'].includes(r.path)).map((route) => (
               <Route key={route.path} path={route.path} element={route.element} />
             ))}
 
             {/* Manager & Admin/HR KPI Management Routes */}
             <Route element={<ProtectedRoute allowedRoles={["MANAGER", "ADMIN", "HR"]} />}>
-              {kpiRoutes.filter(r => ['/kpi/team', '/kpi/manage', '/kpi/assign/:employeeId'].includes(r.path)).map((route) => (
+              {kpiRoutes.filter(r => ['/kpi/team', '/kpi/manage', '/kpi/assign/:employeeId', '/kpi/org-history'].includes(r.path)).map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+              {adminRoutes.filter(r => r.path === '/employees/:id/profile').map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
             </Route>
@@ -106,7 +116,7 @@ const App = () => {
               ))}
 
               {/* Shared HR + Admin routes (employees, departments, org, etc.) */}
-              {adminRoutes.filter(r => !['/roles', '/permissions', '/permissions/matrix', '/permissions/assign'].includes(r.path)).map((route) => (
+              {adminRoutes.filter(r => !['/roles', '/permissions', '/permissions/matrix', '/permissions/assign', '/employees/:id/profile'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
 
@@ -122,6 +132,11 @@ const App = () => {
                 <Route key={route.path} path={route.path} element={route.element} />
               ))}
 
+              {/* IDP Creation Route (HR/Admin only) */}
+              {idpRoutes.filter(r => r.path === "/idp/new").map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+
               {/* KPI Administrative Routes (Library Management) */}
               {kpiRoutes.filter(r => ['/kpi/library', '/kpi/library/new', '/kpi/library/edit/:id'].includes(r.path)).map((route) => (
                 <Route key={route.path} path={route.path} element={route.element} />
@@ -132,6 +147,11 @@ const App = () => {
             {/* Approvals — requires calibrate permission */}
             <Route element={<ProtectedRoute requiredPermissions={["APPRAISAL_CALIBRATE"]} />}>
               <Route path="/approvals" element={<ApprovalPage />} />
+            </Route>
+
+            {/* Audit Log Console */}
+            <Route element={<ProtectedRoute allowedRoles={["ADMIN", "AUDIT_VIEWER"]} />}>
+              <Route path="/audit-logs" element={<AuditLogPage />} />
             </Route>
           </Route>
         </Route>

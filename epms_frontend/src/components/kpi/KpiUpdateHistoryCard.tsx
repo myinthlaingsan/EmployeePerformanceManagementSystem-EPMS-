@@ -2,6 +2,7 @@ import React from 'react';
 import { History, Eye } from 'lucide-react';
 
 import type { KpiProgressHistory } from '../../features/kpi/kpiTypes';
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 interface KpiUpdateHistoryCardProps {
   history: KpiProgressHistory[];
@@ -25,7 +26,7 @@ const KpiUpdateHistoryCard: React.FC<KpiUpdateHistoryCardProps> = ({ history }) 
           history.map((item) => (
             <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-gray-50/50 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors group cursor-pointer" title={item.evidenceNote}>
               <div className="col-span-8 overflow-hidden">
-                <p className="text-sm font-bold text-gray-900">{new Date(item.updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                <p className="text-sm font-bold text-gray-900">{formatRelativeTime(item.updatedAt)}</p>
                 <p className="text-[11px] font-medium text-gray-500 mt-0.5 truncate" title={item.goalTitle}>{item.goalTitle}</p>
               </div>
               <div className="col-span-4 text-right">

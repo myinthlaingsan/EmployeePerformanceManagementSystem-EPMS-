@@ -5,9 +5,9 @@ import {
   useCreateFinancialYearMutation,
   useSetCurrentFinancialYearMutation,
   useDeleteFinancialYearMutation,
-  useRolloverFinancialYearMutation
+  useDeactivateFinancialYearMutation
 } from '../../features/appraisal/financialYearApi';
-import { Plus, CheckCircle2, Trash2, History, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Plus, CheckCircle2, Trash2, History, ShieldCheck, AlertTriangle, Power, Archive, Clock3 } from 'lucide-react';
 import { Can } from '../../components/Can';
 import { format, addYears, subDays, parseISO, isValid } from 'date-fns';
 import { CustomDateInput } from '../../components/common/CustomDateInput';
@@ -23,15 +23,34 @@ const labelStyle: React.CSSProperties = {
   textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5,
 };
 
+type FinancialYearStatus = 'NOT_USED' | 'CURRENT' | 'HISTORICAL';
+
+const getYearStatus = (year: any): FinancialYearStatus => {
+  if (year.status) return year.status;
+  return year.isCurrent || year.current ? 'CURRENT' : 'NOT_USED';
+};
+
+const statusMeta: Record<FinancialYearStatus, { label: string; bg: string; text: string; border: string }> = {
+  CURRENT: { label: 'Current', bg: '#EEF3FD', text: '#0C447C', border: '#B5D4F4' },
+  HISTORICAL: { label: 'Historical', bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' },
+  NOT_USED: { label: 'Not Used', bg: '#FAEEDA', text: '#633806', border: '#F0D4A4' },
+};
+
 const FinancialYearManagement = () => {
   const { data: years, isLoading } = useGetFinancialYearsQuery();
   const [createYear] = useCreateFinancialYearMutation();
   const [setCurrent] = useSetCurrentFinancialYearMutation();
+  const [deactivateYear] = useDeactivateFinancialYearMutation();
   const [deleteYear] = useDeleteFinancialYearMutation();
-  const [rollover] = useRolloverFinancialYearMutation();
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [warningModal, setWarningModal] = useState<{ isOpen: boolean; title: string; message: string }>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
   const [newYear, setNewYear] = useState({ title: '', startDate: '', endDate: '', isCurrent: false });
+  const hasCurrentYear = !!years?.some(year => getYearStatus(year) === 'CURRENT');
 
   const handleStartDateChange = (startStr: string) => {
     if (!startStr) return;
@@ -52,25 +71,34 @@ const FinancialYearManagement = () => {
       if (!window.confirm('The period is less than one year. Proceed?')) return;
     }
     try {
-      await createYear(newYear).unwrap();
+      await createYear({ ...newYear, isCurrent: false }).unwrap();
       setShowAddModal(false);
       setNewYear({ title: '', startDate: '', endDate: '', isCurrent: false });
     } catch { toast.error('Failed to create financial year'); }
   };
 
   const handleSetCurrent = async (id: number) => {
-    if (window.confirm('Set this as the current Financial Year? All others will be deactivated.')) await setCurrent(id);
+    if (window.confirm('Activate this financial year?')) {
+      try { await setCurrent(id).unwrap(); }
+      catch (err: any) { toast.warning('Failed to activate financial year.'); }
+    }
+  };
+
+  const handleDeactivate = async (id: number) => {
+    if (!window.confirm('Deactivate this financial year? It will become historical and cannot be reactivated.')) return;
+    try {
+      await deactivateYear(id).unwrap();
+    } catch (err: any) {
+      setWarningModal({
+        isOpen: true,
+        title: 'Active Appraisal Cycle Found',
+        message: 'Finalize the active appraisal cycle related to this financial year before deactivating it.',
+      });
+    }
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Delete this financial year?')) await deleteYear(id);
-  };
-
-  const handleRollover = async () => {
-    if (window.confirm('Execute Rollover? This validates active appraisals, creates the next FY, and archives the current one.')) {
-      try { await rollover().unwrap(); }
-      catch (err: any) { toast.error(err?.data?.message || 'Rollover failed.'); }
-    }
   };
 
   return (
@@ -106,19 +134,18 @@ const FinancialYearManagement = () => {
           </div>
           <div>
             <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Status</p>
-            <p style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{years?.filter(y => y.isCurrent || (y as any).current).length || 0} Period Live</p>
+            <p style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{years?.filter(y => getYearStatus(y) === 'CURRENT').length || 0} Period Live</p>
           </div>
         </div>
-        <Can permission="CYCLE_CONFIG_MANAGE">
-          <div onClick={handleRollover} style={{ background: '#111827', border: 'none', borderRadius: 12, padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            className="hover:opacity-90 transition-opacity">
-            <div>
-              <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Next Phase</p>
-              <p style={{ fontSize: 14, fontWeight: 500, color: '#FFFFFF', marginTop: 2 }}>Execute Rollover</p>
-            </div>
-            <ArrowRight size={18} style={{ color: 'rgba(255,255,255,0.4)' }} />
+        <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FAEEDA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Clock3 size={16} style={{ color: '#633806' }} />
           </div>
-        </Can>
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Not Used</p>
+            <p style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>{years?.filter(y => getYearStatus(y) === 'NOT_USED').length || 0} Ready</p>
+          </div>
+        </div>
       </div>
 
       {/* Table */}
@@ -138,38 +165,55 @@ const FinancialYearManagement = () => {
               ) : years?.length === 0 ? (
                 <tr><td colSpan={5} style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No financial years configured.</td></tr>
               ) : years?.map((year, idx) => {
-                const isCurrent = year.isCurrent || (year as any).current;
+                const status = getYearStatus(year);
+                const isCurrent = status === 'CURRENT';
+                const isNotUsed = status === 'NOT_USED';
+                const meta = statusMeta[status];
                 return (
                   <tr key={year.id} style={{ borderBottom: idx < (years.length - 1) ? '0.5px solid #F0F2F6' : 'none' }}
                     className="hover:bg-[#FAFBFF] transition-colors">
                     <td style={{ padding: '11px 18px' }}>
                       <div className="flex items-center gap-2">
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isCurrent ? '#1A56DB' : '#E4E6EC', flexShrink: 0 }} />
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isCurrent ? '#1A56DB' : status === 'NOT_USED' ? '#F59E0B' : '#E4E6EC', flexShrink: 0 }} />
                         <span style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{year.title}</span>
                       </div>
                     </td>
                     <td style={{ padding: '11px 18px', fontSize: 12, color: '#5A6070' }}>{format(new Date(year.startDate), 'dd/MM/yyyy')}</td>
                     <td style={{ padding: '11px 18px', fontSize: 12, color: '#5A6070' }}>{format(new Date(year.endDate), 'dd/MM/yyyy')}</td>
                     <td style={{ padding: '11px 18px' }}>
-                      <span style={{ fontSize: 11, fontWeight: 500, background: isCurrent ? '#EEF3FD' : '#F1EFE8', color: isCurrent ? '#0C447C' : '#444441', border: `0.5px solid ${isCurrent ? '#B5D4F4' : '#DDDBD2'}`, borderRadius: 20, padding: '2px 8px' }}>
-                        {isCurrent ? 'Current Active' : 'Historical'}
+                      <span style={{ fontSize: 11, fontWeight: 500, background: meta.bg, color: meta.text, border: `0.5px solid ${meta.border}`, borderRadius: 20, padding: '2px 8px' }}>
+                        {meta.label}
                       </span>
                     </td>
                     <td style={{ padding: '11px 18px', textAlign: 'right' }}>
                       <Can permission="CYCLE_CONFIG_MANAGE">
                         <div className="flex justify-end items-center gap-1">
-                          {!isCurrent && (
-                            <button onClick={() => handleSetCurrent(year.id)} title="Set as Current"
-                              style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
-                              className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
+                          {isNotUsed && (
+                            <button onClick={() => handleSetCurrent(year.id)} disabled={hasCurrentYear} title={hasCurrentYear ? 'Deactivate the current year before activating another one' : 'Activate'}
+                              style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: hasCurrentYear ? '#D1D5DB' : '#9EA3B0', borderRadius: 6, cursor: hasCurrentYear ? 'not-allowed' : 'pointer' }}
+                              className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors disabled:hover:bg-transparent disabled:hover:text-[#D1D5DB]">
                               <CheckCircle2 size={14} />
                             </button>
                           )}
-                          <button onClick={() => handleDelete(year.id)} title="Delete"
-                            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
-                            className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
-                            <Trash2 size={14} />
-                          </button>
+                          {isCurrent && (
+                            <button onClick={() => handleDeactivate(year.id)} title="Deactivate"
+                              style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
+                              className="hover:bg-[#FAEEDA] hover:text-[#633806] transition-colors">
+                              <Power size={14} />
+                            </button>
+                          )}
+                          {isNotUsed && (
+                            <button onClick={() => handleDelete(year.id)} title="Delete"
+                              style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9EA3B0', borderRadius: 6 }}
+                              className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                          {status === 'HISTORICAL' && (
+                            <span title="Historical years are locked" style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D1D5DB' }}>
+                              <Archive size={14} />
+                            </span>
+                          )}
                         </div>
                       </Can>
                     </td>
@@ -206,14 +250,10 @@ const FinancialYearManagement = () => {
                   <CustomDateInput style={inputStyle} value={newYear.endDate} onChange={val => setNewYear({ ...newYear, endDate: val })} />
                 </div>
               </div>
-              <label className="flex items-center gap-3 cursor-pointer" style={{ background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '10px 12px' }}>
-                <input type="checkbox" checked={newYear.isCurrent} onChange={e => setNewYear({ ...newYear, isCurrent: e.target.checked })}
-                  style={{ accentColor: '#1A56DB' }} />
-                <div>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: '#0C447C', display: 'block' }}>Set as Active Year</span>
-                  <span style={{ fontSize: 11, color: '#5A6070' }}>Current active year will be archived</span>
-                </div>
-              </label>
+              <div style={{ background: '#FAEEDA', border: '0.5px solid #F0D4A4', borderRadius: 8, padding: '10px 12px' }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#633806', display: 'block' }}>Created as Not Used</span>
+                <span style={{ fontSize: 11, color: '#5A6070' }}>Activate this period later after the current year is deactivated.</span>
+              </div>
             </div>
             <div className="flex gap-2" style={{ padding: '14px 18px', borderTop: '0.5px solid #E4E6EC' }}>
               <button onClick={() => setShowAddModal(false)} className="flex-1 transition-colors"
@@ -223,6 +263,27 @@ const FinancialYearManagement = () => {
               <button onClick={handleAdd} className="flex-[2] transition-colors"
                 style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
                 Create Period
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {warningModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: 22, maxWidth: 440, width: '100%' }}>
+            <div className="flex items-start gap-3">
+              <div style={{ width: 38, height: 38, borderRadius: 8, background: '#FAEEDA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <AlertTriangle size={18} style={{ color: '#633806' }} />
+              </div>
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 6 }}>{warningModal.title}</p>
+                <p style={{ fontSize: 13, color: '#5A6070', lineHeight: 1.5 }}>{warningModal.message}</p>
+              </div>
+            </div>
+            <div className="flex justify-end" style={{ marginTop: 18 }}>
+              <button onClick={() => setWarningModal({ isOpen: false, title: '', message: '' })}
+                style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>
+                Got it
               </button>
             </div>
           </div>

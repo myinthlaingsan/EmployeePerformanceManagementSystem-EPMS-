@@ -510,7 +510,7 @@ const FeedbackPage = () => {
       setEditingId(null);
       setNewFeedback({ employeeId: 0, tagId: "", feedbackType: FeedbackType.PRAISE, description: "" });
     } catch (err: any) {
-      toast.error(err.data?.message || "Failed to save feedback");
+      toast.error("Failed to save feedback.");
     }
   };
 
@@ -524,7 +524,7 @@ const FeedbackPage = () => {
         setNewFeedback({ ...newFeedback, tagId: response.tagId });
       }
       setIsAddingTag(false); setEditingTagId(null); setNewTagName("");
-    } catch (err: any) { toast.error(err.data?.message || "Failed to save tag"); }
+    } catch (err: any) { toast.error("Failed to save tag."); }
   };
 
   const handleDeleteTag = async () => {
@@ -533,7 +533,7 @@ const FeedbackPage = () => {
       await deleteFeedbackTag(tagToDelete).unwrap();
       if (newFeedback.tagId === tagToDelete) setNewFeedback({ ...newFeedback, tagId: "" });
       setTagToDelete(null);
-    } catch (err: any) { toast.error(err.data?.message || "Failed to delete tag"); }
+    } catch (err: any) { toast.error("Failed to delete tag."); }
   };
 
   const handleDelete = async () => {
@@ -541,7 +541,7 @@ const FeedbackPage = () => {
     try {
       await deleteFeedback(feedbackToDelete).unwrap();
       setFeedbackToDelete(null);
-    } catch (err: any) { toast.error(err.data?.message || "Failed to delete feedback"); }
+    } catch (err: any) { toast.error("Failed to delete feedback."); }
   };
 
   const handleEdit = (fb: any) => {
@@ -561,7 +561,7 @@ const FeedbackPage = () => {
       await publishFeedback(id).unwrap();
       toast.success('Feedback published successfully!');
     } catch (err: any) {
-      toast.error(err.data?.message || 'Failed to publish feedback');
+      toast.error('Failed to publish feedback.');
     }
   };
 
@@ -1085,7 +1085,7 @@ const FeedbackReplies = ({ feedbackId, authorId }: { feedbackId: number; authorI
     try {
       await replyToFeedback({ feedbackId, body: { replyText: newReply, employeeId: user.id, parentId: replyingToId ?? undefined } }).unwrap();
       setNewReply(""); setReplyingToId(null); setReplyTarget(null);
-    } catch (err: any) { toast.error(err.data?.message || "Failed to post reply."); }
+    } catch (err: any) { toast.error("Failed to post reply."); }
   };
 
   const startReply = (reply: any) => {

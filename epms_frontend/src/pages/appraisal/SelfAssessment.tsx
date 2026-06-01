@@ -14,9 +14,9 @@ import { useAuth } from '../../hooks/useAuth';
 
 const RATING_SCALE = [
   { v: 1, label: 'Unsatisfactory', color: '#791F1F' },
-  { v: 2, label: 'Below Average',  color: '#633806' },
-  { v: 3, label: 'Meets Expects',  color: '#444441' },
-  { v: 4, label: 'Exceeds',        color: '#27500A' },
+  { v: 2, label: 'Needs improvement', color: '#633806' },
+  { v: 3, label: 'Meet requirement', color: '#444441' },
+  { v: 4, label: 'Good', color: '#27500A' },
   { v: 5, label: 'Outstanding',    color: '#0C447C' },
 ];
 
@@ -82,7 +82,7 @@ const SelfAssessment = () => {
       await saveAnswers({ id: formData.selfAssessmentId, answers: buildPayload() }).unwrap();
       await saveDraftMutation({ selfAssessmentId: formData.selfAssessmentId, overallReflection: comment }).unwrap();
       toast.success('Draft saved!');
-    } catch (err: any) { toast.error(err?.data?.message || 'Save failed.'); }
+    } catch (err: any) { toast.error('Save failed.'); }
   };
 
   const handleSubmit = async () => {
@@ -93,7 +93,7 @@ const SelfAssessment = () => {
       await submitSelfAssessment(formData.selfAssessmentId).unwrap();
       toast.success('Self-assessment submitted!');
       navigate('/appraisal');
-    } catch (err: any) { toast.error(err?.data?.message || 'Submit failed.'); }
+    } catch (err: any) { toast.error('Submit failed.'); }
   };
 
   if (isLoading) return <div className="py-16 text-center" style={{ color: '#9EA3B0', fontSize: 13 }}>Loading…</div>;
@@ -156,7 +156,7 @@ const SelfAssessment = () => {
                   fileName: `Self_Assessment_${formData.employeeName ?? 'Form'}.pdf`,
                 }).unwrap();
               } catch (err: any) {
-                toast.error(err?.data?.message || 'Export failed');
+                toast.error('Export failed.');
               }
             }}
             disabled={!canExport || isExporting}

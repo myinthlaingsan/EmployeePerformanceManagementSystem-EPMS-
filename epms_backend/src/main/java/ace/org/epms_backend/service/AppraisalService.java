@@ -39,6 +39,8 @@ public interface AppraisalService {
 
     List<AppraisalResponse> getByCycleId(Long cycleId);
 
+    AppraisalResponse getByEmployeeAndCycle(Long employeeId, Long cycleId);
+
     void uploadEmployeeSignature(Long id, MultipartFile file);
 
     void uploadManagerSignature(Long id, MultipartFile file);

@@ -338,7 +338,7 @@ const AppraisalFormDesign: React.FC = () => {
       }
     } catch (err: any) {
       toast.error(
-        `Failed to save: ${err?.data?.message || err?.message || "Unknown error"}`,
+        'Failed to save. Please try again.',
       );
     } finally {
       setIsSubmitting(false);

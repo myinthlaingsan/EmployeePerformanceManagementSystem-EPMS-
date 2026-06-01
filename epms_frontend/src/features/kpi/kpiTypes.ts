@@ -1,5 +1,5 @@
 // ==================== Enums ====================
-export type KpiGoalStatus = 'DRAFT' | 'APPROVED' | 'LOCKED' | 'ARCHIVED';
+export type KpiGoalStatus = 'DRAFT' | 'APPROVED' | 'LOCKED' | 'SCORED' | 'ARCHIVED';
 
 export type KpiItemStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 
@@ -201,4 +201,74 @@ export interface KpiHistoryLog {
   changeDetails?: string;
   changedBy: number;
   createdAt: string;
+}
+
+// ==================== KPI Summary Report ====================
+export interface GoalItemReportDTO {
+  title: string;
+  unit: string;
+  targetValue: number;
+  actualValue: number;
+  weightPercent: number;
+  scorePercent: number;
+  weightedScore: number;
+  status: string;
+}
+
+export interface KpiPhaseReportDTO {
+  phaseNumber: number;
+  startDate: string;
+  endDate: string;
+  days: number;
+  weight: number;
+  score: number;
+  changeReason: string;
+  status: string;
+}
+
+export interface CycleSummaryDTO {
+  cycleName: string;
+  cycleStartDate: string;
+  cycleEndDate: string;
+  kpiScore: number;
+  performanceCategory: string;
+  totalItems: number;
+  achievedItems: number;
+  goalItems: GoalItemReportDTO[];
+  phases: KpiPhaseReportDTO[];
+}
+export interface KpiSummaryReportDTO {
+  employeeName: string;
+  departmentName: string;
+  positionName: string;
+  generatedDate: string;
+  averageScore: number;
+  overallCategory: string;
+  cycles: CycleSummaryDTO[];
+}
+
+export interface KpiActualsEmployeeRowDTO {
+  employeeId: number;
+  employeeName: string;
+  departmentName: string;
+  positionName: string;
+  totalKpiItems: number;
+  overdueItemCount: number;
+  lastUpdatedAt: string;
+  daysSinceLastUpdate: number;
+  isOverdue: boolean;
+  status: string;
+}
+
+export interface KpiActualsCompletionReportDTO {
+  generatedAt: string;
+  cycleId: number;
+  cycleName: string;
+  thresholdDays: number;
+  totalEmployees: number;
+  overdueEmployeeCount: number;
+  upToDateEmployeeCount: number;
+  noGoalEmployeeCount: number;
+  overdueRate: number;
+  employeeRows: KpiActualsEmployeeRowDTO[];
 }

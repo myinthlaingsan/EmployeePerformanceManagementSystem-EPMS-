@@ -100,7 +100,7 @@ const PipCreatePage: React.FC = () => {
       if (!isDraft) await activatePip(newPipId).unwrap();
       navigate('/pip');
     } catch (err: any) {
-      setError(err?.data?.message || 'Failed to process PIP. Please check your inputs.');
+      setError('Failed to process PIP. Please check your inputs.');
     }
   };
 
@@ -209,7 +209,7 @@ const PipCreatePage: React.FC = () => {
                 <label style={labelStyle}>Target Employee</label>
                 <select style={inputStyle} name="employeeId" value={formData.employeeId} onChange={handleChange}>
                   <option value={0}>Select an employee…</option>
-                  {filteredEmployees.map(emp => <option key={emp.id} value={emp.id}>{emp.staffName} ({emp.employeeCode})</option>)}
+                  {filteredEmployees?.map(emp => <option key={emp.id} value={emp.id}>{emp.staffName}</option>)}
                 </select>
               </div>
               <div>
@@ -220,7 +220,7 @@ const PipCreatePage: React.FC = () => {
                     : isResolvingManager
                       ? 'Resolving…'
                       : directManager
-                        ? `${directManager.staffName} (${directManager.employeeCode})`
+                        ? `${directManager.staffName}${directManager.employeeCode && directManager.employeeCode !== 'null' ? ` (${directManager.employeeCode})` : ''}`
                         : '⚠ No active reporting line — set one before creating a PIP'}
                 </div>
                 {formData.employeeId > 0 && !isResolvingManager && !directManager && (

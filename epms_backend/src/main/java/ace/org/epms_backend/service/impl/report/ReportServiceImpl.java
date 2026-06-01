@@ -4,11 +4,13 @@ import ace.org.epms_backend.dto.report.*;
 import ace.org.epms_backend.dto.feedback360.CategoryScore;
 import ace.org.epms_backend.dto.feedback360.DetailedComment;
 import ace.org.epms_backend.dto.feedback360.FeedbackSummaryResponse;
+import ace.org.epms_backend.enums.AppraisalStatus;
+import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.exception.InvalidAppraisalStateException;
+import ace.org.epms_backend.model.appraisal.*;
+import ace.org.epms_backend.model.PerformanceCategory;
 import ace.org.epms_backend.service.feedback360.FeedbackReportService;
 import ace.org.epms_backend.model.AuditLog;
-import ace.org.epms_backend.model.appraisal.Appraisal;
-import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.employee.EmployeeDepartment;
 import ace.org.epms_backend.model.employee.EmployeeTeam;
@@ -17,15 +19,13 @@ import ace.org.epms_backend.model.feedback360.Feedback;
 import ace.org.epms_backend.model.feedback360.FeedbackResponse;
 import ace.org.epms_backend.model.feedback360.FeedbackRequest;
 import ace.org.epms_backend.model.feedback360.FeedbackSummary;
-import ace.org.epms_backend.model.appraisal.AppraisalSummary;
-import ace.org.epms_backend.model.appraisal.SelfAssessment;
-import ace.org.epms_backend.model.appraisal.ManagerEvaluation;
 import ace.org.epms_backend.model.kpi.*;
+import ace.org.epms_backend.model.idp.DevelopmentGoal;
+import ace.org.epms_backend.model.idp.DevelopmentPlan;
 import ace.org.epms_backend.model.pip.PipRecord;
 import ace.org.epms_backend.model.pip.PipObjective;
+import ace.org.epms_backend.enums.IdpStatus;
 import ace.org.epms_backend.enums.PipStatus;
-import ace.org.epms_backend.model.appraisal.SelfAssessmentAnswer;
-import ace.org.epms_backend.model.appraisal.ManagerEvaluationAnswer;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.repository.employee.EmployeeTeamRepository;
 import ace.org.epms_backend.repository.employee.ReportingLineRepository;
@@ -38,8 +38,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
+import java.time.Instant;
 import ace.org.epms_backend.exception.NotFoundException;
-import ace.org.epms_backend.model.appraisal.Question;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -51,6 +51,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -62,9 +64,12 @@ public class ReportServiceImpl implements ReportService {
     private final FeedbackRequestRepository feedbackRequestRepository;
     private final PipRecordRepository pipRecordRepository;
     private final PipProgressLogRepository pipProgressLogRepository;
+    private final DevelopmentPlanRepository developmentPlanRepository;
+    private final DevelopmentProgressUpdateRepository developmentProgressUpdateRepository;
     private final AuditLogRepository auditLogRepository;
     private final EmployeeRepository employeeRepository;
     private final KpiFinalScoreRepository kpiFinalScoreRepository;
+    private final KpiGoalPhaseRepository kpiGoalPhaseRepository;
     private final AppraisalCycleRepository appraisalCycleRepository;
     private final SelfAssessmentRepository selfAssessmentRepository;
     private final ManagerEvaluationRepository managerEvaluationRepository;
@@ -78,6 +83,7 @@ public class ReportServiceImpl implements ReportService {
     private final FeedbackRepository feedbackRepository;
     private final SelfAssessmentAnswerRepository selfAssessmentAnswerRepository;
     private final ManagerEvaluationAnswerRepository managerEvaluationAnswerRepository;
+    private final PerformanceCategoryRepository performanceCategoryRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -175,9 +181,14 @@ public class ReportServiceImpl implements ReportService {
                     .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, a.getCycle().getCycleId())
                     .map(KpiFinalScore::getWeightedScore).orElse(BigDecimal.ZERO);
 
+            BigDecimal appraisalScore = appraisalSummaryRepository
+                    .findByEmployee_IdAndCycle_CycleId(employeeId, a.getCycle().getCycleId())
+                    .map(AppraisalSummary::getTotalScore).orElse(BigDecimal.ZERO);
+
             return CycleScoreDTO.builder()
                     .cycleName(a.getCycle().getCycleName())
                     .kpiScore(kpiScore)
+                    .appraisalScore(appraisalScore)
                     .performanceCategory(
                             a.getPerformanceCategory() != null ? a.getPerformanceCategory().getName() : "N/A")
                     .build();
@@ -495,6 +506,50 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
+    public IdpTrackingReportDTO getIdpTrackingReport() {
+        List<DevelopmentPlan> plans = developmentPlanRepository.findAll();
+        int active = (int) plans.stream().filter(plan -> plan.getStatus() == IdpStatus.ACTIVE).count();
+        int completed = (int) plans.stream().filter(plan -> plan.getStatus() == IdpStatus.COMPLETED).count();
+
+        List<IdpDetailDTO> details = plans.stream().map(plan -> {
+            List<DevelopmentGoal> goals = plan.getGoals() != null ? plan.getGoals() : Collections.emptyList();
+
+            String developmentGoals = goals.stream()
+                    .map(goal -> goal.getTitle() + " (" + goal.getStatus().name() + ")")
+                    .collect(Collectors.joining("\n"));
+
+            String progressUpdate = goals.stream()
+                    .flatMap(goal -> developmentProgressUpdateRepository
+                            .findByGoal_GoalIdOrderByCreatedAtDesc(goal.getGoalId()).stream())
+                    .map(update -> update.getGoal().getTitle() + ": " + update.getProgressPercent() + "% - "
+                            + update.getProgressNote())
+                    .collect(Collectors.joining("\n"));
+
+            String mentorFeedback = goals.stream()
+                    .map(DevelopmentGoal::getManagerComment)
+                    .filter(comment -> comment != null && !comment.isBlank())
+                    .collect(Collectors.joining("\n"));
+
+            return IdpDetailDTO.builder()
+                    .employeeName(plan.getEmployee().getStaffName())
+                    .startDate(plan.getStartDate() != null ? plan.getStartDate().toString() : "N/A")
+                    .endDate(plan.getEndDate() != null ? plan.getEndDate().toString() : "N/A")
+                    .status(plan.getStatus().name())
+                    .developmentGoals(developmentGoals)
+                    .progressUpdate(progressUpdate)
+                    .mentorFeedback(mentorFeedback)
+                    .build();
+        }).collect(Collectors.toList());
+
+        return IdpTrackingReportDTO.builder()
+                .totalActiveIDP(active)
+                .completedIDP(completed)
+                .idpDetails(details)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<AuditTrailReportDTO> getAuditTrailReport(String tableName, Long recordId) {
         List<AuditLog> logs;
         if (tableName != null && recordId != null) {
@@ -720,6 +775,201 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
+    public KpiActualsCompletionReportDTO getKpiActualsCompletionReport(
+            Long cycleId, Long managerId, Long departmentId, int thresholdDays) {
+
+        String cycleName = appraisalCycleRepository.findById(cycleId)
+                .map(AppraisalCycle::getCycleName)
+                .orElse("Unknown Cycle");
+
+        List<Employee> targetEmployees;
+        if (managerId != null) {
+            targetEmployees = reportingLineRepository
+        .findAllByManager_IdAndIsActiveTrue(managerId)
+        .stream()
+        .map(ReportingLine::getEmployee)
+        .filter(Objects::nonNull)
+        .filter(Employee::getIsActive)
+        .toList();
+        } else if (departmentId != null) {
+            targetEmployees = employeeDepartmentRepository
+        .findByCurrentDepartmentIdAndIsCurrentTrue(departmentId)
+        .stream()
+        .map(EmployeeDepartment::getEmployee)
+        .filter(Objects::nonNull)
+        .filter(e -> Boolean.TRUE.equals(e.getIsActive()))
+        .collect(Collectors.toList());
+        } else {
+            targetEmployees = employeeRepository.findAll().stream()
+                    .filter(e -> Boolean.TRUE.equals(e.getIsActive()))
+                    .collect(Collectors.toList());
+        }
+
+        List<KpiGoals> goalsList = kpiGoalsRepository.findApprovedGoalsForActualsReport(cycleId, managerId);
+        
+        Map<Long, KpiGoals> goalsMap = goalsList.stream()
+                .filter(g -> g.getEmployee() != null)
+                .collect(Collectors.toMap(g -> g.getEmployee().getId(), g -> g, (existing, replacement) -> existing));
+
+        List<KpiActualsEmployeeRowDTO> employeeRows = new ArrayList<>();
+        int overdueEmployeeCount = 0;
+        int upToDateEmployeeCount = 0;
+        int noGoalEmployeeCount = 0;
+
+        Instant now = Instant.now();
+
+        for (Employee emp : targetEmployees) {
+            KpiGoals goalSet = goalsMap.get(emp.getId());
+
+            KpiActualsEmployeeRowDTO row;
+            EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(emp.getId()).orElse(null);
+            String deptName = (ed != null && ed.getCurrentDepartment() != null) ? ed.getCurrentDepartment().getDepartmentName() : "N/A";
+            String posName = emp.getPosition() != null ? emp.getPosition().getPositionName() : "N/A";
+
+            if (goalSet == null) {
+                row = KpiActualsEmployeeRowDTO.builder()
+                        .employeeId(emp.getId())
+                        .employeeName(emp.getStaffName())
+                        .departmentName(deptName)
+                        .positionName(posName)
+                        .totalKpiItems(0)
+                        .overdueItemCount(0)
+                        .lastUpdatedAt("N/A")
+                        .daysSinceLastUpdate(-1)
+                        .overdue(false)
+                        .status("NO GOAL SET")
+                        .build();
+                noGoalEmployeeCount++;
+            } else {
+                List<KpiGoalItem> activeItems = goalSet.getItems() == null ? Collections.emptyList() :
+                        goalSet.getItems().stream()
+                                .filter(item -> item.getIsActive() != null && item.getIsActive())
+                                .collect(Collectors.toList());
+
+                if (activeItems.isEmpty()) {
+                    row = KpiActualsEmployeeRowDTO.builder()
+                            .employeeId(emp.getId())
+                            .employeeName(emp.getStaffName())
+                            .departmentName(deptName)
+                            .positionName(posName)
+                            .totalKpiItems(0)
+                            .overdueItemCount(0)
+                            .lastUpdatedAt("N/A")
+                            .daysSinceLastUpdate(-1)
+                            .overdue(false)
+                            .status("NO GOAL SET")
+                            .build();
+                    noGoalEmployeeCount++;
+                } else {
+                    int overdueItems = 0;
+                    Instant mostRecentUpdate = null;
+
+                    for (KpiGoalItem item : activeItems) {
+                        Instant itemUpdated = item.getUpdatedAt() != null ? item.getUpdatedAt() : item.getCreatedAt();
+                        if (itemUpdated != null) {
+                            if (mostRecentUpdate == null || itemUpdated.isAfter(mostRecentUpdate)) {
+                                mostRecentUpdate = itemUpdated;
+                            }
+                        }
+
+                        boolean itemOverdue = false;
+                        if (item.getActualValue() == null) {
+                            itemOverdue = true;
+                        } else if (itemUpdated != null) {
+                            long days = java.time.temporal.ChronoUnit.DAYS.between(itemUpdated, now);
+                            if (days >= thresholdDays) {
+                                itemOverdue = true;
+                            }
+                        }
+                        if (itemOverdue) {
+                            overdueItems++;
+                        }
+                    }
+
+                    long daysSinceLast = -1;
+                    String lastUpdatedStr = "N/A";
+                    if (mostRecentUpdate != null) {
+                        daysSinceLast = java.time.temporal.ChronoUnit.DAYS.between(mostRecentUpdate, now);
+                        lastUpdatedStr = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+                                .withZone(java.time.ZoneId.systemDefault())
+                                .format(mostRecentUpdate);
+                    }
+
+                    boolean employeeOverdue = overdueItems > 0;
+                    String status = employeeOverdue ? "OVERDUE" : "UP TO DATE";
+
+                    row = KpiActualsEmployeeRowDTO.builder()
+                            .employeeId(emp.getId())
+                            .employeeName(emp.getStaffName())
+                            .departmentName(deptName)
+                            .positionName(posName)
+                            .totalKpiItems(activeItems.size())
+                            .overdueItemCount(overdueItems)
+                            .lastUpdatedAt(lastUpdatedStr)
+                            .daysSinceLastUpdate(daysSinceLast)
+                            .overdue(employeeOverdue)
+                            .status(status)
+                            .build();
+
+                    if (employeeOverdue) {
+                        overdueEmployeeCount++;
+                    } else {
+                        upToDateEmployeeCount++;
+                    }
+                }
+            }
+            employeeRows.add(row);
+        }
+
+        employeeRows.sort((r1, r2) -> {
+            int p1 = "OVERDUE".equals(r1.getStatus()) ? 1 : ("NO GOAL SET".equals(r1.getStatus()) ? 2 : 3);
+            int p2 = "OVERDUE".equals(r2.getStatus()) ? 1 : ("NO GOAL SET".equals(r2.getStatus()) ? 2 : 3);
+            if (p1 != p2) {
+                return Integer.compare(p1, p2);
+            }
+            return Long.compare(r2.getDaysSinceLastUpdate(), r1.getDaysSinceLastUpdate());
+        });
+
+        int totalEmployees = targetEmployees.size();
+        double overdueRate = totalEmployees == 0 ? 0.0 : roundDouble(((double) overdueEmployeeCount / totalEmployees) * 100.0);
+
+        String generatedAt = Instant.now().toString();
+
+        return KpiActualsCompletionReportDTO.builder()
+                .generatedAt(generatedAt)
+                .cycleId(cycleId)
+                .cycleName(cycleName)
+                .thresholdDays(thresholdDays)
+                .totalEmployees(totalEmployees)
+                .overdueEmployeeCount(overdueEmployeeCount)
+                .upToDateEmployeeCount(upToDateEmployeeCount)
+                .noGoalEmployeeCount(noGoalEmployeeCount)
+                .overdueRate(overdueRate)
+                .employeeRows(employeeRows)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportKpiActualsCompletionReport(
+            Long cycleId, Long managerId, Long departmentId, int thresholdDays, String format) {
+        KpiActualsCompletionReportDTO data = getKpiActualsCompletionReport(cycleId, managerId, departmentId, thresholdDays);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "KPI Actuals Completion Rate Report");
+        parameters.put("cycleName", data.getCycleName());
+        parameters.put("thresholdDays", data.getThresholdDays());
+        parameters.put("totalEmployees", data.getTotalEmployees());
+        parameters.put("overdueEmployees", data.getOverdueEmployeeCount());
+        parameters.put("upToDateEmployees", data.getUpToDateEmployeeCount());
+        parameters.put("noGoalEmployees", data.getNoGoalEmployeeCount());
+        parameters.put("overdueRate", String.format("%.2f%%", data.getOverdueRate()));
+        parameters.put("generatedAt", data.getGeneratedAt());
+        
+        return generateReport("reports/kpi_actuals_completion_report.jrxml", parameters, data.getEmployeeRows(), format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public byte[] exportAppraisalStatusReport(Long cycleId, String format) {
         AppraisalStatusReportDTO data = getAppraisalStatusReport(cycleId);
         Map<String, Object> parameters = new HashMap<>();
@@ -740,6 +990,17 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
+    public byte[] exportOrganizationPerformanceTrendReport(int months, String format) {
+        List<PerformanceTrendPointDTO> data = getOrganizationPerformanceTrend(months);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "Organization Performance Trend");
+        parameters.put("months", months);
+        String jrxmlPath = "reports/org_performance_trend_report.jrxml";
+        return generateReport(jrxmlPath, parameters, data, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public byte[] exportFeedbackParticipationReport(Long cycleId, String format) {
         FeedbackParticipationReportDTO data = getFeedbackParticipationReport(cycleId);
         Map<String, Object> parameters = new HashMap<>();
@@ -755,6 +1016,16 @@ public class ReportServiceImpl implements ReportService {
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("reportTitle", "PIP Tracking Report");
         String jrxmlPath = "reports/pip_tracking_report.jrxml";
+        return generateReport(jrxmlPath, parameters, List.of(data), format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportIdpTrackingReport(String format) {
+        IdpTrackingReportDTO data = getIdpTrackingReport();
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "IDP Tracking Report");
+        String jrxmlPath = "reports/idp_tracking_report.jrxml";
         return generateReport(jrxmlPath, parameters, List.of(data), format);
     }
 
@@ -1219,6 +1490,12 @@ public class ReportServiceImpl implements ReportService {
                 ? ed.getCurrentDepartment().getDepartmentName()
                 : "Unassigned";
         String posName = target.getPosition() != null ? target.getPosition().getPositionName() : "N/A";
+        Employee evaluator = req.getEvaluator();
+        EmployeeDepartment evaluatorDepartment = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(evaluator.getId()).orElse(null);
+        String evaluatorDeptName = (evaluatorDepartment != null && evaluatorDepartment.getCurrentDepartment() != null)
+                ? evaluatorDepartment.getCurrentDepartment().getDepartmentName()
+                : "Unassigned";
+        String evaluatorPosName = evaluator.getPosition() != null ? evaluator.getPosition().getPositionName() : "N/A";
 
         Optional<Feedback> feedbackOpt = feedbackRepository.findByRequestId(requestId);
         List<FeedbackResponse> responses = feedbackOpt.isPresent() ? feedbackOpt.get().getResponses() : new ArrayList<>();
@@ -1253,8 +1530,22 @@ public class ReportServiceImpl implements ReportService {
                 .build();
 
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("reportTitle", "360° Feedback Paper Form");
-        return generateReport("reports/feedback_360_paper_form.jrxml", parameters, List.of(formDTO), format);
+        parameters.put("reportTitle", "360 Feedback Paper Form");
+        parameters.put("companyName", "ACE Data Systems");
+        parameters.put("cycleName", formDTO.getCycleName());
+        parameters.put("targetEmployeeName", formDTO.getTargetEmployeeName());
+        parameters.put("targetEmployeeCode", formDTO.getTargetEmployeeCode());
+        parameters.put("targetDepartmentName", formDTO.getTargetDepartmentName());
+        parameters.put("targetPositionName", formDTO.getTargetPositionName());
+        parameters.put("evaluatorEmployeeName", formDTO.getEvaluatorEmployeeName());
+        parameters.put("evaluatorPositionName", evaluatorPosName);
+        parameters.put("evaluatorDepartmentName", evaluatorDeptName);
+        parameters.put("relationshipType", formDTO.getRelationshipType());
+        parameters.put("assessmentDate", req.getCycle().getStartDate() != null ? req.getCycle().getStartDate().toString() : null);
+        parameters.put("effectiveDate", req.getCycle().getEndDate() != null ? req.getCycle().getEndDate().toString() : null);
+        parameters.put("totalScore", "");
+        parameters.put("finalComment", "");
+        return generateReport("reports/feedback_360_paper_form.jrxml", parameters, questionDTOs, format);
     }
 
     private byte[] generateReport(String jrxmlPath, Map<String, Object> parameters, List<?> data, String format) {
@@ -1275,9 +1566,9 @@ public class ReportServiceImpl implements ReportService {
         Appraisal appraisal = appraisalRepository.findById(appraisalId)
                 .orElseThrow(() -> new NotFoundException("Appraisal not found: " + appraisalId));
 
-        if (appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.HR_APPROVED &&
-            appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.FINALIZED &&
-            appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.ARCHIVED) {
+        if (appraisal.getStatus() != AppraisalStatus.HR_APPROVED &&
+            appraisal.getStatus() != AppraisalStatus.FINALIZED &&
+            appraisal.getStatus() != AppraisalStatus.ARCHIVED) {
             throw new InvalidAppraisalStateException(
                     "Self-assessment form can only be exported after the appraisal is approved or finalized.");
         }
@@ -1288,28 +1579,30 @@ public class ReportServiceImpl implements ReportService {
         EmployeeDepartment ed = employeeDepartmentRepository
                 .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId()).orElse(null);
 
-        ace.org.epms_backend.model.appraisal.AppraisalForm form = null;
+        AppraisalForm form = null;
         if (appraisal.getFormSet() != null) form = appraisal.getFormSet().getSelfAssessmentForm();
         if (form == null) {
             form = appraisal.getCycle().getForms().stream()
-                    .filter(f -> f.getFormType() == ace.org.epms_backend.enums.FormType.SELF_ASSESSMENT)
+                    .filter(f -> f.getFormType() == FormType.SELF_ASSESSMENT)
                     .findFirst().orElse(null);
         }
 
-        List<ace.org.epms_backend.dto.report.SelfAssessmentReportQuestionDTO> questions = new ArrayList<>();
+        List<SelfAssessmentReportQuestionDTO> questions = new ArrayList<>();
         if (form != null) {
-            List<ace.org.epms_backend.model.appraisal.Question> formQuestions =
+            List<Question> formQuestions =
                     questionRepository.findByCategory_Form_FormId(form.getFormId());
             Map<Long, SelfAssessmentAnswer> answerMap =
                     selfAssessmentAnswerRepository.findBySelfAssessment_SelfAssessmentId(self.getSelfAssessmentId())
                             .stream().collect(Collectors.toMap(
                                     a -> a.getQuestion().getQuestionId(), a -> a, (a, b) -> a));
-            for (ace.org.epms_backend.model.appraisal.Question q : formQuestions) {
+            for (Question q : formQuestions) {
                 SelfAssessmentAnswer ans = answerMap.get(q.getQuestionId());
                 questions.add(ace.org.epms_backend.dto.report.SelfAssessmentReportQuestionDTO.builder()
                         .categoryName(q.getCategory() != null ? q.getCategory().getCategoryName() : "General")
                         .questionText(q.getQuestionText())
-                        .ratingValue(ans != null && ans.getRatingValue() != null ? ans.getRatingValue().toString() : "-")
+                        .isYes(ans != null && Boolean.TRUE.equals(ans.getIsCompleted()))
+                        .isNo(ans != null && Boolean.FALSE.equals(ans.getIsCompleted()))
+                        .ratingValue(ans != null ? ans.getRatingValue() : null)
                         .comment(ans != null ? ans.getComment() : null)
                         .build());
             }
@@ -1325,6 +1618,7 @@ public class ReportServiceImpl implements ReportService {
 
         Map<String, Object> params = new HashMap<>();
         params.put("reportTitle", "Self-Assessment Form");
+        params.put("companyName", "ACE Data Systems");
         params.put("cycleName", appraisal.getCycle().getCycleName());
         params.put("employeeName", appraisal.getEmployee().getStaffName());
         params.put("employeeCode", appraisal.getEmployee().getEmployeeCode());
@@ -1333,6 +1627,7 @@ public class ReportServiceImpl implements ReportService {
         params.put("managerName", mgrName);
         params.put("totalScore", totalScore);
         params.put("overallReflection", self.getOverallReflection() != null ? self.getOverallReflection() : "");
+        params.put("assessmentDate", submittedAt);
         params.put("submittedAt", submittedAt);
 
         return generateReport("reports/self_assessment_form.jrxml", params, questions, format);
@@ -1395,6 +1690,7 @@ public class ReportServiceImpl implements ReportService {
                         .employeeComment(selfAns != null ? selfAns.getComment() : null)
                         .managerRating(mgrAns != null && mgrAns.getRatingValue() != null
                                 ? mgrAns.getRatingValue().toString() : "-")
+                        .managerRatingValue(mgrAns != null ? mgrAns.getRatingValue() : null)
                         .managerComment(mgrAns != null ? mgrAns.getComment() : null)
                         .build());
             }
@@ -1410,12 +1706,16 @@ public class ReportServiceImpl implements ReportService {
 
         Map<String, Object> params = new HashMap<>();
         params.put("reportTitle", "Manager Evaluation Form");
+        params.put("companyName", "ACE Data Systems");
         params.put("cycleName", appraisal.getCycle().getCycleName());
         params.put("employeeName", appraisal.getEmployee().getStaffName());
         params.put("employeeCode", appraisal.getEmployee().getEmployeeCode());
         params.put("departmentName", deptName);
         params.put("positionName", posName);
         params.put("managerName", mgrName);
+        params.put("jobTitle", posName);
+        params.put("assessmentDate", submittedAt);
+        params.put("effectiveDate", appraisal.getFinalizedAt() != null ? appraisal.getFinalizedAt().toString() : submittedAt);
         params.put("totalScore", totalScore);
         params.put("finalComment", eval.getFinalComment() != null ? eval.getFinalComment() : "");
         params.put("submittedAt", submittedAt);
@@ -1473,5 +1773,260 @@ public class ReportServiceImpl implements ReportService {
         params.put("overallComment", pip.getOverallComment() != null ? pip.getOverallComment() : "");
 
         return generateReport("reports/pip_detail_report.jrxml", params, rows, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DepartmentBreakdownDTO> getTeamPerformanceBreakdown(Long cycleId, Long departmentId) {
+        List<DepartmentBreakdownDTO> result = new ArrayList<>();
+        List<Employee> employees = (departmentId != null) 
+            ? employeeDepartmentRepository.findByCurrentDepartmentIdAndIsCurrentTrue(departmentId).stream().map(EmployeeDepartment::getEmployee).collect(Collectors.toList())
+            : employeeRepository.findAll();
+
+        Map<String, Map<String, List<TeamMemberBreakdownDTO>>> grouped = new HashMap<>();
+
+        for (Employee e : employees) {
+            EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(e.getId()).orElse(null);
+            String deptName = (ed != null && ed.getCurrentDepartment() != null) ? ed.getCurrentDepartment().getDepartmentName() : "No Department";
+            
+            EmployeeTeam et = employeeTeamRepository.findFirstByEmployeeIdAndIsPrimaryTrue(e.getId()).orElse(null);
+            String tName = (et != null && et.getTeam() != null) ? et.getTeam().getTeamName() : "No Team";
+
+            double score = appraisalSummaryRepository.findByEmployee_IdAndCycle_CycleId(e.getId(), cycleId)
+                            .map(s -> s.getTotalScore() != null ? s.getTotalScore().doubleValue() : 0.0)
+                            .orElse(0.0);
+
+            if (score > 0) {
+                TeamMemberBreakdownDTO member = TeamMemberBreakdownDTO.builder()
+                        .employeeId(e.getId())
+                        .employeeName(e.getStaffName())
+                        .role(e.getPosition() != null ? e.getPosition().getPositionName() : "Employee")
+                        .averageScore(roundDouble(score))
+                        .build();
+
+                grouped.computeIfAbsent(deptName, k -> new HashMap<>())
+                       .computeIfAbsent(tName, k -> new ArrayList<>())
+                       .add(member);
+            }
+        }
+
+        for (Map.Entry<String, Map<String, List<TeamMemberBreakdownDTO>>> deptEntry : grouped.entrySet()) {
+            List<TeamBreakdownDTO> teamBreakdowns = new ArrayList<>();
+            double totalDeptScore = 0;
+            int totalDeptMembers = 0;
+
+            for (Map.Entry<String, List<TeamMemberBreakdownDTO>> teamEntry : deptEntry.getValue().entrySet()) {
+                List<TeamMemberBreakdownDTO> members = teamEntry.getValue();
+                double teamAvg = members.stream().mapToDouble(TeamMemberBreakdownDTO::getAverageScore).average().orElse(0.0);
+                
+                teamBreakdowns.add(TeamBreakdownDTO.builder()
+                        .teamName(teamEntry.getKey())
+                        .averageScore(roundDouble(teamAvg))
+                        .members(members)
+                        .build());
+                        
+                totalDeptScore += members.stream().mapToDouble(TeamMemberBreakdownDTO::getAverageScore).sum();
+                totalDeptMembers += members.size();
+            }
+
+            double deptAvg = totalDeptMembers > 0 ? totalDeptScore / totalDeptMembers : 0.0;
+            
+            result.add(DepartmentBreakdownDTO.builder()
+                    .departmentName(deptEntry.getKey())
+                    .averageScore(roundDouble(deptAvg))
+                    .teams(teamBreakdowns)
+                    .build());
+        }
+
+        result.sort((a, b) -> Double.compare(b.getAverageScore(), a.getAverageScore()));
+        return result;
+    }
+
+    @Override
+    public byte[] exportTeamPerformanceBreakdown(Long cycleId, Long departmentId, String format) {
+        List<DepartmentBreakdownDTO> data = getTeamPerformanceBreakdown(cycleId, departmentId);
+        
+        List<TeamPerformanceBreakdownFlatDTO> flatData = new ArrayList<>();
+        for (DepartmentBreakdownDTO dept : data) {
+            for (TeamBreakdownDTO team : dept.getTeams()) {
+                for (TeamMemberBreakdownDTO member : team.getMembers()) {
+                    flatData.add(TeamPerformanceBreakdownFlatDTO.builder()
+                            .departmentName(dept.getDepartmentName())
+                            .departmentAverage(dept.getAverageScore())
+                            .teamName(team.getTeamName())
+                            .teamAverage(team.getAverageScore())
+                            .employeeName(member.getEmployeeName())
+                            .role(member.getRole())
+                            .averageScore(member.getAverageScore())
+                            .build());
+                }
+            }
+        }
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "Team Performance Breakdown");
+        parameters.put("cycleId", cycleId);
+        String jrxmlPath = "reports/team_performance_breakdown.jrxml";
+        return generateReport(jrxmlPath, parameters, flatData, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public KpiSummaryReportDTO getKpiSummaryReport(Long employeeId, List<Long> cycleIds) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
+
+        EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(employeeId).orElse(null);
+        String deptName = (ed != null && ed.getCurrentDepartment() != null)
+                ? ed.getCurrentDepartment().getDepartmentName()
+                : "Unassigned";
+        String posName = employee.getPosition() != null ? employee.getPosition().getPositionName() : "N/A";
+
+        List<KpiSummaryReportDTO.CycleSummaryDTO> cycles = new ArrayList<>();
+        BigDecimal totalScoresSum = BigDecimal.ZERO;
+        int validCyclesCount = 0;
+
+        List<AppraisalCycle> appraisalCycles = appraisalCycleRepository.findAllById(cycleIds);
+        appraisalCycles.sort((c1, c2) -> {
+            if (c1.getStartDate() == null && c2.getStartDate() == null) return 0;
+            if (c1.getStartDate() == null) return -1;
+            if (c2.getStartDate() == null) return 1;
+            return c1.getStartDate().compareTo(c2.getStartDate());
+        });
+
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+        for (AppraisalCycle cycle : appraisalCycles) {
+            Long cycleId = cycle.getCycleId();
+            
+            BigDecimal kpiScore = kpiFinalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
+                    .map(KpiFinalScore::getWeightedScore)
+                    .orElse(BigDecimal.ZERO);
+
+            String performanceCategory = appraisalRepository.findByEmployee_IdAndCycle_CycleId(employeeId, cycleId)
+                    .map(a -> a.getPerformanceCategory() != null ? a.getPerformanceCategory().getName() : null)
+                    .orElseGet(() -> getCategoryForScore(kpiScore));
+
+            Optional<KpiGoals> goalSetOpt = kpiGoalsRepository.findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(employeeId, cycleId);
+            int totalItems = 0;
+            int achievedItems = 0;
+            List<KpiSummaryReportDTO.GoalItemReportDTO> goalItems = new ArrayList<>();
+            if (goalSetOpt.isPresent()) {
+                List<KpiGoalItem> items = goalSetOpt.get().getItems();
+                if (items != null) {
+                    totalItems = items.size();
+                    achievedItems = (int) items.stream()
+                            .filter(item -> item.getStatus() == ace.org.epms_backend.enums.KpiItemStatus.COMPLETED)
+                            .count();
+                    goalItems = items.stream()
+                            .map(item -> KpiSummaryReportDTO.GoalItemReportDTO.builder()
+                                    .title(item.getTitle())
+                                    .categoryName(item.getCategory() != null ? item.getCategory().getName() : "Uncategorized") 
+                                    .unit(item.getUnit())
+                                    .targetValue(item.getTargetValue())
+                                    .actualValue(item.getActualValue())
+                                    .weightPercent(item.getWeightPercent())
+                                    .scorePercent(item.getScorePercent())
+                                    .weightedScore(item.getWeightedScore())
+                                    .status(item.getStatus() != null ? item.getStatus().name() : "N/A")
+                                    .build())
+                            .collect(Collectors.toList());
+                }
+            }
+
+            String startDateStr = cycle.getStartDate() != null ? cycle.getStartDate().format(formatter) : "N/A";
+            String endDateStr = cycle.getEndDate() != null ? cycle.getEndDate().format(formatter) : "N/A";
+            List<KpiSummaryReportDTO.KpiPhaseReportDTO> phases = kpiGoalPhaseRepository
+                    .findByEmployee_IdAndCycle_CycleIdOrderByPhaseNumberAsc(employeeId, cycleId)
+                    .stream()
+                    .map(phase -> KpiSummaryReportDTO.KpiPhaseReportDTO.builder()
+                            .phaseNumber(phase.getPhaseNumber() != null ? phase.getPhaseNumber() : 0)
+                            .startDate(phase.getPhaseStartDate() != null ? phase.getPhaseStartDate().format(formatter) : "N/A")
+                            .endDate(phase.getPhaseEndDate() != null ? phase.getPhaseEndDate().format(formatter) : "Open")
+                            .days(resolvePhaseDays(phase))
+                            .weight(phase.getPhaseWeight())
+                            .score(phase.getPhaseScore())
+                            .changeReason(phase.getChangeReason() != null ? phase.getChangeReason() : "")
+                            .status(phase.getStatus() != null ? phase.getStatus().name() : "N/A")
+                            .build())
+                    .collect(Collectors.toList());
+
+            cycles.add(KpiSummaryReportDTO.CycleSummaryDTO.builder()
+                    .cycleName(cycle.getCycleName())
+                    .cycleStartDate(startDateStr)
+                    .cycleEndDate(endDateStr)
+                    .kpiScore(kpiScore)
+                    .performanceCategory(performanceCategory)
+                    .totalItems(totalItems)
+                    .achievedItems(achievedItems)
+                    .goalItems(goalItems)
+                    .phases(phases)
+                    .build());
+
+            totalScoresSum = totalScoresSum.add(kpiScore);
+            validCyclesCount++;
+        }
+
+        BigDecimal averageScore = BigDecimal.ZERO;
+        if (validCyclesCount > 0) {
+            averageScore = totalScoresSum.divide(BigDecimal.valueOf(validCyclesCount), 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        String overallCategory = getCategoryForScore(averageScore);
+        String generatedDateStr = java.time.LocalDate.now().format(formatter);
+
+        return KpiSummaryReportDTO.builder()
+                .employeeName(employee.getStaffName())
+                .departmentName(deptName)
+                .positionName(posName)
+                .generatedDate(generatedDateStr)
+                .averageScore(averageScore)
+                .overallCategory(overallCategory)
+                .cycles(cycles)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportKpiSummaryReport(Long employeeId, List<Long> cycleIds, String format) {
+        KpiSummaryReportDTO data = getKpiSummaryReport(employeeId, cycleIds);
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "Employee KPI Summary Report");
+
+        return generateReport("reports/kpi_summary_report.jrxml", parameters, List.of(data), format);
+    }
+
+    private int resolvePhaseDays(KpiGoalPhase phase) {
+        if (phase.getPhaseDays() != null) {
+            return phase.getPhaseDays();
+        }
+        if (phase.getPhaseStartDate() == null || phase.getPhaseEndDate() == null) {
+            return 0;
+        }
+        return (int) java.time.temporal.ChronoUnit.DAYS.between(
+                phase.getPhaseStartDate(), phase.getPhaseEndDate()) + 1;
+    }
+
+    private String getCategoryForScore(BigDecimal score) {
+        if (score == null) return "N/A";
+        try {
+            List<PerformanceCategory> categories = performanceCategoryRepository.findAll();
+            for (PerformanceCategory cat : categories) {
+                if (cat.getMinScore() != null && cat.getMaxScore() != null) {
+                    if (score.compareTo(cat.getMinScore()) >= 0 && score.compareTo(cat.getMaxScore()) <= 0) {
+                        return cat.getName();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // fallback if repository query fails
+        }
+        
+        double s = score.doubleValue();
+        if (s < 60) return "Needs Improvement";
+        if (s < 75) return "Meets Expectations";
+        if (s < 90) return "Exceeds Expectations";
+        return "Outstanding";
     }
 }

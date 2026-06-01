@@ -22,8 +22,8 @@ const extractMessage = (error: FetchBaseQueryError): string => {
     return "Server returned an unexpected response.";
   }
 
-  const data = error.data as ErrorPayload | undefined;
-  return data?.message || "An unexpected error occurred.";
+  // Do not surface backend-provided error messages to users. Return a generic message.
+  return "An unexpected error occurred. Please try again.";
 };
 
 const getStatusPrefix = (status: number | string): string => {
@@ -51,6 +51,13 @@ const getStatusPrefix = (status: number | string): string => {
 
 const shouldShowToast = (status: number | string, url: string): boolean => {
   if (url.includes("/auth/me") && status === 401) return false;
+  if (url.includes("/auth/login")) return false;
+  if (
+    status === 404 &&
+    (url.includes("/kpi/active-cycle") || url.includes("/appraisal-cycles/active"))
+  ) {
+    return false;
+  }
   return true;
 };
 
@@ -106,55 +113,51 @@ export const baseQueryWithReauth: BaseQueryFn<
     }
 
     if (shouldShowToast(status, url)) {
-      toast.error(`${getStatusPrefix(status)}: ${message}`, {
+      toast.error(`${getStatusPrefix(status)}. Please log in again.`, {
         toastId: "auth-error",
       });
     }
     return result;
   }
 
-  if (status === 403) {
-    toast.error(`${getStatusPrefix(status)}: ${message}`, {
-      toastId: `forbidden-${url}`,
-      autoClose: 5000,
-    });
-    return result;
-  }
+  // if (status === 403) {
+  //   toast.error(`${getStatusPrefix(status)}. You don't have permission to perform this action.`, {
+  //     toastId: `forbidden-${url}`,
+  //     autoClose: 5000,
+  //   });
+  //   return result;
+  // }
 
   if (status === 423) {
-    toast.error(`${getStatusPrefix(status)}: ${message}`, {
-      autoClose: 8000,
-    });
-    return result;
-  }
-
-  if (status === 422) {
-    const data = result.error.data as ErrorPayload | undefined;
-    const fieldErrors = data?.data;
-
-    if (fieldErrors && Object.keys(fieldErrors).length > 0) {
-      const details = Object.entries(fieldErrors)
-        .map(([field, errorMessage]) => `${field}: ${errorMessage}`)
-        .join("\n");
-      toast.warning(`Validation failed:\n${details}`, { autoClose: 6000 });
-    } else {
-      toast.warning(`${getStatusPrefix(status)}: ${message}`);
+    if (shouldShowToast(status, url)) {
+      toast.error(`${getStatusPrefix(status)}. Action cannot be completed.`, {
+        autoClose: 8000,
+      });
     }
     return result;
   }
 
-  if (status === 409) {
-    toast.warning(`${getStatusPrefix(status)}: ${message}`);
+  if (status === 422) {
+    // Validation errors come from backend with field-level details. Do not expose raw backend messages.
+    toast.warning("Validation failed. Please check the form and try again.", { autoClose: 6000 });
     return result;
   }
 
-  if (status === 404) {
-    toast.error(`${getStatusPrefix(status)}: ${message}`);
+  if (status === 409) {
+    toast.warning(`${getStatusPrefix(status)}. The request could not be completed.`, { autoClose: 6000 });
     return result;
   }
+
+  // if (status === 404) {
+  //   if (shouldShowToast(status, url)) {
+  //     toast.error(`${getStatusPrefix(status)}. Resource not found.`);
+  //   }
+  //   return result;
+  // }
 
   if (typeof status === "number" && status >= 500) {
-    toast.error(`${getStatusPrefix(status)}: ${message}`, {
+    // Generic server error message
+    toast.error(`${getStatusPrefix(status)}. Something went wrong on the server. Please try again later.`, {
       autoClose: 7000,
     });
     return result;

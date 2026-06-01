@@ -110,8 +110,19 @@
 		<element kind="textField" uuid="b3099da6-5b1b-4383-a9bd-b062ccf8bcbb" x="702" y="10" width="100" height="20" hTextAlign="Right">
 			<expression><![CDATA["Page " + $V{PAGE_NUMBER}]]></expression>
 		</element>
-		<element kind="textField" uuid="32339d33-cfbd-41f4-b9b9-1b55eaaa19fa" x="0" y="10" width="200" height="20" pattern="MMMMM dd, yyyy">
+		<element kind="textField" uuid="32339d33-cfbd-41f4-b9b9-1b55eaaa19fa" x="0" y="10" width="200" height="20" pattern="dd-MM-yyyy">
 			<expression><![CDATA[new java.util.Date()]]></expression>
 		</element>
 	</pageFooter>
+	<summary height="30">
+		<element kind="line" x="0" y="5" width="802" height="1">
+			<pen lineWidth="1.0" lineColor="#34495E"/>
+		</element>
+		<element kind="staticText" x="0" y="10" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<text><![CDATA[Total PIP Records:]]></text>
+		</element>
+		<element kind="textField" x="150" y="10" width="100" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<expression><![CDATA[$F{pipDetails} != null ? $F{pipDetails}.size() : 0]]></expression>
+		</element>
+	</summary>
 </jasperReport>

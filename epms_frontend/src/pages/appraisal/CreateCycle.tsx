@@ -7,7 +7,7 @@ import { CustomDateInput } from '../../components/common/CustomDateInput';
 import {
   Calendar, ChevronLeft, Target, UserCheck, MessageSquare, User, CheckCircle2, AlertCircle
 } from 'lucide-react';
-import { subDays, isBefore, format, addMonths } from 'date-fns';
+import { subDays, isBefore, format, addMonths, addYears } from 'date-fns';
 
 const inputStyle: React.CSSProperties = {
   background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
@@ -30,6 +30,7 @@ const AppraisalCycleCreate: React.FC = () => {
   const { data: financialYears = [] } = useGetFinancialYearsQuery();
 
   const [creationMode, setCreationMode] = useState<'MANUAL' | 'FINANCIAL_YEAR'>('FINANCIAL_YEAR');
+  const [manualFrequency, setManualFrequency] = useState<'ANNUAL' | 'SEMI_ANNUAL'>('ANNUAL');
   const [frequency, setFrequency] = useState<'ANNUAL' | 'SEMI_ANNUAL' | 'QUARTERLY'>('ANNUAL');
   const [period, setPeriod] = useState<string>('FULL');
 
@@ -86,6 +87,50 @@ const AppraisalCycleCreate: React.FC = () => {
   const totalWeight = Number(formData.kpiWeight) + Number(formData.managerWeight) +
     Number(formData.feedbackWeight) + Number(formData.selfWeight);
 
+  const calculateManualEndDate = (startDateValue: string, cycleLength: 'ANNUAL' | 'SEMI_ANNUAL') => {
+    const start = new Date(startDateValue);
+    const end = cycleLength === 'ANNUAL'
+      ? subDays(addYears(start, 1), 1)
+      : subDays(addMonths(start, 6), 1);
+
+    return format(end, 'yyyy-MM-dd');
+  };
+
+  const applyDefaultDeadlines = (data: typeof formData) => {
+    if (!data.startDate || !data.endDate) return data;
+
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+
+    if (isBefore(start, end) || start.getTime() === end.getTime()) {
+      const finalization = subDays(end, 5);
+      const manager = subDays(finalization, 5);
+      const self = subDays(manager, 10);
+
+      return {
+        ...data,
+        finalizationDeadline: format(finalization, 'yyyy-MM-dd'),
+        managerEvaluationDeadline: format(manager, 'yyyy-MM-dd'),
+        selfAssessmentDeadline: format(self, 'yyyy-MM-dd'),
+      };
+    }
+
+    return data;
+  };
+
+  const handleManualFrequencyChange = (value: 'ANNUAL' | 'SEMI_ANNUAL') => {
+    setManualFrequency(value);
+    setFormData(prev => {
+      if (creationMode !== 'MANUAL' || !prev.startDate) return prev;
+
+      return applyDefaultDeadlines({
+        ...prev,
+        endDate: calculateManualEndDate(prev.startDate, value),
+        evaluationPeriod: value === 'ANNUAL' ? 'Annual Review' : 'Semi-Annual Review',
+      });
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (totalWeight !== 100) { toast.warning('Total weights must sum to 100%'); return; }
@@ -98,25 +143,21 @@ const AppraisalCycleCreate: React.FC = () => {
       toast.success('Appraisal Cycle created!');
       navigate('/appraisal', { state: { activeTab: 'forms', expandedCycle: formData.cycleName } });
     } catch (err: any) {
-      toast.error(`Error: ${err?.data?.message || err?.message || 'Unknown error'}`);
+      toast.error('Error: Failed to create cycle.');
     }
   };
 
   const handleDateChange = (field: string, value: string) => {
-    const updatedData = { ...formData, [field]: value };
-    if ((field === 'startDate' || field === 'endDate') && updatedData.startDate && updatedData.endDate) {
-      const start = new Date(updatedData.startDate);
-      const end = new Date(updatedData.endDate);
-      if (isBefore(start, end) || start.getTime() === end.getTime()) {
-        const finalization = subDays(end, 5);
-        const manager = subDays(finalization, 5);
-        const self = subDays(manager, 10);
-        updatedData.finalizationDeadline = format(finalization, 'yyyy-MM-dd');
-        updatedData.managerEvaluationDeadline = format(manager, 'yyyy-MM-dd');
-        updatedData.selfAssessmentDeadline = format(self, 'yyyy-MM-dd');
-      }
+    let updatedData = { ...formData, [field]: value };
+
+    if (creationMode === 'MANUAL' && field === 'startDate' && value) {
+      updatedData = {
+        ...updatedData,
+        endDate: calculateManualEndDate(value, manualFrequency),
+      };
     }
-    setFormData(updatedData);
+
+    setFormData(applyDefaultDeadlines(updatedData));
   };
 
   const WeightRow = ({ label, icon: Icon, field, color }: { label: string; icon: React.ElementType; field: keyof typeof formData; color: string }) => (
@@ -217,6 +258,33 @@ const AppraisalCycleCreate: React.FC = () => {
                         </select>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {creationMode === 'MANUAL' && (
+                  <div style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '12px' }}>
+                    <label style={labelStyle}>Cycle Length</label>
+                    <div className="flex gap-4">
+                      {([
+                        { value: 'ANNUAL', label: 'Annual' },
+                        { value: 'SEMI_ANNUAL', label: 'Semi-Annual' },
+                      ] as const).map(option => (
+                        <label key={option.value} className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 13, color: '#5A6070' }}>
+                          <input
+                            type="radio"
+                            name="manualFrequency"
+                            value={option.value}
+                            checked={manualFrequency === option.value}
+                            onChange={() => handleManualFrequencyChange(option.value)}
+                            style={{ accentColor: '#1A56DB' }}
+                          />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: 11, color: '#9EA3B0', marginTop: 8 }}>
+                      End date will be suggested from the start date. You can still change it manually.
+                    </p>
                   </div>
                 )}
 

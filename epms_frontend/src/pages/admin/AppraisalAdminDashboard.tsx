@@ -74,7 +74,7 @@ const AppraisalAdminDashboard = () => {
       alert('Appraisal cycle launched successfully!');
       setCycleName(''); setStartDate(''); setEndDate('');
     } catch (err: any) {
-      alert(err?.data?.message || 'Operation failed. Please try again.');
+      alert('Operation failed. Please try again.');
     }
   };
 

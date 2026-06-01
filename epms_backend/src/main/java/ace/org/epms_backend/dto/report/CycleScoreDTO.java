@@ -13,5 +13,6 @@ import java.math.BigDecimal;
 public class CycleScoreDTO {
     private String cycleName;
     private BigDecimal kpiScore;
+    private BigDecimal appraisalScore;
     private String performanceCategory;
 }

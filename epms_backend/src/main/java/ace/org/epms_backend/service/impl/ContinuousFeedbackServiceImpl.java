@@ -1,10 +1,13 @@
 package ace.org.epms_backend.service.impl;
+import ace.org.epms_backend.dto.AuditRequest;
 import ace.org.epms_backend.enums.ContinuousStatus;
 
 import ace.org.epms_backend.dto.continuous.ContinuousFeedbackRequest;
 import ace.org.epms_backend.dto.continuous.ContinuousFeedbackResponse;
 import ace.org.epms_backend.dto.continuous.FeedbackReplyRequest;
 import ace.org.epms_backend.dto.continuous.FeedbackReplyResponse;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
 import ace.org.epms_backend.enums.SourceType;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.continuous.ContinuousFeedbackMapper;
@@ -21,6 +24,7 @@ import ace.org.epms_backend.repository.FeedbackTagRepository;
 import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.repository.PerformanceHistoryRepository;
 import ace.org.epms_backend.service.ContinuousFeedbackService;
+import ace.org.epms_backend.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ace.org.epms_backend.service.AuthService;
@@ -53,6 +57,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     private final ApplicationEventPublisher eventPublisher;
     private final ace.org.epms_backend.service.ReportingChainService reportingChainService;
     private final EmployeeDepartmentRepository employeeDepartmentRepository;
+    private final AuditService auditService;
 
     @Override
     @Transactional
@@ -134,6 +139,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                     .actionUrl("/continuous-feedback")
                     .build());
         }
+
+        audit(feedback.getFeedbackId(), AuditAction.INSERT, null, feedbackMapper.toResponse(feedback));
 
         return feedbackMapper.toResponse(feedback);
     }
@@ -253,6 +260,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
         checkFeedbackModificationAccess(feedback);
+        ContinuousFeedbackResponse oldState = feedbackMapper.toResponse(feedback);
 
         if (!feedback.getEmployee().getId().equals(request.getEmployeeId())) {
             Employee employee = employeeRepository.findById(request.getEmployeeId())
@@ -337,6 +345,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                     .build());
         }
 
+        audit(feedback.getFeedbackId(), AuditAction.UPDATE, oldState, feedbackMapper.toResponse(feedback));
+
         return feedbackMapper.toResponse(feedback);
     }
 
@@ -347,6 +357,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
         checkFeedbackModificationAccess(feedback);
+        ContinuousFeedbackResponse oldState = feedbackMapper.toResponse(feedback);
         
         // Delete all replies first to avoid foreign key constraint violations
         List<FeedbackReply> replies = replyRepository.findByFeedback_FeedbackId(feedbackId);
@@ -385,6 +396,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                     .actionUrl("/continuous-feedback")
                     .build());
         }
+
+        audit(feedbackId, AuditAction.DELETE, oldState, null);
     }
 
     @Override
@@ -602,6 +615,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
         checkFeedbackModificationAccess(feedback);
+        ContinuousFeedbackResponse oldState = feedbackMapper.toResponse(feedback);
         
         if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
             throw new IllegalStateException("Feedback is already published.");
@@ -638,6 +652,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                     .build();
             historyRepository.save(history);
         }
+
+        audit(feedback.getFeedbackId(), AuditAction.UPDATE, oldState, feedbackMapper.toResponse(feedback));
         
         return feedbackMapper.toResponse(feedback);
     }
@@ -662,5 +678,16 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .totalPublished(published)
                 .totalDraft(draft)
                 .build();
+    }
+
+    private void audit(Long recordId, AuditAction action, Object oldState, Object newState) {
+        auditService.log(AuditRequest.builder()
+                .tableName("continuous_feedback")
+                .recordId(recordId)
+                .action(action)
+                .oldState(oldState)
+                .newState(newState)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 }

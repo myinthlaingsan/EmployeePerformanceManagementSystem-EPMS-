@@ -383,7 +383,7 @@ const MeetingPage = () => {
     if (e) e.preventDefault();
 
     if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || newMeeting.actionItems.length === 0 || !user) {
-      alert("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
+      toast.warning("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
       return;
     }
     if (newMeeting.followUpDate && newMeeting.followUpDate < newMeeting.meetingDate) {
@@ -440,7 +440,7 @@ const MeetingPage = () => {
         followUpDate: "",
       });
     } catch (err: any) {
-      toast.error(err.data?.message || "Failed to save meeting");
+      toast.error("Failed to save meeting.");
     }
   };
 
@@ -463,7 +463,7 @@ const MeetingPage = () => {
     try {
       await publishMeeting(id).unwrap();
     } catch (err: any) {
-      alert(err.data?.message || "Failed to publish meeting");
+      alert("Failed to publish meeting.");
     }
   };
 
@@ -473,7 +473,7 @@ const MeetingPage = () => {
       await deleteMeeting(meetingToDelete).unwrap();
       setMeetingToDelete(null);
     } catch (err: any) {
-      toast.error(err.data?.message || "Failed to delete meeting");
+      toast.error("Failed to delete meeting.");
     }
   };
 

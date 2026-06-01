@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import { useCreateEmployeeMutation, useGetEmployeeByIdQuery, useUpdateEmployeeMutation, useGetEmployeesQuery, useUploadProfileImageMutation } from "../../features/employee/employeeapi";
 import { useGetPositionsQuery } from "../../features/org/positionApi";
 import { useGetRolesQuery } from "../../features/org/roleApi";
@@ -52,7 +53,12 @@ const EmployeeForm = () => {
 
   useEffect(() => {
     if (isEdit && employeeData) {
-      setFormData(prev => ({ ...prev, ...employeeData, positionId: employeeData.positionId || 0 }));
+      setFormData(prev => ({ 
+        ...prev, 
+        ...employeeData, 
+        nrcType: employeeData.nrcType || "(N)",
+        positionId: employeeData.positionId || 0 
+      }));
       setSelectedPositionLevel(employeeData.levelName);
     }
   }, [isEdit, employeeData, positions, departments]);
@@ -78,7 +84,7 @@ const EmployeeForm = () => {
       if (cleanedData.stateCode !== undefined) {
         const sc = Number(cleanedData.stateCode);
         if (sc < 1 || sc > 14) {
-          alert("NRC State Code must be between 1 and 14.");
+          toast.warning("NRC State Code must be between 1 and 14.");
           return;
         }
       }
@@ -95,7 +101,7 @@ const EmployeeForm = () => {
       navigate("/employees");
     } catch (err: any) {
       console.error("Failed to save employee", err);
-      alert(err?.data?.message || "Failed to save employee. Please check all required fields.");
+      toast.error("Failed to save employee. Please check all required fields.");
     }
   };
 

@@ -8,6 +8,7 @@ import type {
   UpdateProfileRequest,
   ChangePasswordRequest,
   SetPasswordRequest,
+  EmployeeImportResult,
 } from "./employeeTypes";
 
 // Extend base API
@@ -72,6 +73,15 @@ export const employeeApi = api.injectEndpoints({
       }),
       transformResponse: (response: ApiResponse<EmployeeResponse>) =>
         response.data,
+      invalidatesTags: ["Employee"],
+    }),
+
+    importEmployees: builder.mutation<ApiResponse<EmployeeImportResult>, FormData>({
+      query: (body) => ({
+        url: "/emp/import",
+        method: "POST",
+        body,
+      }),
       invalidatesTags: ["Employee"],
     }),
 
@@ -153,10 +163,10 @@ export const employeeApi = api.injectEndpoints({
 
     setPassword: builder.mutation<
       void,
-      { token: string; body: SetPasswordRequest }
+      SetPasswordRequest
     >({
-      query: ({ token, body }) => ({
-        url: `/emp/set-password?token=${token}`,
+      query: (body) => ({
+        url: "/emp/set-password",
         method: "POST",
         body,
       }),
@@ -192,6 +202,7 @@ export const {
   useGetManagerQuery,
   useGetEmployeeByIdQuery,
   useCreateEmployeeMutation,
+  useImportEmployeesMutation,
   useUpdateEmployeeMutation,
   useDeleteEmployeeMutation,
   useActivateEmployeeMutation,

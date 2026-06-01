@@ -1,6 +1,7 @@
 import { useGetDepartmentsQuery, useCreateDepartmentMutation, useDeleteDepartmentMutation } from "../../features/org/departmentApi";
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Can } from "../../components/Can";
 
 const inputStyle: React.CSSProperties = {
@@ -75,15 +76,24 @@ const DepartmentList = () => {
                   <td style={{ padding: "11px 18px", fontSize: 12, color: "#1A56DB", fontFamily: "monospace" }}>{dept.departmentCode}</td>
                   <td style={{ padding: "11px 18px", fontSize: 13, fontWeight: 500, color: "#111827" }}>{dept.departmentName}</td>
                   <td style={{ padding: "11px 18px", textAlign: "right" }}>
-                    <Can permission="ORG_DEPT_MANAGE">
-                      <button
-                        onClick={() => deleteDepartment(dept.id)}
+                    <div className="flex justify-end items-center gap-2">
+                      <Link
+                        to={`/departments/${dept.id}/members`}
                         className="inline-flex items-center gap-1 transition-colors"
-                        style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
+                        style={{ fontSize: 12, color: "#1A56DB", background: "#EEF3FD", border: "0.5px solid #C8CCE0", borderRadius: 6, padding: "3px 8px", textDecoration: "none" }}
                       >
-                        <Trash2 size={12} aria-hidden="true" /> Delete
-                      </button>
-                    </Can>
+                        <Users size={12} aria-hidden="true" /> Members
+                      </Link>
+                      <Can permission="ORG_DEPT_MANAGE">
+                        <button
+                          onClick={() => deleteDepartment(dept.id)}
+                          className="inline-flex items-center gap-1 transition-colors"
+                          style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 6, padding: "3px 8px" }}
+                        >
+                          <Trash2 size={12} aria-hidden="true" /> Delete
+                        </button>
+                      </Can>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -217,13 +217,16 @@
     </detail>
 
     <!-- ===================== SUMMARY (final overall comments) ===================== -->
-    <summary height="100">
+    <summary height="125">
+        <element kind="textField" x="0" y="5" width="555" height="15" fontSize="9.5" bold="true" forecolor="#1F2937">
+            <expression><![CDATA["Total Objectives: " + $V{REPORT_COUNT}]]></expression>
+        </element>
         <element kind="staticText" uuid="bb000060-0001-0001-0001-000000000060"
-                 x="0" y="15" width="555" height="15" fontSize="10.0" bold="true" forecolor="#1F2937">
+                 x="0" y="25" width="555" height="15" fontSize="10.0" bold="true" forecolor="#1F2937">
             <text><![CDATA[Overall Final Comments / Review Remarks]]></text>
         </element>
         <element kind="textField" uuid="bb000061-0001-0001-0001-000000000061"
-                 x="0" y="35" width="555" height="60" fontSize="9.0" forecolor="#4B5563"
+                 x="0" y="45" width="555" height="60" fontSize="9.0" forecolor="#4B5563"
                  textAdjust="StretchHeight">
             <expression><![CDATA[$P{overallComment} != null && !$P{overallComment}.isEmpty() ? $P{overallComment} : "No overall comments registered."]]></expression>
         </element>
@@ -235,7 +238,7 @@
                  x="0" y="5" width="555" height="1" forecolor="#E5E7EB"/>
         <element kind="textField" uuid="bb000051-0001-0001-0001-000000000051"
                  x="0" y="10" width="300" height="15" fontSize="8.0" forecolor="#9CA3AF">
-            <expression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date())]]></expression>
+            <expression><![CDATA["Generated on: " + new java.text.SimpleDateFormat("dd-MM-yyyy HH:mm").format(new java.util.Date())]]></expression>
         </element>
         <element kind="textField" uuid="bb000052-0001-0001-0001-000000000052"
                  x="455" y="10" width="100" height="15" fontSize="8.0"

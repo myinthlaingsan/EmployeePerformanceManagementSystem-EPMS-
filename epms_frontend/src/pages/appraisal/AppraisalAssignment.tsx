@@ -3,10 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   useAssignBulkMutation,
+  useGetAppraisalsByCycleQuery,
   useGetAppraisalFormSetsQuery,
   useSyncFormSetsMutation
 } from '../../features/appraisal/appraisalApi';
-import { useGetEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetAllEmployeesQuery } from '../../features/employee/employeeapi';
+import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
+import { useGetJobLevelsQuery } from '../../features/org/jobLevelApi';
+import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useAuth } from '../../hooks/useAuth';
 import {
   Users, CheckCircle2, Search, Filter, ChevronLeft, UserPlus,
@@ -25,7 +29,10 @@ const AppraisalAssignment: React.FC = () => {
 
   const { data: formSets = [], isLoading: formsLoading } = useGetAppraisalFormSetsQuery(activeCycleId, { skip: !activeCycleId });
   const [syncFormSets, { isLoading: isSyncing }] = useSyncFormSetsMutation();
-  const { data: employeePaged, isLoading: empsLoading } = useGetEmployeesQuery({ page: 0, size: 100 });
+  const { data: employees = [], isLoading: empsLoading } = useGetAllEmployeesQuery();
+  const { data: departments = [] } = useGetDepartmentsQuery();
+  const { data: positions = [] } = useGetPositionsQuery();
+  const { data: jobLevels = [] } = useGetJobLevelsQuery();
   const [assignBulk, { isLoading: isAssigning }] = useAssignBulkMutation();
 
   const [selectedCycleId, setSelectedCycleId] = useState<string>('');
@@ -39,32 +46,56 @@ const AppraisalAssignment: React.FC = () => {
     if (activeCycleId != null) setSelectedCycleId(activeCycleId.toString());
   }, [activeCycleId]);
 
-  const employees = employeePaged?.content || [];
+  const selectedCycleNumber = selectedCycleId ? Number(selectedCycleId) : undefined;
+  const { data: cycleAppraisals = [], isFetching: appraisalsLoading, refetch: refetchCycleAppraisals } =
+    useGetAppraisalsByCycleQuery(selectedCycleNumber as number, { skip: !selectedCycleNumber });
+
+  const assignedEmployeeIds = useMemo(() => {
+    if (!Array.isArray(cycleAppraisals)) return new Set<number>();
+    return new Set(
+      cycleAppraisals
+        .map((appraisal: any) => appraisal?.employeeId)
+        .filter((employeeId: unknown): employeeId is number => typeof employeeId === 'number')
+    );
+  }, [cycleAppraisals]);
 
   const filteredEmployees = useMemo(() => {
     if (!Array.isArray(employees)) return [];
+    const normalizedSearch = searchTerm.trim().toLowerCase();
     return employees.filter(emp => {
-      const matchesSearch = String(emp?.staffName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(emp?.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesDept = deptFilter === '' || emp?.currentDepartmentName === deptFilter;
-      const matchesPos = posFilter === '' || emp?.positionName === posFilter;
-      return matchesSearch && matchesDept && matchesPos;
+      const hasDirectManager = Boolean(emp?.directManagerId);
+      const alreadyAssigned = assignedEmployeeIds.has(emp.id);
+      const status = String(emp?.status || '').toUpperCase();
+      const isActiveEmployee = status ? status === 'ACTIVE' : emp?.isActive !== false;
+      const levelRank = Number(emp?.levelRank);
+      const hasEligibleLevel = Number.isFinite(levelRank) && levelRank >= 4 && levelRank <= 7;
+      const matchesSearch = !normalizedSearch ||
+        String(emp?.staffName || '').toLowerCase().includes(normalizedSearch) ||
+        String(emp?.email || '').toLowerCase().includes(normalizedSearch) ||
+        String(emp?.employeeCode || '').toLowerCase().includes(normalizedSearch);
+      const matchesDept = deptFilter === '' || String(emp?.currentDepartmentId || '') === deptFilter;
+      const matchesPos = posFilter === '' || String(emp?.positionId || '') === posFilter;
+      return isActiveEmployee && hasEligibleLevel && hasDirectManager && !alreadyAssigned && matchesSearch && matchesDept && matchesPos;
     });
-  }, [employees, searchTerm, deptFilter, posFilter]);
+  }, [employees, assignedEmployeeIds, searchTerm, deptFilter, posFilter]);
 
-  const departments = useMemo(() => {
-    if (!Array.isArray(employees)) return [];
-    return Array.from(new Set(employees.map(e => e?.currentDepartmentName).filter(Boolean))) as string[];
-  }, [employees]);
+  React.useEffect(() => {
+    const visibleEmployeeIds = new Set(filteredEmployees.map(emp => emp.id));
+    setSelectedEmployeeIds(prev => prev.filter(id => visibleEmployeeIds.has(id)));
+  }, [filteredEmployees]);
 
-  const positions = useMemo(() => {
-    if (!Array.isArray(employees)) return [];
-    const filtered = deptFilter ? employees.filter(e => e?.currentDepartmentName === deptFilter) : employees;
-    return Array.from(new Set(filtered.map(e => e?.positionName).filter(Boolean))) as string[];
-  }, [employees, deptFilter]);
+  const eligiblePositions = useMemo(() => {
+    const eligibleLevelIds = new Set(
+      jobLevels
+        .filter(level => level.levelRank >= 4 && level.levelRank <= 7)
+        .map(level => level.levelId)
+    );
+    return positions.filter(position => eligibleLevelIds.has(position.levelId));
+  }, [jobLevels, positions]);
 
+  const allVisibleSelected = filteredEmployees.length > 0 && selectedEmployeeIds.length === filteredEmployees.length;
   const toggleEmployee = (id: number) => setSelectedEmployeeIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  const selectAll = () => setSelectedEmployeeIds(selectedEmployeeIds.length === filteredEmployees.length ? [] : filteredEmployees.map(e => e.id));
+  const selectAll = () => setSelectedEmployeeIds(allVisibleSelected ? [] : filteredEmployees.map(e => e.id));
 
   const handleAssign = async () => {
     if (!selectedCycleId) { toast.warning('Please select an appraisal cycle.'); return; }
@@ -73,9 +104,10 @@ const AppraisalAssignment: React.FC = () => {
     try {
       await assignBulk({ cycleId: Number(selectedCycleId), formSetId: Number(selectedFormSetId), employeeIds: selectedEmployeeIds }).unwrap();
       toast.success(`Assigned appraisals to ${selectedEmployeeIds.length} employees!`);
-      navigate('/appraisal');
+      setSelectedEmployeeIds([]);
+      refetchCycleAppraisals();
     } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to assign appraisals.');
+      toast.error('Failed to assign appraisals.');
     }
   };
 
@@ -142,7 +174,7 @@ const AppraisalAssignment: React.FC = () => {
                   <Building2 size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
                   <select style={{ ...selectStyle, paddingLeft: 30 }} value={deptFilter} onChange={e => { setDeptFilter(e.target.value); setPosFilter(''); }}>
                     <option value="">All Departments</option>
-                    {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+                    {departments.map(dept => <option key={dept.id} value={dept.id}>{dept.departmentName}</option>)}
                   </select>
                 </div>
               </div>
@@ -152,9 +184,9 @@ const AppraisalAssignment: React.FC = () => {
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5 }}>4. Position</label>
                 <div className="relative">
                   <Briefcase size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
-                  <select style={{ ...selectStyle, paddingLeft: 30 }} value={posFilter} onChange={e => setPosFilter(e.target.value)} disabled={!deptFilter}>
+                  <select style={{ ...selectStyle, paddingLeft: 30 }} value={posFilter} onChange={e => setPosFilter(e.target.value)}>
                     <option value="">All Positions</option>
-                    {positions.map(pos => <option key={pos} value={pos}>{pos}</option>)}
+                    {eligiblePositions.map(pos => <option key={pos.positionId} value={pos.positionId}>{pos.positionName}</option>)}
                   </select>
                 </div>
               </div>
@@ -200,16 +232,18 @@ const AppraisalAssignment: React.FC = () => {
           ) : (
             <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, overflow: 'hidden' }}>
               <div className="flex items-center justify-between" style={{ padding: '10px 18px', borderBottom: '0.5px solid #E4E6EC', background: '#FAFBFF' }}>
-                <span style={{ fontSize: 12, color: '#9EA3B0' }}>{filteredEmployees.length} employees found</span>
-                <button onClick={selectAll} style={{ fontSize: 12, color: '#1A56DB' }}>
-                  {selectedEmployeeIds.length === filteredEmployees.length ? 'Deselect All' : 'Select All'}
+                <span style={{ fontSize: 12, color: '#9EA3B0' }}>
+                  {appraisalsLoading || empsLoading ? 'Loading eligible employees...' : `${filteredEmployees.length} eligible employees found`}
+                </span>
+                <button onClick={selectAll} disabled={filteredEmployees.length === 0} style={{ fontSize: 12, color: filteredEmployees.length === 0 ? '#9EA3B0' : '#1A56DB' }}>
+                  {allVisibleSelected ? 'Deselect All' : 'Select All'}
                 </button>
               </div>
               <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                 {empsLoading ? (
                   <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading directory…</div>
                 ) : filteredEmployees.length === 0 ? (
-                  <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No employees found.</div>
+                  <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No eligible employee found.</div>
                 ) : filteredEmployees.map((emp, idx) => {
                   const selected = selectedEmployeeIds.includes(emp.id);
                   return (

@@ -8,6 +8,10 @@ public interface ReportService {
     List<KpiAchievementReportDTO> getKpiAchievementReport(Long cycleId, Long departmentId);
     byte[] exportKpiAchievementReport(Long cycleId, Long departmentId, String format);
 
+    // KPI Actuals Completion
+    KpiActualsCompletionReportDTO getKpiActualsCompletionReport(Long cycleId, Long managerId, Long departmentId, int thresholdDays);
+    byte[] exportKpiActualsCompletionReport(Long cycleId, Long managerId, Long departmentId, int thresholdDays, String format);
+
     // Appraisal Status
     AppraisalStatusReportDTO getAppraisalStatusReport(Long cycleId);
     byte[] exportAppraisalStatusReport(Long cycleId, String format);
@@ -18,8 +22,14 @@ public interface ReportService {
 
     PerformanceDistributionReportDTO getPerformanceDistribution(Long cycleId, Long departmentId);
     List<DepartmentAnalyticsDTO> getPerformanceByDepartment(Long cycleId);
+    List<DepartmentBreakdownDTO> getTeamPerformanceBreakdown(Long cycleId, Long departmentId);
+
+    byte[] exportTeamPerformanceBreakdown(Long cycleId, Long departmentId, String format);
     List<PerformanceTrendPointDTO> getOrganizationPerformanceTrend(int months);
+
+    byte[] exportOrganizationPerformanceTrendReport(int months, String format);
     List<PerformancePotentialMatrixDTO> getPerformancePotentialMatrix(Long cycleId);
+
     GoalCompletionReportDTO getGoalCompletion(Long cycleId);
     Feedback360SummaryAnalyticsDTO getFeedback360SummaryAnalytics(Long cycleId);
 
@@ -30,6 +40,10 @@ public interface ReportService {
     // PIP Tracking
     PipTrackingReportDTO getPipTrackingReport();
     byte[] exportPipTrackingReport(String format);
+
+    // IDP Tracking
+    IdpTrackingReportDTO getIdpTrackingReport();
+    byte[] exportIdpTrackingReport(String format);
 
     // Audit Trail
     List<AuditTrailReportDTO> getAuditTrailReport(String tableName, Long recordId);
@@ -46,6 +60,10 @@ public interface ReportService {
     // Employee Performance Summary
     EmployeePerformanceSummaryDTO getEmployeePerformanceSummary(Long employeeId, Long cycleId);
     byte[] exportEmployeePerformanceSummary(Long employeeId, Long cycleId, String format);
+
+    // Employee KPI Summary Report
+    KpiSummaryReportDTO getKpiSummaryReport(Long employeeId, List<Long> cycleIds);
+    byte[] exportKpiSummaryReport(Long employeeId, List<Long> cycleIds, String format);
 
     // High/Low Performers
     List<PerformanceRankingReportDTO> getPerformanceRankingReport(Long cycleId);

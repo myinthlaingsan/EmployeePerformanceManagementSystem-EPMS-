@@ -3,6 +3,7 @@
 	<dataset name="TrendDataset" uuid="e5f6a7b8-c9d0-412e-abcd-667890abcdef">
 		<field name="cycleName" class="java.lang.String"/>
 		<field name="kpiScore" class="java.math.BigDecimal"/>
+		<field name="appraisalScore" class="java.math.BigDecimal"/>
 		<field name="performanceCategory" class="java.lang.String"/>
 	</dataset>
 	<parameter name="logoStream" class="java.io.InputStream"/>
@@ -27,14 +28,17 @@
 	</title>
 	<detail>
 		<band height="70">
-			<element kind="staticText" uuid="3d1e79cb-2b86-4ca4-8f05-6a254ba30840" mode="Opaque" x="0" y="10" width="200" height="30" backcolor="#E9ECEF" bold="true" vTextAlign="Middle">
+			<element kind="staticText" uuid="3d1e79cb-2b86-4ca4-8f05-6a254ba30840" mode="Opaque" x="0" y="10" width="180" height="30" backcolor="#E9ECEF" bold="true" vTextAlign="Middle">
 				<text><![CDATA[Performance Cycle]]></text>
 				<box leftPadding="10"/>
 			</element>
-			<element kind="staticText" uuid="d8d49633-57ba-4f38-9ab3-75661f85c7e3" mode="Opaque" x="200" y="10" width="150" height="30" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<element kind="staticText" uuid="d8d49633-57ba-4f38-9ab3-75661f85c7e3" mode="Opaque" x="180" y="10" width="100" height="30" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
 				<text><![CDATA[KPI Score]]></text>
 			</element>
-			<element kind="staticText" uuid="b390aede-6767-4cbc-86ec-d08c96f72076" mode="Opaque" x="350" y="10" width="205" height="30" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+			<element kind="staticText" uuid="b2345678-abcd-1234-5678-abcdef123456" mode="Opaque" x="280" y="10" width="100" height="30" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
+				<text><![CDATA[Appraisal Score]]></text>
+			</element>
+			<element kind="staticText" uuid="b390aede-6767-4cbc-86ec-d08c96f72076" mode="Opaque" x="380" y="10" width="175" height="30" backcolor="#E9ECEF" bold="true" hTextAlign="Center" vTextAlign="Middle">
 				<text><![CDATA[Performance Category]]></text>
 			</element>
 			<element kind="component" uuid="f489ce59-5cee-421e-9910-e250610435c8" x="0" y="40" width="555" height="30">
@@ -43,19 +47,25 @@
 						<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{trends})]]></dataSourceExpression>
 					</datasetRun>
 					<contents height="30" width="555">
-						<element kind="textField" uuid="6f0be5c7-46c0-45f2-add7-5374e322999b" x="0" y="0" width="200" height="30" vTextAlign="Middle">
+						<element kind="textField" uuid="6f0be5c7-46c0-45f2-add7-5374e322999b" x="0" y="0" width="180" height="30" vTextAlign="Middle">
 							<expression><![CDATA[$F{cycleName}]]></expression>
 							<box leftPadding="10">
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
 							</box>
 						</element>
-						<element kind="textField" uuid="f822b42e-2c8c-4e53-93be-d95755ca14e8" x="200" y="0" width="150" height="30" bold="true" hTextAlign="Center" vTextAlign="Middle">
+						<element kind="textField" uuid="f822b42e-2c8c-4e53-93be-d95755ca14e8" x="180" y="0" width="100" height="30" bold="true" hTextAlign="Center" vTextAlign="Middle">
 							<expression><![CDATA[$F{kpiScore} + "%"]]></expression>
 							<box>
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
 							</box>
 						</element>
-						<element kind="textField" uuid="1226af11-c898-41d8-b552-8589a1075b51" x="350" y="0" width="205" height="30" hTextAlign="Center" vTextAlign="Middle">
+						<element kind="textField" uuid="c1234567-89ab-cdef-0123-456789abcdef" x="280" y="0" width="100" height="30" bold="true" hTextAlign="Center" vTextAlign="Middle">
+							<expression><![CDATA[$F{appraisalScore} != null ? $F{appraisalScore} + "%" : "N/A"]]></expression>
+							<box>
+								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
+							</box>
+						</element>
+						<element kind="textField" uuid="1226af11-c898-41d8-b552-8589a1075b51" x="380" y="0" width="175" height="30" hTextAlign="Center" vTextAlign="Middle">
 							<expression><![CDATA[$F{performanceCategory}]]></expression>
 							<box>
 								<bottomPen lineWidth="0.25" lineColor="#DDDDDD"/>
@@ -67,11 +77,22 @@
 		</band>
 	</detail>
 	<pageFooter height="30">
-		<element kind="textField" uuid="a0b059b4-f1b8-4a20-a11f-b6568701c4e3" x="0" y="10" width="200" height="20" pattern="MMMMM dd, yyyy">
+		<element kind="textField" uuid="a0b059b4-f1b8-4a20-a11f-b6568701c4e3" x="0" y="10" width="200" height="20" pattern="dd-MM-yyyy">
 			<expression><![CDATA[new java.util.Date()]]></expression>
 		</element>
 		<element kind="textField" uuid="bd5ab213-9fce-4374-9e8c-39aeba1570cf" x="455" y="10" width="100" height="20" hTextAlign="Right">
 			<expression><![CDATA["Page " + $V{PAGE_NUMBER}]]></expression>
 		</element>
 	</pageFooter>
+	<summary height="30">
+		<element kind="line" uuid="1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d" x="0" y="5" width="555" height="1">
+			<pen lineWidth="1.0" lineColor="#34495E"/>
+		</element>
+		<element kind="staticText" uuid="2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e" x="0" y="10" width="150" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<text><![CDATA[Total Cycles Evaluated:]]></text>
+		</element>
+		<element kind="textField" uuid="3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f" x="150" y="10" width="100" height="20" fontSize="10.0" bold="true" vTextAlign="Middle">
+			<expression><![CDATA[$F{trends} != null ? $F{trends}.size() : 0]]></expression>
+		</element>
+	</summary>
 </jasperReport>
