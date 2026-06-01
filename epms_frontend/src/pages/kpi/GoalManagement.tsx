@@ -6,11 +6,12 @@ import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
 import { useGetPositionsQuery } from '../../features/org/positionApi';
 import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
-import { Search, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
+import { Search, ClipboardList, CheckCircle2, XCircle, Eye, Pencil, UserPlus, Archive, Calendar } from 'lucide-react';
 import BulkAssignModal from '../../components/kpi/BulkAssignModal';
 import { useGetDepartmentGoalSetsQuery, useGetTeamGoalSetsQuery } from '../../services/kpiApi';
 import React from 'react';
 import { KPI_STATUS_STYLE, KPI_STATUS_FALLBACK } from '../../utils/kpiStatusStyles';
+import { MidcycleChangeModal } from '../../features/kpi/MidcycleChangeModal';
 
 const GoalManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +23,8 @@ const GoalManagement: React.FC = () => {
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [isMidcycleOpen, setIsMidcycleOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<{ id: number; staffName: string } | null>(null);
 
   const { data: pagedData, isLoading: loadingEmployees } = useGetEmployeesQuery({ page, size });
   const employees = pagedData?.content || [];
@@ -41,9 +44,12 @@ const GoalManagement: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('All');
   const [selectedPosition, setSelectedPosition] = useState('All');
   const [selectedCycle, setSelectedCycle] = useState('All');
-  const isHistorical = !activeCycleId || (selectedCycle !== 'All' && Number(selectedCycle) !== activeCycleId);
-
   const effectiveCycleId = selectedCycle === 'All' ? activeCycleId : Number(selectedCycle);
+
+  const selectedCycleObj = cycles.find((c: any) => (c.cycleId || c.id) === effectiveCycleId);
+  const isArchivedCycle = selectedCycleObj?.status?.toUpperCase() === 'ARCHIVED';
+  const isHistorical = !activeCycleId || isArchivedCycle || (selectedCycle !== 'All' && Number(selectedCycle) !== activeCycleId);
+
   // Use cycle name from the active-cycle API (via useAuth), not from cycle list lookup
   const activeCycleName = hasActiveCycle ? authCycleName : undefined;
   const { data: deptGoalSetsResponse } = useGetDepartmentGoalSetsQuery(
@@ -79,8 +85,9 @@ const GoalManagement: React.FC = () => {
 
   // --- Coverage stats (derived from existing data, no new API calls) ---
   const totalEmployees = pagedData?.totalElements || 0;
-  const assignedCount = goalSets.length;
-  const awaitingApprovalCount = goalSets.filter(gs => gs.status === 'DRAFT').length;
+  const activeGoalSets = goalSets.filter(gs => gs.status !== 'ARCHIVED');
+  const assignedCount = activeGoalSets.length;
+  const awaitingApprovalCount = activeGoalSets.filter(gs => gs.status === 'DRAFT').length;
   const notAssignedCount = Math.max(0, totalEmployees - assignedCount);
   const coveragePercent = totalEmployees > 0 ? Math.round((assignedCount / totalEmployees) * 100) : 0;
   const coverageDisplay = loadingEmployees ? '—' : `${coveragePercent}%`;
@@ -88,6 +95,62 @@ const GoalManagement: React.FC = () => {
   const awaitingApprovalDisplay = loadingEmployees ? '—' : awaitingApprovalCount;
   const notAssignedDisplay = loadingEmployees ? '—' : notAssignedCount;
   const coverageBarWidth = loadingEmployees ? 0 : coveragePercent;
+
+  const getActionIcon = (status: string | undefined, empId: number) => {
+    const base: React.CSSProperties = { cursor: 'pointer', padding: 6, borderRadius: 6 };
+    
+    if (isArchivedCycle) {
+      return status ? (
+        <span title="View (archived)" style={{ ...base, color: '#9EA3B0', cursor: 'pointer', display: 'inline-flex' }}
+          onClick={e => { e.stopPropagation(); navigate(`/kpi/goals/${empId}?cycleId=${effectiveCycleId}`); }}>
+          <Eye size={14} />
+        </span>
+      ) : (
+        <span title="No goals in archived cycle" style={{ ...base, color: '#E0E2E8', cursor: 'default', display: 'inline-flex' }}>
+          <Archive size={14} />
+        </span>
+      );
+    }
+
+    if (!status) {
+      return (
+        <button title="Assign KPI" style={{ ...base, color: '#1A56DB', background: '#EEF3FD' }}
+          onClick={e => { e.stopPropagation(); navigate(`/kpi/assign/${empId}?cycleId=${effectiveCycleId}`); }}>
+          <UserPlus size={14} />
+        </button>
+      );
+    }
+    if (status === 'DRAFT') return (
+      <button title="Edit Goals" style={{ ...base, color: '#D97706', background: '#FEF3C7' }}
+        onClick={e => { e.stopPropagation(); navigate(`/kpi/assign/${empId}?cycleId=${effectiveCycleId}`); }}>
+        <Pencil size={14} />
+      </button>
+    );
+    if (['APPROVED','LOCKED','SCORED'].includes(status)) return (
+      <div className="flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
+        <button title="View Goals" style={{ ...base, color: '#1A56DB', background: '#EEF3FD' }}
+          onClick={e => { e.stopPropagation(); navigate(`/kpi/goals/${empId}?cycleId=${effectiveCycleId}`); }}>
+          <Eye size={14} />
+        </button>
+        {status !== 'SCORED' && (
+          <button title="Midcycle Change" style={{ ...base, color: '#1E40AF', background: '#EFF6FF' }}
+            onClick={e => { 
+              e.stopPropagation(); 
+              setSelectedEmployee({ id: empId, staffName: filteredEmployees.find(emp => emp.id === empId)?.staffName || '' });
+              setIsMidcycleOpen(true);
+            }}>
+            <Calendar size={14} />
+          </button>
+        )}
+      </div>
+    );
+    if (status === 'ARCHIVED') return (
+      <span title="Archived" style={{ ...base, color: '#9EA3B0', cursor: 'default', display: 'inline-flex' }}>
+        <Archive size={14} />
+      </span>
+    );
+    return null;
+  };
 
   return (<div className="space-y-4 pb-8">
       {/* Header */}
@@ -159,7 +222,7 @@ const GoalManagement: React.FC = () => {
           <option value="All">Position: All</option>
           {positions.map((p, i) => <option key={`${p.positionId}-${i}`} value={p.positionName}>{p.positionName}</option>)}
         </select>
-        <select style={selectStyle} value={selectedCycle} onChange={e => setSelectedCycle(e.target.value)}>
+        <select style={selectStyle} value={selectedCycle} onChange={e => { setSelectedCycle(e.target.value); setSelectedIds([]); }}>
           <option value="All">Cycle: {hasActiveCycle ? 'Active' : 'All'}</option>
           {activeCycles.length > 0 && (
             <optgroup label="Active Cycle">
@@ -213,24 +276,36 @@ const GoalManagement: React.FC = () => {
                       onChange={handleSelectAll} />
                   </th>
                 )}
-                {['Employee','Department','Position','Goal Status'].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+              {['Employee','Department','Position','Goal Status','Actions'].map(h => (
+                  <th key={h} style={{ padding: '10px 16px', fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: h === 'Actions' ? 'center' : 'left', width: h === 'Actions' ? 80 : 'auto' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loadingEmployees && (
-                <tr><td colSpan={isHistorical ? 4 : 5} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading employees…</td></tr>
+                <tr><td colSpan={isHistorical ? 4 : 6} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>Loading employees…</td></tr>
               )}
               {!loadingEmployees && filteredEmployees.map((emp, idx) => {
                 const status = goalStatusMap.get(emp.id);
                 return (
                   <tr key={emp.id}
-                    style={{ borderBottom: idx < filteredEmployees.length - 1 ? '0.5px solid #F0F2F6' : 'none', background: !isHistorical && selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF', cursor: status === 'ARCHIVED' ? 'default' : 'pointer' }}
+                    style={{ borderBottom: idx < filteredEmployees.length - 1 ? '0.5px solid #F0F2F6' : 'none', background: !isHistorical && selectedIds.includes(emp.id) ? '#EEF3FD' : '#FFFFFF', cursor: ((isArchivedCycle && status) || (isHistorical && status) || (!isHistorical && status !== 'ARCHIVED') || (!isHistorical && !status)) ? 'pointer' : 'default' }}
                     className="hover:bg-[#FAFBFF] transition-colors"
                     onClick={() => {
+                      if (isArchivedCycle) {
+                        if (status) {
+                          navigate(`/kpi/goals/${emp.id}?cycleId=${effectiveCycleId}`);
+                        }
+                        return;
+                      }
+                      if (isHistorical) {
+                        if (status) {
+                          navigate(`/kpi/goals/${emp.id}?cycleId=${effectiveCycleId}`);
+                        }
+                        return;
+                      }
                       if (status === 'ARCHIVED') return;
-                      if (status === 'APPROVED' || status === 'LOCKED') {
+                      if (status === 'APPROVED' || status === 'LOCKED' || status === 'SCORED') {
                         navigate(`/kpi/goals/${emp.id}?cycleId=${effectiveCycleId}`);
                       } else {
                         navigate(`/kpi/assign/${emp.id}?cycleId=${effectiveCycleId}`);
@@ -273,11 +348,14 @@ const GoalManagement: React.FC = () => {
                         </div>
                       )}
                     </td>
+                    <td style={{ padding: '10px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                      {!isHistorical && getActionIcon(status, emp.id)}
+                    </td>
                   </tr>
                 );
               })}
               {filteredEmployees.length === 0 && !loadingEmployees && (
-                <tr><td colSpan={isHistorical ? 4 : 5} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No employees found matching criteria.</td></tr>
+                <tr><td colSpan={isHistorical ? 4 : 6} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>No employees found matching criteria.</td></tr>
               )}
             </tbody>
           </table>
@@ -309,6 +387,26 @@ const GoalManagement: React.FC = () => {
           effectiveCycleId={effectiveCycleId}
           onClose={() => setIsBulkModalOpen(false)}
           onSuccess={() => { setIsBulkModalOpen(false); setSelectedIds([]); }} />
+      )}
+
+      {isMidcycleOpen && selectedEmployee && selectedCycleObj && (
+        <MidcycleChangeModal
+          employeeId={selectedEmployee.id}
+          employeeName={selectedEmployee.staffName}
+          cycleId={effectiveCycleId!}
+          cycleName={selectedCycleObj.cycleName || selectedCycleObj.name}
+          cycleStartDate={selectedCycleObj.startDate}
+          cycleEndDate={selectedCycleObj.endDate}
+          summary={null}
+          onClose={() => {
+            setIsMidcycleOpen(false);
+            setSelectedEmployee(null);
+          }}
+          onSuccess={() => {
+            setIsMidcycleOpen(false);
+            setSelectedEmployee(null);
+          }}
+        />
       )}
 
       <div style={{ display: 'none' }}><CheckCircle2 /></div>

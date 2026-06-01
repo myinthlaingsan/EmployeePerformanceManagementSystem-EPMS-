@@ -1,10 +1,13 @@
 package ace.org.epms_backend.service.impl;
+import ace.org.epms_backend.dto.AuditRequest;
 import ace.org.epms_backend.enums.ContinuousStatus;
 
 import ace.org.epms_backend.dto.continuous.ContinuousFeedbackRequest;
 import ace.org.epms_backend.dto.continuous.ContinuousFeedbackResponse;
 import ace.org.epms_backend.dto.continuous.FeedbackReplyRequest;
 import ace.org.epms_backend.dto.continuous.FeedbackReplyResponse;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
 import ace.org.epms_backend.enums.SourceType;
 import ace.org.epms_backend.exception.NotFoundException;
 import ace.org.epms_backend.mapper.continuous.ContinuousFeedbackMapper;
@@ -18,8 +21,10 @@ import ace.org.epms_backend.repository.ContinuousFeedbackRepository;
 import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.FeedbackReplyRepository;
 import ace.org.epms_backend.repository.FeedbackTagRepository;
+import ace.org.epms_backend.repository.EmployeeDepartmentRepository;
 import ace.org.epms_backend.repository.PerformanceHistoryRepository;
 import ace.org.epms_backend.service.ContinuousFeedbackService;
+import ace.org.epms_backend.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ace.org.epms_backend.service.AuthService;
@@ -50,6 +55,9 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     private final AuthService authService;
     private final EmployeeRoleRepository employeeRoleRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ace.org.epms_backend.service.ReportingChainService reportingChainService;
+    private final EmployeeDepartmentRepository employeeDepartmentRepository;
+    private final AuditService auditService;
 
     @Override
     @Transactional
@@ -58,7 +66,28 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .orElseThrow(() -> new NotFoundException("Employee not found"));
         Employee manager = employeeRepository.findById(request.getManagerId())
                 .orElseThrow(() -> new NotFoundException("Manager not found"));
-        
+
+        // Validate manager and employee belong to the same department (unless manager is Admin/HR)
+        if (!isPrivileged(manager)) {
+            ace.org.epms_backend.model.employee.EmployeeDepartment managerDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(manager.getId()).orElse(null);
+            ace.org.epms_backend.model.employee.EmployeeDepartment employeeDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(employee.getId()).orElse(null);
+            if (managerDept == null || employeeDept == null || 
+                managerDept.getCurrentDepartment() == null || employeeDept.getCurrentDepartment() == null ||
+                !managerDept.getCurrentDepartment().getId().equals(employeeDept.getCurrentDepartment().getId())) {
+                throw new AccessDeniedException("You can only give feedback to employees in your same department.");
+            }
+            if (isHighestDepartmentManager(employee)) {
+                throw new AccessDeniedException("You cannot give feedback to the highest-level manager in this department.");
+            }
+            if (manager.getLevel() != null && employee.getLevel() != null) {
+                if (employee.getLevel().getLevelRank() < manager.getLevel().getLevelRank()) {
+                    throw new AccessDeniedException("You cannot submit feedback for higher-level managers.");
+                }
+            }
+        }
+
+
+
         FeedbackTag tag = null;
         if (request.getTagId() != null) {
             tag = tagRepository.findById(request.getTagId())
@@ -92,6 +121,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                     .createdBy(manager.getId())
                     .manager(manager)
                     .performer(manager)
+                    .managerPositionName(manager.getPosition() != null ? manager.getPosition().getPositionName() : null)
                     .build();
             historyRepository.save(history);
         }
@@ -110,6 +140,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                     .build());
         }
 
+        audit(feedback.getFeedbackId(), AuditAction.INSERT, null, feedbackMapper.toResponse(feedback));
+
         return feedbackMapper.toResponse(feedback);
     }
 
@@ -124,12 +156,21 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     @Override
-    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId, int page, int size) {
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByEmployee(Long employeeId, ace.org.epms_backend.enums.FeedbackType feedbackType, Long tagId, java.time.LocalDate createdAfter, java.time.LocalDate createdBefore, int page, int size) {
         checkNotPurePrivileged();
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
-        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findVisibleFeedbacksByEmployee(employeeId, currentUser.getId(), pageable);
+        java.time.Instant after = createdAfter != null ? createdAfter.atStartOfDay(java.time.ZoneOffset.UTC).toInstant() : null;
+        java.time.Instant before = createdBefore != null ? createdBefore.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant() : null;
+
+        java.util.Set<Long> subordinateIds = reportingChainService.getAllSubordinateIds(currentUser.getId());
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage;
+        if (subordinateIds.isEmpty()) {
+            feedbackPage = feedbackRepository.findVisibleFeedbacksByEmployee(employeeId, currentUser.getId(), feedbackType, tagId, after, before, pageable);
+        } else {
+            feedbackPage = feedbackRepository.findVisibleFeedbacksByEmployeeWithChain(employeeId, currentUser.getId(), subordinateIds, feedbackType, tagId, after, before, pageable);
+        }
 
         List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
                 .map(feedbackMapper::toResponse)
@@ -146,12 +187,15 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     @Override
-    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, ace.org.epms_backend.enums.ContinuousStatus status, int page, int size) {
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getFeedbacksByManager(Long managerId, ace.org.epms_backend.enums.ContinuousStatus status, ace.org.epms_backend.enums.FeedbackType feedbackType, Long tagId, java.time.LocalDate createdAfter, java.time.LocalDate createdBefore, int page, int size) {
         checkNotPurePrivileged();
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
-        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findVisibleFeedbacksByManager(managerId, currentUser.getId(), status, pageable);
+        java.time.Instant after = createdAfter != null ? createdAfter.atStartOfDay(java.time.ZoneOffset.UTC).toInstant() : null;
+        java.time.Instant before = createdBefore != null ? createdBefore.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant() : null;
+
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findVisibleFeedbacksByManager(managerId, currentUser.getId(), status, feedbackType, tagId, after, before, pageable);
 
         List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
                 .map(feedbackMapper::toResponse)
@@ -173,6 +217,31 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .anyMatch(r -> r.getRoleName() == RoleType.ADMIN || r.getRoleName() == RoleType.HR);
     }
 
+    private boolean isHighestDepartmentManager(Employee employee) {
+        ace.org.epms_backend.model.employee.EmployeeDepartment employeeDept = employeeDepartmentRepository
+                .findByEmployeeIdAndIsCurrentTrue(employee.getId())
+                .orElse(null);
+
+        if (employeeDept == null || employeeDept.getCurrentDepartment() == null) {
+            return false;
+        }
+
+        Long departmentId = employeeDept.getCurrentDepartment().getId();
+
+        List<ace.org.epms_backend.model.employee.EmployeeDepartment> deptStaff = employeeDepartmentRepository
+                .findByCurrentDepartmentIdAndIsCurrentTrue(departmentId);
+
+        Integer highestRankInDept = deptStaff.stream()
+                .map(ace.org.epms_backend.model.employee.EmployeeDepartment::getEmployee)
+                .filter(emp -> emp.getIsActive() && emp.getLevel() != null)
+                .map(emp -> emp.getLevel().getLevelRank())
+                .min(Integer::compare)
+                .orElse(Integer.MAX_VALUE);
+
+        return employee.getLevel() != null && 
+               employee.getLevel().getLevelRank().equals(highestRankInDept);
+    }
+
     private void checkNotPurePrivileged() {
         Employee currentUser = authService.getCurrentUser();
         List<Role> roles = employeeRoleRepository.findRolesByEmployeeId(currentUser.getId());
@@ -191,6 +260,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
         checkFeedbackModificationAccess(feedback);
+        ContinuousFeedbackResponse oldState = feedbackMapper.toResponse(feedback);
 
         if (!feedback.getEmployee().getId().equals(request.getEmployeeId())) {
             Employee employee = employeeRepository.findById(request.getEmployeeId())
@@ -204,6 +274,25 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
             feedback.setManager(manager);
         }
 
+        // Validate manager and employee belong to the same department (unless manager is Admin/HR)
+        if (!isPrivileged(feedback.getManager())) {
+            ace.org.epms_backend.model.employee.EmployeeDepartment managerDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(feedback.getManager().getId()).orElse(null);
+            ace.org.epms_backend.model.employee.EmployeeDepartment employeeDept = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(feedback.getEmployee().getId()).orElse(null);
+            if (managerDept == null || employeeDept == null || 
+                managerDept.getCurrentDepartment() == null || employeeDept.getCurrentDepartment() == null ||
+                !managerDept.getCurrentDepartment().getId().equals(employeeDept.getCurrentDepartment().getId())) {
+                throw new AccessDeniedException("You can only give feedback to employees in your same department.");
+            }
+            if (isHighestDepartmentManager(feedback.getEmployee())) {
+                throw new AccessDeniedException("You cannot give feedback to the highest-level manager in this department.");
+            }
+            if (feedback.getManager().getLevel() != null && feedback.getEmployee().getLevel() != null) {
+                if (feedback.getEmployee().getLevel().getLevelRank() < feedback.getManager().getLevel().getLevelRank()) {
+                    throw new AccessDeniedException("You cannot submit feedback for higher-level managers.");
+                }
+            }
+        }
+
         if (request.getTagId() != null && (feedback.getTag() == null || !feedback.getTag().getTagId().equals(request.getTagId()))) {
             FeedbackTag tag = tagRepository.findById(request.getTagId())
                     .orElseThrow(() -> new NotFoundException("Tag not found"));
@@ -212,7 +301,15 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
             feedback.setTag(null);
         }
 
+        ContinuousStatus oldStatus = feedback.getStatus();
         feedbackMapper.updateEntityFromRequest(request, feedback);
+
+        if (oldStatus == ContinuousStatus.DRAFT
+                && feedback.getStatus() == ContinuousStatus.PUBLISHED
+                && feedback.getPublishedAt() == null) {
+            feedback.setPublishedAt(java.time.LocalDateTime.now());
+        }
+
         feedback = feedbackRepository.save(feedback);
 
         Employee currentUser = authService.getCurrentUser();
@@ -248,6 +345,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                     .build());
         }
 
+        audit(feedback.getFeedbackId(), AuditAction.UPDATE, oldState, feedbackMapper.toResponse(feedback));
+
         return feedbackMapper.toResponse(feedback);
     }
 
@@ -258,6 +357,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
         checkFeedbackModificationAccess(feedback);
+        ContinuousFeedbackResponse oldState = feedbackMapper.toResponse(feedback);
         
         // Delete all replies first to avoid foreign key constraint violations
         List<FeedbackReply> replies = replyRepository.findByFeedback_FeedbackId(feedbackId);
@@ -284,7 +384,20 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                     .performer(currentUser)
                     .build();
             historyRepository.save(history);
+
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .recipientId(feedback.getEmployee().getId())
+                    .senderId(currentUser.getId())
+                    .type(NotificationType.SYSTEM)
+                    .title("Feedback Deleted")
+                    .message("Manager " + currentUser.getStaffName() + " deleted a feedback comment.")
+                    .referenceType(ReferenceType.FEEDBACK)
+                    .referenceId(feedbackId)
+                    .actionUrl("/continuous-feedback")
+                    .build());
         }
+
+        audit(feedbackId, AuditAction.DELETE, oldState, null);
     }
 
     @Override
@@ -348,21 +461,47 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     public List<FeedbackReplyResponse> getRepliesForFeedback(Long feedbackId) {
         ContinuousFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
-        
+
         checkFeedbackAccess(feedback);
 
-        return replyRepository.findByFeedback_FeedbackId(feedbackId).stream()
+        List<ace.org.epms_backend.dto.continuous.FeedbackReplyResponse> all = replyRepository
+                .findByFeedback_FeedbackId(feedbackId).stream()
                 .map(replyMapper::toResponse)
                 .collect(Collectors.toList());
+
+        java.util.Map<Long, ace.org.epms_backend.dto.continuous.FeedbackReplyResponse> byId = all.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ace.org.epms_backend.dto.continuous.FeedbackReplyResponse::getReplyId,
+                        r -> r));
+
+        List<ace.org.epms_backend.dto.continuous.FeedbackReplyResponse> roots = new java.util.ArrayList<>();
+        for (ace.org.epms_backend.dto.continuous.FeedbackReplyResponse r : all) {
+            if (r.getParentId() == null || !byId.containsKey(r.getParentId())) {
+                roots.add(r);
+            } else {
+                ace.org.epms_backend.dto.continuous.FeedbackReplyResponse parent = byId.get(r.getParentId());
+                if (parent.getChildren() == null) {
+                    parent.setChildren(new java.util.ArrayList<>());
+                }
+                parent.getChildren().add(r);
+            }
+        }
+        return roots;
     }
 
     private void checkFeedbackAccess(ContinuousFeedback feedback) {
         Employee currentUser = authService.getCurrentUser();
 
-        // Manager can see all, Employee can only see if PUBLISHED
+        // Creator-manager: can see all statuses
         if (currentUser.getId().equals(feedback.getManager().getId())) {
             return;
         }
+        // Higher manager in chain: can see PUBLISHED feedback from subordinate managers
+        if (feedback.getStatus() == ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED
+                && reportingChainService.isInReportingChain(currentUser, feedback.getEmployee())) {
+            return;
+        }
+        // Employee subject: can see own PUBLISHED feedback
         if (currentUser.getId().equals(feedback.getEmployee().getId())) {
             if (feedback.getStatus() == ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED) {
                 return;
@@ -381,11 +520,14 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
     }
 
     @Override
-    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getAllFeedbacks(ace.org.epms_backend.enums.ContinuousStatus status, int page, int size) {
+    public ace.org.epms_backend.dto.PagedResponse<ContinuousFeedbackResponse> getAllFeedbacks(ace.org.epms_backend.enums.ContinuousStatus status, ace.org.epms_backend.enums.FeedbackType feedbackType, Long tagId, java.time.LocalDate createdAfter, java.time.LocalDate createdBefore, int page, int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Employee currentUser = authService.getCurrentUser();
 
-        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findAllVisibleFeedbacks(currentUser.getId(), status, pageable);
+        java.time.Instant after = createdAfter != null ? createdAfter.atStartOfDay(java.time.ZoneOffset.UTC).toInstant() : null;
+        java.time.Instant before = createdBefore != null ? createdBefore.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant() : null;
+
+        org.springframework.data.domain.Page<ContinuousFeedback> feedbackPage = feedbackRepository.findAllVisibleFeedbacks(currentUser.getId(), status, feedbackType, tagId, after, before, pageable);
 
         List<ContinuousFeedbackResponse> content = feedbackPage.getContent().stream()
                 .map(feedbackMapper::toResponse)
@@ -473,6 +615,7 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .orElseThrow(() -> new NotFoundException("Feedback not found"));
         
         checkFeedbackModificationAccess(feedback);
+        ContinuousFeedbackResponse oldState = feedbackMapper.toResponse(feedback);
         
         if (feedback.getStatus() == ContinuousStatus.PUBLISHED) {
             throw new IllegalStateException("Feedback is already published.");
@@ -509,6 +652,8 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                     .build();
             historyRepository.save(history);
         }
+
+        audit(feedback.getFeedbackId(), AuditAction.UPDATE, oldState, feedbackMapper.toResponse(feedback));
         
         return feedbackMapper.toResponse(feedback);
     }
@@ -533,5 +678,16 @@ public class ContinuousFeedbackServiceImpl implements ContinuousFeedbackService 
                 .totalPublished(published)
                 .totalDraft(draft)
                 .build();
+    }
+
+    private void audit(Long recordId, AuditAction action, Object oldState, Object newState) {
+        auditService.log(AuditRequest.builder()
+                .tableName("continuous_feedback")
+                .recordId(recordId)
+                .action(action)
+                .oldState(oldState)
+                .newState(newState)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 }

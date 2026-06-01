@@ -17,12 +17,24 @@ import type {
   BulkAssignmentResponse,
   KpiHistoryLog,
 } from '../features/kpi/kpiTypes';
+import type { PagedResponse } from '../features/employee/employeeTypes';
 
 export const kpiApi = api.injectEndpoints({
   endpoints: (builder) => ({
     // ==================== Categories ====================
     getKpiCategories: builder.query<ApiResponse<KpiCategory[]>, void>({
       query: () => '/kpi/categories',
+      providesTags: ['Category'],
+    }),
+    getKpiCategoriesPaginated: builder.query<
+      ApiResponse<PagedResponse<KpiCategory>>,
+      { page: number; size: number; search?: string }
+    >({
+      query: ({ page, size, search }) => {
+        let url = `/kpi/categories/paginated?page=${page}&size=${size}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        return url;
+      },
       providesTags: ['Category'],
     }),
     createKpiCategory: builder.mutation<ApiResponse<KpiCategory>, { name: string }>({
@@ -244,7 +256,10 @@ export const kpiApi = api.injectEndpoints({
 
     // ==================== Goal Set Retrieval ====================
     getGoalSetByEmployee: builder.query<ApiResponse<GoalSetResponse>, { employeeId: number; cycleId: number }>({
-      query: ({ employeeId, cycleId }) => `/kpi/goal-set/employee/${employeeId}?cycleId=${cycleId}`,
+      query: ({ employeeId, cycleId }) => ({
+        url: `/kpi/goal-set/employee/${employeeId}`,
+        params: { cycleId },
+      }),
       providesTags: ['GoalSet'],
     }),
 
@@ -268,12 +283,12 @@ export const kpiApi = api.injectEndpoints({
         url: `/kpi/calculate-score?employeeId=${employeeId}&cycleId=${cycleId}`,
         method: 'POST',
       }),
-      invalidatesTags: ['Score', 'GoalSet'],
+      invalidatesTags: ['FinalScore', 'GoalSet'],
     }),
     getFinalScore: builder.query<ApiResponse<KpiScoreResponse>, { employeeId: number; cycleId: number }>({
       query: ({ employeeId, cycleId }) =>
         `/kpi/calculate-score?employeeId=${employeeId}&cycleId=${cycleId}`,
-      providesTags: ['Score'],
+      providesTags: ['FinalScore'],
     }),
     getTeamGoalSets: builder.query<ApiResponse<GoalSetResponse[]>, { managerId: number; cycleId: number }>({
       query: ({ managerId, cycleId }) => `/kpi/goal-set/team?managerId=${managerId}&cycleId=${cycleId}`,
@@ -293,13 +308,14 @@ export const kpiApi = api.injectEndpoints({
     }),
     getGoalSetAuditTrail: builder.query<ApiResponse<KpiHistoryLog[]>, number>({
       query: (goalSetId) => `/kpi-history/goal-set/${goalSetId}/audit`,
-      providesTags: ['GoalSet'],
+      providesTags: (result, error, goalSetId) => [{ type: 'AuditTrail' as const, id: goalSetId }],
     }),
   }),
 });
 
 export const {
   useGetKpiCategoriesQuery,
+  useGetKpiCategoriesPaginatedQuery,
   useCreateKpiCategoryMutation,
   useUpdateKpiCategoryMutation,
   useDeleteKpiCategoryMutation,
@@ -331,7 +347,6 @@ export const {
   useGetLibraryHistoryQuery,
   useGetTeamGoalSetsQuery,
   useGetDepartmentGoalSetsQuery,
-
   useBulkAssignKpiMutation,
   useGetEmployeeKpiHistoryQuery,
   useGetGoalSetAuditTrailQuery,

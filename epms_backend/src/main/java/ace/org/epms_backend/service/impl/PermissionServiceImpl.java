@@ -64,7 +64,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public List<PermissionResponse> getAllPermissions() {
-        return permissionRepository.findAll().stream()
+        return permissionRepository.findAllByOrderByPermissionIdAsc().stream()
                 .map(permissionMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -154,6 +154,43 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
+    public void togglePermission(AssignPermissionRequest request) {
+        Role role = roleRepository.findById(request.getRoleId())
+                .orElseThrow(() -> new NotFoundException("Role not found"));
+        JobLevel level = jobLevelRepository.findById(request.getLevelId())
+                .orElseThrow(() -> new NotFoundException("Job level not found"));
+        Permission permission = permissionRepository.findById(request.getPermissionId())
+                .orElseThrow(() -> new NotFoundException("Permission not found"));
+
+        roleLevelPermissionRepository.findByRoleAndLevelAndPermission(role, level, permission)
+                .ifPresentOrElse(existing -> {
+                    roleLevelPermissionRepository.delete(existing);
+                    auditService.log(AuditRequest.builder()
+                            .tableName("role_level_permissions")
+                            .recordId(existing.getId())
+                            .action(AuditAction.DELETE)
+                            .oldState(existing)
+                            .status(AuditStatus.SUCCESS)
+                            .build());
+                }, () -> {
+                    RoleLevelPermission assignment = new RoleLevelPermission();
+                    assignment.setRole(role);
+                    assignment.setLevel(level);
+                    assignment.setPermission(permission);
+
+                    RoleLevelPermission saved = roleLevelPermissionRepository.save(assignment);
+                    auditService.log(AuditRequest.builder()
+                            .tableName("role_level_permissions")
+                            .recordId(saved.getId())
+                            .action(AuditAction.INSERT)
+                            .newState(saved)
+                            .status(AuditStatus.SUCCESS)
+                            .build());
+                });
+    }
+
+    @Override
+    @Transactional
     public void removeAssignedPermission(Long roleLevelPermissionId) {
         RoleLevelPermission assignment = roleLevelPermissionRepository.findById(roleLevelPermissionId)
                 .orElseThrow(() -> new NotFoundException("Role level permission assignment not found"));
@@ -168,7 +205,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .status(AuditStatus.SUCCESS)
                 .build());
     }
-
+    
     @Override
     public List<RoleLevelPermissionResponse> getAssignedPermissions(Long roleId, Long levelId) {
         return roleLevelPermissionRepository.findByRole_RoleIdAndLevel_LevelId(roleId, levelId).stream()
@@ -186,9 +223,9 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public PermissionMatrixResponse getPermissionMatrix() {
-        List<Role> roles = roleRepository.findAll();
-        List<JobLevel> levels = jobLevelRepository.findAll();
-        List<Permission> permissions = permissionRepository.findAll();
+        List<Role> roles = roleRepository.findAllByOrderByRoleIdAsc();
+        List<JobLevel> levels = jobLevelRepository.findAllByOrderByLevelIdAsc();
+        List<Permission> permissions = permissionRepository.findAllByOrderByPermissionIdAsc();
         List<RoleLevelPermission> assignments = roleLevelPermissionRepository.findAll();
 
         List<RoleLevelMapping> matrix = new ArrayList<>();
@@ -228,7 +265,8 @@ public class PermissionServiceImpl implements PermissionService {
         // Remove existing assignments for this role/level combo
         List<RoleLevelPermission> existing = roleLevelPermissionRepository.findByRole_RoleIdAndLevel_LevelId(request.getRoleId(), request.getLevelId());
         roleLevelPermissionRepository.deleteAll(existing);
-
+        // 🔥 3. FORCE HIBERNATE TO RUN THE DELETES RIGHT NOW
+        roleLevelPermissionRepository.flush();
         // Add new assignments
         for (Long permissionId : request.getPermissionIds()) {
             Permission permission = permissionRepository.findById(permissionId)

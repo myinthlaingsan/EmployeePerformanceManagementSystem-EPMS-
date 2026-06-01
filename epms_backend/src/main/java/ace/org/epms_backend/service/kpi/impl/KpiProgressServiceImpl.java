@@ -47,7 +47,9 @@ public class KpiProgressServiceImpl implements KpiProgressService {
                 .orElseThrow(() -> new NotFoundException("Goal item not found"));
 
         if (!item.getGoalSet().getStatus().equals(KpiGoalStatus.APPROVED)) {
-            throw new IllegalStateException("Cannot update progress for non-approved goals");
+            throw new IllegalStateException(
+                    "Cannot update progress because the goal set status is " + item.getGoalSet().getStatus()
+                            + ". It must be APPROVED.");
         }
 
         Employee currentUser = getCurrentEmployee();
@@ -55,9 +57,9 @@ public class KpiProgressServiceImpl implements KpiProgressService {
             // Check if compliance row being verified by manager/HR/Admin
             boolean isHrOrAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_HR") || a.getAuthority().equals("ROLE_ADMIN"));
-            
-            boolean isManager = item.getGoalSet().getManager() != null && 
-                               item.getGoalSet().getManager().getId().equals(currentUser.getId());
+
+            boolean isManager = item.getGoalSet().getManager() != null &&
+                    item.getGoalSet().getManager().getId().equals(currentUser.getId());
 
             if (Boolean.TRUE.equals(item.getIsCompliance()) && (isHrOrAdmin || isManager)) {
                 // Allowed for manager verification
@@ -87,14 +89,16 @@ public class KpiProgressServiceImpl implements KpiProgressService {
         BigDecimal scorePercent = BigDecimal.ZERO;
         if (item.getTargetValue() != null) {
             if (item.getTargetValue().compareTo(BigDecimal.ZERO) == 0) {
-                // If target is 0, 100% achievement if actual is 0, else 0% (Zero Tolerance Item)
+                // If target is 0, 100% achievement if actual is 0, else 0% (Zero Tolerance
+                // Item)
                 scorePercent = request.getActualValue().compareTo(BigDecimal.ZERO) == 0
                         ? new BigDecimal("100")
                         : BigDecimal.ZERO;
             } else {
                 scorePercent = request.getActualValue()
                         .divide(item.getTargetValue(), 4, java.math.RoundingMode.HALF_UP)
-                        .multiply(new BigDecimal("100"));
+                        .multiply(new BigDecimal("100"))
+                        .min(new BigDecimal("100"));
             }
         }
         item.setScorePercent(scorePercent);
@@ -106,10 +110,12 @@ public class KpiProgressServiceImpl implements KpiProgressService {
         }
         item.setWeightedScore(weightedScore);
 
-        if (request.getProgressPercent().compareTo(new BigDecimal("100")) >= 0) {
+        if (scorePercent.compareTo(new BigDecimal("100")) >= 0) {
             item.setStatus(KpiItemStatus.COMPLETED);
-        } else {
+        } else if (item.getActualValue().compareTo(BigDecimal.ZERO) > 0) {
             item.setStatus(KpiItemStatus.IN_PROGRESS);
+        } else {
+            item.setStatus(KpiItemStatus.NOT_STARTED);
         }
         goalItemRepository.save(item);
 
@@ -144,8 +150,8 @@ public class KpiProgressServiceImpl implements KpiProgressService {
 
     @Override
     public List<KpiProgressResponse> getRecentProgress(Long employeeId, int limit) {
-        return progressRepository.findByGoalItemGoalSetEmployeeIdOrderByIdDesc(employeeId).stream()
-                .limit(limit)
+        return progressRepository.findCurrentProgressByEmployeeId(
+                employeeId, org.springframework.data.domain.PageRequest.of(0, limit)).stream()
                 .map(p -> KpiProgressResponse.builder()
                         .id(p.getId())
                         .goalItemId(p.getGoalItem().getId())

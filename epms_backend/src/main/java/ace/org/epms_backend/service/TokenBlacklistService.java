@@ -30,7 +30,7 @@ public class TokenBlacklistService {
     }
 
     public boolean isBlacklisted(String token) {
-        return repository.existsById(token);
+        return repository.existsByToken(token);
     }
 
     @Scheduled(cron = "0 0 0 * * ?") // Every day at midnight

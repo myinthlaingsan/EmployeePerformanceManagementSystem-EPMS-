@@ -23,9 +23,11 @@ public class PerformanceHistoryController {
     public ResponseEntity<ApiResponse<PagedResponse<PerformanceHistoryResponse>>> getHistoryByEmployee(
             @PathVariable Long employeeId,
             @RequestParam(required = false) SourceType sourceType,
+            @RequestParam(required = false) Boolean onlyByManager,
+            @RequestParam(required = false) Boolean isConducted,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PagedResponse<PerformanceHistoryResponse> responses = historyService.getHistoryByEmployee(employeeId, sourceType, page, size);
+        PagedResponse<PerformanceHistoryResponse> responses = historyService.getHistoryByEmployee(employeeId, sourceType, onlyByManager, isConducted, page, size);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -73,16 +75,18 @@ public class PerformanceHistoryController {
     @GetMapping("/pulse")
     public ResponseEntity<ApiResponse<List<PerformanceHistoryResponse>>> getPerformancePulse(
             @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) Long employeeId) {
-        List<PerformanceHistoryResponse> responses = historyService.getPerformancePulse(departmentId, employeeId);
+            @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) Boolean onlyByManager) {
+        List<PerformanceHistoryResponse> responses = historyService.getPerformancePulse(departmentId, employeeId, onlyByManager);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
     @GetMapping("/meeting-pulse")
     public ResponseEntity<ApiResponse<MeetingPulseResponse>> getMeetingPulse(
             @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) Long employeeId) {
-        MeetingPulseResponse response = historyService.getMeetingPulse(departmentId, employeeId);
+            @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) Boolean onlyByManager) {
+        MeetingPulseResponse response = historyService.getMeetingPulse(departmentId, employeeId, onlyByManager);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

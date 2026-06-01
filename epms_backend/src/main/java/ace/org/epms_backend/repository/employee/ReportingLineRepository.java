@@ -15,7 +15,9 @@ public interface ReportingLineRepository extends JpaRepository<ReportingLine, Lo
 //    Optional<ReportingLine> findByEmployee_IdAndIsActiveTrue(Long employeeId);
     Optional<ReportingLine> findFirstByEmployee_IdAndIsActiveTrue(Long employeeId);
     
-    // Find all active subordinates for a manager
+    // Find all active subordinates for a manager (by Employee object)
     List<ReportingLine> findAllByManagerAndIsActiveTrue(Employee manager);
 
+    // Find all active subordinates for a manager (by manager ID)
+    List<ReportingLine> findAllByManager_IdAndIsActiveTrue(Long managerId);
 }

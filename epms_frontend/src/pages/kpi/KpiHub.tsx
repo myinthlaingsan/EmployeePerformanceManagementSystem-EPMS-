@@ -1,19 +1,19 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetAllLibrariesQuery, useGetGoalSetByEmployeeQuery } from '../../services/kpiApi';
-import { Target, Layers, Activity, ChevronRight } from 'lucide-react';
+import { Target, Layers, Activity, ChevronRight, History } from 'lucide-react';
 import { Can } from '../../components/Can';
 
 const KpiHub: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isHR, isAdmin, activeCycleId, activeCycleName } = useAuth();
+  const { user, isHR, isAdmin, isManager, activeCycleId, activeCycleName } = useAuth();
 
   const { data: librariesResponse } = useGetAllLibrariesQuery();
   const libraries = librariesResponse?.data || [];
 
   const { data: myGoalsResponse, isLoading: loadingGoals } = useGetGoalSetByEmployeeQuery(
-    { employeeId: user?.id || 0, cycleId: activeCycleId },
-    { skip: !user }
+    { employeeId: user?.id || 0, cycleId: activeCycleId ?? 0 },
+    { skip: !user?.id || !activeCycleId }
   );
 
   const myGoals = myGoalsResponse?.data;
@@ -28,7 +28,6 @@ const KpiHub: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3" style={{ paddingBottom: 14, borderBottom: '0.5px solid #E4E6EC' }}>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise / Performance</p>
           <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>System Intelligence Hub</h1>
         </div>
         <div style={{ background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '6px 12px' }}>
@@ -122,7 +121,7 @@ const KpiHub: React.FC = () => {
 
         {/* Right side */}
         <div className="space-y-4">
-          {(isAdmin || isHR) && (
+          {(isAdmin || isHR || isManager) && (
             <div style={{ background: '#111827', borderRadius: 12, padding: '16px 18px' }}>
               <p style={{ fontSize: 11, fontWeight: 500, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>Strategic Control</p>
               <div className="grid grid-cols-2 gap-3">
@@ -152,6 +151,17 @@ const KpiHub: React.FC = () => {
                     </div>
                   </button>
                 </Can>
+                <button onClick={() => navigate('/kpi/org-history')}
+                  className="flex flex-col gap-2 text-left transition-colors"
+                  style={{ padding: '12px', background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: 8 }}>
+                  <div style={{ width: 28, height: 28, background: '#7C3AED', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <History size={13} style={{ color: '#FFFFFF' }} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>KPI History</p>
+                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Audit log & lifecycle</p>
+                  </div>
+                </button>
               </div>
             </div>
           )}

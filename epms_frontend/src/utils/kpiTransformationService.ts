@@ -63,7 +63,15 @@ export const calculateGoalSetMetrics = (goalSet: GoalSetResponse): KpiMetrics =>
 
   return {
     finalScore: Math.round(totalWeightedScore * 10) / 10,
-    completionRate: Math.round(totalCompletion / items.length),
+    completionRate: (() => {
+      const totalWeight = items.reduce((sum, i) => sum + (i.weightPercent || 0), 0);
+      return totalWeight > 0
+        ? Math.round(items.reduce((sum, i) => {
+            const pct = Math.min(((i.currentProgress || 0) / (i.targetValue || 1)) * 100, 100);
+            return sum + pct * (i.weightPercent || 0);
+          }, 0) / totalWeight)
+        : 0;
+    })(),
   };
 };
 

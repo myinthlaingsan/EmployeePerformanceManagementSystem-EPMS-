@@ -16,20 +16,21 @@ import { useGetEmployeeByIdQuery } from '../../features/employee/employeeapi';
 import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  Search, Plus, Trash2, Lock, LayoutTemplate, Target, Save, Edit3, History, ChevronLeft
+  Search, Plus, Trash2, Lock, LayoutTemplate, Target, Save, Edit3, History, ChevronLeft, Archive
 } from 'lucide-react';
 import React from 'react';
 import { KPI_STATUS_STYLE, KPI_STATUS_FALLBACK } from '../../utils/kpiStatusStyles';
+import { formatRelativeTime } from '../../utils/timeUtils';
 
 const GoalAssignmentWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isAdmin, isHR, activeCycleId, activeCycleName, isLoadingCycle: isLoadingActiveCycle } = useAuth();
+  const { isAdmin, isHR, isManager, activeCycleId, activeCycleName, isLoadingCycle: isLoadingActiveCycle } = useAuth();
 
   const urlCycleId = searchParams.get('cycleId');
+  const editMode = searchParams.get('mode') === 'edit';
   const resolvedCycleId = urlCycleId ? Number(urlCycleId) : activeCycleId;
-  const isHistoricalCycle = !!resolvedCycleId && activeCycleId !== undefined && resolvedCycleId !== activeCycleId;
 
   const { data: employee } = useGetEmployeeByIdQuery(Number(employeeId), { skip: !employeeId });
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
@@ -43,8 +44,14 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const { data: categoriesResponse } = useGetKpiCategoriesQuery();
   const categories = categoriesResponse?.data || [];
 
-  const { data: cyclesData } = useGetCyclesQuery();
+  const { data: cyclesData, isLoading: isLoadingCycles } = useGetCyclesQuery();
   const cycles = cyclesData || [];
+  const resolvedCycleObj = (cycles as any[]).find((c: any) => (c.cycleId || c.id) === resolvedCycleId);
+  const isArchivedCycle = resolvedCycleObj?.status?.toUpperCase() === 'ARCHIVED';
+  // In edit mode (navigated from GoalDetail), treat as non-historical even if cycle differs from active
+  // Otherwise, archived cycles or non-active cycles are historical
+  const isHistoricalCycle = editMode ? false : isArchivedCycle || (!!resolvedCycleId && activeCycleId !== undefined && resolvedCycleId !== activeCycleId);
+  const isPrivileged = isManager || isAdmin || isHR;
 
   // goalSet must be declared before any hook or useMemo that references it.
   // Guard against stale cache: if the returned goal-set belongs to a different cycle
@@ -69,11 +76,16 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const [approveGoalSet] = useApproveGoalSetMutation();
   const [revertToDraft] = useRevertGoalSetMutation();
   const [assignLibrary] = useAssignKpiToEmployeeMutation();
-  const isInputDisabled = isHistoricalCycle || goalSet?.status === 'APPROVED' || goalSet?.status === 'LOCKED';
+  // Respect edit mode: APPROVED is only disabled when NOT arriving via mode=edit
+  const isInputDisabled = isArchivedCycle 
+    || (['LOCKED', 'SCORED', 'ARCHIVED'].includes(goalSet?.status ?? ''))
+    || (goalSet?.status === 'APPROVED' && !editMode);
   const [localItems, setLocalItems] = React.useState<any[]>([]);
   const [isModified, setIsModified] = useState(false);
   const [assignmentMode, setAssignmentMode] = useState<'append'|'replace'>('append');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [pendingTemplate, setPendingTemplate] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [tempIdCounter, setTempIdCounter] = useState(-1);
 
@@ -81,8 +93,17 @@ const GoalAssignmentWorkspace: React.FC = () => {
     if (goalSet?.items) {
       setLocalItems(goalSet.items);
       setIsModified(false);
+    } else if (goalSet === undefined && !goalSetResponse?.data) {
+      setLocalItems([]);
+      setIsModified(false);
     }
-  }, [goalSet]);
+  }, [goalSet, goalSetResponse?.data]);
+
+  useEffect(() => {
+    if (!isLoadingCycles && isArchivedCycle && !goalSet) {
+      navigate(-1);
+    }
+  }, [isLoadingCycles, isArchivedCycle, goalSet, navigate]);
 
   // Warn on browser refresh / tab close
   useEffect(() => {
@@ -111,6 +132,10 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
   const handleUseTemplate = async (library: any) => {
     if (!resolvedCycleId) return;
+    if (isInputDisabled) {
+      toast.warning('Goals cannot be modified in the current state.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       const overwrite = assignmentMode === 'replace';
@@ -160,6 +185,11 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
       // Step 1: If no goal set exists yet, create one first
       if (!currentGoalSetId) {
+        if (localItems.length === 0) {
+          toast.warning('Add at least one goal before saving.');
+          setIsSubmitting(false);
+          return;
+        }
         const newGoalSet = await assignLibrary({
           employeeId: Number(employeeId),
           appraisalCycleId: resolvedCycleId,
@@ -213,9 +243,14 @@ const GoalAssignmentWorkspace: React.FC = () => {
     }
   };
 
-  const handleEdit = async () => {
+  const handleEdit = () => {
     if (!goalSet) return;
-    if (!window.confirm('This will revert the status to DRAFT so you can make changes. Continue?')) return;
+    setShowEditConfirm(true);
+  };
+
+  const handleEditConfirmed = async () => {
+    if (!goalSet) return;
+    setShowEditConfirm(false);
     setIsSubmitting(true);
     try { await revertToDraft(goalSet.id).unwrap(); }
     catch (err: any) { toast.error(`Failed to revert: ${err?.data?.message || err.message}`); }
@@ -232,14 +267,18 @@ const GoalAssignmentWorkspace: React.FC = () => {
       return;
     }
     if (!window.confirm('Are you sure you want to delete this goal? This cannot be undone if progress records exist.')) return;
-    try { await deleteGoalItem(itemId).unwrap(); }
-    catch (err: any) { toast.error(err?.data?.message || 'Cannot delete: progress records exist for this goal.'); }
+    try {
+      await deleteGoalItem(itemId).unwrap();
+      setLocalItems(prev => prev.filter(i => i.id !== itemId));
+      await refetchGoals();
+    } catch (err: any) { toast.error(err?.data?.message || 'Cannot delete: progress records exist for this goal.'); }
   };
 
   const handleApprove = async () => {
     if (!goalSet) return;
     if (totalWeight !== 100) { toast.warning('Total weight must be exactly 100% before approving.'); return; }
     if (isModified) { toast.warning('Please save your draft changes before approving.'); return; }
+    if (overweightItems.length > 0) { toast.warning(`${overweightItems.length} item(s) exceed the 35% cap. Adjust before approving.`); return; }
     setIsSubmitting(true);
     try {
       await approveGoalSet(goalSet.id).unwrap();
@@ -271,11 +310,17 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-8">
-      <button onClick={() => safeNavigate(-1)}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#5A6070', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-        className="hover:text-[#111827] transition-colors">
-        <ChevronLeft size={14} /> Back
-      </button>
+      <div className="flex items-center gap-3">
+        <button onClick={() => safeNavigate(-1)}
+          style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.5px solid #E4E6EC', borderRadius: 8, background: '#FFFFFF', color: '#5A6070', flexShrink: 0 }}
+          className="hover:bg-[#F5F6F8] transition-colors">
+          <ChevronLeft size={16} />
+        </button>
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>Goal Assignment Workspace</h1>
+          <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 1 }}>Assign and manage employee KPI goals.</p>
+        </div>
+      </div>
 
       {/* Header */}
       <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 20px' }}
@@ -305,7 +350,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {!isHistoricalCycle && (() => {
+          {!isHistoricalCycle && isPrivileged && (() => {
             const readOnlyStatuses = ['LOCKED', 'SCORED', 'ARCHIVED'];
             if (goalSet && readOnlyStatuses.includes(goalSet.status)) {
               // Terminal/read-only states: no buttons
@@ -342,19 +387,40 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
       {isHistoricalCycle && (
         <div style={{
-          background: '#FFFBEB',
-          border: '0.5px solid #FCD34D',
+          background: isArchivedCycle ? '#F5F6F8' : '#FFFBEB',
+          border: `0.5px solid ${isArchivedCycle ? '#E0E2E8' : '#FCD34D'}`,
           borderRadius: 12,
           padding: '10px 14px',
-          color: '#B45309',
+          color: isArchivedCycle ? '#6B7280' : '#B45309',
           fontSize: 13,
           fontWeight: 500,
           display: 'flex',
           alignItems: 'center',
           gap: 8,
         }}>
-          <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#B45309' }}></span>
-          Viewing historical cycle — no assignments can be made
+          {isArchivedCycle ? (
+            <>
+              <Archive size={14} />
+              This appraisal cycle has been archived — all data is read-only.
+            </>
+          ) : (
+            <>
+              <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#B45309' }}></span>
+              Viewing historical cycle — no assignments can be made
+            </>
+          )}
+        </div>
+      )}
+
+      {isArchivedCycle && !goalSet && (
+        <div style={{ background: '#FFFFFF', border: '0.5px dashed #E0E2E8', borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
+          <Archive size={24} style={{ color: '#E0E2E8', margin: '0 auto 12px' }} />
+          <p style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 4 }}>
+            No goals were assigned for this cycle
+          </p>
+          <p style={{ fontSize: 12, color: '#9EA3B0' }}>
+            This appraisal cycle is archived. Goals can no longer be created or modified.
+          </p>
         </div>
       )}
 
@@ -383,16 +449,17 @@ const GoalAssignmentWorkspace: React.FC = () => {
               <div style={{ width: 1, height: 24, background: '#E2E8F0', alignSelf: 'center' }} />
               <div>
                 <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assigned At</span>
-                <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>{new Date(goalSet.assignedAt).toLocaleString()}</p>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#334155', marginTop: 2 }}>{formatRelativeTime(goalSet.assignedAt)}</p>
               </div>
             </>
           )}
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
-        {/* Sidebar */}
-        {!isHistoricalCycle && (
+      {!(isArchivedCycle && !goalSet) && (
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
+          {/* Sidebar */}
+        {!isHistoricalCycle && isPrivileged && !isInputDisabled && (
           <aside style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px' }} className="w-full lg:w-72 shrink-0">
             <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
               <p style={{ fontSize: 11, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>KPI Templates</p>
@@ -455,7 +522,13 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
             <div style={{ maxHeight: 380, overflowY: 'auto' }} className="space-y-2">
               {filteredLibraries.map(lib => (
-                <div key={lib.id} onClick={() => handleUseTemplate(lib)}
+                <div key={lib.id} onClick={() => {
+                    if (assignmentMode === 'replace' && goalSet) {
+                      setPendingTemplate(lib);
+                    } else {
+                      handleUseTemplate(lib);
+                    }
+                  }}
                   style={{ border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}
                   className="hover:border-[#1A56DB] hover:bg-[#EEF3FD] transition-colors">
                   <div className="flex justify-between items-start" style={{ marginBottom: 4 }}>
@@ -467,15 +540,25 @@ const GoalAssignmentWorkspace: React.FC = () => {
               ))}
             </div>
 
-            {!goalSet && localItems.length === 0 && (
-              <button onClick={() => {
-                // Just show a local empty row — no API call until Save Draft
-                handleAddCustomGoal();
-              }}
-                style={{ width: '100%', marginTop: 16, padding: '9px', border: '0.5px dashed #E0E2E8', borderRadius: 8, fontSize: 11, fontWeight: 500, color: '#9EA3B0', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                className="hover:bg-[#F5F6F8] transition-colors">
-                <Target size={12} /> Start Blank Session
-              </button>
+            {pendingTemplate && (
+              <div style={{ marginTop: 18, padding: 14, border: '0.5px solid #E4E6EC', borderRadius: 12, background: '#FEF3C7' }}>
+                <p style={{ fontSize: 12, fontWeight: 500, color: '#92400E', marginBottom: 8 }}>
+                  Replace existing draft goals with “{pendingTemplate.title}”? This will archive the current draft and create a new goal set.
+                </p>
+                <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                  <button onClick={() => {
+                      handleUseTemplate(pendingTemplate);
+                      setPendingTemplate(null);
+                    }}
+                    style={{ background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 500 }}>
+                    Confirm Replace
+                  </button>
+                  <button onClick={() => setPendingTemplate(null)}
+                    style={{ background: '#F5F6F8', color: '#475569', border: '0.5px solid #E2E8F0', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 500 }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
 
             <button onClick={handleAddCustomGoal}
@@ -614,6 +697,40 @@ const GoalAssignmentWorkspace: React.FC = () => {
           </div>
         </main>
       </div>
+      )}
+
+      {showEditConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: '#FFFFFF', borderRadius: 16, padding: 28, maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Edit3 size={22} color="#D97706" />
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: '#111827', textAlign: 'center', marginBottom: 8 }}>Edit Goals</h2>
+            <p style={{ fontSize: 13, color: '#5A6070', textAlign: 'center', marginBottom: 16, lineHeight: 1.6 }}>
+              This will revert the goal set back to <strong>DRAFT</strong> status so you can make changes.
+            </p>
+            <div style={{ background: '#FEF9EC', border: '0.5px solid #FCD34D', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
+              <p style={{ fontSize: 12, color: '#92400E', fontWeight: 500, marginBottom: 6 }}>This action will:</p>
+              <ul style={{ fontSize: 12, color: '#92400E', paddingLeft: 16, margin: 0, lineHeight: 1.8 }}>
+                <li>Revert status from APPROVED → DRAFT</li>
+                <li>Allow goal items to be edited or added</li>
+                <li>Require re-approval before scoring</li>
+              </ul>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowEditConfirm(false)}
+                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '0.5px solid #E0E2E8', background: '#F5F6F8', color: '#374151', fontSize: 13, fontWeight: 500 }}>
+                Cancel
+              </button>
+              <button onClick={handleEditConfirmed} disabled={isSubmitting}
+                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: '#D97706', color: '#FFFFFF', fontSize: 13, fontWeight: 500 }}
+                className="disabled:opacity-50 hover:bg-[#B45309] transition-colors">
+                {isSubmitting ? 'Reverting…' : 'Revert to Draft'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

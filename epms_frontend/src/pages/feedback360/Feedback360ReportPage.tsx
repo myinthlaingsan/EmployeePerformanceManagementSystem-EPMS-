@@ -16,6 +16,7 @@ import {
   useGetFeedbackSummaryQuery,
   useGetReceivedFeedbackQuery,
 } from '../../features/feedback360/feedback360Api';
+import { useGetCyclesQuery } from '../../features/appraisal/appraisalApi';
 import { useDownloadReportMutation } from '../../features/report/reportApi';
 import SuppressionNotice from '../../components/feedback360/SuppressionNotice';
 import type {
@@ -363,6 +364,22 @@ const Feedback360ReportPage = () => {
   const { empId } = useParams<{ empId?: string }>();
   const { user, activeCycleId, isAdmin, isHR, isManager } = useAuth();
   const [chartTab, setChartTab] = useState<ChartTab>('radar');
+  const [selectedCycleId, setSelectedCycleId] = useState<number | null>(null);
+
+  const { data: cycles = [], isLoading: cyclesLoading } = useGetCyclesQuery();
+
+  // Initialize selectedCycleId with activeCycleId or the most recent cycle
+  React.useEffect(() => {
+    if (selectedCycleId === null && !cyclesLoading) {
+      if (activeCycleId) {
+        setSelectedCycleId(activeCycleId);
+      } else if (cycles.length > 0) {
+        // Sort by id descending (assuming higher id is newer)
+        const sortedCycles = [...cycles].sort((a, b) => b.cycleId - a.cycleId);
+        setSelectedCycleId(sortedCycles[0].cycleId);
+      }
+    }
+  }, [activeCycleId, cycles, cyclesLoading, selectedCycleId]);
 
   const targetId = empId ? Number(empId) : user?.id;
   const isOwnReport = !empId || Number(empId) === user?.id;
@@ -370,14 +387,14 @@ const Feedback360ReportPage = () => {
   // Access check: must be self, HR, admin, or manager viewing team
   const canView = isOwnReport || isAdmin || isHR || isManager;
 
-  const { data: summary, isLoading, isError } = useGetFeedbackSummaryQuery(
-    { targetUserId: targetId!, cycleId: activeCycleId! },
-    { skip: !targetId || !activeCycleId || !canView },
+  const { data: summary, isLoading, isError, error } = useGetFeedbackSummaryQuery(
+    { targetUserId: targetId!, cycleId: selectedCycleId! },
+    { skip: !targetId || !selectedCycleId || !canView },
   );
 
   const { data: individualSubmissions = [] } = useGetReceivedFeedbackQuery(
-    { employeeId: targetId!, cycleId: activeCycleId! },
-    { skip: !targetId || !activeCycleId || !canView },
+    { employeeId: targetId!, cycleId: selectedCycleId! },
+    { skip: !targetId || !selectedCycleId || !canView },
   );
 
   const [downloadReport, { isLoading: isDownloading }] = useDownloadReportMutation();
@@ -393,18 +410,18 @@ const Feedback360ReportPage = () => {
     );
   }
 
-  if (!activeCycleId) {
+  if (!selectedCycleId && !cyclesLoading) {
     return (
       <div style={{ padding: 24 }}>
         <div style={{ ...panel, display: 'flex', alignItems: 'center', gap: 10, color: '#9EA3B0' }}>
           <AlertCircle size={16} />
-          <span style={{ fontSize: 14 }}>No active cycle found.</span>
+          <span style={{ fontSize: 14 }}>No feedback cycles found.</span>
         </div>
       </div>
     );
   }
 
-  if (isLoading) {
+  if (isLoading || cyclesLoading) {
     return (
       <div style={{ padding: 24, display: 'flex', alignItems: 'center', gap: 8, color: '#9EA3B0' }}>
         <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
@@ -413,42 +430,51 @@ const Feedback360ReportPage = () => {
     );
   }
 
-  if (isError || !summary) {
-    return (
-      <div style={{ padding: 24 }}>
-        <div style={{ ...panel, display: 'flex', alignItems: 'center', gap: 10, color: '#791F1F' }}>
-          <AlertCircle size={16} />
-          <span style={{ fontSize: 14 }}>
-            {isError ? 'Failed to load feedback report.' : 'No feedback report available for the active cycle.'}
-          </span>
+  const isPendingRelease = error && 'status' in error && error.status === 403;
+  const pendingReleaseMessage = (error && 'data' in error && (error.data as any)?.message)
+    || 'Your 360° Feedback Report is currently under review by the calibration committee. It will be released once the appraisal cycle is finalized.';
+
+  const renderCycleSelector = () => (
+    <select
+      value={selectedCycleId ?? ''}
+      onChange={(e) => setSelectedCycleId(Number(e.target.value))}
+      style={{
+        padding: '6px 32px 6px 12px',
+        fontSize: 13,
+        color: '#4B5563',
+        background: '#F9FAFB',
+        border: '1px solid #D1D5DB',
+        borderRadius: 6,
+        outline: 'none',
+        appearance: 'none',
+        backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E")',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'right 6px center',
+        backgroundSize: 14,
+        cursor: 'pointer'
+      }}
+    >
+      {cycles.map(c => (
+        <option key={c.cycleId} value={c.cycleId}>
+          {c.cycleName} {c.isActive ? '(Active)' : '(Archived)'}
+        </option>
+      ))}
+    </select>
+  );
+
+  const renderHeader = (isSummaryValid: boolean) => (
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+      <div>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 }}>
+          {isOwnReport ? 'My 360° Feedback Report' : `${summary?.targetUserName || 'Employee'}'s 360° Report`}
+        </h1>
+        <div style={{ marginTop: 8 }}>
+          {renderCycleSelector()}
         </div>
       </div>
-    );
-  }
-
-  const radarData = buildRadarData(summary);
-  const barData = buildBarData(summary);
-  const radarEmpty = radarData.every(
-    (r) => r.Manager == null && r.Peer == null && r.Subordinate == null && r.Self == null,
-  );
-  const presentKeys = SCORE_CARDS.filter((c) => summary[c.key] && summary[c.key].length > 0);
-
-  const displayScore = summary.calibratedFinalScore ?? summary.totalAverageScore;
-  const isCalibrated = summary.calibratedFinalScore != null;
-
-  return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 }}>
-            {isOwnReport ? 'My 360° Feedback Report' : `${summary.targetUserName}'s 360° Report`}
-          </h1>
-          <p style={{ fontSize: 13, color: '#9EA3B0', marginTop: 4 }}>{summary.cycleName}</p>
-        </div>
+      {isSummaryValid && summary && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {isCalibrated && (
+          {summary.calibratedFinalScore != null && (
             <span style={{
               fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
               background: '#EEF3FD', color: '#1A56DB', border: '0.5px solid #BFCFFA',
@@ -469,7 +495,7 @@ const Feedback360ReportPage = () => {
               try {
                 await downloadReport({
                   endpoint: 'feedback-360',
-                  params: { targetUserId: targetId, cycleId: activeCycleId },
+                  params: { targetUserId: targetId, cycleId: selectedCycleId },
                   fileName: `Feedback_360_Report_${summary?.targetUserName || 'Employee'}.pdf`
                 }).unwrap();
               } catch (err) {
@@ -507,7 +533,103 @@ const Feedback360ReportPage = () => {
             {isDownloading ? 'Downloading...' : 'Download PDF Report'}
           </button>
         </div>
+      )}
+    </div>
+  );
+
+  if (isPendingRelease) {
+    return (
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {renderHeader(false)}
+        <div style={{
+          padding: 40,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '60vh',
+        }}>
+          <div style={{
+            ...panel,
+            maxWidth: 480,
+            width: '100%',
+            textAlign: 'center',
+            padding: '40px 32px',
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.08)',
+            border: '1px solid rgba(228, 230, 236, 0.8)',
+            background: 'rgba(255, 255, 255, 0.7)',
+            backdropFilter: 'blur(12px)',
+            borderRadius: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 20,
+          }}>
+            <div style={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              background: 'rgba(99, 102, 241, 0.1)',
+              color: '#6366F1',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.15)',
+            }}>
+              <Lock size={28} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1F2937', marginBottom: 8 }}>
+                Report Under Calibration
+              </h2>
+              <p style={{ fontSize: 14, color: '#4B5563', lineHeight: 1.5, margin: 0 }}>
+                {pendingReleaseMessage}
+              </p>
+            </div>
+            <div style={{
+              fontSize: 12,
+              color: '#9CA3AF',
+              background: '#F9FAFB',
+              padding: '10px 16px',
+              borderRadius: 8,
+              width: '100%',
+              boxSizing: 'border-box',
+            }}>
+              Discussed calibration reviews are confidential until officially locked by HR.
+            </div>
+          </div>
+        </div>
       </div>
+    );
+  }
+
+  if (isError || !summary) {
+    return (
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {renderHeader(false)}
+        <div style={{ ...panel, display: 'flex', alignItems: 'center', gap: 10, color: '#791F1F' }}>
+          <AlertCircle size={16} />
+          <span style={{ fontSize: 14 }}>
+            {isError ? 'Failed to load feedback report.' : 'No feedback report available for the selected cycle.'}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const radarData = buildRadarData(summary);
+  const barData = buildBarData(summary);
+  const radarEmpty = radarData.every(
+    (r) => r.Manager == null && r.Peer == null && r.Subordinate == null && r.Self == null,
+  );
+  const presentKeys = SCORE_CARDS.filter((c) => summary[c.key] && summary[c.key].length > 0);
+
+  const displayScore = summary.calibratedFinalScore ?? summary.totalAverageScore;
+  const isCalibrated = summary.calibratedFinalScore != null;
+
+  return (
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Universal Header */}
+      {renderHeader(true)}
 
       {/* Participation strip */}
       {summary.participation && summary.participation.length > 0 && (

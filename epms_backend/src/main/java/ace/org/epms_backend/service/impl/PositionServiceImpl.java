@@ -12,6 +12,10 @@ import ace.org.epms_backend.repository.EmployeeRepository;
 import ace.org.epms_backend.repository.JobLevelRepository;
 import ace.org.epms_backend.repository.PositionRepository;
 import ace.org.epms_backend.service.PositionService;
+import ace.org.epms_backend.service.AuditService;
+import ace.org.epms_backend.dto.AuditRequest;
+import ace.org.epms_backend.enums.AuditAction;
+import ace.org.epms_backend.enums.AuditStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +30,7 @@ public class PositionServiceImpl implements PositionService {
     private final JobLevelRepository jobLevelRepository;
     private final EmployeeRepository employeeRepository;
     private final PositionMapper positionMapper;
+    private final AuditService auditService;
     @Override
     public PositionResponse createPosition(PositionRequest request) {
         if (positionRepository.existsByPositionCode(request.getPositionCode())) {
@@ -37,6 +42,15 @@ public class PositionServiceImpl implements PositionService {
         Position position = positionMapper.toEntity(request);
         position.setLevel(level);
         position = positionRepository.save(position);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("positions")
+                .recordId(position.getPositionId())
+                .action(AuditAction.CREATE)
+                .newState(position)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return positionMapper.toResponse(position);
     }
 
@@ -76,6 +90,15 @@ public class PositionServiceImpl implements PositionService {
         positionMapper.updateEntity(request, position);
         position.setLevel(level);
         position = positionRepository.save(position);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("positions")
+                .recordId(position.getPositionId())
+                .action(AuditAction.UPDATE)
+                .newState(position)
+                .status(AuditStatus.SUCCESS)
+                .build());
+
         return positionMapper.toResponse(position);
     }
 
@@ -89,5 +112,13 @@ public class PositionServiceImpl implements PositionService {
         }
 
         positionRepository.delete(position);
+
+        auditService.log(AuditRequest.builder()
+                .tableName("positions")
+                .recordId(position.getPositionId())
+                .action(AuditAction.DELETE)
+                .oldState(position)
+                .status(AuditStatus.SUCCESS)
+                .build());
     }
 }

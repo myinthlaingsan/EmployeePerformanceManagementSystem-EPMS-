@@ -1,15 +1,16 @@
 import React from 'react';
-import { Award, TrendingUp, Play, ChevronRight } from 'lucide-react';
+import { Award, TrendingUp, Play, Lock } from 'lucide-react';
 
 interface KpiGoalCardProps {
   kpi: any;
   idx: number;
   onUpdate: (kpi: any) => void;
+  canUpdate?: boolean;
 }
 
-const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
+const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, onUpdate, canUpdate = false }) => {
   const progress = Math.min(Math.floor((kpi.currentProgress || 0) / (kpi.targetValue || 1) * 100), 100);
-  
+
   const getStatusDisplay = (status: string) => {
     switch (status) {
       case 'COMPLETED': return { label: 'Completed', color: 'bg-emerald-500' };
@@ -89,24 +90,30 @@ const KpiGoalCard: React.FC<KpiGoalCardProps> = ({ kpi, idx, onUpdate }) => {
               <span>{progress}%</span>
             </div>
             <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-              <div 
-                className={`h-full transition-all duration-500 ${kpi.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-blue-600'}`} 
+              <div
+                className={`h-full transition-all duration-500 ${kpi.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-blue-600'}`}
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
           </div>
           {!kpi.isCompliance ? (
-            <button 
-              onClick={() => onUpdate(kpi)}
-              className="w-full py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
-            >
-              {progress === 0 ? <Play className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-              {progress === 0 ? 'Start Goal' : 'Update Progress'}
-            </button>
+            canUpdate ? (
+              <button
+                onClick={() => onUpdate(kpi)}
+                className="w-full py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5">
+                {progress === 0 ? <Play className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                {progress === 0 ? 'Start Goal' : 'Update Progress'}
+              </button>
+            ) : (
+              <div className="w-full py-2 bg-gray-50 text-gray-400 border border-gray-200 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 cursor-not-allowed">
+                <Lock size={12} />
+                Awaiting Approval
+              </div>
+            )
           ) : (
             <div className="w-full py-2 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 cursor-default">
-               <Award className="w-3 h-3" />
-               Verified by Manager
+              <Award className="w-3 h-3" />
+              Verified by Manager
             </div>
           )}
         </div>

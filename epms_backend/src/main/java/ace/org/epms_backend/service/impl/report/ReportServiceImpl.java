@@ -4,11 +4,12 @@ import ace.org.epms_backend.dto.report.*;
 import ace.org.epms_backend.dto.feedback360.CategoryScore;
 import ace.org.epms_backend.dto.feedback360.DetailedComment;
 import ace.org.epms_backend.dto.feedback360.FeedbackSummaryResponse;
+import ace.org.epms_backend.enums.AppraisalStatus;
+import ace.org.epms_backend.enums.FormType;
 import ace.org.epms_backend.exception.InvalidAppraisalStateException;
+import ace.org.epms_backend.model.appraisal.*;
 import ace.org.epms_backend.service.feedback360.FeedbackReportService;
 import ace.org.epms_backend.model.AuditLog;
-import ace.org.epms_backend.model.appraisal.Appraisal;
-import ace.org.epms_backend.model.appraisal.AppraisalCycle;
 import ace.org.epms_backend.model.employee.Employee;
 import ace.org.epms_backend.model.employee.EmployeeDepartment;
 import ace.org.epms_backend.model.employee.EmployeeTeam;
@@ -17,15 +18,10 @@ import ace.org.epms_backend.model.feedback360.Feedback;
 import ace.org.epms_backend.model.feedback360.FeedbackResponse;
 import ace.org.epms_backend.model.feedback360.FeedbackRequest;
 import ace.org.epms_backend.model.feedback360.FeedbackSummary;
-import ace.org.epms_backend.model.appraisal.AppraisalSummary;
-import ace.org.epms_backend.model.appraisal.SelfAssessment;
-import ace.org.epms_backend.model.appraisal.ManagerEvaluation;
 import ace.org.epms_backend.model.kpi.*;
 import ace.org.epms_backend.model.pip.PipRecord;
 import ace.org.epms_backend.model.pip.PipObjective;
 import ace.org.epms_backend.enums.PipStatus;
-import ace.org.epms_backend.model.appraisal.SelfAssessmentAnswer;
-import ace.org.epms_backend.model.appraisal.ManagerEvaluationAnswer;
 import ace.org.epms_backend.repository.*;
 import ace.org.epms_backend.repository.employee.EmployeeTeamRepository;
 import ace.org.epms_backend.repository.employee.ReportingLineRepository;
@@ -39,7 +35,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 import ace.org.epms_backend.exception.NotFoundException;
-import ace.org.epms_backend.model.appraisal.Question;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -175,9 +170,14 @@ public class ReportServiceImpl implements ReportService {
                     .findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, a.getCycle().getCycleId())
                     .map(KpiFinalScore::getWeightedScore).orElse(BigDecimal.ZERO);
 
+            BigDecimal appraisalScore = appraisalSummaryRepository
+                    .findByEmployee_IdAndCycle_CycleId(employeeId, a.getCycle().getCycleId())
+                    .map(AppraisalSummary::getTotalScore).orElse(BigDecimal.ZERO);
+
             return CycleScoreDTO.builder()
                     .cycleName(a.getCycle().getCycleName())
                     .kpiScore(kpiScore)
+                    .appraisalScore(appraisalScore)
                     .performanceCategory(
                             a.getPerformanceCategory() != null ? a.getPerformanceCategory().getName() : "N/A")
                     .build();
@@ -186,6 +186,244 @@ public class ReportServiceImpl implements ReportService {
         return PerformanceTrendReportDTO.builder()
                 .employeeName(employee.getStaffName())
                 .trends(trends)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PerformanceDistributionReportDTO getPerformanceDistribution(Long cycleId, Long departmentId) {
+        List<AppraisalSummary> summaries = appraisalSummaryRepository.findByCycle_CycleId(cycleId).stream()
+                .filter(summary -> departmentId == null || employeeDepartmentRepository
+                        .findByEmployeeIdAndIsCurrentTrue(summary.getEmployee().getId())
+                        .map(ed -> ed.getCurrentDepartment() != null
+                                && departmentId.equals(ed.getCurrentDepartment().getId()))
+                        .orElse(false))
+                .filter(summary -> summary.getTotalScore() != null)
+                .collect(Collectors.toList());
+
+        List<Double> scores = summaries.stream()
+                .map(summary -> summary.getTotalScore().doubleValue())
+                .sorted()
+                .collect(Collectors.toList());
+
+        int[] counts = new int[5];
+        for (double score : scores) {
+            if (score < 60) counts[0]++;
+            else if (score < 70) counts[1]++;
+            else if (score < 80) counts[2]++;
+            else if (score < 90) counts[3]++;
+            else counts[4]++;
+        }
+
+        String[] labels = {"<60", "60-69", "70-79", "80-89", "90+"};
+        List<PerformanceDistributionBinDTO> bins = new ArrayList<>();
+        for (int i = 0; i < labels.length; i++) {
+            bins.add(PerformanceDistributionBinDTO.builder()
+                    .range(labels[i])
+                    .count(counts[i])
+                    .percentage(scores.isEmpty() ? 0 : roundDouble((counts[i] * 100.0) / scores.size()))
+                    .build());
+        }
+
+        double mean = scores.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+        double median = 0;
+        if (!scores.isEmpty()) {
+            int middle = scores.size() / 2;
+            median = scores.size() % 2 == 0 ? (scores.get(middle - 1) + scores.get(middle)) / 2 : scores.get(middle);
+        }
+        double variance = scores.stream().mapToDouble(score -> Math.pow(score - mean, 2)).average().orElse(0);
+        double stdDev = Math.sqrt(variance);
+        double skewness = stdDev == 0 ? 0 : scores.stream()
+                .mapToDouble(score -> Math.pow((score - mean) / stdDev, 3))
+                .average().orElse(0);
+
+        return PerformanceDistributionReportDTO.builder()
+                .bins(bins)
+                .mean(toScaledBigDecimal(mean))
+                .median(toScaledBigDecimal(median))
+                .standardDeviation(toScaledBigDecimal(stdDev))
+                .skewness(toScaledBigDecimal(skewness))
+                .sampleSize(scores.size())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DepartmentAnalyticsDTO> getPerformanceByDepartment(Long cycleId) {
+        List<Appraisal> appraisals = appraisalRepository.findByCycle_CycleId(cycleId);
+        Map<Long, List<Appraisal>> byDept = appraisals.stream()
+                .collect(Collectors.groupingBy(a -> employeeDepartmentRepository
+                        .findByEmployeeIdAndIsCurrentTrue(a.getEmployee().getId())
+                        .filter(ed -> ed.getCurrentDepartment() != null)
+                        .map(ed -> ed.getCurrentDepartment().getId())
+                        .orElse(0L)));
+
+        List<DepartmentAnalyticsDTO> results = byDept.entrySet().stream().map(entry -> {
+            List<Appraisal> deptAppraisals = entry.getValue();
+            EmployeeDepartment firstDept = employeeDepartmentRepository
+                    .findByEmployeeIdAndIsCurrentTrue(deptAppraisals.get(0).getEmployee().getId())
+                    .orElse(null);
+            String deptName = firstDept != null && firstDept.getCurrentDepartment() != null
+                    ? firstDept.getCurrentDepartment().getDepartmentName()
+                    : "Unassigned";
+            double avgScore = deptAppraisals.stream()
+                    .mapToDouble(a -> appraisalSummaryRepository
+                            .findByEmployee_IdAndCycle_CycleId(a.getEmployee().getId(), cycleId)
+                            .map(s -> s.getTotalScore() != null ? s.getTotalScore().doubleValue() : 0.0)
+                            .orElse(0.0))
+                    .filter(score -> score > 0)
+                    .average().orElse(0);
+            long completed = deptAppraisals.stream().filter(a -> "COMPLETED".equals(a.getStatus().name())
+                    || "FINALIZED".equals(a.getStatus().name())
+                    || "HR_APPROVED".equals(a.getStatus().name())).count();
+            int pipCount = (int) pipRecordRepository.findAll().stream()
+                    .filter(p -> "ACTIVE".equals(p.getStatus().name()))
+                    .filter(p -> employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(p.getEmployee().getId())
+                            .map(ed -> ed.getCurrentDepartment() != null
+                                    && entry.getKey().equals(ed.getCurrentDepartment().getId()))
+                            .orElse(false))
+                    .count();
+
+            return DepartmentAnalyticsDTO.builder()
+                    .departmentId(entry.getKey().equals(0L) ? null : entry.getKey())
+                    .departmentName(deptName)
+                    .avgScore(toScaledBigDecimal(avgScore))
+                    .completionRate(deptAppraisals.isEmpty() ? 0 : roundDouble((completed * 100.0) / deptAppraisals.size()))
+                    .pipCount(pipCount)
+                    .employeeCount(deptAppraisals.size())
+                    .build();
+        }).sorted((a, b) -> b.getAvgScore().compareTo(a.getAvgScore())).collect(Collectors.toList());
+
+        for (int i = 0; i < results.size(); i++) {
+            results.get(i).setRank(i + 1);
+        }
+        return results;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PerformanceTrendPointDTO> getOrganizationPerformanceTrend(int months) {
+        List<AppraisalCycle> cycles = appraisalCycleRepository.findAllByOrderByEndDateDesc().stream()
+                .limit(Math.max(1, months))
+                .collect(Collectors.toList());
+        Collections.reverse(cycles);
+
+        return cycles.stream().map(cycle -> {
+            Long cycleId = cycle.getCycleId();
+            List<Appraisal> appraisals = appraisalRepository.findByCycle_CycleId(cycleId);
+            double avgScore = appraisalSummaryRepository.findByCycle_CycleId(cycleId).stream()
+                    .filter(s -> s.getTotalScore() != null)
+                    .mapToDouble(s -> s.getTotalScore().doubleValue())
+                    .average().orElse(0);
+            long completed = appraisals.stream().filter(a -> "COMPLETED".equals(a.getStatus().name())
+                    || "FINALIZED".equals(a.getStatus().name())
+                    || "HR_APPROVED".equals(a.getStatus().name())).count();
+            double engagement = feedbackSummaryRepository.findAll().stream()
+                    .filter(summary -> summary.getCycle() != null && cycleId.equals(summary.getCycle().getCycleId()))
+                    .filter(summary -> summary.getFinalScore() != null)
+                    .mapToDouble(summary -> summary.getFinalScore().doubleValue())
+                    .average().orElse(0);
+
+            return PerformanceTrendPointDTO.builder()
+                    .period(cycle.getCycleName())
+                    .avgScore(toScaledBigDecimal(avgScore))
+                    .completionRate(appraisals.isEmpty() ? 0 : roundDouble((completed * 100.0) / appraisals.size()))
+                    .pipResolutionRate(calculatePipResolutionRate())
+                    .engagementScore(toScaledBigDecimal(engagement))
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PerformancePotentialMatrixDTO> getPerformancePotentialMatrix(Long cycleId) {
+        return appraisalRepository.findByCycle_CycleId(cycleId).stream().map(appraisal -> {
+            BigDecimal performance = appraisalSummaryRepository
+                    .findByEmployee_IdAndCycle_CycleId(appraisal.getEmployee().getId(), cycleId)
+                    .map(AppraisalSummary::getTotalScore)
+                    .orElse(BigDecimal.ZERO);
+            BigDecimal potential = feedbackSummaryRepository
+                    .findByEmployeeIdAndCycleCycleId(appraisal.getEmployee().getId(), cycleId)
+                    .map(summary -> summary.getCalibratedFinalScore() != null ? summary.getCalibratedFinalScore()
+                            : summary.getFinalScore() != null ? summary.getFinalScore()
+                            : summary.getManagerScore() != null ? summary.getManagerScore()
+                            : performance)
+                    .orElse(performance);
+            EmployeeDepartment ed = employeeDepartmentRepository
+                    .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId()).orElse(null);
+
+            return PerformancePotentialMatrixDTO.builder()
+                    .employeeId(appraisal.getEmployee().getId())
+                    .employeeName(appraisal.getEmployee().getStaffName())
+                    .departmentName(ed != null && ed.getCurrentDepartment() != null
+                            ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
+                    .performanceScore(performance)
+                    .potentialScore(potential)
+                    .quadrant(resolveQuadrant(performance.doubleValue(), potential.doubleValue()))
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GoalCompletionReportDTO getGoalCompletion(Long cycleId) {
+        List<KpiGoalItem> items = kpiGoalsRepository.findByCycleAndDepartment(cycleId, null).stream()
+                .flatMap(goal -> goal.getItems().stream())
+                .collect(Collectors.toList());
+        int completed = (int) items.stream().filter(item -> item.getStatus() != null
+                && "COMPLETED".equals(item.getStatus().name())).count();
+        int inProgress = (int) items.stream().filter(item -> item.getStatus() != null
+                && "IN_PROGRESS".equals(item.getStatus().name())).count();
+        int notStarted = (int) items.stream().filter(item -> item.getStatus() == null
+                || "NOT_STARTED".equals(item.getStatus().name())).count();
+        int offTrack = (int) items.stream().filter(item -> item.getStatus() != null
+                && !"COMPLETED".equals(item.getStatus().name())
+                && item.getScorePercent() != null
+                && item.getScorePercent().compareTo(BigDecimal.valueOf(50)) < 0).count();
+
+        return GoalCompletionReportDTO.builder()
+                .total(items.size())
+                .completed(completed)
+                .inProgress(inProgress)
+                .notStarted(notStarted)
+                .offTrack(offTrack)
+                .completionRate(items.isEmpty() ? 0 : roundDouble((completed * 100.0) / items.size()))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Feedback360SummaryAnalyticsDTO getFeedback360SummaryAnalytics(Long cycleId) {
+        List<FeedbackRequest> requests = feedbackRequestRepository.findByCycleCycleId(cycleId);
+        int completed = (int) requests.stream().filter(request -> "COMPLETED".equals(request.getStatus().name())).count();
+        double avgDays = requests.stream()
+                .filter(request -> "COMPLETED".equals(request.getStatus().name()))
+                .filter(request -> request.getCreatedAt() != null && request.getUpdatedAt() != null)
+                .mapToLong(request -> java.time.Duration.between(request.getCreatedAt(), request.getUpdatedAt()).toDays())
+                .average().orElse(0);
+
+        Map<String, Long> relationshipCounts = requests.stream()
+                .filter(request -> request.getRelationship() != null)
+                .collect(Collectors.groupingBy(request -> request.getRelationship().name(), Collectors.counting()));
+        List<String> commonThemes = relationshipCounts.entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .map(entry -> formatTheme(entry.getKey()))
+                .collect(Collectors.toList());
+
+        double selfGap = feedbackSummaryRepository.findAll().stream()
+                .filter(summary -> summary.getCycle() != null && cycleId.equals(summary.getCycle().getCycleId()))
+                .filter(summary -> summary.getSelfScore() != null && summary.getFinalScore() != null)
+                .mapToDouble(summary -> Math.abs(summary.getSelfScore().doubleValue() - summary.getFinalScore().doubleValue()))
+                .average().orElse(0);
+
+        return Feedback360SummaryAnalyticsDTO.builder()
+                .totalRequests(requests.size())
+                .completedResponses(completed)
+                .participationRate(requests.isEmpty() ? 0 : roundDouble((completed * 100.0) / requests.size()))
+                .avgResponseTimeDays(roundDouble(avgDays))
+                .mostCommonFeedbackTheme(commonThemes.isEmpty() ? "No feedback yet" : commonThemes.get(0))
+                .selfPerceptionGap(roundDouble(selfGap))
+                .commonThemes(commonThemes)
                 .build();
     }
 
@@ -300,6 +538,37 @@ public class ReportServiceImpl implements ReportService {
         } catch (Exception e) {
             return json; // Fallback if not valid JSON
         }
+    }
+
+    private BigDecimal toScaledBigDecimal(double value) {
+        return BigDecimal.valueOf(value).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private double roundDouble(double value) {
+        return BigDecimal.valueOf(value).setScale(2, java.math.RoundingMode.HALF_UP).doubleValue();
+    }
+
+    private String resolveQuadrant(double performance, double potential) {
+        boolean highPerformance = performance >= 75;
+        boolean highPotential = potential >= 75;
+        if (highPerformance && highPotential) return "Rising Stars";
+        if (!highPerformance && highPotential) return "Emerging Leaders";
+        if (highPerformance) return "Solid Contributors";
+        return "Development Needed";
+    }
+
+    private double calculatePipResolutionRate() {
+        List<PipRecord> pips = pipRecordRepository.findAll();
+        if (pips.isEmpty()) return 0;
+        long resolved = pips.stream()
+                .filter(pip -> "COMPLETED".equals(pip.getStatus().name()) || "CLOSED".equals(pip.getStatus().name()))
+                .count();
+        return roundDouble((resolved * 100.0) / pips.size());
+    }
+
+    private String formatTheme(String value) {
+        String lower = value.toLowerCase().replace("_", " ");
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
     @Override
@@ -471,6 +740,17 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
+    public byte[] exportOrganizationPerformanceTrendReport(int months, String format) {
+        List<PerformanceTrendPointDTO> data = getOrganizationPerformanceTrend(months);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "Organization Performance Trend");
+        parameters.put("months", months);
+        String jrxmlPath = "reports/org_performance_trend_report.jrxml";
+        return generateReport(jrxmlPath, parameters, data, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public byte[] exportFeedbackParticipationReport(Long cycleId, String format) {
         FeedbackParticipationReportDTO data = getFeedbackParticipationReport(cycleId);
         Map<String, Object> parameters = new HashMap<>();
@@ -565,6 +845,8 @@ public class ReportServiceImpl implements ReportService {
                 .managerComments(managerComment)
                 .hrComments(appraisal.getApprovalComment())
                 .selfComments("")
+                .employeeSignatureUrl(appraisal.getEmployeeSignComment() != null && appraisal.getEmployeeSignComment().startsWith("/uploads/") ? "http://localhost:8080" + appraisal.getEmployeeSignComment() : null)
+                .managerSignatureUrl(appraisal.getManagerSignComment() != null && appraisal.getManagerSignComment().startsWith("/uploads/") ? "http://localhost:8080" + appraisal.getManagerSignComment() : null)
                 .build();
     }
 
@@ -948,6 +1230,12 @@ public class ReportServiceImpl implements ReportService {
                 ? ed.getCurrentDepartment().getDepartmentName()
                 : "Unassigned";
         String posName = target.getPosition() != null ? target.getPosition().getPositionName() : "N/A";
+        Employee evaluator = req.getEvaluator();
+        EmployeeDepartment evaluatorDepartment = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(evaluator.getId()).orElse(null);
+        String evaluatorDeptName = (evaluatorDepartment != null && evaluatorDepartment.getCurrentDepartment() != null)
+                ? evaluatorDepartment.getCurrentDepartment().getDepartmentName()
+                : "Unassigned";
+        String evaluatorPosName = evaluator.getPosition() != null ? evaluator.getPosition().getPositionName() : "N/A";
 
         Optional<Feedback> feedbackOpt = feedbackRepository.findByRequestId(requestId);
         List<FeedbackResponse> responses = feedbackOpt.isPresent() ? feedbackOpt.get().getResponses() : new ArrayList<>();
@@ -982,8 +1270,22 @@ public class ReportServiceImpl implements ReportService {
                 .build();
 
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("reportTitle", "360° Feedback Paper Form");
-        return generateReport("reports/feedback_360_paper_form.jrxml", parameters, List.of(formDTO), format);
+        parameters.put("reportTitle", "360 Feedback Paper Form");
+        parameters.put("companyName", "ACE Data Systems");
+        parameters.put("cycleName", formDTO.getCycleName());
+        parameters.put("targetEmployeeName", formDTO.getTargetEmployeeName());
+        parameters.put("targetEmployeeCode", formDTO.getTargetEmployeeCode());
+        parameters.put("targetDepartmentName", formDTO.getTargetDepartmentName());
+        parameters.put("targetPositionName", formDTO.getTargetPositionName());
+        parameters.put("evaluatorEmployeeName", formDTO.getEvaluatorEmployeeName());
+        parameters.put("evaluatorPositionName", evaluatorPosName);
+        parameters.put("evaluatorDepartmentName", evaluatorDeptName);
+        parameters.put("relationshipType", formDTO.getRelationshipType());
+        parameters.put("assessmentDate", req.getCycle().getStartDate() != null ? req.getCycle().getStartDate().toString() : null);
+        parameters.put("effectiveDate", req.getCycle().getEndDate() != null ? req.getCycle().getEndDate().toString() : null);
+        parameters.put("totalScore", "");
+        parameters.put("finalComment", "");
+        return generateReport("reports/feedback_360_paper_form.jrxml", parameters, questionDTOs, format);
     }
 
     private byte[] generateReport(String jrxmlPath, Map<String, Object> parameters, List<?> data, String format) {
@@ -1004,9 +1306,9 @@ public class ReportServiceImpl implements ReportService {
         Appraisal appraisal = appraisalRepository.findById(appraisalId)
                 .orElseThrow(() -> new NotFoundException("Appraisal not found: " + appraisalId));
 
-        if (appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.HR_APPROVED &&
-            appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.FINALIZED &&
-            appraisal.getStatus() != ace.org.epms_backend.enums.AppraisalStatus.ARCHIVED) {
+        if (appraisal.getStatus() != AppraisalStatus.HR_APPROVED &&
+            appraisal.getStatus() != AppraisalStatus.FINALIZED &&
+            appraisal.getStatus() != AppraisalStatus.ARCHIVED) {
             throw new InvalidAppraisalStateException(
                     "Self-assessment form can only be exported after the appraisal is approved or finalized.");
         }
@@ -1017,28 +1319,30 @@ public class ReportServiceImpl implements ReportService {
         EmployeeDepartment ed = employeeDepartmentRepository
                 .findByEmployeeIdAndIsCurrentTrue(appraisal.getEmployee().getId()).orElse(null);
 
-        ace.org.epms_backend.model.appraisal.AppraisalForm form = null;
+        AppraisalForm form = null;
         if (appraisal.getFormSet() != null) form = appraisal.getFormSet().getSelfAssessmentForm();
         if (form == null) {
             form = appraisal.getCycle().getForms().stream()
-                    .filter(f -> f.getFormType() == ace.org.epms_backend.enums.FormType.SELF_ASSESSMENT)
+                    .filter(f -> f.getFormType() == FormType.SELF_ASSESSMENT)
                     .findFirst().orElse(null);
         }
 
-        List<ace.org.epms_backend.dto.report.SelfAssessmentReportQuestionDTO> questions = new ArrayList<>();
+        List<SelfAssessmentReportQuestionDTO> questions = new ArrayList<>();
         if (form != null) {
-            List<ace.org.epms_backend.model.appraisal.Question> formQuestions =
+            List<Question> formQuestions =
                     questionRepository.findByCategory_Form_FormId(form.getFormId());
             Map<Long, SelfAssessmentAnswer> answerMap =
                     selfAssessmentAnswerRepository.findBySelfAssessment_SelfAssessmentId(self.getSelfAssessmentId())
                             .stream().collect(Collectors.toMap(
                                     a -> a.getQuestion().getQuestionId(), a -> a, (a, b) -> a));
-            for (ace.org.epms_backend.model.appraisal.Question q : formQuestions) {
+            for (Question q : formQuestions) {
                 SelfAssessmentAnswer ans = answerMap.get(q.getQuestionId());
                 questions.add(ace.org.epms_backend.dto.report.SelfAssessmentReportQuestionDTO.builder()
                         .categoryName(q.getCategory() != null ? q.getCategory().getCategoryName() : "General")
                         .questionText(q.getQuestionText())
-                        .ratingValue(ans != null && ans.getRatingValue() != null ? ans.getRatingValue().toString() : "-")
+                        .isYes(ans != null && Boolean.TRUE.equals(ans.getIsCompleted()))
+                        .isNo(ans != null && Boolean.FALSE.equals(ans.getIsCompleted()))
+                        .ratingValue(ans != null ? ans.getRatingValue() : null)
                         .comment(ans != null ? ans.getComment() : null)
                         .build());
             }
@@ -1054,6 +1358,7 @@ public class ReportServiceImpl implements ReportService {
 
         Map<String, Object> params = new HashMap<>();
         params.put("reportTitle", "Self-Assessment Form");
+        params.put("companyName", "ACE Data Systems");
         params.put("cycleName", appraisal.getCycle().getCycleName());
         params.put("employeeName", appraisal.getEmployee().getStaffName());
         params.put("employeeCode", appraisal.getEmployee().getEmployeeCode());
@@ -1062,6 +1367,7 @@ public class ReportServiceImpl implements ReportService {
         params.put("managerName", mgrName);
         params.put("totalScore", totalScore);
         params.put("overallReflection", self.getOverallReflection() != null ? self.getOverallReflection() : "");
+        params.put("assessmentDate", submittedAt);
         params.put("submittedAt", submittedAt);
 
         return generateReport("reports/self_assessment_form.jrxml", params, questions, format);
@@ -1124,6 +1430,7 @@ public class ReportServiceImpl implements ReportService {
                         .employeeComment(selfAns != null ? selfAns.getComment() : null)
                         .managerRating(mgrAns != null && mgrAns.getRatingValue() != null
                                 ? mgrAns.getRatingValue().toString() : "-")
+                        .managerRatingValue(mgrAns != null ? mgrAns.getRatingValue() : null)
                         .managerComment(mgrAns != null ? mgrAns.getComment() : null)
                         .build());
             }
@@ -1139,12 +1446,16 @@ public class ReportServiceImpl implements ReportService {
 
         Map<String, Object> params = new HashMap<>();
         params.put("reportTitle", "Manager Evaluation Form");
+        params.put("companyName", "ACE Data Systems");
         params.put("cycleName", appraisal.getCycle().getCycleName());
         params.put("employeeName", appraisal.getEmployee().getStaffName());
         params.put("employeeCode", appraisal.getEmployee().getEmployeeCode());
         params.put("departmentName", deptName);
         params.put("positionName", posName);
         params.put("managerName", mgrName);
+        params.put("jobTitle", posName);
+        params.put("assessmentDate", submittedAt);
+        params.put("effectiveDate", appraisal.getFinalizedAt() != null ? appraisal.getFinalizedAt().toString() : submittedAt);
         params.put("totalScore", totalScore);
         params.put("finalComment", eval.getFinalComment() != null ? eval.getFinalComment() : "");
         params.put("submittedAt", submittedAt);
@@ -1202,5 +1513,100 @@ public class ReportServiceImpl implements ReportService {
         params.put("overallComment", pip.getOverallComment() != null ? pip.getOverallComment() : "");
 
         return generateReport("reports/pip_detail_report.jrxml", params, rows, format);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DepartmentBreakdownDTO> getTeamPerformanceBreakdown(Long cycleId, Long departmentId) {
+        List<DepartmentBreakdownDTO> result = new ArrayList<>();
+        List<Employee> employees = (departmentId != null) 
+            ? employeeDepartmentRepository.findByCurrentDepartmentIdAndIsCurrentTrue(departmentId).stream().map(EmployeeDepartment::getEmployee).collect(Collectors.toList())
+            : employeeRepository.findAll();
+
+        Map<String, Map<String, List<TeamMemberBreakdownDTO>>> grouped = new HashMap<>();
+
+        for (Employee e : employees) {
+            EmployeeDepartment ed = employeeDepartmentRepository.findByEmployeeIdAndIsCurrentTrue(e.getId()).orElse(null);
+            String deptName = (ed != null && ed.getCurrentDepartment() != null) ? ed.getCurrentDepartment().getDepartmentName() : "No Department";
+            
+            EmployeeTeam et = employeeTeamRepository.findFirstByEmployeeIdAndIsPrimaryTrue(e.getId()).orElse(null);
+            String tName = (et != null && et.getTeam() != null) ? et.getTeam().getTeamName() : "No Team";
+
+            double score = appraisalSummaryRepository.findByEmployee_IdAndCycle_CycleId(e.getId(), cycleId)
+                            .map(s -> s.getTotalScore() != null ? s.getTotalScore().doubleValue() : 0.0)
+                            .orElse(0.0);
+
+            if (score > 0) {
+                TeamMemberBreakdownDTO member = TeamMemberBreakdownDTO.builder()
+                        .employeeId(e.getId())
+                        .employeeName(e.getStaffName())
+                        .role(e.getPosition() != null ? e.getPosition().getPositionName() : "Employee")
+                        .averageScore(roundDouble(score))
+                        .build();
+
+                grouped.computeIfAbsent(deptName, k -> new HashMap<>())
+                       .computeIfAbsent(tName, k -> new ArrayList<>())
+                       .add(member);
+            }
+        }
+
+        for (Map.Entry<String, Map<String, List<TeamMemberBreakdownDTO>>> deptEntry : grouped.entrySet()) {
+            List<TeamBreakdownDTO> teamBreakdowns = new ArrayList<>();
+            double totalDeptScore = 0;
+            int totalDeptMembers = 0;
+
+            for (Map.Entry<String, List<TeamMemberBreakdownDTO>> teamEntry : deptEntry.getValue().entrySet()) {
+                List<TeamMemberBreakdownDTO> members = teamEntry.getValue();
+                double teamAvg = members.stream().mapToDouble(TeamMemberBreakdownDTO::getAverageScore).average().orElse(0.0);
+                
+                teamBreakdowns.add(TeamBreakdownDTO.builder()
+                        .teamName(teamEntry.getKey())
+                        .averageScore(roundDouble(teamAvg))
+                        .members(members)
+                        .build());
+                        
+                totalDeptScore += members.stream().mapToDouble(TeamMemberBreakdownDTO::getAverageScore).sum();
+                totalDeptMembers += members.size();
+            }
+
+            double deptAvg = totalDeptMembers > 0 ? totalDeptScore / totalDeptMembers : 0.0;
+            
+            result.add(DepartmentBreakdownDTO.builder()
+                    .departmentName(deptEntry.getKey())
+                    .averageScore(roundDouble(deptAvg))
+                    .teams(teamBreakdowns)
+                    .build());
+        }
+
+        result.sort((a, b) -> Double.compare(b.getAverageScore(), a.getAverageScore()));
+        return result;
+    }
+
+    @Override
+    public byte[] exportTeamPerformanceBreakdown(Long cycleId, Long departmentId, String format) {
+        List<DepartmentBreakdownDTO> data = getTeamPerformanceBreakdown(cycleId, departmentId);
+        
+        List<TeamPerformanceBreakdownFlatDTO> flatData = new ArrayList<>();
+        for (DepartmentBreakdownDTO dept : data) {
+            for (TeamBreakdownDTO team : dept.getTeams()) {
+                for (TeamMemberBreakdownDTO member : team.getMembers()) {
+                    flatData.add(TeamPerformanceBreakdownFlatDTO.builder()
+                            .departmentName(dept.getDepartmentName())
+                            .departmentAverage(dept.getAverageScore())
+                            .teamName(team.getTeamName())
+                            .teamAverage(team.getAverageScore())
+                            .employeeName(member.getEmployeeName())
+                            .role(member.getRole())
+                            .averageScore(member.getAverageScore())
+                            .build());
+                }
+            }
+        }
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("reportTitle", "Team Performance Breakdown");
+        parameters.put("cycleId", cycleId);
+        String jrxmlPath = "reports/team_performance_breakdown.jrxml";
+        return generateReport(jrxmlPath, parameters, flatData, format);
     }
 }

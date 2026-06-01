@@ -19,6 +19,7 @@ public interface OneOnOneMeetingMapper {
     @Mapping(source = "employee.staffName", target = "employeeName")
     @Mapping(source = "manager.id", target = "managerId")
     @Mapping(source = "manager.staffName", target = "managerName")
+    @Mapping(source = "manager.position.positionName", target = "managerPositionName")
     OneOnOneMeetingResponse toResponse(OneOnOneMeeting meeting);
 
     @Mapping(target = "employee", ignore = true)

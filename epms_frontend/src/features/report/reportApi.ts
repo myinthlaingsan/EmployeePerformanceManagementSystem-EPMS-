@@ -11,6 +11,13 @@ import type {
   PromotionReadinessReportDTO,
   EmployeePerformanceSummaryDTO,
   PerformanceRankingReportDTO,
+  PerformanceDistributionReportDTO,
+  DepartmentAnalyticsDTO,
+  PerformanceTrendPointDTO,
+  PerformancePotentialMatrixDTO,
+  GoalCompletionReportDTO,
+  Feedback360SummaryAnalyticsDTO,
+  DepartmentBreakdownDTO,
 } from "../../types/report";
 
 export const reportApi = api.injectEndpoints({
@@ -31,6 +38,48 @@ export const reportApi = api.injectEndpoints({
       query: (employeeId) => ({
         url: "/reports/performance-trend",
         params: { employeeId },
+      }),
+    }),
+    getPerformanceDistribution: builder.query<ApiResponse<PerformanceDistributionReportDTO>, { cycleId: number; departmentId?: number }>({
+      query: ({ cycleId, departmentId }) => ({
+        url: "/reports/performance-distribution",
+        params: { cycleId, departmentId },
+      }),
+    }),
+    getPerformanceByDepartment: builder.query<ApiResponse<DepartmentAnalyticsDTO[]>, number>({
+      query: (cycleId) => ({
+        url: "/reports/performance-by-department",
+        params: { cycleId },
+      }),
+    }),
+    getOrganizationPerformanceTrend: builder.query<ApiResponse<PerformanceTrendPointDTO[]>, number | void>({
+      query: (months = 6) => ({
+        url: "/reports/organization-performance-trend",
+        params: { months },
+      }),
+    }),
+    getPerformancePotentialMatrix: builder.query<ApiResponse<PerformancePotentialMatrixDTO[]>, number>({
+      query: (cycleId) => ({
+        url: "/reports/performance-potential-matrix",
+        params: { cycleId },
+      }),
+    }),
+    getGoalCompletion: builder.query<ApiResponse<GoalCompletionReportDTO>, number>({
+      query: (cycleId) => ({
+        url: "/reports/goal-completion",
+        params: { cycleId },
+      }),
+    }),
+    getFeedback360SummaryAnalytics: builder.query<ApiResponse<Feedback360SummaryAnalyticsDTO>, number>({
+      query: (cycleId) => ({
+        url: "/reports/feedback-360-summary",
+        params: { cycleId },
+      }),
+    }),
+    getTeamPerformanceBreakdown: builder.query<ApiResponse<DepartmentBreakdownDTO[]>, { cycleId: number; departmentId?: number }>({
+      query: ({ cycleId, departmentId }) => ({
+        url: "/reports/team-performance-breakdown",
+        params: { cycleId, departmentId },
       }),
     }),
     getFeedbackParticipationReport: builder.query<ApiResponse<FeedbackParticipationReportDTO>, number>({
@@ -74,7 +123,7 @@ export const reportApi = api.injectEndpoints({
         const result = await fetchWithBQ({
           url: `/reports/${endpoint}/download`,
           params,
-          responseHandler: (response) => response.blob(),
+          responseHandler: (response: Response) => response.blob(),
         });
 
         if (result.error) {
@@ -105,6 +154,12 @@ export const {
   useGetKpiAchievementReportQuery,
   useGetAppraisalStatusReportQuery,
   useGetPerformanceTrendReportQuery,
+  useGetPerformanceDistributionQuery,
+  useGetPerformanceByDepartmentQuery,
+  useGetOrganizationPerformanceTrendQuery,
+  useGetPerformancePotentialMatrixQuery,
+  useGetGoalCompletionQuery,
+  useGetFeedback360SummaryAnalyticsQuery,
   useGetFeedbackParticipationReportQuery,
   useGetPipTrackingReportQuery,
   useGetAuditTrailReportQuery,
@@ -112,5 +167,6 @@ export const {
   useGetPromotionReadinessReportQuery,
   useGetEmployeePerformanceSummaryQuery,
   useGetPerformanceRankingReportQuery,
+  useGetTeamPerformanceBreakdownQuery,
   useDownloadReportMutation,
 } = reportApi;

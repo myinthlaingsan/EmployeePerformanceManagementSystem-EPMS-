@@ -62,6 +62,17 @@ const AppraisalDetail: React.FC = () => {
   const canViewSelfAssessment = isEmployee || isManager || isPrivileged;
   const canViewManagerEvaluation = isManager || isPrivileged || (isEmployee && !!appraisal.managerSubmittedAt);
 
+  // Signature gate for finalize
+  const hasEmployeeSigned = !!appraisal.employeeSignedAt;
+  const hasManagerSigned  = !!appraisal.managerSignedAt;
+  const canFinalize = appraisal.status === 'HR_APPROVED' && hasEmployeeSigned && hasManagerSigned;
+  const finalizeBlockedReason =
+    appraisal.status !== 'HR_APPROVED' ? 'Appraisal must be HR-approved first.'
+    : !hasEmployeeSigned && !hasManagerSigned ? 'Awaiting employee and manager signatures.'
+    : !hasEmployeeSigned ? 'Awaiting employee signature.'
+    : !hasManagerSigned  ? 'Awaiting manager signature.'
+    : '';
+
   const handleCalculate = async () => {
     try { await calculateScore(id!).unwrap(); toast.success('Scores calculated!'); }
     catch (err: any) { toast.error(err?.data?.message || 'Calculation failed'); }
@@ -72,7 +83,7 @@ const AppraisalDetail: React.FC = () => {
   };
   const handleFinalize = async () => {
     try { await finalizeAppraisal(id!).unwrap(); toast.success('Finalized!'); }
-    catch (err: any) { toast.error(err?.data?.message || 'Finalization failed'); }
+    catch (err: any) { toast.error(err?.data?.message || 'Failed to finalize.'); }
   };
 
   const statusInfo = STATUS_INFO[appraisal.status] ?? STATUS_INFO['PENDING'];
@@ -177,14 +188,20 @@ const AppraisalDetail: React.FC = () => {
             </div>
 
             {/* Finalize */}
-            <div style={{ border: `0.5px solid ${appraisal.status === 'HR_APPROVED' ? '#B8DCA0' : '#E4E6EC'}`, borderRadius: 10, padding: '14px', background: appraisal.status === 'HR_APPROVED' ? '#EAF3DE' : '#F5F6F8', opacity: appraisal.status === 'HR_APPROVED' ? 1 : 0.6 }}>
+            <div style={{ border: `0.5px solid ${canFinalize ? '#B8DCA0' : '#E4E6EC'}`, borderRadius: 10, padding: '14px', background: canFinalize ? '#EAF3DE' : '#F5F6F8', opacity: canFinalize ? 1 : 0.6 }}>
               <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
                 <Flag size={14} style={{ color: '#27500A' }} />
                 <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>Finalize & Lock</p>
               </div>
               <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 10 }}>Complete the cycle and archive the record.</p>
-              <button disabled={isFinalizing || appraisal.status !== 'HR_APPROVED'} onClick={handleFinalize}
-                className="w-full transition-colors disabled:opacity-50"
+              {!canFinalize && appraisal.status === 'HR_APPROVED' && (
+                <p style={{ fontSize: 11, color: '#791F1F', marginBottom: 8 }}>⚠ {finalizeBlockedReason}</p>
+              )}
+              <button
+                disabled={isFinalizing || !canFinalize}
+                onClick={handleFinalize}
+                title={canFinalize ? 'Finalize and lock this appraisal' : finalizeBlockedReason}
+                className="w-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: '#FFFFFF', color: '#27500A', border: '0.5px solid #B8DCA0', borderRadius: 8, padding: '7px', fontSize: 12, fontWeight: 500 }}>
                 {isFinalizing ? 'Finalizing…' : 'Close Appraisal'}
               </button>

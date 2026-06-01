@@ -12,10 +12,10 @@ import { useAuth } from '../../hooks/useAuth';
 
 interface MonthData {
   name: string; month: number; year: number;
-  praisePublic: number; praisePrivate: number;
-  improvementPublic: number; improvementPrivate: number;
-  warningPublic: number; warningPrivate: number;
-  meetingsPublic: number; meetingsPrivate: number;
+  praise: number;
+  improvement: number;
+  warning: number;
+  meetings: number;
 }
 
 const panelStyle: React.CSSProperties = {
@@ -44,32 +44,31 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[];
   const now = new Date();
   for (let i = timeRange - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    chartData.push({ name: months[d.getMonth()], month: d.getMonth(), year: d.getFullYear(), praisePublic: 0, praisePrivate: 0, improvementPublic: 0, improvementPrivate: 0, warningPublic: 0, warningPrivate: 0, meetingsPublic: 0, meetingsPrivate: 0 });
+    chartData.push({ name: months[d.getMonth()], month: d.getMonth(), year: d.getFullYear(), praise: 0, improvement: 0, warning: 0, meetings: 0 });
   }
 
   history.forEach(h => {
     const date = new Date(h.createdAt);
     const monthData = chartData.find(m => m.month === date.getMonth() && m.year === date.getFullYear());
     if (monthData) {
-      const isPrivate = h.isPrivate === true;
       if (h.sourceType === 'MEETING') {
-        if (isPrivate) monthData.meetingsPrivate++; else monthData.meetingsPublic++;
+        monthData.meetings++;
       } else if (h.sourceType === 'FEEDBACK') {
         const type: string = h.feedbackType || 'PRAISE';
-        if (type === 'PRAISE') { if (isPrivate) monthData.praisePrivate++; else monthData.praisePublic++; }
-        else if (type === 'IMPROVEMENT') { if (isPrivate) monthData.improvementPrivate++; else monthData.improvementPublic++; }
-        else if (type === 'WARNING') { if (isPrivate) monthData.warningPrivate++; else monthData.warningPublic++; }
+        if (type === 'PRAISE') monthData.praise++;
+        else if (type === 'IMPROVEMENT') monthData.improvement++;
+        else if (type === 'WARNING') monthData.warning++;
       }
     }
   });
 
   const isMeetingOnly = filterType === 'MEETING';
   const maxValue = isMeetingOnly
-    ? Math.max(...chartData.map(m => m.meetingsPublic + m.meetingsPrivate), 5)
+    ? Math.max(...chartData.map(m => m.meetings), 5)
     : Math.max(...chartData.flatMap(m => [
-      showPraise ? m.praisePublic + m.praisePrivate : 0,
-      showImprovement ? m.improvementPublic + m.improvementPrivate : 0,
-      showCorrection ? m.warningPublic + m.warningPrivate : 0,
+      showPraise ? m.praise : 0,
+      showImprovement ? m.improvement : 0,
+      showCorrection ? m.warning : 0,
     ]), 5);
 
   const selectStyle: React.CSSProperties = {
@@ -112,22 +111,12 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[];
                     <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{item.label}</span>
                   </button>
                 ))}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, opacity: 0.4 }}>
-                  <div style={{ width: 14, height: 6, background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 2 }} />
-                  <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Confidential</span>
-                </div>
               </>
             ) : (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#1A56DB' }} />
-                  <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Public</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#B5D4F4' }} />
-                  <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Confidential</span>
-                </div>
-              </>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#1A56DB' }} />
+                <span style={{ fontSize: 10, fontWeight: 500, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Meetings</span>
+              </div>
             )}
           </div>
         </div>
@@ -180,13 +169,13 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[];
             const fillPath = (path: string) => `${path} L ${width} ${height} L 0 ${height} Z`;
 
             if (isMeetingOnly) {
-              const p = getPath(m => m.meetingsPublic + m.meetingsPrivate);
+              const p = getPath(m => m.meetings);
               return (<><path d={fillPath(p)} fill="url(#phMeetingGrad)" /><path d={p} fill="none" stroke="#1A56DB" strokeWidth="2" strokeLinecap="round" /></>);
             }
 
-            const praiseP = getPath(m => m.praisePublic + m.praisePrivate);
-            const improvementP = getPath(m => m.improvementPublic + m.improvementPrivate);
-            const correctionP = getPath(m => m.warningPublic + m.warningPrivate);
+            const praiseP = getPath(m => m.praise);
+            const improvementP = getPath(m => m.improvement);
+            const correctionP = getPath(m => m.warning);
 
             return (
               <>
@@ -209,12 +198,12 @@ const SentimentChart = ({ history, employeeName, filterType }: { history: any[];
                   <p style={{ color: '#9EA3B0', marginBottom: 4 }}>{m.name} {m.year}</p>
                   {!isMeetingOnly ? (
                     <>
-                      {showPraise && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#27500A', display: 'inline-block' }} />Praise</span><strong>{m.praisePublic + m.praisePrivate}</strong></div>}
-                      {showImprovement && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#633806', display: 'inline-block' }} />Improvement</span><strong>{m.improvementPublic + m.improvementPrivate}</strong></div>}
-                      {showCorrection && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#791F1F', display: 'inline-block' }} />Correction</span><strong>{m.warningPublic + m.warningPrivate}</strong></div>}
+                      {showPraise && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#27500A', display: 'inline-block' }} />Praise</span><strong>{m.praise}</strong></div>}
+                      {showImprovement && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#633806', display: 'inline-block' }} />Improvement</span><strong>{m.improvement}</strong></div>}
+                      {showCorrection && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#791F1F', display: 'inline-block' }} />Correction</span><strong>{m.warning}</strong></div>}
                     </>
                   ) : (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1A56DB', display: 'inline-block' }} />Meetings</span><strong>{m.meetingsPublic + m.meetingsPrivate}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1A56DB', display: 'inline-block' }} />Meetings</span><strong>{m.meetings}</strong></div>
                   )}
                   <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', border: '6px solid transparent', borderTopColor: '#111827' }} />
                 </div>

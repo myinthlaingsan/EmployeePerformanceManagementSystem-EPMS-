@@ -16,6 +16,7 @@ import {
   useDeleteCycleMutation,
   useSendCycleRemindersMutation
 } from '../../features/appraisal/appraisalApi';
+import { useGetDepartmentsQuery } from '../../features/org/departmentApi';
 import { format } from 'date-fns';
 import {
   Plus,
@@ -51,6 +52,15 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }>
 const getStatusStyle = (status: string) =>
   STATUS_STYLE[status] ?? { bg: '#F1EFE8', text: '#444441', border: '#DDDBD2' };
 
+const APPRAISAL_STATUS_OPTIONS = [
+  'PENDING',
+  'SELF_ASSESSED',
+  'EVALUATED',
+  'HR_APPROVED',
+  'FINALIZED',
+  'ARCHIVED',
+];
+
 const AppraisalList: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,6 +76,15 @@ const AppraisalList: React.FC = () => {
   const [showNewSetModal, setShowNewSetModal] = React.useState(false);
   const [newSetName, setNewSetName] = React.useState('');
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [departmentFilter, setDepartmentFilter] = React.useState('ALL');
+  const [statusFilter, setStatusFilter] = React.useState('ALL');
+
+  const resetParticipantFilters = () => {
+    setSearchTerm('');
+    setDepartmentFilter('ALL');
+    setStatusFilter('ALL');
+  };
+
   const [confirmModal, setConfirmModal] = React.useState<{
     isOpen: boolean; title: string; message: string; onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
@@ -74,6 +93,7 @@ const AppraisalList: React.FC = () => {
   const { data: teamEvaluations = [], isLoading: loadingTeam } = useGetTeamEvaluationsQuery(undefined, { skip: !isManager });
   const { data: cycles = [], isLoading: loadingCycles } = useGetCyclesQuery(undefined, { skip: !isPrivileged });
   const { data: forms = [], isLoading: loadingForms } = useGetAppraisalFormsQuery(undefined, { skip: !isPrivileged });
+  const { data: departments = [] } = useGetDepartmentsQuery(undefined, { skip: !isPrivileged });
   const { data: appraisalsByCycle = [], isLoading: loadingCycleData } = useGetAppraisalsByCycleQuery(selectedCycleId || 0, { skip: !selectedCycleId || !isPrivileged });
   const [activateCycle, { isLoading: isActivating }] = useActivateCycleMutation();
   const [closeCycle, { isLoading: isClosing }] = useCloseCycleMutation();
@@ -109,6 +129,10 @@ const AppraisalList: React.FC = () => {
       default: return 'bg-gray-100 text-gray-400 border-gray-200';
     }
   };
+
+  const isArchivedCycle = (cycle: any) => cycle?.status?.toUpperCase() === 'ARCHIVED';
+  const canDeleteCycle = (cycle: any) =>
+    isPrivileged && !cycle?.isAssigned && !cycle?.isActive && cycle?.status === 'PLANNING' && !isArchivedCycle(cycle);
 
   const renderAppraisals = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -201,12 +225,39 @@ const AppraisalList: React.FC = () => {
       const managerRate = total > 0 ? Math.round((managerCount / total) * 100) : 0;
       const finalRate = total > 0 ? Math.round((finalCount / total) * 100) : 0;
 
+      const departmentOptions = departments
+        .map((department: any) => String(department.departmentName || '').trim())
+        .filter(Boolean)
+        .sort((a: string, b: string) => a.localeCompare(b));
+
+      const normalizedSearch = searchTerm.trim().toLowerCase();
+
+      const filteredAppraisalsByCycle = appraisalsByCycle.filter((a: any) => {
+        const matchesSearch =
+          !normalizedSearch ||
+          String(a.employeeName || '').toLowerCase().includes(normalizedSearch) ||
+          String(a.managerName || '').toLowerCase().includes(normalizedSearch);
+
+        const matchesDepartment =
+          departmentFilter === 'ALL' || String(a.departmentName || '').trim() === departmentFilter;
+
+        const matchesStatus =
+          statusFilter === 'ALL' || String(a.status || '').trim() === statusFilter;
+
+        return matchesSearch && matchesDepartment && matchesStatus;
+      });
+
+      const isParticipantFilterActive =
+        normalizedSearch ||
+        departmentFilter !== 'ALL' ||
+        statusFilter !== 'ALL';
+
       return (
         <div className="space-y-4">
           {/* Breadcrumb & actions */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <button onClick={() => setSelectedCycleId(null)} className="flex items-center gap-1 transition-colors"
+              <button onClick={() => { setSelectedCycleId(null); resetParticipantFilters(); }} className="flex items-center gap-1 transition-colors"
                 style={{ fontSize: 12, color: '#1A56DB', marginBottom: 6 }}>
                 <ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} /> Back to Cycles
               </button>
@@ -240,7 +291,7 @@ const AppraisalList: React.FC = () => {
               >
                 <Mail className="w-4 h-4" /> {isSendingReminders ? 'Sending...' : 'Send Reminders'}
               </button>
-              {isPrivileged && !cycle?.isAssigned && (
+              {canDeleteCycle(cycle) && (
                 <button
                   onClick={() => {
                     setConfirmModal({
@@ -252,6 +303,7 @@ const AppraisalList: React.FC = () => {
                           await deleteCycle(Number(selectedCycleId)).unwrap();
                           toast.success('Appraisal Cycle deleted successfully!');
                           setSelectedCycleId(null);
+                          resetParticipantFilters();
                         } catch (err: any) {
                           const errorMsg = err?.data?.message || 'Failed to delete cycle';
                           toast.error(`Error: ${errorMsg}`);
@@ -280,7 +332,7 @@ const AppraisalList: React.FC = () => {
                 >
                   {isActivating ? 'Activating...' : 'Activate Cycle'}
                 </button>
-              ) : isAdmin && cycle?.isActive ? (
+              ) : isPrivileged && cycle?.isActive ? (
                 <button
                   onClick={() => {
                     setConfirmModal({
@@ -290,6 +342,7 @@ const AppraisalList: React.FC = () => {
                       onConfirm: () => {
                         closeCycle(Number(selectedCycleId));
                         setSelectedCycleId(null);
+                        resetParticipantFilters();
                       }
                     });
                   }}
@@ -354,11 +407,46 @@ const AppraisalList: React.FC = () => {
           {/* Participants table */}
           <div style={{ ...panelStyle, overflow: 'hidden' }}>
             <div style={{ padding: '12px 16px', borderBottom: '0.5px solid #E4E6EC' }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>Participants ({appraisalsByCycle.length})</p>
-              <div className="relative">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
-                <input type="text" placeholder="Search…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '6px 10px 6px 30px', fontSize: 12, color: '#111827', outline: 'none', width: 180 }} />
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>
+                {isParticipantFilterActive
+                  ? `Participants (${filteredAppraisalsByCycle.length} of ${appraisalsByCycle.length})`
+                  : `Participants (${appraisalsByCycle.length})`}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9EA3B0' }} />
+                  <input type="text" placeholder="Search…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '6px 10px 6px 30px', fontSize: 12, color: '#111827', outline: 'none', width: 180 }} />
+                </div>
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#111827', outline: 'none' }}
+                >
+                  <option value="ALL">All Departments</option>
+                  {departmentOptions.map(dept => (
+                    <option key={dept as string} value={dept as string}>{dept as string}</option>
+                  ))}
+                </select>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={{ background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#111827', outline: 'none' }}
+                >
+                  <option value="ALL">All Statuses</option>
+                  {APPRAISAL_STATUS_OPTIONS.map(status => (
+                    <option key={status as string} value={status as string}>{(status as string).replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+                {isParticipantFilterActive && (
+                  <button
+                    onClick={resetParticipantFilters}
+                    style={{ fontSize: 12, color: '#1A56DB', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 10px' }}
+                    className="hover:underline font-medium"
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -371,10 +459,14 @@ const AppraisalList: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {appraisalsByCycle.filter((a: any) =>
-                    a.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    a.managerName?.toLowerCase().includes(searchTerm.toLowerCase())
-                  ).map((appraisal: any, idx: number, arr: any[]) => {
+                  {filteredAppraisalsByCycle.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '24px 16px', textAlign: 'center', fontSize: 13, color: '#9EA3B0' }}>
+                        No participants match the selected filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAppraisalsByCycle.map((appraisal: any, idx: number, arr: any[]) => {
                     const s = getStatusStyle(appraisal.status);
                     return (
                       <tr key={appraisal.appraisalId} style={{ borderBottom: idx < arr.length - 1 ? '0.5px solid #F0F2F6' : 'none' }}
@@ -401,7 +493,8 @@ const AppraisalList: React.FC = () => {
                         </td>
                       </tr>
                     );
-                  })}
+                  })
+                )}
                 </tbody>
               </table>
             </div>
@@ -415,8 +508,8 @@ const AppraisalList: React.FC = () => {
         {cycles.length > 0 ? cycles.map((cycle: any) => (
           <div
             key={cycle.cycleId}
-            onClick={() => setSelectedCycleId(cycle.cycleId)}
-            className="group bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
+            onClick={() => { setSelectedCycleId(cycle.cycleId); resetParticipantFilters(); }}
+            className="group bg-white rounded-4xl border border-slate-200 p-8 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all duration-500 cursor-pointer relative overflow-hidden flex flex-col"
           >
             {/* Background Accent */}
             <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-0 group-hover:opacity-10 transition-opacity blur-3xl ${cycle.isActive ? 'bg-indigo-600' : 'bg-slate-400'}`}></div>
@@ -427,7 +520,7 @@ const AppraisalList: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Can permission="APPRAISAL_CYCLE_MANAGE">
-                  {isPrivileged && !cycle.isAssigned && (
+                  {canDeleteCycle(cycle) && (
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
@@ -652,7 +745,7 @@ const AppraisalList: React.FC = () => {
                     <Can permission="APPRAISAL_FORM_DESIGN">
                       {!set.isAssigned ? (
                         <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, title: 'Delete Form Set', message: `Delete "${setName}"?`, onConfirm: async () => { try { await deleteFormSet(set.id).unwrap(); toast.success('Deleted'); } catch (err: any) { toast.error(err?.data?.message || 'Delete failed'); } } }); }}
-                          style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-[#791F1F] transition-colors">
+                          style={{ fontSize: 11, color: '#9EA3B0' }} className="hover:text-danger-text transition-colors">
                           <Trash2 size={13} />
                         </button>
                       ) : <div />}
@@ -731,7 +824,7 @@ const AppraisalList: React.FC = () => {
           ].map((tab) => {
             const Icon = tab.icon;
             return (
-              <button key={tab.id} onClick={() => { setActiveTab(tab.id as any); setSelectedCycleId(null); setExpandedCycle(null); setExpandedSet(null); }}
+              <button key={tab.id} onClick={() => { setActiveTab(tab.id as any); setSelectedCycleId(null); setExpandedCycle(null); setExpandedSet(null); resetParticipantFilters(); }}
                 className="flex items-center gap-2 transition-colors"
                 style={{ padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500, border: 'none', cursor: 'pointer', background: activeTab === tab.id ? '#EEF3FD' : 'transparent', color: activeTab === tab.id ? '#1A56DB' : '#5A6070' }}>
                 <Icon size={13} /> {tab.label}
@@ -749,7 +842,7 @@ const AppraisalList: React.FC = () => {
 
       {/* Confirm modal */}
       {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
           <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '24px', maxWidth: 400, width: '100%' }}>
             <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

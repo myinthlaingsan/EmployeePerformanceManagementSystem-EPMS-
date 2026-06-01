@@ -13,7 +13,9 @@ import {
   usePublishMeetingMutation,
   useGetMeetingStatsForManagerQuery,
   useUpdateActionItemStatusMutation,
-  useReopenActionItemMutation
+  useReopenActionItemMutation,
+  useGetMeetingsByEmployeeQuery,
+  useGetMeetingsByManagerQuery,
 } from "../../features/continuous/continuousApi";
 import { useGetEmployeesQuery } from "../../features/employee/employeeapi";
 import { ContinuousStatus, ActionItemStatus } from "../../features/continuous/continuousTypes";
@@ -21,17 +23,156 @@ import { format } from "date-fns";
 import { formatRelativeTime } from "../../utils/timeUtils";
 
 const inputStyle: React.CSSProperties = {
-  background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 8,
-  padding: '7px 12px', fontSize: 13, color: '#111827', outline: 'none',
+  background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12,
+  padding: '8px 14px', fontSize: 13, color: '#0F172A', outline: 'none',
   width: '100%', boxSizing: 'border-box', fontFamily: 'inherit',
+  transition: 'all 0.2s ease',
 };
 const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: 11, fontWeight: 500, color: '#9EA3B0',
+  display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B',
   textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 5,
 };
 const panelStyle: React.CSSProperties = {
-  background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '16px 18px',
+  background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 20, padding: '20px 24px',
+  boxShadow: '0 4px 20px -2px rgba(148, 163, 184, 0.08), 0 2px 8px -1px rgba(148, 163, 184, 0.04)',
 };
+
+const officeStyles = `
+  .office-panel {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 20px;
+    padding: 20px 24px;
+    box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.08), 0 2px 8px -1px rgba(148, 163, 184, 0.04);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .office-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -4px rgba(99, 102, 241, 0.08), 0 4px 12px -2px rgba(99, 102, 241, 0.04);
+    border-color: rgba(99, 102, 241, 0.25);
+  }
+  .office-feed-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 20px;
+    padding: 20px 24px;
+    box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.08), 0 2px 8px -1px rgba(148, 163, 184, 0.04);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .office-feed-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -4px rgba(99, 102, 241, 0.08), 0 4px 12px -2px rgba(99, 102, 241, 0.04);
+    border-color: rgba(99, 102, 241, 0.25);
+  }
+  .office-input {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: #0F172A;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  .office-input:focus {
+    background: #FFFFFF;
+    border-color: #6366F1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+  .office-button-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: #6366F1;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 12px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .office-button-primary:hover {
+    background: #4F46E5;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.25);
+  }
+  .office-button-primary:active {
+    transform: translateY(0);
+  }
+  .office-button-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: #F8FAFC;
+    color: #475569;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .office-button-secondary:hover {
+    background: #F1F5F9;
+    color: #1E293B;
+    border-color: #CBD5E1;
+  }
+  .office-tag-badge {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    background: #F1F5F9;
+    color: #475569;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    padding: 2px 8px;
+    display: inline-block;
+    letter-spacing: -0.2px;
+  }
+  .office-avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+  }
+  .office-avatar-circle:hover {
+    transform: scale(1.05);
+  }
+  .office-tab-active {
+    background: #6366F1 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2) !important;
+  }
+  .office-pill-filter {
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+  }
+  .office-pill-filter:hover {
+    border-color: #CBD5E1;
+  }
+`;
 
 const CommentItem = ({
   comment, allComments, user, isManager, highlightedCommentId,
@@ -47,13 +188,27 @@ const CommentItem = ({
   onContextMenu: (e: React.MouseEvent, comment: any) => void;
   isUpdatingComment: boolean;
 }) => {
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editingCommentId === comment.id && editTextareaRef.current) {
+      const el = editTextareaRef.current;
+      el.focus({ preventScroll: true });
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [editingCommentId, comment.id]);
   const isOwnComment = (isManager && comment.commentType === 'MANAGER' && comment.managerId === user?.id) ||
                        (!isManager && comment.commentType === 'EMPLOYEE' && comment.employeeId === user?.id);
   const isHighlighted = highlightedCommentId === comment.id;
 
   const bubbleStyle: React.CSSProperties = isOwnComment
-    ? { background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '8px 10px', minWidth: 100, position: 'relative' }
-    : { background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '8px 10px', minWidth: 100, position: 'relative' };
+    ? { background: '#6366F1', color: '#FFFFFF', borderRadius: '18px 18px 4px 18px', padding: '10px 14px', minWidth: 120, position: 'relative', boxShadow: '0 2px 8px rgba(99,102,241,0.08)' }
+    : { background: '#F1F5F9', color: '#1E293B', borderRadius: '18px 18px 18px 4px', padding: '10px 14px', minWidth: 120, position: 'relative', boxShadow: '0 2px 8px rgba(148,163,184,0.04)', border: '1px solid #E2E8F0' };
+
+  const avatarBg = isOwnComment || isHighlighted ? '#6366F1' : '#E2E8F0';
+  const avatarText = isOwnComment || isHighlighted ? '#FFFFFF' : '#475569';
 
   return (
     <div 
@@ -61,32 +216,28 @@ const CommentItem = ({
       className={`space-y-2`}
       onContextMenu={(e) => onContextMenu(e, comment)}
     >
-      <div className={`flex gap-3 px-3 py-2 rounded-2xl transition-all duration-500 group relative ${
-        highlightedCommentId === comment.id 
-          ? 'bg-blue-100 ring-4 ring-blue-300 scale-[1.02] shadow-lg' 
-          : isOwnComment ? 'flex-row-reverse bg-blue-50/30 border-l-4 border-blue-500' : 'bg-gray-50/30'
+      <div className={`flex gap-3 px-3 py-2 rounded-2xl transition-all duration-300 group relative ${
+        isHighlighted 
+          ? 'bg-indigo-50/70 ring-2 ring-indigo-500/20 scale-[1.01]' 
+          : isOwnComment ? 'flex-row-reverse bg-indigo-50/10 border-r-2 border-indigo-500' : 'bg-slate-50/20'
       }`}>
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-sm transition-colors duration-500 ${
-          highlightedCommentId === comment.id
-            ? 'bg-blue-600 text-white'
-            : isOwnComment ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-100'
-        }`}>
+        <div style={{ width: 28, height: 28, borderRadius: 8, background: avatarBg, color: avatarText, border: isOwnComment || isHighlighted ? 'none' : '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 4, boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
           {(comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)?.charAt(0)}
         </div>
         <div style={{ maxWidth: '80%', display: 'flex', flexDirection: 'column', gap: 3, alignItems: isOwnComment ? 'flex-end' : 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
               {isOwnComment ? 'You' : (comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName)}
             </span>
-            {comment.commentType === 'MANAGER' && <span style={{ background: '#111827', color: '#FFFFFF', fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manager</span>}
-            <span style={{ fontSize: 10, color: '#9EA3B0' }}>{comment.createdAt ? format(new Date(comment.createdAt), 'h:mm a') : ''}</span>
+            {comment.commentType === 'MANAGER' && <span className="office-tag-badge" style={{ background: '#0F172A', color: '#FFFFFF', border: 'none', fontSize: 8, padding: '1px 5px' }}>Manager</span>}
+            <span style={{ fontSize: 9, color: '#64748B' }}>{comment.createdAt ? format(new Date(comment.createdAt), 'h:mm a') : ''}</span>
           </div>
 
-          <div style={bubbleStyle} className="group">
+          <div style={bubbleStyle} className="group ">
             <button onClick={(e) => onContextMenu(e as any, comment)}
-              style={{ position: 'absolute', top: 4, right: 4, background: 'none', border: 'none', color: '#9EA3B0', cursor: 'pointer', padding: 2, display: 'flex' }}
+              style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: isOwnComment ? '#C7D2FE' : '#94A3B8', cursor: 'pointer', padding: 2, display: 'flex' }}
               className="opacity-0 group-hover:opacity-100 transition-opacity">
-              <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+              <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
             </button>
 
             {comment.parentId && (() => {
@@ -95,31 +246,33 @@ const CommentItem = ({
               const parentName = parent.commentType === 'MANAGER' ? parent.managerName : parent.employeeName;
               return (
                 <div onClick={() => handleScrollToParent(parent.id)}
-                  style={{ marginBottom: 8, padding: '5px 8px', borderRadius: 6, borderLeft: '2px solid #1A56DB', background: '#EEF3FD', cursor: 'pointer' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{parentName}</div>
-                  <div style={{ fontSize: 10, color: '#5A6070', fontStyle: 'italic' }} className="line-clamp-2">"{parent.comment}"</div>
+                  style={{ marginBottom: 8, padding: '6px 10px', borderRadius: 8, borderLeft: '3px solid #6366F1', background: isOwnComment ? 'rgba(255,255,255,0.15)' : '#F1F5F9', cursor: 'pointer' }}
+                  className="hover:opacity-90 transition-opacity">
+                  <div style={{ fontSize: 9, fontWeight: 700, color: isOwnComment ? '#FFFFFF' : '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{parentName}</div>
+                  <div style={{ fontSize: 10, color: isOwnComment ? '#CBD5E1' : '#475569', fontStyle: 'italic' }} className="line-clamp-2">"{parent.comment}"</div>
                 </div>
               );
             })()}
 
             {editingCommentId === comment.id ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <textarea style={{ ...inputStyle, height: 60, resize: 'none', padding: '6px 8px' }}
-                  value={editCommentText} onChange={(e) => setEditCommentText(e.target.value)} autoFocus />
+                <textarea ref={editTextareaRef} className="office-input" style={{ height: 60, resize: 'none', padding: '6px 8px', minWidth: 150 }}
+                  maxLength={2000}
+                  value={editCommentText} onChange={(e) => setEditCommentText(e.target.value)} />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setEditingCommentId(null)} style={{ fontSize: 10, fontWeight: 600, color: '#9EA3B0', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => setEditingCommentId(null)} className="office-button-secondary" style={{ fontSize: 10, padding: '4px 8px' }}>Cancel</button>
                   <button disabled={isUpdatingComment} onClick={() => handleUpdateComment(comment.id)}
-                    style={{ fontSize: 10, fontWeight: 600, color: '#1A56DB', background: 'none', border: 'none', cursor: isUpdatingComment ? 'not-allowed' : 'pointer', opacity: isUpdatingComment ? 0.5 : 1 }}>
+                    className="office-button-primary" style={{ fontSize: 10, padding: '4px 8px', opacity: isUpdatingComment ? 0.5 : 1 }}>
                     {isUpdatingComment ? 'Saving…' : 'Save'}
                   </button>
                 </div>
               </div>
             ) : (
               <>
-                <span style={{ fontSize: 13, color: '#111827', lineHeight: 1.5 }}>{comment.comment}</span>
+                <span style={{ fontSize: 13, color: isOwnComment ? '#FFFFFF' : '#0F172A', lineHeight: 1.5 }}>{comment.comment}</span>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                  <span style={{ fontSize: 8, fontWeight: 500, color: '#9EA3B0' }}>{formatRelativeTime(comment.createdAt)}</span>
-                  {isOwnComment && <svg style={{ width: 10, height: 10, color: '#B5D4F4' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  <span style={{ fontSize: 8, fontWeight: 600, color: isOwnComment ? '#C7D2FE' : '#64748B' }}>{formatRelativeTime(comment.createdAt)}</span>
+                  {isOwnComment && <svg style={{ width: 10, height: 10, color: '#FFFFFF' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                 </div>
               </>
             )}
@@ -133,26 +286,59 @@ const CommentItem = ({
 const MeetingPage = () => {
   const { user, isManager, isAdmin, isHR } = useAuth();
   const canSchedule = isManager;
+  const todayStr = new Date().toISOString().split('T')[0];
 
+  const [perspective, setPerspective] = useState<'all' | 'received' | 'given'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [goToPage, setGoToPage] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
 
-  const { data: meetingResponse, isLoading } = useGetAllMeetingsQuery(
+  const { data: allResponse, isLoading: isLoadingAll } = useGetAllMeetingsQuery(
     { page: currentPage - 1, size: itemsPerPage, status: filterStatus },
-    { skip: !user }
+    { skip: !user || perspective !== 'all' }
   );
+
+  const { data: employeeResponse, isLoading: isLoadingEmp } = useGetMeetingsByEmployeeQuery(
+    { employeeId: user?.id || 0, page: currentPage - 1, size: itemsPerPage },
+    { skip: !user || perspective !== 'received' }
+  );
+
+  const { data: managerResponse, isLoading: isLoadingMgr } = useGetMeetingsByManagerQuery(
+    { managerId: user?.id || 0, status: filterStatus, page: currentPage - 1, size: itemsPerPage },
+    { skip: !user || perspective !== 'given' }
+  );
+
+  const meetingResponse = perspective === 'all' ? allResponse : perspective === 'received' ? employeeResponse : managerResponse;
+  const isLoading = perspective === 'all' ? isLoadingAll : perspective === 'received' ? isLoadingEmp : isLoadingMgr;
+
   const meetings = meetingResponse?.content || [];
   const { data: employeeData } = useGetEmployeesQuery({ page: 0, size: 1000, excludeSelf: true });
   const employees = employeeData?.content || [];
+
+  const deptEmployees = employees?.filter(emp =>
+    emp.currentDepartmentName && user?.currentDepartmentName &&
+    emp.currentDepartmentName === user?.currentDepartmentName
+  ) || [];
+  // Include the logged-in user's own rank since they are excluded from the
+  // employees list (excludeSelf=true). Without this, the next person below
+  // them becomes minRankInDept and gets incorrectly filtered out.
+  const allDeptRanks = [
+    ...deptEmployees.map(emp => emp.levelRank ?? 9999),
+    user?.levelRank ?? 9999
+  ];
+  const minRankInDept = allDeptRanks.length > 0
+    ? Math.min(...allDeptRanks)
+    : 9999;
 
   const filteredEmployees = (isAdmin || isHR)
     ? employees
     : employees?.filter(emp =>
         emp.currentDepartmentName && user?.currentDepartmentName &&
         emp.currentDepartmentName === user?.currentDepartmentName &&
-        emp.id !== user?.id
+        emp.id !== user?.id &&
+        (emp.levelRank === undefined || emp.levelRank === null || emp.levelRank !== minRankInDept) &&
+        (emp.levelRank === undefined || emp.levelRank === null || user?.levelRank === undefined || user?.levelRank === null || emp.levelRank >= user.levelRank)
       );
 
   const [scheduleMeeting, { isLoading: isScheduling }] = useScheduleMeetingMutation();
@@ -172,52 +358,69 @@ const MeetingPage = () => {
 
   interface MeetingState {
     employeeId: number;
+    meetingTitle: string;
     meetingDate: string;
     meetingTime: string;
     discussionPoints: string;
     keyIssues: string;
-    actionItems: string | any[];
+    actionItems: { id?: number; content: string; status?: string; assignedToId?: number; dueDate?: string }[];
     followUpDate: string;
-
   }
 
   const [newMeeting, setNewMeeting] = useState<MeetingState>({
     employeeId: 0,
+    meetingTitle: "",
     meetingDate: "",
     meetingTime: "",
     discussionPoints: "",
     keyIssues: "",
-    actionItems: "",
+    actionItems: [],
     followUpDate: "",
-
   });
 
 
   const handleSchedule = async (e: React.FormEvent, status: ContinuousStatus = ContinuousStatus.PUBLISHED) => {
     if (e) e.preventDefault();
 
-    const actionItemsValid = Array.isArray(newMeeting.actionItems)
-      ? newMeeting.actionItems.length > 0
-      : newMeeting.actionItems.trim() !== '';
-
-    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || !actionItemsValid || !user) {
-      alert("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
+    if (!newMeeting.employeeId || !newMeeting.meetingDate || !newMeeting.meetingTime || !newMeeting.discussionPoints || !newMeeting.keyIssues || newMeeting.actionItems.length === 0 || !user) {
+      toast.warning("Please fill out all required fields: Employee, Date, Time, Discussion Points, Key Issues, and Action Items.");
       return;
     }
     if (newMeeting.followUpDate && newMeeting.followUpDate < newMeeting.meetingDate) {
       toast.warning("Follow up date cannot be earlier than the meeting date.");
       return;
     }
+
+    for (const item of newMeeting.actionItems) {
+      if (item.content.trim() !== '') {
+        if (!item.dueDate) {
+          toast.warning("All active action items must have a due date.");
+          return;
+        }
+        if (item.dueDate < newMeeting.meetingDate) {
+          toast.warning(`Action Item due date (${item.dueDate}) cannot be earlier than the meeting date (${newMeeting.meetingDate}).`);
+          return;
+        }
+        if (newMeeting.followUpDate && item.dueDate > newMeeting.followUpDate) {
+          toast.warning(`Action Item due date (${item.dueDate}) cannot be later than the follow-up date (${newMeeting.followUpDate}).`);
+          return;
+        }
+      }
+    }
     try {
       const body = {
         ...newMeeting,
         managerId: user.id,
         status: editingId ? undefined : status,
-        actionItems: Array.isArray(newMeeting.actionItems)
-          ? (newMeeting.actionItems as any[])
-              .map((item: any) => (typeof item === 'string' ? item : item?.content ?? '').trim())
-              .filter((c: string) => c !== '')
-          : (newMeeting.actionItems as string).split('\n').map(s => s.trim()).filter((item: string) => item !== '')
+        actionItems: newMeeting.actionItems
+          .map(item => ({
+            id: item.id || undefined,
+            content: (item.content ?? '').trim(),
+            status: (item.status || 'PENDING') as ActionItemStatus,
+            assignedToId: item.assignedToId || newMeeting.employeeId,
+            dueDate: item.dueDate,
+          }))
+          .filter(item => item.content !== ''),
       };
       if (editingId) {
         await updateMeeting({ id: editingId, body }).unwrap();
@@ -228,11 +431,12 @@ const MeetingPage = () => {
       setEditingId(null);
       setNewMeeting({
         employeeId: 0,
+        meetingTitle: "",
         meetingDate: "",
         meetingTime: "",
         discussionPoints: "",
         keyIssues: "",
-        actionItems: "",
+        actionItems: [],
         followUpDate: "",
       });
     } catch (err: any) {
@@ -244,11 +448,12 @@ const MeetingPage = () => {
     setEditingId(m.meetingId);
     setNewMeeting({
       employeeId: m.employeeId,
+      meetingTitle: m.meetingTitle || "",
       meetingDate: m.meetingDate,
       meetingTime: m.meetingTime.substring(0, 5),
       discussionPoints: m.discussionPoints,
       keyIssues: m.keyIssues,
-      actionItems: m.actionItems,
+      actionItems: m.actionItems || [],
       followUpDate: m.followUpDate || "",
     });
     setShowModal(true);
@@ -301,113 +506,162 @@ const MeetingPage = () => {
   const btnPageStyle = (active: boolean): React.CSSProperties => ({
     width: 30, height: 30, borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
     background: active ? '#1A56DB' : 'transparent', color: active ? '#FFFFFF' : '#9EA3B0',
-  });
+  });  return (
+    <div className="space-y-6 pb-12">
+      <style>{officeStyles}</style>
 
-  return (
-    <div className="space-y-4 pb-8">
       {/* Header */}
-      <div style={{ ...panelStyle, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <div className="office-panel" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 18, fontWeight: 500, color: '#111827' }}>1-on-1 Meetings</h1>
-          <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Schedule and track personalized development conversations.</p>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.3px' }}>1-on-1 Meetings</h1>
+          <p style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>Schedule, record, and track developmental conversations.</p>
         </div>
         {canSchedule && (
-          <button onClick={() => setShowModal(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1A56DB', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-            <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+          <button onClick={() => setShowModal(true)} className="office-button-primary">
+            <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
             Schedule Meeting
           </button>
         )}
       </div>
 
       {isManager && (
-        <div className="flex items-center gap-3 mb-2 overflow-x-auto pb-2 scrollbar-hide">
-          <button
-            onClick={() => { setFilterStatus(undefined); setCurrentPage(1); }}
-            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!filterStatus ? 'bg-gray-900 text-white shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
-          >
-            All Meetings
-          </button>
-          <button
-            onClick={() => { setFilterStatus(ContinuousStatus.PUBLISHED); setCurrentPage(1); }}
-            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.PUBLISHED ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
-          >
-            Published
-          </button>
-          <button
-            onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
-            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === ContinuousStatus.DRAFT ? 'bg-amber-500 text-white shadow-lg shadow-amber-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}
-          >
-            Drafts
-          </button>
+        <div className="space-y-4">
+          {/* Perspective selector tabs */}
+          <div className="bg-slate-100 border border-slate-200/60 rounded-2xl p-1.5 flex gap-2 w-fit shadow-inner">
+            <button
+              onClick={() => { setPerspective('all'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-200 ${
+                perspective === 'all'
+                  ? 'office-tab-active bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              All Interactions
+            </button>
+            <button
+              onClick={() => { setPerspective('received'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-200 ${
+                perspective === 'received'
+                  ? 'office-tab-active bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Meetings Received
+            </button>
+            <button
+              onClick={() => { setPerspective('given'); setFilterStatus(undefined); setCurrentPage(1); }}
+              className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-200 ${
+                perspective === 'given'
+                  ? 'office-tab-active bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Meetings Conducted (Given)
+            </button>
+          </div>
+
+          {/* Draft/Published filter (only applicable for given or all) */}
+          {perspective !== 'received' && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              <button
+                onClick={() => { setFilterStatus(undefined); setCurrentPage(1); }}
+                className={`office-pill-filter ${!filterStatus ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
+              >
+                All Statuses
+              </button>
+              <button
+                onClick={() => { setFilterStatus(ContinuousStatus.PUBLISHED); setCurrentPage(1); }}
+                className={`office-pill-filter ${filterStatus === ContinuousStatus.PUBLISHED ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
+              >
+                Published Only
+              </button>
+              <button
+                onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
+                className={`office-pill-filter ${filterStatus === ContinuousStatus.DRAFT ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
+              >
+                Drafts Only
+              </button>
+            </div>
+          )}
         </div>
       )}
 
+      {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition">
-          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        <div className="office-panel flex items-center gap-5 hover:scale-[1.01]">
+          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-100">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{isManager ? 'Total Published' : 'Total Received'}</p>
-            <h3 className="text-2xl font-bold text-gray-900">{isManager ? (meetingStats?.totalPublished || 0) : totalItems}</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+              {perspective === 'received' ? 'Received Published' : perspective === 'given' ? 'Given Published' : isManager ? 'Total Published' : 'Total Received'}
+            </p>
+            <h3 className="text-2xl font-black text-slate-800">
+              {perspective === 'received' ? (meetingResponse?.totalElements || 0) : perspective === 'given' ? (meetingStats?.totalPublished || 0) : isManager ? (meetingStats?.totalPublished || 0) : totalItems}
+            </h3>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group">
-          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+        <div className="office-panel flex items-center gap-5 hover:scale-[1.01] group">
+          <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0 border border-emerald-100 group-hover:scale-105 transition-transform duration-300">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
           </div>
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Follow up Tasks</p>
-            <h3 className="text-2xl font-bold text-gray-900">{meetings?.filter(m => m.status === ContinuousStatus.PUBLISHED && m.followUpDate).length || 0}</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Follow up Tasks</p>
+            <h3 className="text-2xl font-black text-slate-800">{meetings?.filter(m => m.status === ContinuousStatus.PUBLISHED && m.followUpDate).length || 0}</h3>
           </div>
         </div>
 
-        {isManager && (
+        {isManager && perspective !== 'received' && (
           <button 
             onClick={() => { setFilterStatus(ContinuousStatus.DRAFT); setCurrentPage(1); }}
-            className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition group text-left"
+            className="office-panel flex items-center gap-5 hover:scale-[1.01] group text-left w-full border-dashed"
           >
-            <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0 border border-amber-100 group-hover:scale-105 transition-transform duration-300">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
             </div>
             <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Drafts</p>
-              <h3 className="text-2xl font-bold text-rose-600">{meetingStats?.totalDraft || 0}</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Drafts</p>
+              <h3 className="text-2xl font-black text-amber-600">{meetingStats?.totalDraft || 0}</h3>
             </div>
           </button>
         )}
       </div>
 
       {/* Meeting List */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {meetings?.length === 0 && (
-          <div style={{ padding: '48px 24px', textAlign: 'center', border: '2px dashed #E4E6EC', borderRadius: 12 }}>
-            <p style={{ fontSize: 13, color: '#9EA3B0' }}>No meetings scheduled yet.</p>
+          <div style={{ padding: '48px 24px', textAlign: 'center', border: '2px dashed #E2E8F0', borderRadius: 20 }}>
+            <p style={{ fontSize: 13, color: '#94A3B8' }}>No meetings scheduled yet.</p>
           </div>
         )}
         {meetings?.map((m) => (
-          <div key={m.meetingId} style={panelStyle} className="group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+          <div key={m.meetingId} className="office-feed-card group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEF3FD', color: '#1A56DB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>
-                  {m.employeeName?.charAt(0)}
+                <div className="office-avatar-circle bg-indigo-50 text-indigo-600 border border-indigo-100" style={{ width: 42, height: 42, borderRadius: 12, fontSize: 16 }}>
+                  {(m.employeeId === user?.id ? m.managerName : m.employeeName)?.charAt(0)}
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{m.employeeName}</h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 2 }}>
-                    <span style={{ fontSize: 12, color: '#5A6070', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <svg style={{ width: 13, height: 13, color: '#9EA3B0' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.2px' }}>
+                    {m.employeeId === user?.id ? `1-on-1 with ${m.managerName}` : m.employeeName}
+                    {m.employeeId === user?.id && <span style={{ color: '#64748B', fontWeight: 500, marginLeft: 6, fontSize: 11 }}>(Received)</span>}
+                  </h3>
+                  {m.meetingTitle && (
+                    <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginTop: 1 }}>{m.meetingTitle}</p>
+                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                    <span style={{ fontSize: 11, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }} className="office-tag-badge">
+                      <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                       {format(new Date(m.meetingDate), 'dd/MM/yyyy')}
                     </span>
-                    <span style={{ fontSize: 12, color: '#5A6070', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <svg style={{ width: 13, height: 13, color: '#9EA3B0' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span style={{ fontSize: 11, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }} className="office-tag-badge">
+                      <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       {m.meetingTime}
                     </span>
                     {m.followUpDate && (
-                      <span style={{ fontSize: 12, color: '#791F1F', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      <span className="office-tag-badge" style={{ fontSize: 11, color: '#EF4444', background: '#FEF2F2', border: '1px solid #FEE2E2' }}>
+                        <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         Follow up: {format(new Date(m.followUpDate), 'dd/MM/yyyy')}
                       </span>
                     )}
@@ -415,23 +669,23 @@ const MeetingPage = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+                <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
                   {m.publishedAt 
                     ? <>Published {format(new Date(m.publishedAt), 'MMM d, yyyy')}</> 
                     : <>Created {format(new Date(m.createdAt), 'MMM d, yyyy')}</>}
                 </span>
                 {m.status === ContinuousStatus.DRAFT && (
-                  <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[8px] font-black rounded uppercase tracking-widest border border-gray-200 flex items-center gap-1">
+                  <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[8px] font-black rounded uppercase tracking-widest border border-amber-200 flex items-center gap-1">
                     <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
                     Draft
                   </span>
                 )}
-                {canSchedule && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }} className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleEdit(m)} style={{ padding: 6, background: 'none', border: 'none', color: '#9EA3B0', cursor: 'pointer', borderRadius: 6 }} className="hover:bg-[#EEF3FD] hover:text-[#1A56DB] transition-colors">
+                {m.managerId === user?.id && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleEdit(m)} style={{ padding: 6, background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', borderRadius: 8 }} className="hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
                       <svg style={{ width: 15, height: 15 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </button>
-                    <button onClick={() => setMeetingToDelete(m.meetingId)} style={{ padding: 6, background: 'none', border: 'none', color: '#9EA3B0', cursor: 'pointer', borderRadius: 6 }} className="hover:bg-[#FCEBEB] hover:text-[#791F1F] transition-colors">
+                    <button onClick={() => setMeetingToDelete(m.meetingId)} style={{ padding: 6, background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', borderRadius: 8 }} className="hover:bg-rose-50 hover:text-rose-600 transition-colors">
                       <svg style={{ width: 15, height: 15 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                   </div>
@@ -439,18 +693,30 @@ const MeetingPage = () => {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6 bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100/50">
+            <div className="grid md:grid-cols-3 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-200/50">
               <div className="space-y-2">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Discussion Points</span>
-                <p className="text-gray-700 text-sm leading-relaxed">{m.discussionPoints}</p>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">Discussion Points</span>
+                <p 
+                  onClick={() => setExpandedMeetingId(expandedMeetingId === m.meetingId ? null : m.meetingId)}
+                  style={{ cursor: 'pointer' }}
+                  className="text-slate-700 text-sm leading-relaxed whitespace-pre-line hover:text-indigo-600 transition-colors"
+                >
+                  {m.discussionPoints}
+                </p>
               </div>
               <div className="space-y-2">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Key Issues</span>
-                <p className="text-gray-700 text-sm leading-relaxed">{m.keyIssues}</p>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">Key Issues</span>
+                <p 
+                  onClick={() => setExpandedMeetingId(expandedMeetingId === m.meetingId ? null : m.meetingId)}
+                  style={{ cursor: 'pointer' }}
+                  className="text-slate-700 text-sm leading-relaxed whitespace-pre-line hover:text-indigo-600 transition-colors"
+                >
+                  {m.keyIssues}
+                </p>
               </div>
               <div className="space-y-2">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</span>
-                <div className="space-y-2 mt-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">Action Items</span>
+                <div className="space-y-2.5 mt-2">
                   {m.actionItems.map((item: any) => {
                     const isDone = item.status === ActionItemStatus.DONE;
                     const isEmployee = user?.id === m.employeeId;
@@ -473,21 +739,31 @@ const MeetingPage = () => {
                               }
                             }}
                             disabled={!isEmployee || isDone}
-                            className={`w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 transition-all ${(!isEmployee || isDone) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:scale-110'}`}
+                            className={`w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 transition-all ${(!isEmployee || isDone) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:scale-110'}`}
                           />
                           {(!isEmployee || isDone) && (
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
                               {isDone ? 'Completed items cannot be unchecked' : 'This status is managed by the employee'}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
                             </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           {/* Item content with status-based styling */}
                           <div className="flex items-start gap-2 flex-wrap">
-                            <p className={`text-sm leading-relaxed transition-all duration-300 ${isDone ? 'text-green-600 line-through' : 'text-gray-700'}`}>
+                            <p className={`text-sm leading-relaxed transition-all duration-300 ${isDone ? 'text-slate-400 line-through' : 'text-slate-700 font-medium'}`}>
                               {item.content}
                             </p>
+                            {item.assignedToName && (
+                              <span className="office-tag-badge" style={{ background: '#EEF2FF', color: '#4F46E5', border: '1px solid #C7D2FE', fontSize: 9, padding: '1px 6px' }}>
+                                {item.assignedToName}
+                              </span>
+                            )}
+                            {item.dueDate && (
+                              <span className="office-tag-badge" style={{ fontSize: 9 }}>
+                                due {format(new Date(item.dueDate), 'dd/MM/yyyy')}
+                              </span>
+                            )}
 
                             {/* Re-opened badge: shown when PENDING but has a reopenReason */}
                             {!isDone && item.reopenReason && (
@@ -499,10 +775,10 @@ const MeetingPage = () => {
                                   Re-opened
                                 </span>
                                 {/* Tooltip showing the reopen reason */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-gray-900 text-white rounded-xl shadow-2xl opacity-0 group-hover/reopen:opacity-100 transition-all duration-200 pointer-events-none z-20 p-3">
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-slate-900 text-white rounded-xl shadow-2xl opacity-0 group-hover/reopen:opacity-100 transition-all duration-200 pointer-events-none z-20 p-3">
                                   <p className="text-[9px] font-black uppercase tracking-widest text-amber-400 mb-1">Re-open Reason</p>
-                                  <p className="text-xs leading-relaxed text-gray-200 font-normal">"{item.reopenReason}"</p>
-                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                                  <p className="text-xs leading-relaxed text-slate-200 font-normal">"{item.reopenReason}"</p>
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
                                 </div>
                               </div>
                             )}
@@ -512,20 +788,20 @@ const MeetingPage = () => {
                           {isDone && (
                             <div className="mt-1 flex items-center justify-between">
                               <div className="flex items-center">
-                                <span className="inline-flex items-center text-[8px] font-black uppercase tracking-widest text-green-500">
+                                <span className="inline-flex items-center text-[8px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
                                   <svg className="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                   Completed
                                 </span>
                                 {item.completedAt && (
-                                  <span className="text-xs text-gray-400 ml-2 font-light">
+                                  <span className="text-[11px] text-slate-400 ml-2 font-light">
                                     {format(new Date(item.completedAt), "MMM d, h:mm a")}
                                   </span>
                                 )}
                               </div>
-                              {canSchedule && (
+                              {m.managerId === user?.id && (
                                 <button
                                   onClick={() => setReopenConfig({ meetingId: m.meetingId, item })}
-                                  className="text-[8px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 transition opacity-0 group-hover/item:opacity-100 bg-indigo-50 px-2 py-1 rounded"
+                                  className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition opacity-0 group-hover/item:opacity-100 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg"
                                 >
                                   Re-open
                                 </button>
@@ -537,29 +813,29 @@ const MeetingPage = () => {
                     );
                   })}
                   {m.actionItems.length === 0 && (
-                    <p className="text-gray-400 text-xs italic">No action items defined.</p>
+                    <p className="text-slate-400 text-xs italic">No action items defined.</p>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 mt-4 border-t border-gray-50 flex items-center justify-between">
+            <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
               <button 
                 onClick={() => setExpandedMeetingId(expandedMeetingId === m.meetingId ? null : m.meetingId)}
-                className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-indigo-600 transition group"
+                className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-indigo-600 transition group"
               >
-                <div className="w-8 h-8 rounded-lg bg-gray-50 group-hover:bg-indigo-50 flex items-center justify-center transition">
+                <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-indigo-50 flex items-center justify-center transition">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-                <span>Replies {(m.commentCount || 0) > 0 && `(${(m.commentCount || 0)})`}</span>
+                <span>Replies {(m.commentCount || 0) > 0 ? `(${m.commentCount})` : ''}</span>
               </button>
               {m.status === ContinuousStatus.DRAFT && m.managerId === user?.id && (
                 <button 
                   onClick={() => handlePublish(m.meetingId)}
                   disabled={isPublishing}
-                  className="px-4 py-1.5 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-black transition shadow-sm disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-700 transition shadow-sm disabled:opacity-50 flex items-center gap-2"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -570,7 +846,7 @@ const MeetingPage = () => {
             </div>
 
             {expandedMeetingId === m.meetingId && (
-              <MeetingComments meetingId={m.meetingId} isManager={isManager} />
+              <MeetingComments meetingId={m.meetingId} isManager={m.managerId === user?.id} />
             )}
           </div>
         ))}
@@ -578,140 +854,198 @@ const MeetingPage = () => {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 0', borderTop: '0.5px solid #E4E6EC' }}>
-          <span style={{ fontSize: 11, color: '#9EA3B0' }}>Showing {startIndex + 1}–{Math.min(endIndex, totalItems)} of {totalItems}</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '14px 0', borderTop: '1px solid #E2E8F0' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>Showing {startIndex + 1}–{Math.min(endIndex, totalItems)} of {totalItems}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}
-              style={{ ...btnPageStyle(false), opacity: currentPage === 1 ? 0.3 : 1 }}>
-              <svg style={{ width: 12, height: 12, margin: 'auto' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+              style={{ ...btnPageStyle(false), opacity: currentPage === 1 ? 0.3 : 1 }}
+              className="office-button-secondary !p-0 flex items-center justify-center">
+              <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
             </button>
             {[...Array(totalPages)].map((_, i) => {
               const p = i + 1;
               if (totalPages > 5 && p !== 1 && p !== totalPages && (p < currentPage - 1 || p > currentPage + 1)) {
-                if (p === currentPage - 2 || p === currentPage + 2) return <span key={p} style={{ fontSize: 11, color: '#9EA3B0', padding: '0 2px' }}>…</span>;
+                if (p === currentPage - 2 || p === currentPage + 2) return <span key={p} style={{ fontSize: 11, color: '#64748B', padding: '0 4px' }}>…</span>;
                 return null;
               }
-              return <button key={p} onClick={() => handlePageChange(p)} style={btnPageStyle(currentPage === p)}>{p}</button>;
+              const isActive = currentPage === p;
+              return (
+                <button 
+                  key={p} 
+                  onClick={() => handlePageChange(p)} 
+                  style={btnPageStyle(isActive)}
+                  className={isActive ? 'office-button-primary !p-0' : 'office-button-secondary !p-0'}
+                >
+                  {p}
+                </button>
+              );
             })}
             <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0}
-              style={{ ...btnPageStyle(false), opacity: currentPage === totalPages || totalPages === 0 ? 0.3 : 1 }}>
-              <svg style={{ width: 12, height: 12, margin: 'auto' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+              style={{ ...btnPageStyle(false), opacity: currentPage === totalPages || totalPages === 0 ? 0.3 : 1 }}
+              className="office-button-secondary !p-0 flex items-center justify-center">
+              <svg style={{ width: 12, height: 12 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
           <form onSubmit={handleGoToPage} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ fontSize: 11, color: '#9EA3B0' }}>Go to</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>Go to</label>
             <input type="text" value={goToPage} onChange={(e) => setGoToPage(e.target.value)} placeholder="…"
-              style={{ width: 48, background: '#F5F6F8', border: '0.5px solid #E0E2E8', borderRadius: 6, padding: '4px 8px', fontSize: 11, color: '#111827', outline: 'none' }} />
+              className="office-input" style={{ width: 48, padding: '4px 8px', fontSize: 11, textAlign: 'center' }} />
           </form>
         </div>
       )}
 
       {/* Schedule / Edit Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, width: '100%', maxWidth: 520, overflow: 'hidden' }}>
-            <div style={{ background: '#111827', padding: '14px 20px' }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#FFFFFF' }}>{editingId ? 'Update Meeting' : 'Schedule 1-on-1'}</h2>
-              <p style={{ fontSize: 12, color: '#9EA3B0', marginTop: 2 }}>Define goals and expectations for the upcoming conversation.</p>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
+          <div className="office-panel animate-in zoom-in-95 duration-200" style={{ width: '100%', maxWidth: 540, overflow: 'hidden', padding: 0 }}>
+            <div style={{ background: '#1E293B', padding: '20px 24px' }}>
+              <h2 style={{ fontSize: 16, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.2px' }}>{editingId ? 'Update Meeting Details' : 'Schedule 1-on-1 Conversation'}</h2>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>Define discussion items, action steps, and schedule.</p>
             </div>
-            <div style={{ padding: 20, maxHeight: '75vh', overflowY: 'auto' }}>
+            <div style={{ padding: 24, maxHeight: '70vh', overflowY: 'auto' }}>
               <form onSubmit={handleSchedule} className="space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Meeting Title</label>
+                    <span className="text-[10px] text-slate-400 font-semibold">{newMeeting.meetingTitle.length} / 255</span>
+                  </div>
+                  <input type="text" className="office-input" placeholder="e.g. Sprint Review 1:1"
+                    maxLength={255}
+                    value={newMeeting.meetingTitle}
+                    onChange={e => setNewMeeting({ ...newMeeting, meetingTitle: e.target.value })}
+                    autoFocus={!!editingId}
+                    onFocus={editingId ? (e) => {
+                      const val = e.target.value;
+                      e.target.value = '';
+                      e.target.value = val;
+                    } : undefined} />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label style={labelStyle}>Select Employee</label>
-                    <select required style={inputStyle} value={newMeeting.employeeId || ""}
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Select Employee</label>
+                    <select required className="office-input" value={newMeeting.employeeId || ""}
                       onChange={e => setNewMeeting({ ...newMeeting, employeeId: Number(e.target.value) })}>
                       <option value="">Choose Member…</option>
                       {filteredEmployees?.map(emp => <option key={emp.id} value={emp.id}>{emp.staffName}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={labelStyle}>Date &amp; Time</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Date &amp; Time</label>
                     <div className="grid grid-cols-2 gap-2">
-                      <input required type="date" style={inputStyle} value={newMeeting.meetingDate}
+                      <input required type="date" min={todayStr} className="office-input" value={newMeeting.meetingDate}
                         onChange={e => setNewMeeting({ ...newMeeting, meetingDate: e.target.value })} />
-                      <input required type="time" style={inputStyle} value={newMeeting.meetingTime}
+                      <input required type="time" className="office-input" value={newMeeting.meetingTime}
                         onChange={e => setNewMeeting({ ...newMeeting, meetingTime: e.target.value })} />
                     </div>
                   </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Discussion Points</label>
-                  <textarea required style={{ ...inputStyle, height: 56, resize: 'none', padding: '7px 12px' }}
-                    placeholder="What would you like to discuss?" value={newMeeting.discussionPoints}
-                    onChange={e => setNewMeeting({ ...newMeeting, discussionPoints: e.target.value })} />
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Discussion Points</label>
+                    <span className="text-[10px] text-slate-400 font-semibold">{newMeeting.discussionPoints.length} / 4000</span>
+                  </div>
+                  <textarea required className="office-input" style={{ height: 68, resize: 'none' }}
+                    placeholder="What topics will be addressed?" value={newMeeting.discussionPoints}
+                    maxLength={4000}
+                    onChange={e => setNewMeeting({ ...newMeeting, discussionPoints: e.target.value })}
+                    onFocus={editingId ? (e) => {
+                      const val = e.target.value;
+                      e.target.value = '';
+                      e.target.value = val;
+                    } : undefined} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label style={labelStyle}>Key Issues</label>
-                    <textarea required style={{ ...inputStyle, height: 48, resize: 'none', padding: '7px 12px' }}
-                      value={newMeeting.keyIssues} onChange={e => setNewMeeting({ ...newMeeting, keyIssues: e.target.value })} />
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Key Issues</label>
+                      <span className="text-[10px] text-slate-400 font-semibold">{newMeeting.keyIssues.length} / 4000</span>
+                    </div>
+                    <textarea required className="office-input" style={{ height: 120, resize: 'none' }}
+                      placeholder="Any concerns, challenges, or risks..."
+                      maxLength={4000}
+                      value={newMeeting.keyIssues} onChange={e => setNewMeeting({ ...newMeeting, keyIssues: e.target.value })}
+                      onFocus={editingId ? (e) => {
+                        const val = e.target.value;
+                        e.target.value = '';
+                        e.target.value = val;
+                      } : undefined} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Action Items</label>
-                    {editingId ? (
-                      <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
-                        {Array.isArray(newMeeting.actionItems) && newMeeting.actionItems.map((item: any, index: number) => {
-                          const isDone = item.status === ActionItemStatus.DONE;
-                          return (
-                            <div key={index} className="flex items-center gap-2">
-                              <div className="flex-1 relative group/item">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Action Items</label>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {newMeeting.actionItems.map((item, index) => {
+                        const isDone = item.status === ActionItemStatus.DONE;
+                        return (
+                          <div key={index} className="space-y-1 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 relative">
                                 <input
                                   type="text"
                                   disabled={isDone}
-                                  className={`w-full px-4 py-2 rounded-xl text-sm transition border-none ${
-                                    isDone 
-                                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed italic' 
-                                      : 'bg-gray-50 focus:ring-2 focus:ring-indigo-500 text-gray-700'
-                                  }`}
+                                  className={`w-full pl-2.5 pr-14 py-1.5 rounded-lg text-sm transition border-none bg-white ${isDone ? 'text-slate-400 cursor-not-allowed italic' : 'focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium'}`}
+                                  placeholder="Task description…"
+                                  maxLength={255}
                                   value={item.content}
-                                  onChange={(e) => {
+                                  onChange={e => {
                                     const updated = [...newMeeting.actionItems];
                                     updated[index] = { ...item, content: e.target.value };
                                     setNewMeeting({ ...newMeeting, actionItems: updated });
                                   }}
+                                  onFocus={editingId ? (e) => {
+                                    const val = e.target.value;
+                                    e.target.value = '';
+                                    e.target.value = val;
+                                  } : undefined}
                                 />
-                                {isDone && (
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase tracking-widest text-green-500 bg-green-50 px-2 py-0.5 rounded-full">
-                                    Locked
+                                {!isDone && item.content.length > 0 && (
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-semibold bg-white/90 px-1 select-none pointer-events-none">
+                                    {item.content.length}/255
                                   </span>
                                 )}
+                                {isDone && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Locked</span>}
                               </div>
+                              {!isDone && (
+                                <button type="button" onClick={() => setNewMeeting({ ...newMeeting, actionItems: newMeeting.actionItems.filter((_, i) => i !== index) })}
+                                  className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition shrink-0">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                              )}
                             </div>
-                          );
-                        })}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewMeeting({
-                              ...newMeeting,
-                              actionItems: [...(newMeeting.actionItems as any[]), { content: "", status: ActionItemStatus.PENDING }]
-                            });
-                          }}
-                          className="w-full py-2 border-2 border-dashed border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:border-indigo-200 hover:text-indigo-600 transition flex items-center justify-center gap-2 mt-2"
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                          Add New Task
-                        </button>
-                      </div>
-                    ) : (
-                      <textarea 
-                        required
-                        className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-12 resize-none text-sm"
-                        placeholder="Enter tasks, one per line..."
-                        value={newMeeting.actionItems}
-                        onChange={e => setNewMeeting({ ...newMeeting, actionItems: e.target.value })}
-                      />
-                    )}
+                            {!isDone && (
+                              <div className="flex gap-2 pl-0">
+                                <input type="date"
+                                  min={newMeeting.meetingDate || undefined}
+                                  max={newMeeting.followUpDate || undefined}
+                                  className="office-input !py-1 !px-2"
+                                  style={{ fontSize: 11, flex: 1 }}
+                                  value={item.dueDate ?? ''}
+                                  onChange={e => {
+                                    const updated = [...newMeeting.actionItems];
+                                    updated[index] = { ...item, dueDate: e.target.value || undefined };
+                                    setNewMeeting({ ...newMeeting, actionItems: updated });
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <button type="button"
+                        onClick={() => setNewMeeting({ ...newMeeting, actionItems: [...newMeeting.actionItems, { content: "", status: ActionItemStatus.PENDING }] })}
+                        className="w-full py-2 border-2 border-dashed border-slate-200 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:border-indigo-300 hover:text-indigo-600 transition flex items-center justify-center gap-2 mt-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                        Add Task
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Follow Up Date</label>
-                  <input type="date" min={newMeeting.meetingDate} style={inputStyle} value={newMeeting.followUpDate}
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Follow Up Date</label>
+                  <input type="date" min={newMeeting.meetingDate} className="office-input" value={newMeeting.followUpDate}
                     onChange={e => setNewMeeting({ ...newMeeting, followUpDate: e.target.value })} />
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4">
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => {
@@ -719,15 +1053,16 @@ const MeetingPage = () => {
                       setEditingId(null);
                       setNewMeeting({
                         employeeId: 0,
+                        meetingTitle: "",
                         meetingDate: "",
                         meetingTime: "",
                         discussionPoints: "",
                         keyIssues: "",
-                        actionItems: "",
+                        actionItems: [],
                         followUpDate: ""
                       });
                     }}
-                    className="px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+                    className="office-button-secondary"
                   >
                     Cancel
                   </button>
@@ -736,7 +1071,7 @@ const MeetingPage = () => {
                       type="button"
                       onClick={(e) => handleSchedule(e as any)}
                       disabled={isUpdating}
-                      className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 disabled:opacity-50"
+                      className="office-button-primary"
                     >
                       {isUpdating ? "Updating..." : "Update Meeting"}
                     </button>
@@ -746,7 +1081,7 @@ const MeetingPage = () => {
                         type="button"
                         onClick={(e) => handleSchedule(e as any, ContinuousStatus.DRAFT)}
                         disabled={isScheduling}
-                        className="px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
+                        className="office-button-secondary"
                       >
                         Save as Draft
                       </button>
@@ -754,7 +1089,7 @@ const MeetingPage = () => {
                         type="button"
                         onClick={(e) => handleSchedule(e as any, ContinuousStatus.PUBLISHED)}
                         disabled={isScheduling}
-                        className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 disabled:opacity-50 flex items-center gap-2"
+                        className="office-button-primary"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -772,42 +1107,43 @@ const MeetingPage = () => {
 
       {/* Delete Meeting Modal */}
       {meetingToDelete && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }}>
-          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, width: '100%', maxWidth: 360, padding: 24, textAlign: 'center' }}>
-            <div style={{ width: 48, height: 48, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <svg style={{ width: 22, height: 22, color: '#791F1F' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
+          <div className="office-panel animate-in zoom-in-95 duration-200" style={{ width: '100%', maxWidth: 380, padding: 24, textAlign: 'center', margin: 'auto' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '1px solid #FEE2E2' }}>
+              <svg style={{ width: 22, height: 22, color: '#EF4444' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginBottom: 6 }}>Delete Meeting?</h3>
-            <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 20 }}>This action cannot be undone. All discussion points and comments will be permanently removed.</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setMeetingToDelete(null)} style={{ flex: 1, padding: '9px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleDelete} style={{ flex: 1, padding: '9px', background: '#791F1F', color: '#FFFFFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Delete</button>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 8, letterSpacing: '-0.2px' }}>Delete Meeting Record?</h3>
+            <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24, lineHeight: '1.5' }}>This action is permanent and cannot be undone. All related points and replies will be deleted.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setMeetingToDelete(null)} className="office-button-secondary" style={{ flex: 1 }}>Cancel</button>
+              <button onClick={handleDelete} className="office-button-danger" style={{ flex: 1 }}>Delete</button>
             </div>
           </div>
         </div>
       )}
 
       {reopenConfig && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden border border-gray-100">
-            <div className="bg-indigo-600 p-6 text-white text-center">
-              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="office-panel w-full max-w-md animate-in zoom-in-95 duration-200 overflow-hidden" style={{ padding: 0 }}>
+            <div style={{ background: '#1E293B', padding: '20px 24px', textAlign: 'center' }} className="text-white">
+              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-white/10">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               </div>
-              <h3 className="text-xl font-black uppercase tracking-tight">Re-open Action Item</h3>
-              <p className="text-indigo-100 text-xs font-medium mt-1">Please provide a reason for re-opening this task.</p>
+              <h3 className="text-lg font-extrabold tracking-tight">Re-open Action Item</h3>
+              <p className="text-slate-300 text-xs font-medium mt-1">Please provide a reason for re-opening this task.</p>
             </div>
             <div className="p-6">
-              <div className="bg-gray-50 p-4 rounded-2xl mb-4 border border-gray-100">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Task Content</span>
-                <p className="text-sm text-gray-700 font-medium italic">"{reopenConfig.item.content}"</p>
+              <div className="bg-slate-50 p-4 rounded-xl mb-4 border border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Task Content</span>
+                <p className="text-sm text-slate-700 font-medium italic">"{reopenConfig.item.content}"</p>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Reason for Re-opening</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">Reason for Re-opening</label>
                 <textarea 
                   autoFocus
                   required
-                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition h-24 resize-none text-sm"
+                  className="office-input !bg-slate-50"
+                  style={{ height: 96, resize: 'none' }}
                   placeholder="Explain why this task needs further attention..."
                   value={reopenReason}
                   onChange={e => setReopenReason(e.target.value)}
@@ -819,7 +1155,8 @@ const MeetingPage = () => {
                     setReopenConfig(null);
                     setReopenReason("");
                   }}
-                  className="flex-1 px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition"
+                  className="office-button-secondary"
+                  style={{ flex: 1 }}
                 >
                   Cancel
                 </button>
@@ -838,7 +1175,8 @@ const MeetingPage = () => {
                       console.error("Failed to re-open item", err);
                     }
                   }}
-                  className="flex-1 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
+                  className="office-button-primary"
+                  style={{ flex: 1 }}
                 >
                   Re-open Task
                 </button>
@@ -852,7 +1190,7 @@ const MeetingPage = () => {
 };
 
 const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManager: boolean }) => {
-  const { user } = useAuth();
+  const { user, isAdmin, isHR } = useAuth();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; comment: any } | null>(null);
 
   useEffect(() => {
@@ -863,7 +1201,13 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
 
   const handleContextMenu = (e: React.MouseEvent, comment: any) => {
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, comment });
+    const container = e.currentTarget.closest('.space-y-4');
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      setContextMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top, comment });
+    } else {
+      setContextMenu({ x: e.clientX, y: e.clientY, comment });
+    }
   };
 
   const { data: comments, isLoading } = useGetMeetingCommentsQuery(meetingId);
@@ -907,7 +1251,12 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
     const name = comment.commentType === 'MANAGER' ? comment.managerName : comment.employeeName;
     setReplyingToId(comment.id);
     setReplyTarget({ id: comment.id, name, text: comment.comment });
-    setTimeout(() => mainInputRef.current?.focus(), 50);
+    setTimeout(() => {
+      if (mainInputRef.current) {
+        mainInputRef.current.focus({ preventScroll: true });
+        mainInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 50);
   };
 
   const handleUpdateComment = async (commentId: number) => {
@@ -927,13 +1276,13 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
     } catch (err) { console.error("Failed to delete comment", err); }
   };
 
-  if (isLoading) return <div style={{ marginTop: 16, fontSize: 11, color: '#9EA3B0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fetching discussions…</div>;
+  if (isLoading) return <div style={{ marginTop: 16, fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '1px' }}>Fetching discussions…</div>;
 
   const sortedComments = [...(comments || [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   return (
-    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '0.5px solid #E4E6EC' }} className="space-y-4">
-      <div className="space-y-4">
+    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #F1F5F9', position: 'relative' }} className="space-y-4">
+      <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
         {sortedComments.length > 0 ? (
           sortedComments.map((comment, index) => {
             const currentDate = comment.createdAt ? format(new Date(comment.createdAt), 'yyyy-MM-dd') : '';
@@ -942,8 +1291,8 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
             return (
               <React.Fragment key={comment.id}>
                 {isNewDay && (
-                  <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-                    <span style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC', borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 500, color: '#9EA3B0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0' }}>
+                    <span className="px-3 py-1 bg-slate-100 border border-slate-200/60 rounded-full text-[10px] font-bold text-slate-500">
                       {format(new Date(comment.createdAt), 'dd/MM/yyyy')}
                     </span>
                   </div>
@@ -958,39 +1307,41 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
             );
           })
         ) : (
-          <div style={{ padding: '20px', textAlign: 'center', border: '2px dashed #E4E6EC', borderRadius: 8 }}>
-            <p style={{ fontSize: 11, color: '#9EA3B0' }}>No conversation yet. Be the first to comment.</p>
+          <div style={{ padding: '24px', textAlign: 'center', border: '2px dashed #E2E8F0', borderRadius: 16 }}>
+            <p style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>No conversation yet. Be the first to share your thoughts.</p>
           </div>
         )}
       </div>
 
       {contextMenu && (
-        <div style={{ position: 'fixed', zIndex: 1000, width: 176, background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '4px 0', top: contextMenu.y, left: contextMenu.x }}
+        <div style={{ position: 'absolute', zIndex: 1000, width: 176, background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '6px 0', top: contextMenu.y, left: contextMenu.x }}
+          className="shadow-xl"
           onClick={(e) => e.stopPropagation()}>
           {[
-            { label: 'Reply', onClick: () => { startReply(contextMenu.comment); setContextMenu(null); }, color: '#111827', iconPath: 'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6', iconColor: '#1A56DB' },
-            { label: 'Copy Text', onClick: () => { navigator.clipboard.writeText(contextMenu.comment.comment); setContextMenu(null); }, color: '#111827', iconPath: 'M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3', iconColor: '#9EA3B0' },
+            { label: 'Reply', onClick: () => { startReply(contextMenu.comment); setContextMenu(null); }, color: '#0F172A', iconPath: 'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6', iconColor: '#4F46E5' },
+            { label: 'Copy Text', onClick: () => { navigator.clipboard.writeText(contextMenu.comment.comment); setContextMenu(null); }, color: '#0F172A', iconPath: 'M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3', iconColor: '#64748B' },
           ].map(item => (
             <button key={item.label} onClick={item.onClick}
-              style={{ width: '100%', padding: '8px 14px', textAlign: 'left', fontSize: 13, color: item.color, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
-              className="hover:bg-[#F5F6F8] transition-colors">
+              style={{ width: '100%', padding: '8px 14px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: item.color, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
+              className="hover:bg-slate-50 transition-colors">
               <svg style={{ width: 14, height: 14, color: item.iconColor }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.iconPath} /></svg>
               {item.label}
             </button>
           ))}
           {((isManager && contextMenu.comment.commentType === 'MANAGER' && contextMenu.comment.managerId === user?.id) ||
-            (!isManager && contextMenu.comment.commentType === 'EMPLOYEE' && contextMenu.comment.employeeId === user?.id)) && (
+            (!isManager && contextMenu.comment.commentType === 'EMPLOYEE' && contextMenu.comment.employeeId === user?.id) ||
+            isAdmin || isHR) && (
             <>
-              <div style={{ height: '0.5px', background: '#E4E6EC', margin: '2px 0' }} />
+              <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
               <button onClick={() => { setEditingCommentId(contextMenu.comment.id); setEditCommentText(contextMenu.comment.comment); setContextMenu(null); }}
-                style={{ width: '100%', padding: '8px 14px', textAlign: 'left', fontSize: 13, color: '#111827', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
-                className="hover:bg-[#F5F6F8] transition-colors">
-                <svg style={{ width: 14, height: 14, color: '#1A56DB' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                style={{ width: '100%', padding: '8px 14px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#0F172A', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
+                className="hover:bg-slate-50 transition-colors">
+                <svg style={{ width: 14, height: 14, color: '#4F46E5' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 Edit
               </button>
               <button onClick={() => { setCommentToDelete(contextMenu.comment.id); setContextMenu(null); }}
-                style={{ width: '100%', padding: '8px 14px', textAlign: 'left', fontSize: 13, color: '#791F1F', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
-                className="hover:bg-[#FCEBEB] transition-colors">
+                style={{ width: '100%', padding: '8px 14px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
+                className="hover:bg-rose-50 transition-colors">
                 <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 Delete
               </button>
@@ -1000,37 +1351,39 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
       )}
 
       {/* Input */}
-      <div style={{ borderTop: '0.5px solid #E4E6EC', paddingTop: 14 }}>
+      <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 16 }}>
         {replyTarget && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, background: '#EEF3FD', border: '0.5px solid #B5D4F4', borderLeft: '2px solid #1A56DB', borderRadius: 8, padding: '6px 10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, background: '#EEF2FF', border: '1px solid #C7D2FE', borderLeft: '3px solid #4F46E5', borderRadius: 10, padding: '8px 12px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#0C447C', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 2 }}>{replyTarget.name}</p>
-              <p style={{ fontSize: 11, color: '#5A6070', fontStyle: 'italic' }} className="truncate">{replyTarget.text}</p>
+              <p style={{ fontSize: 10, fontWeight: 800, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>{replyTarget.name}</p>
+              <p style={{ fontSize: 12, color: '#475569', fontStyle: 'italic' }} className="truncate">{replyTarget.text}</p>
             </div>
             <button onClick={() => { setReplyingToId(null); setReplyTarget(null); }}
-              style={{ width: 18, height: 18, borderRadius: '50%', background: '#E4E6EC', color: '#5A6070', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              className="hover:bg-slate-200 transition-colors"
+              style={{ width: 18, height: 18, borderRadius: '50%', background: '#E2E8F0', color: '#475569', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg style={{ width: 10, height: 10 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
         )}
-        <form onSubmit={handleComment} style={{ display: 'flex', gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 6, background: '#EEF3FD', color: '#1A56DB', border: '0.5px solid #B5D4F4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+        <form onSubmit={handleComment} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="office-avatar-circle bg-indigo-50 text-indigo-600 border border-indigo-100" style={{ width: 28, height: 28, borderRadius: 8, fontSize: 11 }}>
             {user?.staffName?.charAt(0) || '?'}
           </div>
-          <div className="flex-1 flex gap-2">
+          <div style={{ flex: 1, display: 'flex', gap: 6, background: '#F1F5F9', borderRadius: 24, padding: '3px 6px 3px 14px', alignItems: 'center', border: '1px solid #E2E8F0' }}>
             <input
               ref={mainInputRef}
-              className="flex-1 px-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
+              style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: 13, height: 32, padding: 0 }}
               placeholder={replyTarget ? `Replying to ${replyTarget.name}...` : "Add to the conversation..."}
+              maxLength={2000}
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
             />
             <button 
               type="submit"
               disabled={isCommenting || !newComment.trim()}
-              className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 disabled:opacity-50"
+              style={{ background: '#6366F1', color: '#FFFFFF', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isCommenting || !newComment.trim() ? 'not-allowed' : 'pointer', opacity: isCommenting || !newComment.trim() ? 0.5 : 1, transition: 'all 0.2s', flexShrink: 0 }}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
             </button>
           </div>
         </form>
@@ -1038,16 +1391,16 @@ const MeetingComments = ({ meetingId, isManager }: { meetingId: number; isManage
 
       {/* Delete Comment Modal */}
       {commentToDelete && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: 16 }}>
-          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, width: '100%', maxWidth: 340, padding: 24, textAlign: 'center' }}>
-            <div style={{ width: 48, height: 48, borderRadius: 8, background: '#FCEBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <svg style={{ width: 22, height: 22, color: '#791F1F' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
+          <div className="office-panel animate-in zoom-in-95 duration-200" style={{ width: '100%', maxWidth: 360, padding: 24, textAlign: 'center', margin: 'auto' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '1px solid #FEE2E2' }}>
+              <svg style={{ width: 22, height: 22, color: '#EF4444' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginBottom: 6 }}>Delete Comment?</h3>
-            <p style={{ fontSize: 12, color: '#9EA3B0', marginBottom: 20 }}>This thread path will be removed permanently.</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setCommentToDelete(null)} style={{ flex: 1, padding: '9px', background: '#F5F6F8', color: '#5A6070', border: '0.5px solid #E4E6EC', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleDeleteComment} style={{ flex: 1, padding: '9px', background: '#791F1F', color: '#FFFFFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Delete</button>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 8, letterSpacing: '-0.2px' }}>Delete Comment?</h3>
+            <p style={{ fontSize: 13, color: '#64748B', marginBottom: 24, lineHeight: '1.5' }}>This reply and any sub-threads will be deleted permanently.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setCommentToDelete(null)} className="office-button-secondary" style={{ flex: 1 }}>Cancel</button>
+              <button onClick={handleDeleteComment} className="office-button-danger" style={{ flex: 1 }}>Delete</button>
             </div>
           </div>
         </div>

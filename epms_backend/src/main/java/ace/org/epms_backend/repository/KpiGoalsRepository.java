@@ -1,5 +1,6 @@
 package ace.org.epms_backend.repository;
 
+import ace.org.epms_backend.enums.KpiGoalStatus;
 import ace.org.epms_backend.model.kpi.KpiGoals;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,12 +15,15 @@ import java.util.Optional;
 public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
         // Optional<KpiGoals> findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(Long
         // employeeId, Long cycleId);
-        @Query("SELECT k FROM KpiGoals k WHERE k.employee.id = :employeeId AND k.cycle.cycleId = :cycleId AND k.isCurrent = true")
+        @Query("SELECT k FROM KpiGoals k WHERE k.employee.id = :employeeId AND k.cycle.cycleId = :cycleId AND k.isCurrent = true " +
+                        "AND (k.status IS NULL OR k.status <> ace.org.epms_backend.enums.KpiGoalStatus.ARCHIVED)")
         Optional<KpiGoals> findByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
                         @Param("employeeId") Long employeeId,
                         @Param("cycleId") Long cycleId);
 
-        @Query("SELECT k FROM KpiGoals k WHERE k.employee.id = :employeeId AND k.cycle.cycleId = :cycleId AND k.isCurrent = true ORDER BY k.createdAt DESC")
+        @Query("SELECT k FROM KpiGoals k WHERE k.employee.id = :employeeId AND k.cycle.cycleId = :cycleId AND k.isCurrent = true " +
+                        "AND (k.status IS NULL OR k.status <> ace.org.epms_backend.enums.KpiGoalStatus.ARCHIVED) " +
+                        "ORDER BY k.createdAt DESC")
         List<KpiGoals> findAllByEmployeeIdAndAppraisalCycleIdAndIsCurrentTrue(
                         @Param("employeeId") Long employeeId,
                         @Param("cycleId") Long cycleId);
@@ -34,7 +38,8 @@ public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
                         "    AND ed.currentDepartment.id = :departmentId " +
                         "    AND ed.isCurrent = true" +
                         ")) " +
-                        "AND k.isCurrent = true")
+                        "AND k.isCurrent = true " +
+                        "AND (k.status IS NULL OR k.status <> ace.org.epms_backend.enums.KpiGoalStatus.ARCHIVED)")
         List<KpiGoals> findByCycleAndDepartment(@Param("cycleId") Long cycleId,
                         @Param("departmentId") Long departmentId);
 
@@ -54,7 +59,8 @@ public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
         @Query("SELECT k FROM KpiGoals k WHERE (k.manager.id = :managerId OR k.employee.id IN " +
                         "(SELECT rl.employee.id FROM ReportingLine rl WHERE rl.manager.id = :managerId AND rl.isActive = true)) "
                         +
-                        "AND k.cycle.cycleId = :cycleId AND k.isCurrent = true")
+                        "AND k.cycle.cycleId = :cycleId AND k.isCurrent = true " +
+                        "AND (k.status IS NULL OR k.status <> ace.org.epms_backend.enums.KpiGoalStatus.ARCHIVED)")
         List<KpiGoals> findTeamGoals(@Param("managerId") Long managerId, @Param("cycleId") Long cycleId);
 
         // @Query("SELECT k FROM KpiGoals k WHERE k.employee.id IN "+"(SELECT
@@ -80,6 +86,8 @@ public interface KpiGoalsRepository extends JpaRepository<KpiGoals, Long> {
         @Query("UPDATE KpiGoals g SET g.isCurrent = false, g.status = 'ARCHIVED' " +
                         "WHERE g.employee.id = :employeeId AND g.cycle.cycleId = :cycleId AND g.isCurrent = true AND g.status = 'DRAFT'")
         void archiveExistingGoalSets(@Param("employeeId") Long employeeId, @Param("cycleId") Long cycleId);
+
+        List<KpiGoals> findByCycle_CycleIdAndStatusInAndIsCurrentTrue(@Param("cycleId") Long cycleId, @Param("statuses") List<KpiGoalStatus> statuses);
 
         @Query("SELECT k FROM KpiGoals k WHERE k.employee.id IN " +
                         "(SELECT ed.employee.id FROM EmployeeDepartment ed WHERE ed.currentDepartment.id = :departmentId AND ed.isCurrent = true) "

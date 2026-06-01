@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -22,10 +23,9 @@ public class EmployeeController {
 
     @PostMapping("/set-password")
     public ResponseEntity<ApiResponse<?>> setPassword(
-            @RequestParam String token,
             @Valid @RequestBody SetPasswordRequest request
     ){
-        employeeService.setPassword(token,request.getPassword());
+        employeeService.setPassword(request.getToken(), request.getPassword());
         return ResponseEntity
                 .ok(ApiResponse.success());
     }
@@ -36,6 +36,18 @@ public class EmployeeController {
     ) {
         EmployeeResponse response = employeeService.createEmployee(request);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<ApiResponse<EmployeeImportResult>> importEmployees(
+            @RequestParam("file") MultipartFile file
+    ) throws IOException {
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.toLowerCase().endsWith(".xlsx")) {
+            throw new IllegalArgumentException("Invalid file format. Only .xlsx files are supported.");
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(employeeService.importEmployees(file)));
     }
 
     @GetMapping("/{id}")

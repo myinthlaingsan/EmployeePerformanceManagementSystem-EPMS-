@@ -269,13 +269,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
 
         // 2. MANAGER / SUPERIOR
         if (rank == 4) {
-            // L01-L03 evaluates L04 Head (Global Shuffle/Rotation)
-            Employee rotationEval = evaluatorRotationService.assignTopManagementEvaluator(target.getId(), cycleId, previousCycleId);
-            if (rotationEval != null) {
-                handleRequest(cycle, target, rotationEval, FeedbackRelationship.DIRECT_MANAGER, false, workloadMap, globalMaxLimit, persist, previewResults, true, managerForm);
-            } else {
-                assignManager(cycle, target, workloadMap, globalMaxLimit, persist, previewResults, true, managerForm);
-            }
+            // L04 Heads currently have no manager feedback (L01-L03 evaluators removed)
         } else {
             // L05, L06, L07 Superiors must be in SAME DEPARTMENT
             assignManager(cycle, target, workloadMap, globalMaxLimit, persist, previewResults, true, managerForm);
@@ -397,6 +391,10 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
 
     private boolean isEligibleEvaluator(Employee e) {
         if (e == null) return false;
+        
+        // Exclude Lv 8 and above from being evaluators
+        if (getLevelRank(e) >= 8) return false;
+
         return Boolean.TRUE.equals(e.getIsActive())
                 && e.getStatus() != ace.org.epms_backend.enums.EmployeeStatus.RESIGNED
                 && e.getStatus() != ace.org.epms_backend.enums.EmployeeStatus.LONG_TERM_LEAVE
@@ -498,9 +496,11 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     .targetUserId(target.getId())
                     .targetUserName(target.getStaffName())
                     .targetDepartmentName(targetDept)
+                    .targetLevelCode(target.getLevel() != null ? target.getLevel().getLevelCode() : "N/A")
                     .evaluatorId(evaluator.getId())
                     .evaluatorName(evaluator.getStaffName())
                     .evaluatorDepartmentName(evalDept)
+                    .evaluatorLevelCode(evaluator.getLevel() != null ? evaluator.getLevel().getLevelCode() : "N/A")
                     .relationship(rel)
                     .status(FeedbackStatus.PENDING)
                     .isAnonymous(anon)
@@ -635,6 +635,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
     @Override
     public List<FeedbackRequestResponse> getMyRequests(Long evaluatorId) {
         return requestRepository.findByEvaluatorId(evaluatorId).stream()
+                .filter(r -> r.getCycle() != null && Boolean.TRUE.equals(r.getCycle().getIsActive()))
                 .map(feedbackMapper::toRequestResponse)
                 .collect(Collectors.toList());
     }
@@ -742,14 +743,19 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                 && req.getStatus() != FeedbackStatus.CANCELLED
                 && req.getDueDate().isBefore(java.time.Instant.now());
 
+        String targetLevel = req.getTargetUser().getLevel() != null ? req.getTargetUser().getLevel().getLevelCode() : "N/A";
+        String evalLevel = mask ? null : (req.getEvaluator().getLevel() != null ? req.getEvaluator().getLevel().getLevelCode() : "N/A");
+
         return FeedbackRequestResponse.builder()
                 .id(req.getId())
                 .targetUserId(req.getTargetUser().getId())
                 .targetUserName(req.getTargetUser().getStaffName())
                 .targetDepartmentName(targetDept)
+                .targetLevelCode(targetLevel)
                 .evaluatorId(mask ? null : req.getEvaluator().getId())
                 .evaluatorName(mask ? "Anonymous" : req.getEvaluator().getStaffName())
                 .evaluatorDepartmentName(evalDept)
+                .evaluatorLevelCode(evalLevel)
                 .cycleId(req.getCycle().getCycleId())
                 .relationship(req.getRelationship())
                 .status(req.getStatus())

@@ -36,7 +36,29 @@ public interface OneOnOneMeetingRepository extends JpaRepository<OneOnOneMeeting
             "AND (m.manager.id = :currentUserId OR (m.status = 'PUBLISHED' AND m.employee.id = :currentUserId))")
     Page<OneOnOneMeeting> findAllVisibleMeetings(@Param("currentUserId") Long currentUserId, @Param("status") ace.org.epms_backend.enums.ContinuousStatus status, Pageable pageable);
 
+    @Query("SELECT m FROM OneOnOneMeeting m WHERE " +
+            "(:status IS NULL OR m.status = :status) " +
+            "AND (m.manager.id = :currentUserId " +
+            "  OR m.manager.id IN :subordinateManagerIds " +
+            "  OR (m.status = 'PUBLISHED' AND m.employee.id = :currentUserId))")
+    Page<OneOnOneMeeting> findAllVisibleMeetingsWithChain(
+            @Param("currentUserId") Long currentUserId,
+            @Param("subordinateManagerIds") java.util.Set<Long> subordinateManagerIds,
+            @Param("status") ace.org.epms_backend.enums.ContinuousStatus status,
+            Pageable pageable);
+
     long countByEmployee_IdAndStatus(Long employeeId, ace.org.epms_backend.enums.ContinuousStatus status);
 
     long countByManager_IdAndStatus(Long managerId, ace.org.epms_backend.enums.ContinuousStatus status);
+
+    /**
+     * Find all PUBLISHED meetings whose follow-up date has passed (strictly before today).
+     * Used by the daily overdue notification scheduler.
+     */
+    @Query("SELECT m FROM OneOnOneMeeting m " +
+            "WHERE m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED " +
+            "AND m.followUpDate IS NOT NULL " +
+            "AND m.followUpDate < :today")
+    java.util.List<OneOnOneMeeting> findPublishedMeetingsWithOverdueFollowUp(
+            @Param("today") java.time.LocalDate today);
 }

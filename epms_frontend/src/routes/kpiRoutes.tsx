@@ -7,6 +7,7 @@ import GoalManagement from "../pages/kpi/GoalManagement";
 import GoalDetail from "../pages/kpi/GoalDetail";
 import GoalAssignmentWorkspace from "../pages/kpi/GoalAssignmentWorkspace";
 import EmployeeKpiHistory from "../pages/kpi/EmployeeKpiHistory";
+import OrgKpiHistory from "../pages/kpi/OrgKpiHistory";
 
 
 export const kpiRoutes = [
@@ -21,4 +22,5 @@ export const kpiRoutes = [
   { path: "/kpi/assign/:employeeId", element: <GoalAssignmentWorkspace /> },
   { path: "/kpi/goals/:employeeId", element: <GoalDetail /> },
   { path: "/kpi/history/:employeeId", element: <EmployeeKpiHistory /> },
+  { path: "/kpi/org-history", element: <OrgKpiHistory /> },
 ];

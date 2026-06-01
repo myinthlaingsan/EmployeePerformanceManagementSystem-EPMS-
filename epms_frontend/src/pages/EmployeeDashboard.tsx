@@ -5,6 +5,9 @@ import {
 } from 'recharts';
 import { Trophy, Target, Clock, ClipboardList, MessageSquare, AlertTriangle, TrendingUp } from 'lucide-react';
 import { useGetEmployeeDashboardQuery } from '../features/dashboard/dashboardApi';
+import { useDownloadReportMutation } from '../features/report/reportApi';
+import { useAuth } from '../hooks/useAuth';
+import { toast } from 'react-toastify';
 import DashboardStatCard from '../components/dashboard/DashboardStatCard';
 import ChartCard from '../components/dashboard/ChartCard';
 import TaskPanel from '../components/dashboard/TaskPanel';
@@ -13,6 +16,22 @@ const COLORS = ['#1A56DB', '#E4E6EC'];
 
 const EmployeeDashboard: React.FC = () => {
   const { data, isLoading, error } = useGetEmployeeDashboardQuery();
+  const { user } = useAuth();
+  const [downloadReport] = useDownloadReportMutation();
+
+  const handleDownload = async (format: 'pdf' | 'excel') => {
+    if (!user?.id) return;
+    try {
+      await downloadReport({
+        endpoint: 'performance-trend',
+        params: { employeeId: user.id, format },
+        fileName: `Performance_Trend_${user.id}.${format === 'excel' ? 'xlsx' : 'pdf'}`,
+      }).unwrap();
+      toast.success(`Downloading performance trend as ${format.toUpperCase()}...`);
+    } catch (err) {
+      toast.error('Failed to download performance trend.');
+    }
+  };
 
   if (isLoading) return <div className="py-16 text-center" style={{ color: "#9EA3B0", fontSize: 13 }}>Loading your performance metrics…</div>;
   if (error) return <div className="py-16 text-center" style={{ color: "#791F1F", fontSize: 13 }}>Error loading dashboard.</div>;
@@ -35,7 +54,31 @@ const EmployeeDashboard: React.FC = () => {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <ChartCard title="Performance trend">
+          <ChartCard 
+            title="Performance trend"
+            action={
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleDownload('pdf')}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px',
+                    background: '#EEF3FD', color: '#1A56DB', border: '0.5px solid #1A56DB', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  <ClipboardList size={11} /> PDF
+                </button>
+                <button
+                  onClick={() => handleDownload('excel')}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px',
+                    background: '#ECFDF3', color: '#027A48', border: '0.5px solid #027A48', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  <ClipboardList size={11} /> Excel
+                </button>
+              </div>
+            }
+          >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data?.performanceTrend}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F2F6" />

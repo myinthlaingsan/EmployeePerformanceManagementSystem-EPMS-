@@ -72,9 +72,13 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
   const uniqueFeedbacksPerMonth = new Map<string, Set<number>>();
 
   history.forEach(h => {
-    const date = new Date(h.createdAt);
-    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-    const monthData = chartData.find(m => m.month === date.getMonth() && m.year === date.getFullYear());
+    if (!h.createdAt) return;
+    const datePart = h.createdAt.split('T')[0];
+    const [yStr, mStr] = datePart.split('-');
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10) - 1;
+    const monthKey = `${year}-${month}`;
+    const monthData = chartData.find(m => m.month === month && m.year === year);
     
     if (monthData) {
       if (h.sourceType === 'MEETING') {
@@ -100,16 +104,36 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
     }
   });
 
+  // Current-month slot used as a fallback bucket for undated items
+  const currentMonthSlot = chartData.length > 0 ? chartData[chartData.length - 1] : null;
+
   actionItems.forEach(ai => {
-    const assignedDate = ai.assignedAt ? new Date(ai.assignedAt) : null;
-    if (assignedDate) {
-      const monthData = chartData.find(m => m.month === assignedDate.getMonth() && m.year === assignedDate.getFullYear());
-      if (monthData) monthData.totalActionItems++;
+    if (ai.dueDate) {
+      const [yStr, mStr] = ai.dueDate.split('-');
+      const year = parseInt(yStr, 10);
+      const month = parseInt(mStr, 10) - 1;
+      const monthData = chartData.find(m => m.month === month && m.year === year);
+      if (monthData) {
+        monthData.totalActionItems++;
+      } else if (currentMonthSlot) {
+        // Due date is outside the chart time range — still count it in current month
+        currentMonthSlot.totalActionItems++;
+      }
+    } else if (currentMonthSlot) {
+      // No due date set — bucket in current month so it isn't silently lost
+      currentMonthSlot.totalActionItems++;
     }
     if (ai.status === 'DONE' && ai.completedAt) {
-      const completedDate = new Date(ai.completedAt);
-      const monthData = chartData.find(m => m.month === completedDate.getMonth() && m.year === completedDate.getFullYear());
-      if (monthData) monthData.actionItemsCompleted++;
+      const datePart = ai.completedAt.split('T')[0];
+      const [yStr, mStr] = datePart.split('-');
+      const year = parseInt(yStr, 10);
+      const month = parseInt(mStr, 10) - 1;
+      const monthData = chartData.find(m => m.month === month && m.year === year);
+      if (monthData) {
+        monthData.actionItemsCompleted++;
+      } else if (currentMonthSlot) {
+        currentMonthSlot.actionItemsCompleted++;
+      }
     }
   });
 
@@ -255,6 +279,7 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
                   ) : (
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-3 justify-between"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" /> Meetings</div><span className="font-black">{m.meetings}</span></div>
+                      <div className="flex items-center gap-3 justify-between"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-400" /> Total Tasks</div><span className="font-black">{m.totalActionItems}</span></div>
                       <div className="flex items-center gap-3 justify-between"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /> Tasks Done</div><span className="font-black">{m.actionItemsCompleted}</span></div>
                     </div>
                   )}
@@ -456,7 +481,7 @@ const CombinedStats = ({ history, meetingTotal, meetingCompleted, employeeName, 
 const ManagerialActivityChart = ({ history, managerName, managerId, timeRange, onTimeRangeChange, filterType }: { history: any[], managerName: string, managerId: number, timeRange: number, onTimeRangeChange: (val: number) => void, filterType: string }) => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const now = new Date();
-  const chartData = [];
+  const chartData: { name: string; month: number; year: number; praise: number; improvement: number; correction: number; meetings: number }[] = [];
   
   for (let i = timeRange - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -699,16 +724,27 @@ export const PerformanceHistoryAdminPage = () => {
 
   const [selectedDeptId, setSelectedDeptId] = useState<number | ''>('');
   const [selectedEmpId, setSelectedEmpId] = useState<number | ''>('');
+  const [managerPerspective, setManagerPerspective] = useState<'conducted' | 'received'>('conducted');
   const [filterType, setFilterType] = useState<'ALL' | 'FEEDBACK' | 'MEETING'>('ALL');
   const [managerTimeRange, setManagerTimeRange] = useState(6);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+
+  const selectedEmployee = employees?.find(e => e.id === selectedEmpId);
+  const selectedEmployeeName = selectedEmployee?.staffName;
+  const isManagerSelected = selectedEmployee?.roles?.some(r => r.replace("ROLE_", "") === 'MANAGER');
+
+  // Compute perspective dynamically based on selected employee and active manager perspective
+  const auditPerspective = (selectedEmpId && isManagerSelected)
+    ? (managerPerspective === 'conducted' ? 'given' : 'received')
+    : (selectedEmpId ? 'received' : 'all');
 
   // Data Fetching
   const { data: employeeHistoryResponse, isLoading: isEmpHistoryLoading } = useGetPerformanceHistoryByEmployeeQuery(
     { 
       employeeId: Number(selectedEmpId), 
       sourceType: filterType,
+      isConducted: auditPerspective === 'given' ? true : (auditPerspective === 'received' ? false : undefined),
       page: currentPage - 1, 
       size: itemsPerPage 
     }, 
@@ -750,13 +786,39 @@ export const PerformanceHistoryAdminPage = () => {
     return [...baseHistory].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [analyticsData, meetingPulseData, selectedEmpId]);
 
+  const receivedAnalyticsData = useMemo(() => {
+    if (!selectedEmpId || !analyticsData) return [];
+    return analyticsData.filter(h => h.employeeId === Number(selectedEmpId));
+  }, [analyticsData, selectedEmpId]);
+
+  // analyticsData includes all roles (employee.id, manager.id, performer.id, createdBy)
+  // via findLatestStateByEmployee. Filtering to MEETING + employeeId gives meetings
+  // where the selected manager is the EMPLOYEE (received side).
+  // meetingPulseData.meetingHistory only has performer-side history for managers.
+  const receivedMeetingHistory = useMemo(() => {
+    if (!selectedEmpId || !analyticsData) return [];
+    return analyticsData.filter((h: any) =>
+      h.sourceType === 'MEETING' && h.employeeId === Number(selectedEmpId)
+    );
+  }, [analyticsData, selectedEmpId]);
+
+  const receivedActionItems = useMemo(() => {
+    if (!selectedEmpId || !meetingPulseData?.actionItems) return [];
+    return meetingPulseData.actionItems.filter((ai: any) => ai.assignedToId === Number(selectedEmpId));
+  }, [meetingPulseData, selectedEmpId]);
+
+  // Action items from meetings the manager CONDUCTED — assigned to their subordinates
+  const conductedActionItems = useMemo(() => {
+    if (!selectedEmpId || !meetingPulseData?.actionItems) return [];
+    return meetingPulseData.actionItems.filter((ai: any) => ai.assignedToId !== Number(selectedEmpId));
+  }, [meetingPulseData, selectedEmpId]);
+
   const history = historyResponse?.content || [];
   const totalItems = historyResponse?.totalElements || 0;
   const totalPages = historyResponse?.totalPages || 0;
 
-  const selectedEmployee = employees?.find(e => e.id === selectedEmpId);
-  const selectedEmployeeName = selectedEmployee?.staffName;
-  const isManagerSelected = selectedEmployee?.roles?.some(r => r.replace("ROLE_", "") === 'MANAGER');
+  // History shown in table is exactly the fetched and filtered history from server
+  const filteredAuditHistory = history;
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
@@ -764,13 +826,10 @@ export const PerformanceHistoryAdminPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-gray-900 text-white px-6 py-2 rounded-2xl flex items-center gap-3 shadow-lg">
-         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Admin Mode: Organizational Oversight</span>
-      </div>
+
 
       <header className="flex flex-col gap-2">
-        <h1 className="text-4xl font-black text-gray-900 tracking-tight">The Global Pulse</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.3px' }}>The Global Pulse</h1>
         <p className="text-gray-500 font-medium">Real-time organizational performance & feedback health.</p>
       </header>
 
@@ -778,21 +837,86 @@ export const PerformanceHistoryAdminPage = () => {
       {(analyticsData || meetingPulseData) && (
         <div className="space-y-6">
           {isManagerSelected && selectedEmpId ? (
-            /* Manager-Specific View */
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-700">
-              <div className="lg:col-span-2">
-                <ManagerialActivityChart 
-                  history={managerChartHistory}
-                  managerName={selectedEmployeeName || ''}
-                  managerId={Number(selectedEmpId)}
-                  timeRange={managerTimeRange}
-                  onTimeRangeChange={setManagerTimeRange}
-                  filterType={filterType}
-                />
+            /* Manager-Specific Toggleable View */
+            <div className="space-y-4">
+              <div className="bg-white border border-gray-200/80 rounded-2xl p-1.5 flex gap-2 w-fit shadow-sm">
+                <button
+                  onClick={() => setManagerPerspective('conducted')}
+                  className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                    managerPerspective === 'conducted'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  Conducted Activities (Given)
+                </button>
+                <button
+                  onClick={() => setManagerPerspective('received')}
+                  className={`px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all duration-300 ${
+                    managerPerspective === 'received'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  Individual Performance (Received)
+                </button>
               </div>
-              <div className="lg:col-span-1">
-                <ManagerActionStats history={managerChartHistory} managerId={Number(selectedEmpId)} filterType={filterType} />
-              </div>
+
+              {managerPerspective === 'conducted' ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-700">
+                  <div className="lg:col-span-2">
+                    <ManagerialActivityChart 
+                      history={managerChartHistory}
+                      managerName={selectedEmployeeName || ''}
+                      managerId={Number(selectedEmpId)}
+                      timeRange={managerTimeRange}
+                      onTimeRangeChange={setManagerTimeRange}
+                      filterType={filterType}
+                    />
+                  </div>
+                  <div className="lg:col-span-1 flex flex-col gap-4">
+                    <ManagerActionStats history={managerChartHistory} managerId={Number(selectedEmpId)} filterType={filterType} />
+                    {(filterType === 'ALL' || filterType === 'MEETING') && (
+                      <MeetingStats
+                        total={conductedActionItems.length}
+                        completed={conductedActionItems.filter((ai: any) => ai.status === 'DONE').length}
+                        isManagerView={true}
+                        employeeName={selectedEmployeeName}
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-700">
+                  <div className="lg:col-span-1">
+                    {filterType === 'ALL' ? (
+                      <CombinedStats
+                        history={receivedAnalyticsData}
+                        meetingTotal={receivedActionItems.length}
+                        meetingCompleted={receivedActionItems.filter((ai: any) => ai.status === 'DONE').length}
+                        employeeName={selectedEmployeeName}
+                      />
+                    ) : filterType === 'FEEDBACK' ? (
+                      <AdminStats history={receivedAnalyticsData} employeeName={selectedEmployeeName} />
+                    ) : (
+                      <MeetingStats
+                        total={receivedActionItems.length}
+                        completed={receivedActionItems.filter((ai: any) => ai.status === 'DONE').length}
+                        isManagerView={false}
+                        employeeName={selectedEmployeeName}
+                      />
+                    )}
+                  </div>
+                  <div className="lg:col-span-2">
+                    <SentimentChart 
+                      history={filterType === 'MEETING' ? receivedMeetingHistory : receivedAnalyticsData} 
+                      employeeName={selectedEmployeeName} 
+                      filterType={filterType}
+                      actionItems={receivedActionItems}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             /* Standard Employee/Global View */
@@ -856,6 +980,7 @@ export const PerformanceHistoryAdminPage = () => {
               setSelectedEmpId(e.target.value === '' ? '' : Number(e.target.value));
               setCurrentPage(1);
               setManagerTimeRange(6);
+              setManagerPerspective('conducted');
             }}
           >
             <option value="">All Employees</option>
@@ -875,14 +1000,14 @@ export const PerformanceHistoryAdminPage = () => {
 
       {/* Audit Log Table */}
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 relative min-h-[500px] flex flex-col">
-        <div className="flex justify-between items-center mb-8">
+        {/* Header */}
+        <div className="flex flex-col gap-4 mb-8">
           <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Audit Log / Transparent History</h2>
-          <button className="px-6 py-2 bg-gray-50 text-gray-600 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-100 border border-gray-100">Export CSV</button>
         </div>
 
         {isHistoryLoading ? (
           <div className="text-center py-20 text-gray-400 font-black uppercase animate-pulse">Analyzing Data...</div>
-        ) : history.length > 0 ? (
+        ) : filteredAuditHistory.length > 0 ? (
           <>
             <div className="flex-grow overflow-x-auto">
               <table className="w-full text-left">
@@ -890,28 +1015,48 @@ export const PerformanceHistoryAdminPage = () => {
                   <tr className="border-b border-gray-50">
                     <th className="pb-4 text-[10px] font-black text-gray-400 uppercase px-2">Timestamp</th>
                     <th className="pb-4 text-[10px] font-black text-gray-400 uppercase px-2">Participants</th>
+                    <th className="pb-4 text-[10px] font-black text-gray-400 uppercase px-2">Direction</th>
                     <th className="pb-4 text-[10px] font-black text-gray-400 uppercase px-2">Tag/Type</th>
                     <th className="pb-4 text-[10px] font-black text-gray-400 uppercase px-2">Metadata</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {history.map((record) => (
-                    <tr key={record.historyId} className="group hover:bg-gray-50/50 transition">
-                      <td className="py-4 px-2 text-[10px] font-bold text-gray-900">{format(new Date(record.createdAt), 'MMM d, p')}</td>
-                      <td className="py-4 px-2 text-xs font-black text-gray-900">{record.performerName} <span className="text-gray-400 font-bold block text-[10px]">to {record.employeeName}</span></td>
-                      <td className="py-4 px-2">
-                        <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase ${record.sourceType === 'FEEDBACK' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>{record.sourceType}</span>
-                        {record.feedbackType && <span className="block text-[7px] font-black text-gray-400 mt-1">{record.feedbackType}</span>}
-                      </td>
-                      <td className="py-4 px-2 text-[10px] text-gray-600 italic">"{record.description}"</td>
-                    </tr>
-                  ))}
+                  {filteredAuditHistory.map((record: any) => {
+                    const isGiven = !selectedEmpId || record.performerId === Number(selectedEmpId);
+                    return (
+                      <tr key={record.historyId} className="group hover:bg-gray-50/50 transition">
+                        <td className="py-4 px-2 text-[10px] font-bold text-gray-900 whitespace-nowrap">{format(new Date(record.createdAt), 'MMM d, p')}</td>
+                        <td className="py-4 px-2 text-xs font-black text-gray-900">
+                          {record.performerName}
+                          <span className="text-gray-400 font-bold block text-[10px]">to {record.employeeName}</span>
+                        </td>
+                        <td className="py-4 px-2">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase border ${
+                            isGiven
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          }`}>
+                            {isGiven
+                              ? <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                              : <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                            }
+                            {isGiven ? 'Given' : 'Received'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-2">
+                          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase ${record.sourceType === 'FEEDBACK' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>{record.sourceType}</span>
+                          {record.feedbackType && <span className="block text-[7px] font-black text-gray-400 mt-1">{record.feedbackType}</span>}
+                        </td>
+                        <td className="py-4 px-2 text-[10px] text-gray-600 italic max-w-xs truncate">"{record.description}"</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             <div className="mt-8 pt-4 border-t border-gray-50 flex items-center justify-between">
-              <span className="text-[10px] font-black text-gray-400 uppercase">Page {currentPage} of {totalPages}</span>
+              <span className="text-[10px] font-black text-gray-400 uppercase">Page {currentPage} of {totalPages} &nbsp;·&nbsp; {filteredAuditHistory.length} records shown</span>
               <div className="flex gap-2">
                 <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="p-2 disabled:opacity-30"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg></button>
                 <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 disabled:opacity-30"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg></button>
@@ -919,7 +1064,17 @@ export const PerformanceHistoryAdminPage = () => {
             </div>
           </>
         ) : (
-          <div className="text-center py-20 text-gray-400 font-black uppercase">No records found.</div>
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: auditPerspective === 'given' ? '#ECFDF5' : auditPerspective === 'received' ? '#EEF2FF' : '#F9FAFB' }}>
+              {auditPerspective === 'given'
+                ? <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                : auditPerspective === 'received'
+                ? <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                : <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+              }
+            </div>
+            <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">No {auditPerspective !== 'all' ? auditPerspective + ' ' : ''}records found.</span>
+          </div>
         )}
       </div>
     </div>
