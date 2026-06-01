@@ -30,6 +30,15 @@ public class KpiMidcycleController {
     public ResponseEntity<ApiResponse<Void>> finalizeCompositeScore(
             @PathVariable Long employeeId,
             @PathVariable Long cycleId) {
+        midcycleService.finalizeCompositeScore(employeeId, cycleId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping("/{employeeId}/{cycleId}/calculate")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> calculateCompositeScore(
+            @PathVariable Long employeeId,
+            @PathVariable Long cycleId) {
         midcycleService.calculateCompositeFinalScore(employeeId, cycleId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }

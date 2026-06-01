@@ -323,8 +323,14 @@ const KpiActualsReportModal: React.FC<KpiActualsReportModalProps> = ({ onClose }
                           return (
                             <tr key={row.employeeId} className="hover:bg-gray-50 transition-colors">
                               <td className="px-6 py-3.5 flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: avatar.bg, color: avatar.text }}>
-                                  {row.employeeName.charAt(0).toUpperCase()}
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 overflow-hidden" style={{ background: avatar.bg, color: avatar.text }}>
+                                  {(row as any).profileImage && (row as any).profileImage !== 'default.jpg' ? (
+                                    <img src={`http://localhost:8080${(row as any).profileImage}`} alt={row.employeeName}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                  ) : (
+                                    row.employeeName.charAt(0).toUpperCase()
+                                  )}
                                 </div>
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold text-gray-900 truncate">{row.employeeName}</p>

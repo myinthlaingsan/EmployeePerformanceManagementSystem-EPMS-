@@ -15,12 +15,14 @@ const ACTIONS = [
   { label: 'Phase Opened', value: 'PHASE_OPENED' },
   { label: 'Phase Closed', value: 'PHASE_CLOSED' },
   { label: 'Phase Locked', value: 'PHASE_LOCKED' },
+  { label: 'KPI Assigned', value: 'KPI_ASSIGNED' },
+  { label: 'KPI Approved', value: 'KPI_APPROVED' },
+  { label: 'KPI Reverted', value: 'KPI_REVERTED' },
+  { label: 'KPI Locked', value: 'KPI_LOCKED' },
   { label: 'KPI Added', value: 'KPI_ADDED' },
   { label: 'KPI Revised', value: 'KPI_REVISED' },
   { label: 'KPI Deleted', value: 'KPI_DELETED' },
   { label: 'Mid-Cycle Event', value: 'MID_CYCLE_EVENT' },
-  { label: 'Goal Approved', value: 'GOAL_APPROVED' },
-  { label: 'Goal Reverted', value: 'GOAL_REVERTED' },
 ];
 
 const OrgKpiHistory: React.FC = () => {

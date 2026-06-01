@@ -264,6 +264,40 @@ GET  /api/v1/kpi/calculate-score?employeeId=&cycleId=   ← fetch existing score
 
 ---
 
+### Phase 9 — Midcycle KPI Change and Composite Scoring
+
+```
+POST /api/v1/kpi/midcycle/change
+POST /api/v1/kpi/midcycle/{employeeId}/{cycleId}/finalize
+GET  /api/v1/kpi/midcycle/{employeeId}/{cycleId}
+```
+
+**`triggerMidcycleChange` flow:**
+1. Manager/HR/Admin requests a midcycle change with `employeeId`, `cycleId`, `changeDate`, and `changeReason`.
+2. Cycle must allow midcycle changes and the date must fall between cycle start and one day before cycle end.
+3. The current open phase is closed on the change date. If the current phase goal set is `APPROVED`, it is locked first.
+4. The closed phase is scored from its goal set and marked `SCORED`.
+5. A new open phase is created starting on the change date and waits for KPI assignment.
+6. The manager receives a notification to assign KPIs for the new phase.
+
+**`calculateCompositeFinalScore` flow:**
+1. HR/Admin finalizes the employee's midcycle composite score for the cycle.
+2. The last open phase is bounded by the cycle end date and locked if needed.
+3. Phase weights are derived from phase duration relative to total cycle days.
+4. Each phase score contribution is summed into a composite final score.
+5. A `KpiMidcycleFinalScore` record is stored with phase breakdown and composite score.
+6. A cycle-level `KpiFinalScore` is also recreated for the employee + cycle.
+
+**`getMidcycleSummary` behavior:**
+- Returns phase-level details, open/ scored phase status, composite score, and whether a new phase is still open.
+- Supports employee, manager, HR, and admin access.
+
+**Midcycle notes:**
+- Goal sets assigned during an active midcycle are linked into the open phase via `linkGoalSetToOpenPhase`.
+- Midcycle scoring extends the standard KPI lifecycle with phase-based score tracking and a composite cycle result.
+
+---
+
 ## 5. API Endpoints Summary
 
 ### KpiController — `/api/v1/kpi`
@@ -303,22 +337,30 @@ GET  /api/v1/kpi/calculate-score?employeeId=&cycleId=   ← fetch existing score
 | 31 | GET | `/goal-set/team` | MANAGER | Get team goal sets |
 | 32 | GET | `/goal-set/department` | HR, ADMIN | Get department goal sets |
 
+### KpiMidcycleController — `/api/v1/kpi/midcycle`
+
+| # | Method | Endpoint | Roles | Purpose |
+|---|---|---|---|---|
+| 33 | POST | `/change` | MANAGER, HR, ADMIN | Trigger a midcycle KPI change |
+| 34 | POST | `/{employeeId}/{cycleId}/finalize` | HR, ADMIN | Finalize composite midcycle score |
+| 35 | GET | `/{employeeId}/{cycleId}` | EMPLOYEE, MANAGER, HR, ADMIN | Get midcycle summary |
+
 ### KpiHistoryController — `/api/v1/kpi-history`
 
 | # | Method | Endpoint | Roles | Purpose |
 |---|---|---|---|---|
-| 33 | GET | `/employee/{employeeId}` | All | All historical goal sets for an employee |
-| 34 | GET | `/goal-set/{goalSetId}/audit` | All | Full audit trail for a goal set |
+| 36 | GET | `/employee/{employeeId}` | All | All historical goal sets for an employee |
+| 37 | GET | `/goal-set/{goalSetId}/audit` | All | Full audit trail for a goal set |
 
 ### KpiCategoryController — `/api/v1/kpi/categories`
 
 | # | Method | Endpoint | Roles | Purpose |
 |---|---|---|---|---|
-| 35 | POST | `/` | HR, ADMIN | Create KPI category |
-| 36 | GET | `/` | All | Get all categories |
-| 37 | GET | `/{id}` | All | Get category by ID |
-| 38 | PUT | `/{id}` | HR, ADMIN | Update category |
-| 39 | DELETE | `/{id}` | ADMIN | Delete category |
+| 38 | POST | `/` | HR, ADMIN | Create KPI category |
+| 39 | GET | `/` | All | Get all categories |
+| 40 | GET | `/{id}` | All | Get category by ID |
+| 41 | PUT | `/{id}` | HR, ADMIN | Update category |
+| 42 | DELETE | `/{id}` | ADMIN | Delete category |
 
 ---
 
@@ -476,6 +518,18 @@ KpiController  (/api/v1/kpi)
             ├── KpiGoalItemRepository
             ├── KpiFinalScoreRepository
             ├── AppraisalRepository (links score to Appraisal)
+            ├── AuditService
+            └── ApplicationEventPublisher
+
+KpiMidcycleService  → KpiMidcycleServiceImpl
+            ├── KpiGoalsRepository
+            ├── KpiGoalPhaseRepository
+            ├── KpiMidcycleFinalScoreRepository
+            ├── KpiFinalScoreRepository
+            ├── AppraisalRepository
+            ├── KpiHistoryLogRepository
+            ├── EmployeeRepository
+            ├── AppraisalCycleRepository
             ├── AuditService
             └── ApplicationEventPublisher
 

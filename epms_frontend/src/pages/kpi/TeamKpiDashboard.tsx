@@ -12,6 +12,8 @@ import KpiSummaryReportButton from '../../components/kpi/KpiSummaryReportButton'
 import KpiActualsReportButton from '../../components/kpi/KpiActualsReportButton';
 import React from 'react';
 
+import { isKpiEligible } from '../../utils/kpiLevelFilter';
+
 const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   APPROVED: { bg: '#EAF3DE', text: '#27500A', border: '#B8DCA0' },
   LOCKED:   { bg: '#111827', text: '#FFFFFF', border: '#111827' },
@@ -58,6 +60,7 @@ const TeamKpiDashboard: React.FC = () => {
       }
       return { ...emp, goalSet: goals, progress };
     });
+    members = members.filter(isKpiEligible);
     if (searchTerm) {
       members = members.filter(m =>
         m.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -224,8 +227,14 @@ const TeamKpiDashboard: React.FC = () => {
                       </td>
                       <td style={{ padding: '10px 16px' }}>
                         <div className="flex items-center gap-3">
-                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EEF3FD', color: '#1A56DB', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {emp.staffName.split(' ').map((n: string) => n[0]).join('')}
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EEF3FD', color: '#1A56DB', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                            {emp.profileImage && emp.profileImage !== 'default.jpg' ? (
+                              <img src={`http://localhost:8080${emp.profileImage}`} alt={emp.staffName}
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                            ) : (
+                              emp.staffName ? emp.staffName.split(' ').map((n: string) => n[0]).join('') : '?'
+                            )}
                           </div>
                           <div>
                             <p style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{emp.staffName}</p>

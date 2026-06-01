@@ -9,7 +9,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "kpi_goal_phases")
@@ -40,9 +40,9 @@ public class KpiGoalPhase extends BaseEntity {
     private Integer phaseNumber;
 
     @Column(nullable = false)
-    private LocalDate phaseStartDate;
+    private LocalDateTime phaseStartDate;
 
-    private LocalDate phaseEndDate;     // null = still open
+    private LocalDateTime phaseEndDate;     // null = still open
 
     private Integer phaseDays;
 

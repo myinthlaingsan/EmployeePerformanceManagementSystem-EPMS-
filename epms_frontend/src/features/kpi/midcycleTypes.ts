@@ -1,7 +1,7 @@
 export interface MidcycleChangeRequest {
   employeeId: number;
   cycleId: number;
-  changeDate: string; // 'YYYY-MM-DD'
+  changeDate: string; // 'YYYY-MM-DDTHH:mm'
   changeReason: string;
 }
 

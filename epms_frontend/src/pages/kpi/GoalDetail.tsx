@@ -75,6 +75,7 @@ const GoalDetail: React.FC = () => {
   const [showRevertConfirm, setShowRevertConfirm] = useState(false);
   const [showMidcycleModal, setShowMidcycleModal] = useState(false);
   const [showLockConfirm, setShowLockConfirm] = useState(false);
+  const [showAssignmentWorkspaceButton, setShowAssignmentWorkspaceButton] = useState(false);
 
   const { data: midcycleResponse, refetch: refetchMidcycle } = useGetMidcycleSummaryQuery(
     { employeeId: parseInt(employeeId!), cycleId: effectiveCycleId! },
@@ -103,7 +104,7 @@ const GoalDetail: React.FC = () => {
     try {
       await calculateScores({ employeeId: goalSet.employeeId, cycleId: goalSet.appraisalCycleId }).unwrap();
       toast.success('Score calculated!');
-      await refetch();
+      await Promise.all([refetch(), refetchMidcycle()]);
     } catch { toast.error('Failed to calculate score'); }
   };
 
@@ -233,6 +234,14 @@ const GoalDetail: React.FC = () => {
                     style={{ background: '#EFF6FF', color: '#1E40AF', border: '0.5px solid #BFDBFE', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500 }}
                     className="hover:bg-blue-100 transition-colors">
                     Midcycle Change
+                  </button>
+                )}
+                {showAssignmentWorkspaceButton && isPrivileged && !isReadOnly && (
+                  <button
+                    onClick={() => navigate(`/kpi/assign/${employeeId}?cycleId=${effectiveCycleId}&mode=edit`)}
+                    style={{ background: '#111827', color: '#FFFFFF', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 500, border: 'none' }}
+                  >
+                    Go to Goal Assignment Workspace
                   </button>
                 )}
               </Can>
@@ -584,7 +593,7 @@ const GoalDetail: React.FC = () => {
                 try {
                   await revertGoal(goalSet!.id).unwrap();
                   toast.success('Goal set reverted to draft.');
-                  await refetch();
+                  await Promise.all([refetch(), refetchMidcycle()]);
                 } catch (err: any) {
                   toast.error('Failed to revert goal set.');
                 }
@@ -666,6 +675,7 @@ const GoalDetail: React.FC = () => {
           onClose={() => setShowMidcycleModal(false)}
           onSuccess={async () => {
             await Promise.all([refetch(), refetchMidcycle()]);
+            setShowAssignmentWorkspaceButton(true);
             setShowMidcycleModal(false);
           }}
         />

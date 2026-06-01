@@ -74,8 +74,9 @@ public class KpiAuditLogServiceImpl implements KpiAuditLogService {
 
     // --- Helpers ---
     private KpiAuditLogResponse resolveLog(KpiHistoryLog h) {
-        String empName = employeeRepository.findById(h.getEmployeeId())
-            .map(Employee::getStaffName).orElse("Unknown");
+        Employee emp = employeeRepository.findById(h.getEmployeeId()).orElse(null);
+        String empName = emp != null ? emp.getStaffName() : "Unknown";
+        String empCode = emp != null ? emp.getEmployeeCode() : "—";
         String changedByName = employeeRepository.findById(h.getChangedBy())
             .map(Employee::getStaffName).orElse("System");
         String deptName = employeeDepartmentRepo.findFirstByEmployeeIdAndIsCurrentTrue(h.getEmployeeId())
@@ -84,6 +85,7 @@ public class KpiAuditLogServiceImpl implements KpiAuditLogService {
         return KpiAuditLogResponse.builder()
             .id(h.getId())
             .employeeId(h.getEmployeeId())
+            .employeeCode(empCode)
             .employeeName(empName)
             .departmentName(deptName)
             .goalSetId(h.getGoalSetId())
@@ -102,8 +104,8 @@ public class KpiAuditLogServiceImpl implements KpiAuditLogService {
             .totalEvents(logs.size())
             .phasesOpened(logs.stream().filter(l -> "PHASE_OPENED".equals(l.getAction())).count())
             .phasesClosed(logs.stream().filter(l -> "PHASE_CLOSED".equals(l.getAction()) || "PHASE_LOCKED".equals(l.getAction())).count())
-            .kpisRevised(logs.stream().filter(l -> "KPI_REVISED".equals(l.getAction())).count())
-            .kpisDeleted(logs.stream().filter(l -> "KPI_DELETED".equals(l.getAction())).count())
+            .kpisApproved(logs.stream().filter(l -> "KPI_APPROVED".equals(l.getAction())).count())
+            .kpisReverted(logs.stream().filter(l -> "KPI_REVERTED".equals(l.getAction())).count())
             .midCycleEvents(logs.stream().filter(l -> "MID_CYCLE_EVENT".equals(l.getAction())).count())
             .build();
     }

@@ -1,6 +1,7 @@
 export interface KpiAuditLogResponse {
   id: number;
   employeeId: number;
+  employeeCode?: string;
   employeeName: string;
   departmentName?: string;
   goalSetId: number;
@@ -17,8 +18,8 @@ export interface OrgKpiHistorySummary {
   totalEvents: number;
   phasesOpened: number;
   phasesClosed: number;
-  kpisRevised: number;
-  kpisDeleted: number;
+  kpisApproved: number;
+  kpisReverted: number;
   midCycleEvents: number;
 }
 
