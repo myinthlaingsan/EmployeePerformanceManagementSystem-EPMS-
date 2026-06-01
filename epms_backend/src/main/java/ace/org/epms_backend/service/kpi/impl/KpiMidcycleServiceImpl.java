@@ -387,7 +387,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         finalScoreRepository.findByEmployee_IdAndGoalSet_Cycle_CycleId(employeeId, cycleId)
             .ifPresent(existing -> finalScoreRepository.delete(existing));
 
-        BigDecimal finalCompositeScore = totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP);
+        BigDecimal finalCompositeScore = totalWeightedScoreSum.setScale(0, RoundingMode.HALF_UP);
         KpiFinalScore composite = KpiFinalScore.builder()
             .employee(employee)
             .goalSet(lastPhase.getGoalSet())
@@ -541,7 +541,7 @@ public class KpiMidcycleServiceImpl implements KpiMidcycleService {
         midcycleScore.setEmployee(employee);
         midcycleScore.setCycle(cycle);
         midcycleScore.setTotalPhases(phases.size());
-        midcycleScore.setCompositeScore(totalWeightedScoreSum.setScale(4, RoundingMode.HALF_UP));
+        midcycleScore.setCompositeScore(totalWeightedScoreSum.setScale(0, RoundingMode.HALF_UP));
         midcycleScore.setPhaseBreakdown(breakdownBuilder.toString());
         midcycleScore.setCalculatedAt(Instant.now());
         midcycleScore.setCalculatedBy(currentUserId);
