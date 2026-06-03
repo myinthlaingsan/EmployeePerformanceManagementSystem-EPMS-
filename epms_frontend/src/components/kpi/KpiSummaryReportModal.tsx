@@ -66,6 +66,8 @@ const CollapsibleSection: React.FC<{
   );
 };
 
+import { isKpiEligible } from '../../utils/kpiLevelFilter';
+
 const KpiSummaryReportModal: React.FC<KpiSummaryReportModalProps> = ({ onClose }) => {
   const { user, isAdmin, isHR, activeCycleId } = useAuth();
   const token = useAppSelector((state) => state.auth.accessToken);
@@ -114,7 +116,7 @@ const KpiSummaryReportModal: React.FC<KpiSummaryReportModalProps> = ({ onClose }
       const matchesSearch = !searchTerm ||
         emp.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (emp.employeeCode && emp.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()));
-      return matchesDept && matchesSearch;
+      return matchesDept && matchesSearch && isKpiEligible(emp);
     });
   }, [employees, deptFilter, searchTerm]);
 
@@ -293,9 +295,15 @@ const KpiSummaryReportModal: React.FC<KpiSummaryReportModalProps> = ({ onClose }
                               className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#FAFBFF]"
                               style={{ background: isSelected ? '#EEF3FD' : '#FFFFFF' }}
                             >
-                              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-medium"
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-medium overflow-hidden"
                                 style={{ background: avatarColor.bg, color: avatarColor.text }}>
-                                {emp.staffName.charAt(0).toUpperCase()}
+                                {emp.profileImage && emp.profileImage !== 'default.jpg' ? (
+                                  <img src={`http://localhost:8080${emp.profileImage}`} alt={emp.staffName}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                ) : (
+                                  emp.staffName.charAt(0).toUpperCase()
+                                )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate" style={{ color: '#111827' }}>{emp.staffName}</p>
@@ -426,8 +434,15 @@ const KpiSummaryReportModal: React.FC<KpiSummaryReportModalProps> = ({ onClose }
                 {/* Employee Header Block */}
                 <div className="flex items-center justify-between p-5 rounded-xl" style={{ background: '#F5F6F8', border: '0.5px solid #E4E6EC' }}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-base font-medium" style={{ background: avatarColors.bg, color: avatarColors.text }}>
-                      {selectedEmployee?.staffName?.charAt(0)?.toUpperCase()}
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-base font-medium overflow-hidden" style={{ background: avatarColors.bg, color: avatarColors.text }}>
+                      {selectedEmployee?.profileImage && selectedEmployee.profileImage !== 'default.jpg' ? (
+                        <img src={`http://localhost:8080${selectedEmployee.profileImage}`}
+                          alt={selectedEmployee.staffName}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      ) : (
+                        selectedEmployee?.staffName?.charAt(0)?.toUpperCase()
+                      )}
                     </div>
                     <div>
                       <h3 className="text-base font-medium mb-1" style={{ color: '#111827' }}>{reportData.employeeName}</h3>

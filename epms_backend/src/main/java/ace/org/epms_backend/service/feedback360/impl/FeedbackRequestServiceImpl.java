@@ -269,13 +269,7 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
 
         // 2. MANAGER / SUPERIOR
         if (rank == 4) {
-            // L01-L03 evaluates L04 Head (Global Shuffle/Rotation)
-            Employee rotationEval = evaluatorRotationService.assignTopManagementEvaluator(target.getId(), cycleId, previousCycleId);
-            if (rotationEval != null) {
-                handleRequest(cycle, target, rotationEval, FeedbackRelationship.DIRECT_MANAGER, false, workloadMap, globalMaxLimit, persist, previewResults, true, managerForm);
-            } else {
-                assignManager(cycle, target, workloadMap, globalMaxLimit, persist, previewResults, true, managerForm);
-            }
+            // L04 Heads currently have no manager feedback (L01-L03 evaluators removed)
         } else {
             // L05, L06, L07 Superiors must be in SAME DEPARTMENT
             assignManager(cycle, target, workloadMap, globalMaxLimit, persist, previewResults, true, managerForm);
@@ -397,6 +391,10 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
 
     private boolean isEligibleEvaluator(Employee e) {
         if (e == null) return false;
+        
+        // Exclude Lv 8 and above from being evaluators
+        if (getLevelRank(e) >= 8) return false;
+
         return Boolean.TRUE.equals(e.getIsActive())
                 && e.getStatus() != ace.org.epms_backend.enums.EmployeeStatus.RESIGNED
                 && e.getStatus() != ace.org.epms_backend.enums.EmployeeStatus.LONG_TERM_LEAVE
@@ -483,17 +481,34 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                     .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
                     .orElse("N/A");
 
+            java.time.Instant dueDate = null;
+            if (cycle.getSelfAssessmentDeadline() != null) {
+                dueDate = cycle.getSelfAssessmentDeadline().atTime(23, 59, 59)
+                        .atZone(java.time.ZoneId.systemDefault()).toInstant();
+            } else if (cycle.getEndDate() != null) {
+                dueDate = cycle.getEndDate().atTime(23, 59, 59)
+                        .atZone(java.time.ZoneId.systemDefault()).toInstant();
+            }
+
+            boolean isOverdue = dueDate != null && dueDate.isBefore(java.time.Instant.now());
+
             previewResults.add(FeedbackRequestResponse.builder()
                     .targetUserId(target.getId())
                     .targetUserName(target.getStaffName())
                     .targetDepartmentName(targetDept)
+                    .targetLevelCode(target.getLevel() != null ? target.getLevel().getLevelCode() : "N/A")
                     .evaluatorId(evaluator.getId())
                     .evaluatorName(evaluator.getStaffName())
                     .evaluatorDepartmentName(evalDept)
+                    .evaluatorLevelCode(evaluator.getLevel() != null ? evaluator.getLevel().getLevelCode() : "N/A")
                     .relationship(rel)
                     .status(FeedbackStatus.PENDING)
                     .isAnonymous(anon)
                     .isReciprocalFallback(isReciprocal)
+                    .dueDate(dueDate)
+                    .startedAt(java.time.Instant.now())
+                    .formId(form != null ? form.getFormId() : null)
+                    .isOverdue(isOverdue)
                     .build());
             workloadMap.put(evaluator.getId(), currentWorkload + 1);
             return true;
@@ -723,18 +738,33 @@ public class FeedbackRequestServiceImpl implements FeedbackRequestService {
                 departmentRepository.findFirstByEmployeeIdAndIsCurrentTrue(req.getEvaluator().getId())
                         .map(ed -> ed.getCurrentDepartment() != null ? ed.getCurrentDepartment().getDepartmentName() : "N/A")
                         .orElse("N/A");
+        boolean isOverdue = req.getDueDate() != null
+                && req.getStatus() != FeedbackStatus.COMPLETED
+                && req.getStatus() != FeedbackStatus.CANCELLED
+                && req.getDueDate().isBefore(java.time.Instant.now());
+
+        String targetLevel = req.getTargetUser().getLevel() != null ? req.getTargetUser().getLevel().getLevelCode() : "N/A";
+        String evalLevel = mask ? null : (req.getEvaluator().getLevel() != null ? req.getEvaluator().getLevel().getLevelCode() : "N/A");
+
         return FeedbackRequestResponse.builder()
                 .id(req.getId())
                 .targetUserId(req.getTargetUser().getId())
                 .targetUserName(req.getTargetUser().getStaffName())
                 .targetDepartmentName(targetDept)
+                .targetLevelCode(targetLevel)
                 .evaluatorId(mask ? null : req.getEvaluator().getId())
                 .evaluatorName(mask ? "Anonymous" : req.getEvaluator().getStaffName())
                 .evaluatorDepartmentName(evalDept)
+                .evaluatorLevelCode(evalLevel)
                 .cycleId(req.getCycle().getCycleId())
                 .relationship(req.getRelationship())
                 .status(req.getStatus())
                 .isAnonymous(req.getIsAnonymous())
+                .dueDate(req.getDueDate())
+                .startedAt(req.getStartedAt())
+                .lastReminderSentAt(req.getLastReminderSentAt())
+                .formId(req.getForm() != null ? req.getForm().getFormId() : null)
+                .isOverdue(isOverdue)
                 .build();
     }
 

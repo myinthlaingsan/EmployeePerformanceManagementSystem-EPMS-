@@ -223,7 +223,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                     My Report
                   </NavLink>
                 )}
-                {hasPermission("FEEDBACK360_NOMINATE") && (
+                {/* {hasPermission("FEEDBACK360_NOMINATE") && (
                   <NavLink
                     to="/360-feedback/nominations"
                     style={{ padding: "7px 10px" }}
@@ -232,7 +232,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                   >
                     Nominations
                   </NavLink>
-                )}
+                )} */}
                 {hasPermission("FEEDBACK360_MANAGE") && (
                   <NavLink
                     to="/360-feedback/admin"

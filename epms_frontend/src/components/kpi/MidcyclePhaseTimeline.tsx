@@ -9,12 +9,13 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { MidcycleSummaryResponse } from '../../features/kpi/midcycleTypes';
-import { useFinalizeCompositeScoreMutation } from '../../services/midcycleApi';
+import { useFinalizeCompositeScoreMutation, useCalculateCompositeScoreMutation } from '../../services/midcycleApi';
+import PastPhaseGoalsModal from './PastPhaseGoalsModal';
 import { toast } from 'react-toastify';
 
 interface MidcyclePhaseTimelineProps {
   summary: MidcycleSummaryResponse;
-  isPrivileged: boolean; // HR or Admin to allow finalize
+  isPrivileged: boolean; // HR or Admin to allow calculation
   onRefetch: () => void;
 }
 
@@ -24,12 +25,40 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
   onRefetch,
 }) => {
   const [finalizeScore, { isLoading: isFinalizing }] = useFinalizeCompositeScoreMutation();
+  const [calculateScore, { isLoading: isCalculating }] = useCalculateCompositeScoreMutation();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedPhase, setSelectedPhase] = useState<any | null>(null);
+
+  const hasUnassignedOpenPhase = summary.hasOpenPhase &&
+    summary.phases.some(p => p.status === 'OPEN' && p.goalSetId === null);
+
+  const hasInvalidPhaseDuration = summary.totalCycleDays <= 0 || summary.phases.some(p => {
+    if (p.days == null || p.days <= 0) return true;
+    if (p.endDate) {
+      const s = new Date(p.startDate);
+      const e = new Date(p.endDate);
+      if (e < s) return true;
+    }
+    return false;
+  });
+
+  const invalidPhases = summary.phases.filter(p => (p.days == null || p.days <= 0) || (p.endDate && new Date(p.endDate) < new Date(p.startDate)));
+
+  const handleCalculate = async () => {
+    try {
+      await calculateScore({ employeeId: summary.employeeId, cycleId: summary.cycleId }).unwrap();
+      toast.success('Composite score calculated successfully!');
+      onRefetch();
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to calculate composite score');
+    }
+  };
 
   const handleFinalize = async () => {
+    if (!window.confirm('Finalize composite score? This is a permanent action.')) return;
     try {
       await finalizeScore({ employeeId: summary.employeeId, cycleId: summary.cycleId }).unwrap();
-      toast.success('Composite final score calculated and published successfully!');
+      toast.success('Composite score finalized successfully!');
       onRefetch();
     } catch (err: any) {
       toast.error('Failed to finalize composite score.');
@@ -64,25 +93,49 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
 
         <div className="flex items-center gap-2">
           {isPrivileged && (
-            <button
-              onClick={handleFinalize}
-              disabled={isFinalizing || summary.phases.length === 0}
-              style={{
-                background: '#1A56DB',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '6px 14px',
-                fontSize: '12px',
-                fontWeight: 500,
-                cursor: isFinalizing ? 'not-allowed' : 'pointer',
-                opacity: isFinalizing ? 0.7 : 1,
-                transition: 'background 0.2s',
-              }}
-              className="hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50"
-            >
-              {isFinalizing ? 'Finalizing...' : 'Finalize Composite Score'}
-            </button>
+            <>
+              <button
+                onClick={handleCalculate}
+                disabled={isCalculating || summary.phases.length === 0 || hasUnassignedOpenPhase || hasInvalidPhaseDuration}
+                title={hasUnassignedOpenPhase ? 'Cannot calculate: The current open phase has no KPIs assigned yet.' : (hasInvalidPhaseDuration ? 'Cannot calculate: one or more phases have invalid duration or date ranges.' : undefined)}
+                style={{
+                  background: '#1A56DB',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: (isCalculating || hasUnassignedOpenPhase || hasInvalidPhaseDuration) ? 'not-allowed' : 'pointer',
+                  opacity: (isCalculating || hasUnassignedOpenPhase || hasInvalidPhaseDuration) ? 0.7 : 1,
+                  transition: 'background 0.2s',
+                }}
+                className="hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50"
+              >
+                {isCalculating ? 'Calculating...' : 'Calculate Composite Score'}
+              </button>
+
+              <button
+                onClick={handleFinalize}
+                disabled={isFinalizing || summary.phases.length === 0 || hasUnassignedOpenPhase || hasInvalidPhaseDuration}
+                title={hasUnassignedOpenPhase ? 'Cannot finalize: The current open phase has no KPIs assigned yet.' : (hasInvalidPhaseDuration ? 'Cannot finalize: one or more phases have invalid duration or date ranges.' : undefined)}
+                style={{
+                  background: '#DC2626',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: (isFinalizing || hasUnassignedOpenPhase || hasInvalidPhaseDuration) ? 'not-allowed' : 'pointer',
+                  opacity: (isFinalizing || hasUnassignedOpenPhase || hasInvalidPhaseDuration) ? 0.7 : 1,
+                  transition: 'background 0.2s',
+                }}
+                className="hover:bg-red-700 active:bg-red-800 disabled:opacity-50 ml-2"
+              >
+                {isFinalizing ? 'Finalizing...' : 'Finalize Composite Score'}
+              </button>
+            </>
           )}
 
           <button
@@ -125,7 +178,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
               )}
             </div>
             <span style={{ fontSize: '11px', fontWeight: 600, color: summary.compositeScore !== null ? '#27500A' : '#92400E', background: summary.compositeScore !== null ? '#EAF3DE' : '#FFFBEB', borderRadius: 999, padding: '4px 10px' }}>
-              {summary.compositeScore !== null ? 'Finalized' : 'Pending'}
+              {summary.compositeScore !== null ? 'Calculated' : 'Pending'}
             </span>
           </div>
         </div>
@@ -195,7 +248,11 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                         <ArrowRight size={10} className="text-gray-400" />
                         <span>{formatDate(phase.endDate)}</span>
                         <span style={{ color: '#9EA3B0' }}>-</span>
-                        <span>{phase.days} Days ({Math.round(phase.weight * 100)}%)</span>
+                        <span>
+                          {phase.days != null ? `${phase.days} Days${phase.status === 'OPEN' ? ' (est.)' : ''}` : 'In progress'}
+                          {' '}
+                          ({phase.weight != null ? `${Math.round(phase.weight * 100)}%${phase.status === 'OPEN' ? ' est.' : ''}` : 'Weight TBD'})
+                        </span>
                       </div>
 
                       {phase.changeReason && (
@@ -213,6 +270,9 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                         <p style={{ fontSize: '18px', fontWeight: 600, color: phase.score !== null ? '#111827' : '#9EA3B0', marginTop: '2px' }}>
                           {phase.score !== null ? Number(phase.score).toFixed(1) : 'Pending'}
                         </p>
+                        {phase.status === 'OPEN' && phase.score !== null && (
+                          <p style={{ fontSize: '9px', color: '#9EA3B0', marginTop: '2px' }}>Provisional score</p>
+                        )}
                       </div>
 
                       <div style={{ textAlign: 'right', borderLeft: '1px solid #E4E6EC', paddingLeft: '24px' }}>
@@ -220,15 +280,52 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                           Contribution
                         </p>
                         <p style={{ fontSize: '18px', fontWeight: 600, color: phase.weightedContribution !== null ? '#1A56DB' : '#9EA3B0', marginTop: '2px' }}>
-                          {phase.weightedContribution !== null ? Number(phase.weightedContribution).toFixed(1) : '-'}
+                          {phase.weightedContribution !== null
+                            ? Number(phase.weightedContribution).toFixed(1)
+                            : phase.status === 'OPEN'
+                              ? 'Pending'
+                              : '-'
+                          }
                         </p>
+                        {phase.status === 'OPEN' && phase.weightedContribution !== null && (
+                          <p style={{ fontSize: '9px', color: '#9EA3B0', marginTop: '2px' }}>Projected to cycle end</p>
+                        )}
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPhase(phase)}
+                        style={{ background: '#FFFFFF', color: '#1A56DB', border: '1px solid #D1D5DB', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        View Goals
+                      </button>
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {selectedPhase && (
+            <PastPhaseGoalsModal
+              phase={selectedPhase}
+              categories={(summary as any).categories || []}
+              onClose={() => setSelectedPhase(null)}
+            />
+          )}
+
+          {/* Warning banner when an open phase has no KPIs assigned */}
+          {isPrivileged && hasUnassignedOpenPhase && (
+            <div style={{ marginTop: '16px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 12px', fontSize: '11px', color: '#92400E' }}>
+              ⚠ The current open phase has no KPIs assigned. The manager must assign and approve KPIs before you can calculate the composite score.
+            </div>
+          )}
+
+          {isPrivileged && hasInvalidPhaseDuration && (
+            <div style={{ marginTop: '12px', background: '#FFF1F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', fontSize: '11px', color: '#991B1B' }}>
+              ⚠ Invalid phase duration detected in: {invalidPhases.map(p => `Phase ${p.phaseNumber}`).join(', ')}. Please correct phase dates before calculating or finalizing.
+            </div>
+          )}
 
           {/* Summary composite footer */}
           {summary.compositeScore !== null ? (
@@ -248,14 +345,14 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
               <div className="flex items-center gap-2">
                 <ShieldCheck size={18} className="text-green-700" />
                 <div>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#27500A' }}>Composite Appraisal score finalized</p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#27500A' }}>Composite KPI score calculated</p>
                   <p style={{ fontSize: '10px', color: '#5A7A3A' }}>Calculated by duration-weighted averages of all {summary.phases.length} phases.</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 <Award size={16} className="text-green-700" />
                 <span style={{ fontSize: '20px', fontWeight: 700, color: '#27500A' }}>
-                  {Number(summary.compositeScore).toFixed(2)}
+                  {Number(summary.compositeScore).toFixed(1)}
                 </span>
                 <span style={{ fontSize: '12px', color: '#5A7A3A', alignSelf: 'flex-end', marginBottom: '2px' }}>/ 100</span>
               </div>
@@ -278,7 +375,7 @@ export const MidcyclePhaseTimeline: React.FC<MidcyclePhaseTimelineProps> = ({
                 <Award size={18} className="text-amber-700" />
                 <div>
                   <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400E' }}>Composite Score Pending</p>
-                  <p style={{ fontSize: '10px', color: '#B45309' }}>The score will be compiled once the cycle ends or is finalized by HR.</p>
+                  <p style={{ fontSize: '10px', color: '#B45309' }}>The score will be compiled once the cycle ends or is calculated by HR.</p>
                 </div>
               </div>
             </div>

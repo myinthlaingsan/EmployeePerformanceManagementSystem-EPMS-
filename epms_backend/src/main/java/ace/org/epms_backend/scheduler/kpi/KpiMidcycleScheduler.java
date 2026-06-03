@@ -39,7 +39,7 @@ public class KpiMidcycleScheduler {
         int alertThresholdDays = 3;
 
         for (KpiGoalPhase phase : openPhases) {
-            if (ChronoUnit.DAYS.between(phase.getPhaseStartDate(), today) >= alertThresholdDays) {
+            if (ChronoUnit.DAYS.between(phase.getPhaseStartDate().toLocalDate(), today) >= alertThresholdDays) {
                 Employee employee = phase.getEmployee();
                 ReportingLine rl = reportingLineRepo.findByEmployeeAndIsActiveTrue(employee).orElse(null);
                 if (rl != null && rl.getManager() != null) {

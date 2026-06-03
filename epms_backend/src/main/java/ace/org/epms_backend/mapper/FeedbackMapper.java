@@ -13,6 +13,8 @@ public interface FeedbackMapper {
     @Mapping(target = "evaluatorId", source = "evaluator.id")
     @Mapping(target = "evaluatorName", source = "evaluator.staffName")
     @Mapping(target = "cycleId", source = "cycle.cycleId")
+    @Mapping(target = "formId", source = "form.formId")
+    @Mapping(target = "isOverdue", expression = "java(request.getDueDate() != null && request.getStatus() != ace.org.epms_backend.enums.FeedbackStatus.COMPLETED && request.getStatus() != ace.org.epms_backend.enums.FeedbackStatus.CANCELLED && request.getDueDate().isBefore(java.time.Instant.now()))")
     FeedbackRequestResponse toRequestResponse(FeedbackRequest request);
 
     @Mapping(target = "requestId", source = "request.id")

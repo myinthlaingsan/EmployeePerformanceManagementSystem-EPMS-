@@ -30,7 +30,17 @@ const GoalAssignmentWorkspace: React.FC = () => {
 
   const urlCycleId = searchParams.get('cycleId');
   const editMode = searchParams.get('mode') === 'edit';
-  const resolvedCycleId = urlCycleId ? Number(urlCycleId) : activeCycleId;
+
+  const { data: cyclesData, isLoading: isLoadingCycles } = useGetCyclesQuery();
+  const cycles = cyclesData || [];
+
+  const resolvedCycleId = useMemo(() => {
+    if (urlCycleId) return Number(urlCycleId);
+    if (activeCycleId) return activeCycleId;
+    // Fallback: If activeCycleId is not found (e.g. active cycle closed), pick the first active or available cycle
+    const activeOrFirst = (cycles as any[]).find((c: any) => c.status?.toUpperCase() === 'ACTIVE') || cycles?.[0];
+    return activeOrFirst ? (activeOrFirst.cycleId || activeOrFirst.id) : undefined;
+  }, [urlCycleId, activeCycleId, cycles]);
 
   const { data: employee } = useGetEmployeeByIdQuery(Number(employeeId), { skip: !employeeId });
   const { data: goalSetResponse, refetch: refetchGoals } = useGetGoalSetByEmployeeQuery({
@@ -44,8 +54,6 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const { data: categoriesResponse } = useGetKpiCategoriesQuery();
   const categories = categoriesResponse?.data || [];
 
-  const { data: cyclesData, isLoading: isLoadingCycles } = useGetCyclesQuery();
-  const cycles = cyclesData || [];
   const resolvedCycleObj = (cycles as any[]).find((c: any) => (c.cycleId || c.id) === resolvedCycleId);
   const isArchivedCycle = resolvedCycleObj?.status?.toUpperCase() === 'ARCHIVED';
   // In edit mode (navigated from GoalDetail), treat as non-historical even if cycle differs from active
@@ -85,6 +93,12 @@ const GoalAssignmentWorkspace: React.FC = () => {
   const [assignmentMode, setAssignmentMode] = useState<'append'|'replace'>('append');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [pendingTemplate, setPendingTemplate] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [tempIdCounter, setTempIdCounter] = useState(-1);
@@ -257,21 +271,41 @@ const GoalAssignmentWorkspace: React.FC = () => {
     finally { setIsSubmitting(false); }
   };
 
-  const handleDeleteItem = async (itemId: number) => {
+  const confirmDeleteItem = (itemId: number) => {
     const item = localItems.find(i => i.id === itemId);
-    // If the item is unsaved (temp), just remove it from local state — no API call needed
-    if (item?._isNew) {
+    if (!item) return;
+
+    setDeleteConfirmModal({
+      isOpen: true,
+      title: 'Delete KPI Item',
+      message: 'Delete this goal? This cannot be undone if progress records exist.',
+      onConfirm: () => {
+        deleteItemConfirmed(itemId);
+      }
+    });
+  };
+
+  const deleteItemConfirmed = async (itemId: number) => {
+    const item = localItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    if (item._isNew) {
       setLocalItems(prev => prev.filter(i => i.id !== itemId));
-      // Removing a temp row is itself a local change; keep isModified true
       setIsModified(true);
       return;
     }
-    if (!window.confirm('Are you sure you want to delete this goal? This cannot be undone if progress records exist.')) return;
+
+    setIsSubmitting(true);
     try {
       await deleteGoalItem(itemId).unwrap();
       setLocalItems(prev => prev.filter(i => i.id !== itemId));
       await refetchGoals();
-    } catch (err: any) { toast.error('Cannot delete: progress records exist for this goal.'); }
+      toast.success('Goal deleted successfully.');
+    } catch (err: any) {
+      toast.error('Cannot delete: progress records exist for this goal.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleApprove = async () => {
@@ -649,7 +683,7 @@ const GoalAssignmentWorkspace: React.FC = () => {
                         )}
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                        <button onClick={() => handleDeleteItem(item.id)} disabled={isInputDisabled}
+                        <button onClick={() => confirmDeleteItem(item.id)} disabled={isInputDisabled}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E0E2E8', padding: 4 }}
                           className="hover:text-[#791F1F] transition-colors disabled:opacity-0">
                           <Trash2 size={14} />
@@ -697,6 +731,32 @@ const GoalAssignmentWorkspace: React.FC = () => {
           </div>
         </main>
       </div>
+      )}
+
+      {deleteConfirmModal.isOpen && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4" style={{ background: 'rgba(17,24,39,0.5)' }}>
+          <div style={{ background: '#FFFFFF', border: '0.5px solid #E4E6EC', borderRadius: 12, padding: '24px', maxWidth: 400, width: '100%' }}>
+            <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={16} style={{ color: '#991B1B' }} />
+              </div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{deleteConfirmModal.title}</p>
+            </div>
+            <p style={{ fontSize: 13, color: '#5A6070', marginBottom: 20 }}>{deleteConfirmModal.message}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteConfirmModal({ ...deleteConfirmModal, isOpen: false })}
+                className="flex-1 transition-colors"
+                style={{ background: '#F5F6F8', color: '#111827', border: '0.5px solid #E4E6EC', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
+                Cancel
+              </button>
+              <button onClick={() => { deleteConfirmModal.onConfirm(); setDeleteConfirmModal({ ...deleteConfirmModal, isOpen: false }); }}
+                className="flex-1 transition-colors"
+                style={{ background: '#DC2626', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '8px', fontSize: 13, fontWeight: 500 }}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showEditConfirm && (

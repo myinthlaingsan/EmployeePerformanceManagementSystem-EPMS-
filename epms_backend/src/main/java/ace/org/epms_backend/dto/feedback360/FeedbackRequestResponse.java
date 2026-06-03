@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 @Data
 @Builder(toBuilder = true)
 @NoArgsConstructor
@@ -21,8 +23,16 @@ public class FeedbackRequestResponse {
     private FeedbackRelationship relationship;
     private FeedbackStatus status;
     private String targetDepartmentName;
+    private String targetLevelCode;
     private String evaluatorDepartmentName;
+    private String evaluatorLevelCode;
     private Boolean isAnonymous;
 
     private Boolean isReciprocalFallback;
+
+    private Instant dueDate;
+    private Instant startedAt;
+    private Instant lastReminderSentAt;
+    private Long formId;
+    private Boolean isOverdue;
 }

@@ -31,6 +31,13 @@ export const midcycleApi = api.injectEndpoints({
       }),
       invalidatesTags: ['GoalSet'],
     }),
+    calculateCompositeScore: builder.mutation<ApiResponse<void>, { employeeId: number; cycleId: number }>({
+      query: ({ employeeId, cycleId }) => ({
+        url: `/kpi/midcycle/${employeeId}/${cycleId}/calculate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['GoalSet'],
+    }),
   }),
 });
 
@@ -38,4 +45,5 @@ export const {
   useGetMidcycleSummaryQuery,
   useTriggerMidcycleChangeMutation,
   useFinalizeCompositeScoreMutation,
+  useCalculateCompositeScoreMutation,
 } = midcycleApi;

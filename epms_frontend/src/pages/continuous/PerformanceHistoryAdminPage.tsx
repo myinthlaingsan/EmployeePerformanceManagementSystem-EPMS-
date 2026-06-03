@@ -73,12 +73,9 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
 
   history.forEach(h => {
     if (!h.createdAt) return;
-    const datePart = h.createdAt.split('T')[0];
-    const [yStr, mStr] = datePart.split('-');
-    const year = parseInt(yStr, 10);
-    const month = parseInt(mStr, 10) - 1;
-    const monthKey = `${year}-${month}`;
-    const monthData = chartData.find(m => m.month === month && m.year === year);
+    const date = new Date(h.createdAt);
+    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+    const monthData = chartData.find(m => m.month === date.getMonth() && m.year === date.getFullYear());
     
     if (monthData) {
       if (h.sourceType === 'MEETING') {
@@ -104,35 +101,28 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
     }
   });
 
-  // Current-month slot used as a fallback bucket for undated items
-  const currentMonthSlot = chartData.length > 0 ? chartData[chartData.length - 1] : null;
+  const nowMonth = now.getMonth();
+  const nowYear = now.getFullYear();
 
   actionItems.forEach(ai => {
+    let targetMonth: { month: number; year: number } | undefined;
     if (ai.dueDate) {
-      const [yStr, mStr] = ai.dueDate.split('-');
-      const year = parseInt(yStr, 10);
-      const month = parseInt(mStr, 10) - 1;
-      const monthData = chartData.find(m => m.month === month && m.year === year);
-      if (monthData) {
-        monthData.totalActionItems++;
-      } else if (currentMonthSlot) {
-        // Due date is outside the chart time range — still count it in current month
-        currentMonthSlot.totalActionItems++;
-      }
-    } else if (currentMonthSlot) {
-      // No due date set — bucket in current month so it isn't silently lost
-      currentMonthSlot.totalActionItems++;
+      const dueDate = new Date(ai.dueDate);
+      const slot = chartData.find(m => m.month === dueDate.getMonth() && m.year === dueDate.getFullYear());
+      if (slot) targetMonth = slot;
     }
+    if (!targetMonth) {
+      targetMonth = chartData.find(m => m.month === nowMonth && m.year === nowYear);
+    }
+    if (targetMonth) {
+      (targetMonth as any).totalActionItems++;
+    }
+
     if (ai.status === 'DONE' && ai.completedAt) {
-      const datePart = ai.completedAt.split('T')[0];
-      const [yStr, mStr] = datePart.split('-');
-      const year = parseInt(yStr, 10);
-      const month = parseInt(mStr, 10) - 1;
-      const monthData = chartData.find(m => m.month === month && m.year === year);
+      const completedDate = new Date(ai.completedAt);
+      const monthData = chartData.find(m => m.month === completedDate.getMonth() && m.year === completedDate.getFullYear());
       if (monthData) {
         monthData.actionItemsCompleted++;
-      } else if (currentMonthSlot) {
-        currentMonthSlot.actionItemsCompleted++;
       }
     }
   });
@@ -268,7 +258,7 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
           {chartData.map((m, i) => (
             <div key={i} className="flex flex-col items-center gap-2 group relative pointer-events-auto">
               <div className="w-px h-64 bg-transparent group-hover:bg-indigo-50 transition-colors relative">
-                <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-4 py-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-2xl z-20 space-y-1.5 border border-white/10">
+                <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[10px] font-bold px-4 py-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-2xl z-20 space-y-1.5 border border-white/10">
                   <p className="text-gray-400 mb-1">{m.name} {m.year}</p>
                   {!isMeetingOnly ? (
                     <>
@@ -283,7 +273,7 @@ const SentimentChart = ({ history, employeeName, filterType, actionItems = [] }:
                       <div className="flex items-center gap-3 justify-between"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /> Tasks Done</div><span className="font-black">{m.actionItemsCompleted}</span></div>
                     </div>
                   )}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900" />
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-indigo-600" />
                 </div>
               </div>
               <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter bg-white px-2 mb-[-24px] z-20">{m.name}</span>
@@ -572,7 +562,7 @@ const ManagerialActivityChart = ({ history, managerName, managerId, timeRange, o
         {chartData.map((m, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative z-10">
             {/* Tooltip */}
-            <div className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 bg-gray-900 text-white p-3 rounded-2xl shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 min-w-[120px] scale-90 group-hover:scale-100">
+            <div className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 bg-indigo-600 text-white p-3 rounded-2xl shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 min-w-[120px] scale-90 group-hover:scale-100">
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 border-b border-white/10 pb-1">{m.name} {m.year}</p>
               <div className="space-y-1.5">
                 {(filterType === 'ALL' || isFeedbackOnly) && (
@@ -598,7 +588,7 @@ const ManagerialActivityChart = ({ history, managerName, managerId, timeRange, o
                   </div>
                 )}
               </div>
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-indigo-600 rotate-45" />
             </div>
 
             {/* Grouped Bars Container */}
@@ -657,7 +647,7 @@ const ManagerActionStats = ({ history, managerId, filterType }: { history: any[]
     const total = praise + improvement + correction;
 
     return (
-      <div className="bg-gray-900 p-8 rounded-[2.5rem] text-white flex flex-col justify-between h-full shadow-xl shadow-gray-200">
+      <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white flex flex-col justify-between h-full shadow-xl shadow-indigo-100">
         <div className="space-y-6">
           <div className="space-y-1">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Feedback Output</p>
@@ -696,7 +686,7 @@ const ManagerActionStats = ({ history, managerId, filterType }: { history: any[]
   // Default / Meeting View (Quality Control)
   const reopens = history.filter(h => h.performerId === managerId && h.title.includes('Re-opened')).length;
   return (
-    <div className="bg-gray-900 p-8 rounded-[2.5rem] text-white flex flex-col justify-between h-full shadow-xl shadow-gray-200">
+    <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white flex flex-col justify-between h-full shadow-xl shadow-indigo-100">
       <div className="space-y-1">
         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Quality Control</p>
         <h3 className="text-4xl font-black">{reopens}</h3>

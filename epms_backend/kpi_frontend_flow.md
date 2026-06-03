@@ -128,6 +128,7 @@ API hooks:
 - Employee, department, position, and cycle queries from their feature APIs.
 - `useGetDepartmentGoalSetsQuery`
 - `useGetTeamGoalSetsQuery`
+- `useGetMidcycleSummaryQuery` (for selected employee/cycle midpoint insights)
 
 ---
 
@@ -211,6 +212,8 @@ Current behavior:
 - Modify Goals navigates to `/kpi/assign/:employeeId?cycleId=...&mode=edit`.
 - Draft goals can be approved.
 - Approved goals can be reverted or locked.
+- Displays a midcycle phase timeline when midcycle data exists for the employee/cycle.
+- Opens `MidcycleChangeModal` for managers/HR/Admin to trigger a midcycle split.
 - Score sidebar allows Calculate Score or Recalculate Score for privileged users when cycle is not archived.
 
 Item table behavior:
@@ -233,6 +236,7 @@ API hooks:
 
 - `useGetGoalSetByEmployeeQuery`
 - `useGetFinalScoreQuery`
+- `useGetMidcycleSummaryQuery`
 - `useApproveGoalSetMutation`
 - `useRevertGoalSetMutation`
 - `useLockGoalSetMutation`
@@ -286,6 +290,7 @@ API hooks:
 - `useGetDirectReportsQuery`
 - `useGetTeamGoalSetsQuery`
 - `useBulkAssignKpiMutation` through modal
+- `useGetMidcycleSummaryQuery` for phase insights when available
 
 ---
 
@@ -405,6 +410,22 @@ Excel import modal.
 - Calls `useImportLibrariesMutation`.
 - Shows import success/failure result details.
 
+### `MidcyclePhaseTimeline.tsx`
+
+Timeline component shown inside `GoalDetail` when midcycle phases exist.
+
+- Displays phase number, dates, weight, score, and current status.
+- Shows real-time open-phase projections and scored-phase contributions.
+- Works with `MidcycleChangeModal` and refreshes when phase data updates.
+
+### `MidcycleChangeModal.tsx`
+
+Modal launched from `GoalManagement` and `GoalDetail` for privileged users to trigger a midcycle KPI split.
+
+- Shows the currently selected employee and cycle.
+- Requires a change date and reason.
+- Uses `useTriggerMidcycleChangeMutation` and refreshes midcycle summary on success.
+
 ---
 
 ### `KpiLibraryHistoryModal.tsx`
@@ -480,6 +501,15 @@ Includes keys for frontend display such as `DRAFT`, `APPROVED`, `LOCKED`, `SCORE
 - `calculateWeightedScore(actual, target, weight)`
 - `validateKpiWeights(items)`
 - Priority/status helper functions
+
+### `midcycleApi.ts`
+
+- Exposes `useGetMidcycleSummaryQuery`, `useTriggerMidcycleChangeMutation`, and `useFinalizeCompositeScoreMutation`.
+- Used by `GoalDetail`, `GoalManagement`, `MidcycleChangeModal`, and `MidcyclePhaseTimeline`.
+
+### `midcycleTypes.ts`
+
+- Defines `MidcycleChangeRequest`, `MidcyclePhaseResponse`, and `MidcycleSummaryResponse`.
 
 ---
 

@@ -15,6 +15,7 @@ const RoleList = () => {
   const [createRole] = useCreateRoleMutation();
   const [deleteRole] = useDeleteRoleMutation();
   const [newRoleName, setNewRoleName] = useState("");
+  const isSubmitDisabled = !newRoleName.trim();
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,10 +56,24 @@ const RoleList = () => {
             </select>
             <button
               type="submit"
+              disabled={isSubmitDisabled}
               className="flex items-center justify-center gap-2 transition-colors sm:w-auto"
-              style={{ background: "#1A56DB", color: "#FFFFFF", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500, border: "none" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "#1648C0"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "#1A56DB"; }}
+              style={{
+                background: isSubmitDisabled ? "#D1D5DB" : "#1A56DB",
+                color: isSubmitDisabled ? "#6B7280" : "#FFFFFF",
+                borderRadius: 8,
+                padding: "8px 14px",
+                fontSize: 13,
+                fontWeight: 500,
+                border: "none",
+                cursor: isSubmitDisabled ? "not-allowed" : "pointer",
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitDisabled) e.currentTarget.style.background = "#1648C0";
+              }}
+              onMouseLeave={(e) => {
+                if (!isSubmitDisabled) e.currentTarget.style.background = "#1A56DB";
+              }}
             >
               <Plus size={14} aria-hidden="true" /> Add
             </button>

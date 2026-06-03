@@ -20,6 +20,8 @@ public class KpiHistoryLog extends BaseEntity {
 
     private Long employeeId;
 
+    private Long cycleId;
+
     private Long goalSetId;
     private Long itemId;
 

@@ -60,10 +60,12 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            "  (h.sourceType = ace.org.epms_backend.enums.SourceType.FEEDBACK AND EXISTS (" +
            "    SELECT 1 FROM ContinuousFeedback f WHERE f.feedbackId = h.sourceId " +
            "    AND f.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "    AND (f.isDeleted = false OR f.isDeleted IS NULL)" +
            "  )) OR " +
            "  (h.sourceType = ace.org.epms_backend.enums.SourceType.MEETING AND EXISTS (" +
            "    SELECT 1 FROM OneOnOneMeeting m WHERE m.meetingId = h.sourceId " +
            "    AND m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "    AND (m.isDeleted = false OR m.isDeleted IS NULL)" +
            "  ))" +
            ") " +
            "ORDER BY h.createdAt ASC")
@@ -85,10 +87,12 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            "  (h.sourceType = ace.org.epms_backend.enums.SourceType.FEEDBACK AND EXISTS (" +
            "    SELECT 1 FROM ContinuousFeedback f WHERE f.feedbackId = h.sourceId " +
            "    AND f.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "    AND (f.isDeleted = false OR f.isDeleted IS NULL)" +
            "  )) OR " +
            "  (h.sourceType = ace.org.epms_backend.enums.SourceType.MEETING AND EXISTS (" +
            "    SELECT 1 FROM OneOnOneMeeting m WHERE m.meetingId = h.sourceId " +
            "    AND m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "    AND (m.isDeleted = false OR m.isDeleted IS NULL)" +
            "  ))" +
            ") " +
            "ORDER BY h.createdAt ASC")
@@ -108,10 +112,12 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            "  (h.sourceType = ace.org.epms_backend.enums.SourceType.FEEDBACK AND EXISTS (" +
            "    SELECT 1 FROM ContinuousFeedback f WHERE f.feedbackId = h.sourceId " +
            "    AND f.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "    AND (f.isDeleted = false OR f.isDeleted IS NULL)" +
            "  )) OR " +
            "  (h.sourceType = ace.org.epms_backend.enums.SourceType.MEETING AND EXISTS (" +
            "    SELECT 1 FROM OneOnOneMeeting m WHERE m.meetingId = h.sourceId " +
            "    AND m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "    AND (m.isDeleted = false OR m.isDeleted IS NULL)" +
            "  ))" +
            ") " +
            "ORDER BY h.createdAt ASC")
@@ -125,10 +131,12 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            "  (h.sourceType = ace.org.epms_backend.enums.SourceType.FEEDBACK AND EXISTS (" +
            "    SELECT 1 FROM ContinuousFeedback f WHERE f.feedbackId = h.sourceId " +
            "    AND f.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "    AND (f.isDeleted = false OR f.isDeleted IS NULL)" +
            "  )) OR " +
            "  (h.sourceType = ace.org.epms_backend.enums.SourceType.MEETING AND EXISTS (" +
            "    SELECT 1 FROM OneOnOneMeeting m WHERE m.meetingId = h.sourceId " +
            "    AND m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "    AND (m.isDeleted = false OR m.isDeleted IS NULL)" +
            "  ))" +
            ") " +
            "ORDER BY h.createdAt ASC")
@@ -142,10 +150,12 @@ public interface PerformanceHistoryRepository extends JpaRepository<PerformanceH
            "  (h.sourceType = ace.org.epms_backend.enums.SourceType.FEEDBACK AND EXISTS (" +
            "    SELECT 1 FROM ContinuousFeedback f WHERE f.feedbackId = h.sourceId " +
            "    AND f.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "    AND (f.isDeleted = false OR f.isDeleted IS NULL)" +
            "  )) OR " +
            "  (h.sourceType = ace.org.epms_backend.enums.SourceType.MEETING AND EXISTS (" +
            "    SELECT 1 FROM OneOnOneMeeting m WHERE m.meetingId = h.sourceId " +
            "    AND m.status = ace.org.epms_backend.enums.ContinuousStatus.PUBLISHED" +
+           "    AND (m.isDeleted = false OR m.isDeleted IS NULL)" +
            "  ))" +
            ") " +
            "ORDER BY h.createdAt ASC")

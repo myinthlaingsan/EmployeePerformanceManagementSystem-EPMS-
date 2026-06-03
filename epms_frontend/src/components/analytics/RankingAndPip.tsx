@@ -1,9 +1,49 @@
 import { memo, useMemo, useState } from 'react';
-import { Award, GraduationCap, TrendingUp } from 'lucide-react';
+import { Award, Download, FileSpreadsheet, FileText, GraduationCap, TrendingUp } from 'lucide-react';
 import { DashboardCard, EmptyState, SkeletonBlock } from './DashboardPrimitives';
 import { DASHBOARD_COLORS, DASHBOARD_BORDER } from '../../styles/dashboardStyles';
 import { formatScore, getTopRows, getUnderRows } from '../../utils/reportUtils';
 import type { IdpTrackingReportDTO, PerformanceRankingReportDTO, PipTrackingReportDTO, PromotionReadinessReportDTO } from '../../types/report';
+
+const DownloadButton = ({
+  label,
+  tone = 'plain',
+  ariaLabel,
+  onClick,
+}: {
+  label: string;
+  tone?: 'primary' | 'success' | 'plain';
+  ariaLabel: string;
+  onClick: () => void;
+}) => {
+  const isPrimary = tone === 'primary';
+  const isSuccess = tone === 'success';
+
+  return (
+    <button
+      aria-label={ariaLabel}
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        minHeight: 28,
+        padding: '4px 10px',
+        background: isPrimary ? DASHBOARD_COLORS.primarySoft : isSuccess ? DASHBOARD_COLORS.successSoft : 'transparent',
+        color: isPrimary ? '#0C447C' : isSuccess ? DASHBOARD_COLORS.success : DASHBOARD_COLORS.subtle,
+        border: isPrimary ? `0.5px solid ${DASHBOARD_COLORS.primaryBorder}` : isSuccess ? `0.5px solid ${DASHBOARD_COLORS.successBorder}` : 'none',
+        borderRadius: 6,
+        fontSize: 11,
+        fontWeight: 600,
+        cursor: 'pointer',
+      }}
+    >
+      {isSuccess ? <FileSpreadsheet size={12} /> : isPrimary ? <FileText size={12} /> : <Download size={14} />}
+      {label}
+    </button>
+  );
+};
 
 const ReportFormatButtons = ({
   onDownloadPdf,
@@ -13,20 +53,8 @@ const ReportFormatButtons = ({
   onDownloadExcel: () => void;
 }) => (
   <div style={{ display: 'flex', gap: 6 }}>
-    <button
-      aria-label="Download PDF report"
-      onClick={onDownloadPdf}
-      style={{ fontSize: 12, color: DASHBOARD_COLORS.primary, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-    >
-      PDF
-    </button>
-    <button
-      aria-label="Download Excel report"
-      onClick={onDownloadExcel}
-      style={{ fontSize: 12, color: DASHBOARD_COLORS.success, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-    >
-      Excel
-    </button>
+    <DownloadButton label="PDF" tone="primary" ariaLabel="Download PDF report" onClick={onDownloadPdf} />
+    <DownloadButton label="Excel" tone="success" ariaLabel="Download Excel report" onClick={onDownloadExcel} />
   </div>
 );
 
@@ -183,13 +211,21 @@ export const PromotionReadinessPanel = memo(({
   const topReady = useMemo(
     () => (data || [])
       .filter((employee) => employee.isReady)
-      .sort((left, right) => Number(right.averageScoreLast3Cycles || 0) - Number(left.averageScoreLast3Cycles || 0))
       .slice(0, 3),
     [data],
   );
 
   return (
-    <DashboardCard title="Promotion Readiness" isError={isError}>
+    <DashboardCard
+      title="Promotion Readiness"
+      isError={isError}
+      action={(
+        <div style={{ display: 'flex', gap: 6 }}>
+          <DownloadButton label="PDF" tone="primary" ariaLabel="Download promotion readiness PDF" onClick={onDownloadPdf} />
+          <DownloadButton label="Excel" tone="success" ariaLabel="Download promotion readiness Excel" onClick={onDownloadExcel} />
+        </div>
+      )}
+    >
       {loading ? <SkeletonBlock height={160} /> : (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
@@ -206,33 +242,13 @@ export const PromotionReadinessPanel = memo(({
             {!topReady.length ? (
               <p style={{ fontSize: 12, color: DASHBOARD_COLORS.muted }}>No employees are marked promotion-ready yet.</p>
             ) : topReady.map((employee) => (
-              <div key={employee.employeeId} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+              <div key={employee.employeeId} style={{ padding: 12, borderRadius: 10, background: DASHBOARD_COLORS.surfaceAlt, display: 'flex', gap: 10, alignItems: 'center' }}>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 12, fontWeight: 600, color: DASHBOARD_COLORS.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{employee.employeeName}</p>
                   <p style={{ fontSize: 11, color: DASHBOARD_COLORS.subtle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{employee.currentPosition}</p>
                 </div>
-                <span style={{ flex: '0 0 auto', fontSize: 12, fontWeight: 600, color: DASHBOARD_COLORS.success }}>
-                  {formatScore(employee.averageScoreLast3Cycles, 1)}%
-                </span>
               </div>
             ))}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <button
-              aria-label="Download promotion readiness PDF"
-              onClick={onDownloadPdf}
-              style={{ padding: 8, background: DASHBOARD_COLORS.successSoft, border: `0.5px solid ${DASHBOARD_COLORS.successBorder}`, borderRadius: 8, color: DASHBOARD_COLORS.success, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              PDF
-            </button>
-            <button
-              aria-label="Download promotion readiness Excel"
-              onClick={onDownloadExcel}
-              style={{ padding: 8, background: DASHBOARD_COLORS.surfaceAlt, border: DASHBOARD_BORDER, borderRadius: 8, color: DASHBOARD_COLORS.ink, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Excel
-            </button>
           </div>
         </div>
       )}

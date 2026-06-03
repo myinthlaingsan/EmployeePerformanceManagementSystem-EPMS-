@@ -18,6 +18,7 @@ const PermissionList = () => {
   const [newPermissionName, setNewPermissionName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  const isSubmitDisabled = !newPermissionName.trim();
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,8 +65,20 @@ const PermissionList = () => {
               onChange={e => setNewPermissionName(e.target.value)}
               style={{ ...inputStyle, flex: '1 1 200px' }} />
             <button type="submit"
-              style={{ padding: '7px 18px', fontSize: 13, fontWeight: 500, background: '#111827', color: '#FFFFFF', border: 'none', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap' }}
-              className="hover:opacity-90 transition-opacity">
+              disabled={isSubmitDisabled}
+              style={{
+                padding: '7px 18px',
+                fontSize: 13,
+                fontWeight: 500,
+                background: isSubmitDisabled ? '#E5E7EB' : '#111827',
+                color: isSubmitDisabled ? '#9CA3AF' : '#FFFFFF',
+                border: 'none',
+                borderRadius: 8,
+                cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+              className="transition-opacity"
+            >
               Add Permission
             </button>
           </form>

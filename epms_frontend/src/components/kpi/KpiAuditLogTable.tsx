@@ -17,12 +17,14 @@ const ACTION_COLORS: Record<string, { bg: string; text: string }> = {
   PHASE_OPENED: { bg: '#EAF3DE', text: '#27500A' },
   PHASE_CLOSED: { bg: '#F1EFE8', text: '#444441' },
   PHASE_LOCKED: { bg: '#F5F3FF', text: '#7C3AED' },
+  KPI_ASSIGNED: { bg: '#EFF6FF', text: '#1D4ED8' },
+  KPI_APPROVED: { bg: '#ECFDF5', text: '#059669' },
+  KPI_REVERTED: { bg: '#FFFBEB', text: '#D97706' },
+  KPI_LOCKED: { bg: '#F5F3FF', text: '#7C3AED' },
   KPI_ADDED: { bg: '#EEF3FD', text: '#0C447C' },
   KPI_REVISED: { bg: '#FEF3C7', text: '#92400E' },
   KPI_DELETED: { bg: '#FEF2F2', text: '#DC2626' },
   MID_CYCLE_EVENT: { bg: '#E0E7FF', text: '#4F46E5' },
-  GOAL_APPROVED: { bg: '#ECFDF5', text: '#059669' },
-  GOAL_REVERTED: { bg: '#FFFBEB', text: '#D97706' },
 };
 
 const KpiAuditLogTable: React.FC<KpiAuditLogTableProps> = ({
@@ -139,6 +141,7 @@ const KpiAuditLogTable: React.FC<KpiAuditLogTableProps> = ({
             <tr style={{ background: '#FAFBFF', borderBottom: '0.5px solid #E4E6EC' }}>
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Timestamp</th>
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Employee</th>
+              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Emp Code</th>
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Department</th>
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Action</th>
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 600, color: '#5A6070', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Details</th>
@@ -161,6 +164,9 @@ const KpiAuditLogTable: React.FC<KpiAuditLogTableProps> = ({
                     </td>
                     <td style={{ padding: '14px 18px', fontSize: 12, fontWeight: 500, color: '#111827' }}>
                       {log.employeeName}
+                    </td>
+                    <td style={{ padding: '14px 18px', fontSize: 11, color: '#9EA3B0', fontFamily: 'monospace' }}>
+                      {log.employeeCode || '—'}
                     </td>
                     <td style={{ padding: '14px 18px', fontSize: 12, color: '#5A6070' }}>
                       {log.departmentName || 'N/A'}
@@ -193,7 +199,7 @@ const KpiAuditLogTable: React.FC<KpiAuditLogTableProps> = ({
               })
             ) : (
               <tr>
-                <td colSpan={6} style={{ padding: '40px 18px', textAlign: 'center', fontSize: 12, color: '#9EA3B0' }}>
+                <td colSpan={7} style={{ padding: '40px 18px', textAlign: 'center', fontSize: 12, color: '#9EA3B0' }}>
                   No history records found.
                 </td>
               </tr>
